@@ -133,6 +133,7 @@ function touch(e) {
     var t = e.changedTouches[0]
     doMove(t);
   }
+  e.preventDefault();
 }
 
 function doMove(e) {
