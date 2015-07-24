@@ -31,6 +31,7 @@
       .panel.right {
         width: 384px;
         height: 512px;
+        overflow: scroll;
       }
       
     </style>
@@ -66,6 +67,7 @@
   
   <body onload="init()">
     <div>
+      <h1><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun!</h1>
       <div class="center panel">
         <canvas id="canvas-gl" width="512" height="512" onmousemove="move(event)" onmousedown="move(event)">
           Your browser seems not to support HTML 5 Canvas!
@@ -87,6 +89,9 @@
           <button id="division-inc" onclick="incDivision(event)">+</button>
           <span id="division-depth">8</span>
           <button id="division-dec" onclick="decDivision(event)">-</button>
+          <div>
+            Higher values may be slow to render, as the number of triangles increases exponentially.
+          </div>
         </p>
         <p>
           <div>
