@@ -69,7 +69,14 @@
     <div>
       <h1><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun!</h1>
       <div class="center panel">
-        <canvas id="canvas-gl" width="512" height="512" onmousemove="move(event)" onmousedown="move(event)">
+        <canvas 
+          id="canvas-gl" 
+          width="512" 
+          height="512" 
+          onmousemove="move(event)" 
+          onmousedown="move(event)" 
+          ontouchmove="touch(event)" 
+          ontouchstart="touch(event)">
           Your browser seems not to support HTML 5 Canvas!
         </canvas>
       </div>
