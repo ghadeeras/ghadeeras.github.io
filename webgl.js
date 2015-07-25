@@ -1,7 +1,8 @@
-function GLContext(canvasId) {
+function GLContext(canvasId, config) {
 
   this.canvas = getCanvas();
-  this.gl = getContext(this.canvas);
+  this.config = config;
+  this.gl = getContext(this.canvas, config);
   
   function getCanvas() {
     var canvas = document.getElementById(canvasId);
@@ -11,10 +12,10 @@ function GLContext(canvasId) {
     return canvas;
   }
   
-  function getContext(canvas) {
+  function getContext(canvas, config) {
     var gl = null;
     try {
-      gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      gl = canvas.getContext("webgl", config) || canvas.getContext("experimental-webgl", config);
     } catch(e) {}
     if (!gl) {
       throw Error("Your browser seems not to support WebGL!");
