@@ -126,11 +126,12 @@ function move(e) {
   if (e.buttons != 0) {
     doMove(e);
   }
+  e.preventDefault();
 }
 
 function touch(e) {
   if (e.changedTouches.length != 0) {
-    var t = e.changedTouches[0]
+    var t = e.changedTouches[0];
     doMove(t);
   }
   e.preventDefault();
@@ -138,10 +139,10 @@ function touch(e) {
 
 function doMove(e) {
   if (document.getElementById("input-scale").checked) {
-    app.setScale(4 * (e.target.height - e.clientY + e.target.offsetTop) / e.target.height - 2);
+    app.setScale(2 - 4 * e.offsetY / e.target.height);
   }
   if (document.getElementById("input-twist").checked) {
-    app.setTwist(4 * PI * (e.clientX - e.target.offsetLeft) / e.target.width - 2 * PI);
+    app.setTwist(PI * (4 * e.offsetX / e.target.width - 2));
   }
   app.draw();
 }
