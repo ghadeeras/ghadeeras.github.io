@@ -124,7 +124,7 @@ function init() {
 
 function move(e) {
   if (e.buttons != 0) {
-    doMove(e);
+    doMove(e, e.offsetX, e.offsetY);
   }
   e.preventDefault();
 }
@@ -132,19 +132,33 @@ function move(e) {
 function touch(e) {
   if (e.changedTouches.length != 0) {
     var t = e.changedTouches[0];
-    doMove(t);
+    var targetX = x(t.target);
+    var targetY = y(t.target);
+    doMove(t, t.pageX - targetX, t.pageY - targetY);
   }
   e.preventDefault();
 }
 
-function doMove(e) {
+function doMove(e, x, y) {
   if (document.getElementById("input-scale").checked) {
-    app.setScale(2 - 4 * e.offsetY / e.target.height);
+    app.setScale(2 - 4 * y / e.target.height);
   }
   if (document.getElementById("input-twist").checked) {
-    app.setTwist(PI * (4 * e.offsetX / e.target.width - 2));
+    app.setTwist(PI * (4 * x / e.target.width - 2));
   }
   app.draw();
+}
+
+function x(element) {
+  var result = element.offsetLeft;
+  var parent = element.offsetParent;
+  return parent ? x(parent) + result : result;
+}
+
+function y(element) {
+  var result = element.offsetTop;
+  var parent = element.offsetParent;
+  return parent ? y(parent) + result : result;
 }
 
 function redraw(e) {
