@@ -10,7 +10,7 @@ module GasketTwist {
     window.onload = e => {
         var sierpinski = new Sierpinski();
         var rendering = new Rendering();
-        var view = new View("canvas-gl", "division-depth");
+        var view = new View("canvas-gl", "division-depth", "twist", "scale");
         var controller = new Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
 
         controller.outDepth.drives(sierpinski.depth);
