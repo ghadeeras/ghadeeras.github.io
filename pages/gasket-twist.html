@@ -36,66 +36,37 @@
       
     </style>
     
-    <script id="shader-vertex" type="x-shader/x-vertex">
-      attribute vec2 vPosition;
-      
-      uniform float twist;
-      uniform float scale;
-      
-      void main() {
-        vec2 p = scale * vPosition;
-        float angle = twist * length(p);
-        float s = sin(angle);
-        float c = cos(angle);
-        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
-        gl_Position = vec4(rotation * p, 0.0, 1.0);
-      }
-    </script>
-
-    <script id="shader-fragment" type="x-shader/x-fragment">
-      precision mediump float;
-      
-      void main() {
-        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
-      }
-    </script>
-    
-    <script src="./webgl.js" type="text/javascript"></script>
-    <script src="./gasket-twist.js" type="text/javascript"></script>
+    <script src="../gen/ghadeeras.js" type="text/javascript"></script>
     
   </head>
   
-  <body onload="init()">
+  <body>
     <div>
       <h1><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun!</h1>
       <div class="center panel">
         <canvas 
           id="canvas-gl" 
           width="512" 
-          height="512" 
-          onmousemove="move(event)" 
-          onmousedown="move(event)" 
-          ontouchmove="touch(event)" 
-          ontouchstart="touch(event)">
+          height="512">
           Your browser seems not to support HTML 5 Canvas!
         </canvas>
       </div>
       <div class="right panel">
         <p>
-          <input id="input-corners" name="input-corners" type="checkbox" checked="checked" onchange="redraw(event)" />
+          <input id="input-corners" name="input-corners" type="checkbox" checked="checked" />
           <b>Fractal edge</b>:
           Checking this option will render the "edge" of the fractal, or rather the sub-triangles at the corners of each divided triangle. 
         </p>
         <p>
-          <input id="input-centers" name="input-centers" type="checkbox" checked="checked" onchange="redraw(event)" />
+          <input id="input-centers" name="input-centers" type="checkbox" checked="checked" />
           <b>Fractal enterior</b>:
           Checking this option will render the "enterior" of the fractal, or rather the subtriangles at the centers of each divided triangle.
         </p>
         <p>
           <b>Recursive division depth</b>: 
-          <button id="division-inc" onclick="incDivision(event)">+</button>
+          <button id="division-inc">+</button>
           <span id="division-depth">8</span>
-          <button id="division-dec" onclick="decDivision(event)">-</button>
+          <button id="division-dec">-</button>
           <div>
             Higher values may be slow to render, as the number of triangles increases exponentially.
           </div>
