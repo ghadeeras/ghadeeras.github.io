@@ -327,6 +327,8 @@ declare module GasketTwist {
 declare module GasketTwist {
     class View {
         private _depthDiv;
+        private _twistDiv;
+        private _scaleDiv;
         private _context;
         private _vertexShader;
         private _fragmentShader;
@@ -349,7 +351,7 @@ declare module GasketTwist {
         inShowCorners: Gear.Sensor<boolean>;
         inShowCenters: Gear.Sensor<boolean>;
         inDepth: Gear.Sensor<number>;
-        constructor(canvasId: string, depthId: string);
+        constructor(canvasId: string, depthId: string, twistId: string, scaleId: string);
         private sierpinski;
         private twist;
         private scale;

@@ -29,6 +29,8 @@ module GasketTwist {
     export class View {
         
         private _depthDiv: HTMLElement;
+        private _twistDiv: HTMLElement;
+        private _scaleDiv: HTMLElement;
         
         private _context: Djee.Context;
         private _vertexShader: Djee.Shader;
@@ -43,8 +45,14 @@ module GasketTwist {
         private _centersBuffer: Djee.Buffer;
 
         private _inArrays = new Gear.Sensor<FlattenedSierpinski>(arrays => this.sierpinski = arrays);
-        private _inTwist = new Gear.Sensor<number>(twist => this.twist = twist);
-        private _inScale = new Gear.Sensor<number>(scale => this.scale = scale);
+        private _inTwist = new Gear.Sensor<number>(twist => {
+            this.twist = twist;
+            this._twistDiv.innerText = twist.toString();
+        });
+        private _inScale = new Gear.Sensor<number>(scale => {
+            this.scale = scale;
+            this._scaleDiv.innerText = scale.toString();
+        });
         private _inShowCorners = new Gear.Sensor<boolean>(showCorners => this._rendering.later());
         private _inShowCenters = new Gear.Sensor<boolean>(showCenters => this._rendering.later());
         private _inDepth = new Gear.Sensor<number>(depth => this._depthDiv.innerText = depth.toString());
@@ -75,8 +83,10 @@ module GasketTwist {
             return this._inDepth;
         }
 
-        constructor(canvasId: string, depthId: string) {
+        constructor(canvasId: string, depthId: string, twistId: string, scaleId: string) {
             this._depthDiv = document.getElementById(depthId);
+            this._twistDiv = document.getElementById(twistId);
+            this._scaleDiv = document.getElementById(scaleId);
             this._context = new Djee.Context(canvasId);
             var context = this._context;
 

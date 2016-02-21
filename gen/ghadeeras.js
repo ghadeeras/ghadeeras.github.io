@@ -1127,16 +1127,24 @@ var GasketTwist;
     var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
     var ST = Djee.ShaderType;
     var View = (function () {
-        function View(canvasId, depthId) {
+        function View(canvasId, depthId, twistId, scaleId) {
             var _this = this;
             this._inArrays = new Gear.Sensor(function (arrays) { return _this.sierpinski = arrays; });
-            this._inTwist = new Gear.Sensor(function (twist) { return _this.twist = twist; });
-            this._inScale = new Gear.Sensor(function (scale) { return _this.scale = scale; });
+            this._inTwist = new Gear.Sensor(function (twist) {
+                _this.twist = twist;
+                _this._twistDiv.innerText = twist.toString();
+            });
+            this._inScale = new Gear.Sensor(function (scale) {
+                _this.scale = scale;
+                _this._scaleDiv.innerText = scale.toString();
+            });
             this._inShowCorners = new Gear.Sensor(function (showCorners) { return _this._rendering.later(); });
             this._inShowCenters = new Gear.Sensor(function (showCenters) { return _this._rendering.later(); });
             this._inDepth = new Gear.Sensor(function (depth) { return _this._depthDiv.innerText = depth.toString(); });
             this._rendering = new Gear.Call(function () { return _this.draw(); });
             this._depthDiv = document.getElementById(depthId);
+            this._twistDiv = document.getElementById(twistId);
+            this._scaleDiv = document.getElementById(scaleId);
             this._context = new Djee.Context(canvasId);
             var context = this._context;
             this._vertexShader = context.shader(ST.VertexShader, vertexShader);
@@ -1351,7 +1359,7 @@ var GasketTwist;
     window.onload = function (e) {
         var sierpinski = new GasketTwist.Sierpinski();
         var rendering = new GasketTwist.Rendering();
-        var view = new GasketTwist.View("canvas-gl", "division-depth");
+        var view = new GasketTwist.View("canvas-gl", "division-depth", "twist", "scale");
         var controller = new GasketTwist.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
         controller.outDepth.drives(sierpinski.depth);
         controller.outScale.drives(rendering.scale);
