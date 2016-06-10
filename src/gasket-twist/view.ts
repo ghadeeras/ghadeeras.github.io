@@ -25,6 +25,10 @@ module GasketTwist {
     `
 
     var ST = Djee.ShaderType;
+    
+    function round(value: number) {
+        return Math.round(1000 * value) / 1000;
+    }
 
     export class View {
         
@@ -47,11 +51,11 @@ module GasketTwist {
         private _inArrays = new Gear.Sensor<FlattenedSierpinski>(arrays => this.sierpinski = arrays);
         private _inTwist = new Gear.Sensor<number>(twist => {
             this.twist = twist;
-            this._twistDiv.innerText = twist.toString();
+            this._twistDiv.innerText = round(twist).toString();
         });
         private _inScale = new Gear.Sensor<number>(scale => {
             this.scale = scale;
-            this._scaleDiv.innerText = scale.toString();
+            this._scaleDiv.innerText = round(scale).toString();
         });
         private _inShowCorners = new Gear.Sensor<boolean>(showCorners => this._rendering.later());
         private _inShowCenters = new Gear.Sensor<boolean>(showCenters => this._rendering.later());

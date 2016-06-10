@@ -1126,17 +1126,20 @@ var GasketTwist;
     var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
     var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
     var ST = Djee.ShaderType;
+    function round(value) {
+        return Math.round(1000 * value) / 1000;
+    }
     var View = (function () {
         function View(canvasId, depthId, twistId, scaleId) {
             var _this = this;
             this._inArrays = new Gear.Sensor(function (arrays) { return _this.sierpinski = arrays; });
             this._inTwist = new Gear.Sensor(function (twist) {
                 _this.twist = twist;
-                _this._twistDiv.innerText = twist.toString();
+                _this._twistDiv.innerText = round(twist).toString();
             });
             this._inScale = new Gear.Sensor(function (scale) {
                 _this.scale = scale;
-                _this._scaleDiv.innerText = scale.toString();
+                _this._scaleDiv.innerText = round(scale).toString();
             });
             this._inShowCorners = new Gear.Sensor(function (showCorners) { return _this._rendering.later(); });
             this._inShowCenters = new Gear.Sensor(function (showCenters) { return _this._rendering.later(); });
@@ -1296,23 +1299,26 @@ var GasketTwist;
         });
         Controller.prototype.registerEvents = function () {
             var _this = this;
-            this._canvas.onmousemove = function (e) {
+            var root = this._canvas.parentElement.parentElement;
+            root.onmousemove = function (e) {
                 if (e.buttons != 0) {
-                    _this.doMove(e.offsetX, e.offsetY);
+                    var targetX = _this.x(root);
+                    var targetY = _this.y(root);
+                    _this.doMove(e.pageX - targetX, e.pageY - targetY);
                 }
                 e.preventDefault();
             };
-            this._canvas.onmousedown = this._canvas.onmousemove;
-            this._canvas.ontouchmove = function (e) {
+            root.onmousedown = this._canvas.onmousemove;
+            root.ontouchmove = function (e) {
                 if (e.changedTouches.length != 0) {
                     var t = e.changedTouches[0];
-                    var targetX = _this.x(_this._canvas);
-                    var targetY = _this.y(_this._canvas);
+                    var targetX = _this.x(root);
+                    var targetY = _this.y(root);
                     _this.doMove(t.pageX - targetX, t.pageY - targetY);
                 }
                 e.preventDefault();
             };
-            this._canvas.ontouchstart = this._canvas.ontouchmove;
+            root.ontouchstart = this._canvas.ontouchmove;
             this._cornersCheckbox.onchange = function (e) {
                 _this._outShowCorners.perform(_this._cornersCheckbox.checked);
             };

@@ -57,23 +57,26 @@ module GasketTwist {
         }
 
         private registerEvents() {
-            this._canvas.onmousemove = e => {
+            var root = this._canvas.parentElement.parentElement;
+            root.onmousemove = e => {
                 if (e.buttons != 0) {
-                    this.doMove(e.offsetX, e.offsetY);
+                    var targetX = this.x(root);
+                    var targetY = this.y(root);
+                    this.doMove(e.pageX - targetX, e.pageY - targetY);
                 }
                 e.preventDefault();
             };
-            this._canvas.onmousedown = this._canvas.onmousemove;
-            this._canvas.ontouchmove = e => {
+            root.onmousedown = this._canvas.onmousemove;
+            root.ontouchmove = e => {
                 if (e.changedTouches.length != 0) {
                     var t = e.changedTouches[0];
-                    var targetX = this.x(this._canvas);
-                    var targetY = this.y(this._canvas);
+                    var targetX = this.x(root);
+                    var targetY = this.y(root);
                     this.doMove(t.pageX - targetX, t.pageY - targetY);
                 }
                 e.preventDefault();
             };
-            this._canvas.ontouchstart = this._canvas.ontouchmove;
+            root.ontouchstart = this._canvas.ontouchmove;
             this._cornersCheckbox.onchange = e => {
                 this._outShowCorners.perform(this._cornersCheckbox.checked);
             };
