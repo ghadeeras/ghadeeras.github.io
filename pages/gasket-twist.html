@@ -4,19 +4,23 @@
 <head>
     <meta charset="utf-8">
     <title>Gasket Twist</title>
-    <link type="text/css" rel="stylesheet" href="ghadeeras.css" />
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
     <script src="../gen/ghadeeras.js" type="text/javascript"></script>
 </head>
 
     <div id="head">
-        <div>Ghadeer's Playcloud</div>
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
     </div>
+
     <div id="content">
-        <div id="menu">
-            <div class="item"><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun!</div>
-        </div>
-        <div id="app">
-            <div class="hud">
+
+        <div id="side">
+
+            <div class="section">
+                <strong><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun! :-)</strong>
+            </div>
+
+            <div>
                 <p>
                     <input id="input-corners" name="input-corners" type="checkbox" checked="checked" />
                     <span title="Checking this option will render the 'edge' of the fractal, or rather the sub-triangles at the corners of each divided triangle.">Fractal edge</span>
@@ -46,12 +50,17 @@
                     </div>
                 </p>
             </div>
-            <div id="view">
+
+        </div>
+
+        <div id="main">
+            <div class="view">
                 <canvas id="canvas-gl" width="640" height="640">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
             </div>
         </div>
+
     </div>
 </body>
 

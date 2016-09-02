@@ -9,22 +9,28 @@ div {
     padding: 0px;    
 }
 
+a {
+    color: rgba(64, 96, 160, 255);
+    text-decoration: none; 
+}
+
+a::visited {
+    color: rgba(128, 125, 255, 255); 
+}
+
 #head {
     position: fixed;
+    z-index: 3;
     left: 0px;
     top: 0px;
     width: 100%;
-    height: 48px;
+    height: 32px;
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-top: 8px;
+    padding-bottom: 8px;
     box-shadow: 0px 2px 4px black;
     background-color: rgba(255, 255, 255, 255);
-    z-index: 3;
-}
-
-#head div {
-    margin-left: 64px;
-    margin-right: 64px;
-    margin-top: 8px;
-    margin-bottom: 8px;
     font-size: x-large;
     font-weight: bold;
 }
@@ -34,56 +40,39 @@ div {
     left: 0px;
     top: 48px;
     width: 1024px;
-    min-height: 648px;
+    min-height: 720px;
 }
 
-#menu {
+#side {
     position: absolute;
+    z-index: 1;
     left: 0px;
     top: 0px;
-    width: 360px;
+    width: 320px;
     min-height: inherit;
+    padding-left: 32px;
+    padding-right: 16px;
     background-color: rgba(255, 255, 255, 255);
     box-shadow: 2px 2px 4px black;
-    z-index: 1;
 }
 
-#menu .item {
-    padding: 16px;
-    margin-left: 48px;
-    margin-right: 16px;
-    font-size: large;
-    font-weight: bold;
+#side .section {
+    padding-top: 16px;
+    padding-bottom: 16px;
     border-bottom: 1px solid grey;
 }
 
-#app {
+#main {
     position: absolute;
     right: 0px;
     top: 0px;
+    padding: 0px;
+}
+
+#main .view {
     width: 640px;
-    min-height: 640px;
+    max-height: 640px;
     margin: 8px;
     background-color: rgba(255, 255, 255, 255);
     box-shadow: 2px 2px 4px black;
-}
-
-#app .hud {
-    position: absolute;
-    margin: 8px;
-    padding: 8px;
-    max-width: 640px;
-    max-height: 640px;
-    background-color: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(0, 0, 0, 0.50);
-    z-index: 2;
-}
-
-#view {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    width: 640px;
-    min-height: 640px;
-    z-index: 1;
 }
