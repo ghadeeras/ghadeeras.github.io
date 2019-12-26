@@ -11,11 +11,11 @@ declare module Space {
         scale(factor: number): Vector;
         dot(v: Vector): number;
         mix(v: Vector, weight: number): Vector;
-        lengthSquared: number;
-        length: number;
-        unit: Vector;
+        readonly lengthSquared: number;
+        readonly length: number;
+        readonly unit: Vector;
         angle(v: Vector): number;
-        c(indexes: number[]): Vector;
+        c(...indexes: number[]): Vector;
         cross(v: Vector): Vector;
         sameAs(v: Vector, precision?: number): boolean;
     }
@@ -32,69 +32,22 @@ declare module Djee {
         flatten(structure: S, array?: P[], index?: number): P[];
         unflatten(structure: S, array: P[], index?: number): any;
     }
-    abstract class AbstractFlattener<S, P> implements Flattener<S, P> {
-        private _size;
-        constructor(size: number);
-        protected abstract subFlatteners(): Flattener<any, P>[];
-        protected abstract doFlatten(structure: S, array: P[], index: number): any;
-        protected abstract doUnflatten(structure: S, array: P[], index: number): any;
-        size: number;
-        offsetOf(child: Flattener<any, P>): number;
-        flatten(structure: S, array?: P[], index?: number): P[];
-        unflatten(structure: S, array: P[], index?: number): void;
-    }
-    class PrimitiveFlattener<S, P> extends AbstractFlattener<S, P> {
-        private _getter;
-        private _setter;
-        constructor(getter: Getter<S, P>, setter: Setter<S, P>);
-        protected subFlatteners(): Flattener<any, P>[];
-        protected doFlatten(structure: S, array: P[], index: number): void;
-        protected doUnflatten(structure: S, array: P[], index: number): void;
-    }
-    class ArrayFlattener<S, P> extends AbstractFlattener<S, P> {
-        private _getter;
-        constructor(size: number, getter: Getter<S, P[]>);
-        private copy(structure, array, index, copier);
-        protected subFlatteners(): Flattener<any, P>[];
-        protected doFlatten(structure: S, array: P[], index: number): void;
-        protected doUnflatten(structure: S, array: P[], index: number): void;
-    }
-    class ChildFlattener<S, C, P> extends AbstractFlattener<S, P> {
-        private _flattener;
-        private _getter;
-        constructor(flattener: Flattener<C, P>, getter: Getter<S, C>);
-        private copy(structure, array, index, copier);
-        protected subFlatteners(): Flattener<any, P>[];
-        protected doFlatten(structure: S, array: P[], index: number): void;
-        protected doUnflatten(structure: S, array: P[], index: number): void;
-    }
-    class CompositeFlattener<S, P> extends AbstractFlattener<S, P> {
-        private _flatteners;
-        constructor(flatteners: Flattener<S, P>[]);
-        private copy(structure, array, index, copier);
-        protected subFlatteners(): Flattener<any, P>[];
-        protected doFlatten(structure: S, array: P[], index: number): void;
-        protected doUnflatten(structure: S, array: P[], index: number): void;
-    }
-    abstract class FlattenerBuilder<S, P> {
-        private _flatteners;
-        private add(flattener);
-        protected primitive(getter: Getter<S, P>, setter: Setter<S, P>): Flattener<S, P>;
-        protected array(getter: Getter<S, P[]>, size: number): Flattener<S, P>;
-        protected child<C>(getter: Getter<S, C>, flattener: FlattenerBuilder<C, P>): Flattener<S, P>;
-        build(): Flattener<S, P>;
-    }
+    const flatteners: {
+        composite: <S, C, P>(...flatteners: Flattener<S, P>[]) => Flattener<S, P>;
+        primitive: <S, P>(getter: Getter<S, P>, setter: Setter<S, P>) => Flattener<S, P>;
+        array: <S, P>(getter: Getter<S, P[]>, size: number) => Flattener<S, P>;
+        child: <S, C, P>(getter: Getter<S, C>, flattener: Flattener<C, P>) => Flattener<S, P>;
+    };
     function flatten<S, P>(flattener: Flattener<S, P>, structures: S[], array?: P[], index?: number): P[];
 }
 declare module Djee {
     class Context {
-        private _canvas;
-        private _gl;
-        canvas: HTMLCanvasElement;
-        gl: WebGLRenderingContext;
+        readonly canvas: HTMLCanvasElement;
+        readonly gl: WebGLRenderingContext;
         constructor(canvasId: string);
-        private getCanvas(canvasId);
-        private getContext(canvas);
+        private getCanvas;
+        private getContext;
+        private doGetContext;
         with<T>(glCode: (gl: WebGLRenderingContext) => T): T;
         shaderFromElement(scriptId: string): Shader;
         shader(type: ShaderType, code: string): Shader;
@@ -105,36 +58,29 @@ declare module Djee {
 }
 declare module Djee {
     class Shader {
-        private _context;
-        private _type;
-        private _code;
-        private _shader;
-        context: Context;
-        type: ShaderType;
-        code: string;
-        shader: WebGLShader;
+        readonly context: Context;
+        readonly type: ShaderType;
+        readonly code: string;
+        readonly shader: WebGLShader;
         constructor(context: Context, type: ShaderType, code: string);
-        delete(): void;
         static fromElement(context: Context, scriptId: string): Shader;
-        private static getScript(scriptId);
-        private static getShaderType(type);
-        private makeShader(gl, type, code);
+        private static getScript;
+        private static getShaderType;
+        private makeShader;
+        delete(): void;
     }
     enum ShaderType {
         VertexShader,
-        FragmentShader,
+        FragmentShader
     }
 }
 declare module Djee {
     class Program {
-        private _context;
-        private _shaders;
-        private _program;
-        context: Context;
-        shaders: Shader[];
-        program: WebGLProgram;
+        readonly context: Context;
+        readonly shaders: Shader[];
+        readonly program: WebGLProgram;
         constructor(context: Context, shaders: Shader[]);
-        private makeProgram(gl, shaders);
+        private makeProgram;
         delete(): void;
         use(): void;
         locateAttribute(name: string, size: number): Attribute;
@@ -143,42 +89,32 @@ declare module Djee {
 }
 declare module Djee {
     class Attribute {
-        private _program;
-        private _name;
-        private _size;
-        private _location;
-        program: Program;
-        name: string;
-        size: number;
-        location: number;
+        readonly program: Program;
+        readonly name: string;
+        readonly size: number;
+        readonly location: number;
         constructor(program: Program, name: string, size: number);
         pointTo(buffer: Buffer, stride?: number, offset?: number): void;
     }
 }
 declare module Djee {
     class Uniform {
-        private _program;
-        private _name;
-        private _size;
-        private _location;
-        private _setter;
+        readonly program: Program;
+        readonly name: string;
+        readonly size: number;
+        readonly location: WebGLUniformLocation;
+        readonly setter: (v: Float32Array) => void;
         private _data;
-        program: Program;
-        name: string;
-        size: number;
-        location: WebGLUniformLocation;
         constructor(program: Program, name: string, size: number);
-        private getSetter(gl, size);
+        private getSetter;
         data: number[];
     }
 }
 declare module Djee {
     class Buffer {
-        private _context;
-        private _buffer;
+        readonly context: Context;
+        readonly buffer: WebGLBuffer;
         private _data;
-        context: Context;
-        buffer: WebGLBuffer;
         constructor(context: Context);
         bind<T>(glCode: (gl: WebGLRenderingContext) => T): T;
         data: number[];
@@ -201,24 +137,24 @@ declare module Gear {
     abstract class Pluggable<A, B> {
         private _pluggedComponents;
         protected abstract self(): A;
-        protected itself: A;
-        protected pluggedComponents: B[];
+        protected readonly itself: A;
+        protected readonly pluggedComponents: B[];
         protected plug(component: Pluggable<B, A>): void;
         protected unplug(component: Pluggable<B, A>): void;
         protected unplugAll(): void;
-        private doPlug(component);
-        private doUnplug(component);
+        private doPlug;
+        private doUnplug;
         protected prePlug(): void;
     }
     abstract class ExclusivelyPluggable<A, B> extends Pluggable<A, B> {
-        protected pluggedComponent: B;
+        protected readonly pluggedComponent: any;
         protected prePlug(): void;
     }
 }
 declare module Gear {
     class Actuator<A> extends ExclusivelyPluggable<Actuator<A>, Controllable<A>> {
         protected self(): this;
-        controllable: Controllable<A>;
+        readonly controllable: any;
         drives(controllable: IsControllable<A>): void;
         drivesNone(): void;
         perform(action: A): void;
@@ -230,11 +166,11 @@ declare module Gear {
         private _sensing;
         constructor(consumer: Consumer<V>);
         protected self(): this;
-        measurable: Measurable<V>;
+        readonly measurable: any;
         probes(measurable: IsMeasurable<V>): void;
         probesNone(): void;
         sense(value: V): void;
-        reading: V;
+        readonly reading: any;
     }
 }
 declare module Gear {
@@ -245,8 +181,8 @@ declare module Gear {
         private _consumer;
         constructor(consumer: Consumer<A>);
         protected self(): this;
-        asControllable: this;
-        actuator: Actuator<A>;
+        readonly asControllable: this;
+        readonly actuator: any;
         reactTo(action: A): void;
     }
 }
@@ -258,10 +194,10 @@ declare module Gear {
         private _value;
         constructor(value: V);
         protected self(): this;
-        asMeasurable: this;
-        sensors: Sensor<V>[];
+        readonly asMeasurable: this;
+        readonly sensors: any;
         conduct(value: V): void;
-        sample: V;
+        readonly sample: V;
     }
 }
 declare module Gear {
@@ -270,10 +206,10 @@ declare module Gear {
         private _reactor;
         private _in;
         private _out;
-        asControllable: Controllable<A>;
-        asMeasurable: Measurable<V>;
+        readonly asControllable: Controllable<A>;
+        readonly asMeasurable: Measurable<V>;
         constructor(value: V, reactor: Reactor<A, V>);
-        private reactTo(action);
+        private reactTo;
     }
     class SimpleValue<V> extends Value<V, V> {
         constructor(value: V, reactor?: Reactor<V, V>);
@@ -289,10 +225,10 @@ declare module GasketTwist {
         private _scale;
         private _showCorners;
         private _showCenters;
-        twist: Gear.SimpleValue<number>;
-        scale: Gear.SimpleValue<number>;
-        showCorners: Gear.SimpleValue<boolean>;
-        showCenters: Gear.SimpleValue<boolean>;
+        readonly twist: Gear.SimpleValue<number>;
+        readonly scale: Gear.SimpleValue<number>;
+        readonly showCorners: Gear.SimpleValue<boolean>;
+        readonly showCenters: Gear.SimpleValue<boolean>;
     }
     interface FlattenedSierpinski {
         corners: number[];
@@ -311,17 +247,17 @@ declare module GasketTwist {
         private _inC;
         private _depth;
         private _outArrays;
-        inA: Gear.Controllable<Space.Vector>;
-        inB: Gear.Controllable<Space.Vector>;
-        inC: Gear.Controllable<Space.Vector>;
-        depth: Gear.SimpleValue<number>;
-        outArrays: any;
+        readonly inA: Gear.Controllable<Space.Vector>;
+        readonly inB: Gear.Controllable<Space.Vector>;
+        readonly inC: Gear.Controllable<Space.Vector>;
+        readonly depth: Gear.SimpleValue<number>;
+        readonly outArrays: any;
         constructor(a?: Space.Vector, b?: Space.Vector, c?: Space.Vector, depth?: number);
-        private tesselateTriangle();
+        private tesselateTriangle;
         private static corners;
         private static centers;
-        private doTesselateTriangle(a, b, c, counter, selector?);
-        private flattened;
+        private doTesselateTriangle;
+        private readonly flattened;
     }
 }
 declare module GasketTwist {
@@ -345,17 +281,17 @@ declare module GasketTwist {
         private _inShowCenters;
         private _inDepth;
         private _rendering;
-        inArrays: Gear.Sensor<FlattenedSierpinski>;
-        inTwist: Gear.Sensor<number>;
-        inScale: Gear.Sensor<number>;
-        inShowCorners: Gear.Sensor<boolean>;
-        inShowCenters: Gear.Sensor<boolean>;
-        inDepth: Gear.Sensor<number>;
+        readonly inArrays: Gear.Sensor<FlattenedSierpinski>;
+        readonly inTwist: Gear.Sensor<number>;
+        readonly inScale: Gear.Sensor<number>;
+        readonly inShowCorners: Gear.Sensor<boolean>;
+        readonly inShowCenters: Gear.Sensor<boolean>;
+        readonly inDepth: Gear.Sensor<number>;
         constructor(canvasId: string, depthId: string, twistId: string, scaleId: string);
         private sierpinski;
         private twist;
         private scale;
-        private draw();
+        private draw;
     }
 }
 declare module GasketTwist {
@@ -372,17 +308,18 @@ declare module GasketTwist {
         private _outDepth;
         private _outTwist;
         private _outScale;
-        outShowCorners: Gear.Actuator<boolean>;
-        outShowCenters: Gear.Actuator<boolean>;
-        outDepth: Gear.Actuator<number>;
-        outTwist: Gear.Actuator<number>;
-        outScale: Gear.Actuator<number>;
+        readonly outShowCorners: Gear.Actuator<boolean>;
+        readonly outShowCenters: Gear.Actuator<boolean>;
+        readonly outDepth: Gear.Actuator<number>;
+        readonly outTwist: Gear.Actuator<number>;
+        readonly outScale: Gear.Actuator<number>;
         constructor(canvas: string, cornersCheckbox: string, centersCheckbox: string, twistCheckbox: string, scaleCheckbox: string, depthIncButton: string, depthDecButton: string);
-        private registerEvents();
-        private doMove(x, y);
-        private x(element);
-        private y(element);
+        private registerEvents;
+        private doMove;
+        private x;
+        private y;
     }
 }
 declare module GasketTwist {
 }
+//# sourceMappingURL=ghadeeras.d.ts.map

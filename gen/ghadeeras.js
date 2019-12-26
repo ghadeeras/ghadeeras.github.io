@@ -1,6 +1,19 @@
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var Space;
 (function (Space) {
-    var Vector = (function () {
+    var Vector = /** @class */ (function () {
         function Vector(coordinates) {
             this.coordinates = coordinates;
         }
@@ -73,7 +86,11 @@ var Space;
             var x = Math.acos(cos2x) / 2;
             return x;
         };
-        Vector.prototype.c = function (indexes) {
+        Vector.prototype.c = function () {
+            var indexes = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                indexes[_i] = arguments[_i];
+            }
             var result = new Array(indexes.length);
             for (var i = 0; i < indexes.length; i++) {
                 result[i] = this.coordinates[indexes[i]] || 0;
@@ -81,8 +98,8 @@ var Space;
             return new Vector(result);
         };
         Vector.prototype.cross = function (v) {
-            var v1 = this.c([0, 1, 2]).coordinates;
-            var v2 = v.c([0, 1, 2]).coordinates;
+            var v1 = this.c(0, 1, 2).coordinates;
+            var v2 = v.c(0, 1, 2).coordinates;
             var result = new Array(3);
             result[0] = v1[1] * v2[2] - v1[2] * v2[1];
             result[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -97,38 +114,27 @@ var Space;
             return tan < precision && tan > -precision;
         };
         return Vector;
-    })();
+    }());
     Space.Vector = Vector;
 })(Space || (Space = {}));
 /// <reference path="vector.ts" />
 var Space;
+/// <reference path="vector.ts" />
 (function (Space) {
     function vec(coordinates) {
         return new Space.Vector(coordinates);
     }
     Space.vec = vec;
 })(Space || (Space = {}));
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
 var Djee;
 (function (Djee) {
     function sum(v1, v2) {
         return v1 + v2;
     }
-    var AbstractFlattener = (function () {
+    var AbstractFlattener = /** @class */ (function () {
         function AbstractFlattener(size) {
-            this._size = size;
+            this.size = size;
         }
-        Object.defineProperty(AbstractFlattener.prototype, "size", {
-            get: function () {
-                return this._size;
-            },
-            enumerable: true,
-            configurable: true
-        });
         AbstractFlattener.prototype.offsetOf = function (child) {
             if (this == child) {
                 return 0;
@@ -160,90 +166,84 @@ var Djee;
             this.doUnflatten(structure, array, index);
         };
         return AbstractFlattener;
-    })();
-    Djee.AbstractFlattener = AbstractFlattener;
-    var PrimitiveFlattener = (function (_super) {
+    }());
+    var PrimitiveFlattener = /** @class */ (function (_super) {
         __extends(PrimitiveFlattener, _super);
         function PrimitiveFlattener(getter, setter) {
-            _super.call(this, 1);
-            this._getter = getter;
-            this._setter = setter;
+            var _this = _super.call(this, 1) || this;
+            _this.getter = getter;
+            _this.setter = setter;
+            return _this;
         }
         PrimitiveFlattener.prototype.subFlatteners = function () {
             return [];
         };
         PrimitiveFlattener.prototype.doFlatten = function (structure, array, index) {
-            array[index] = this._getter(structure);
+            array[index] = this.getter(structure);
         };
         PrimitiveFlattener.prototype.doUnflatten = function (structure, array, index) {
-            this._setter(structure, array[index]);
+            this.setter(structure, array[index]);
         };
         return PrimitiveFlattener;
-    })(AbstractFlattener);
-    Djee.PrimitiveFlattener = PrimitiveFlattener;
-    var ArrayFlattener = (function (_super) {
+    }(AbstractFlattener));
+    var ArrayFlattener = /** @class */ (function (_super) {
         __extends(ArrayFlattener, _super);
         function ArrayFlattener(size, getter) {
-            _super.call(this, size);
-            this._getter = getter;
+            var _this = _super.call(this, size) || this;
+            _this.getter = getter;
+            _this.getter = getter;
+            return _this;
         }
-        ArrayFlattener.prototype.copy = function (structure, array, index, copier) {
-            var structureArray = this._getter(structure);
-            for (var i = 0; i < this.size; i++) {
-                copier(structureArray, array, i);
-            }
-        };
         ArrayFlattener.prototype.subFlatteners = function () {
             return [];
         };
         ArrayFlattener.prototype.doFlatten = function (structure, array, index) {
-            this.copy(structure, array, index, function (sa, a, i) { return a[index + i] = sa[i]; });
+            this.copy(structure, array, function (sa, a, i) { return a[index + i] = sa[i]; });
         };
         ArrayFlattener.prototype.doUnflatten = function (structure, array, index) {
-            this.copy(structure, array, index, function (sa, a, i) { return sa[i] = a[index + i]; });
+            this.copy(structure, array, function (sa, a, i) { return sa[i] = a[index + i]; });
+        };
+        ArrayFlattener.prototype.copy = function (structure, array, copier) {
+            var structureArray = this.getter(structure);
+            for (var i = 0; i < this.size; i++) {
+                copier(structureArray, array, i);
+            }
         };
         return ArrayFlattener;
-    })(AbstractFlattener);
-    Djee.ArrayFlattener = ArrayFlattener;
-    var ChildFlattener = (function (_super) {
+    }(AbstractFlattener));
+    var ChildFlattener = /** @class */ (function (_super) {
         __extends(ChildFlattener, _super);
         function ChildFlattener(flattener, getter) {
-            _super.call(this, flattener.size);
-            this._flattener = flattener;
-            this._getter = getter;
+            var _this = _super.call(this, flattener.size) || this;
+            _this.flattener = flattener;
+            _this.getter = getter;
+            return _this;
         }
-        ChildFlattener.prototype.copy = function (structure, array, index, copier) {
-            copier(this._getter(structure), array, index);
-        };
         ChildFlattener.prototype.subFlatteners = function () {
-            return [this._flattener];
+            return [this.flattener];
         };
         ChildFlattener.prototype.doFlatten = function (structure, array, index) {
             var _this = this;
-            this.copy(structure, array, index, function (s, a, i) { return _this._flattener.flatten(s, a, i); });
+            this.copy(structure, array, index, function (s, a, i) { return _this.flattener.flatten(s, a, i); });
         };
         ChildFlattener.prototype.doUnflatten = function (structure, array, index) {
             var _this = this;
-            this.copy(structure, array, index, function (s, a, i) { return _this._flattener.unflatten(s, a, i); });
+            this.copy(structure, array, index, function (s, a, i) { return _this.flattener.unflatten(s, a, i); });
+        };
+        ChildFlattener.prototype.copy = function (structure, array, index, copier) {
+            copier(this.getter(structure), array, index);
         };
         return ChildFlattener;
-    })(AbstractFlattener);
-    Djee.ChildFlattener = ChildFlattener;
-    var CompositeFlattener = (function (_super) {
+    }(AbstractFlattener));
+    var CompositeFlattener = /** @class */ (function (_super) {
         __extends(CompositeFlattener, _super);
         function CompositeFlattener(flatteners) {
-            _super.call(this, flatteners.map(function (f) { return f.size; }).reduce(sum));
-            this._flatteners = flatteners;
+            var _this = _super.call(this, flatteners.map(function (f) { return f.size; }).reduce(sum)) || this;
+            _this.flatteners = flatteners;
+            return _this;
         }
-        CompositeFlattener.prototype.copy = function (structure, array, index, copier) {
-            for (var i = 0; i < this._flatteners.length; i++) {
-                var f = this._flatteners[i];
-                copier(f)(structure, array, index);
-                index += f.size;
-            }
-        };
         CompositeFlattener.prototype.subFlatteners = function () {
-            return this._flatteners;
+            return this.flatteners;
         };
         CompositeFlattener.prototype.doFlatten = function (structure, array, index) {
             this.copy(structure, array, index, function (f) { return function (s, a, i) { return f.flatten(s, a, i); }; });
@@ -251,32 +251,33 @@ var Djee;
         CompositeFlattener.prototype.doUnflatten = function (structure, array, index) {
             this.copy(structure, array, index, function (f) { return function (s, a, i) { return f.unflatten(s, a, i); }; });
         };
+        CompositeFlattener.prototype.copy = function (structure, array, index, copier) {
+            for (var i = 0; i < this.flatteners.length; i++) {
+                var f = this.flatteners[i];
+                copier(f)(structure, array, index);
+                index += f.size;
+            }
+        };
         return CompositeFlattener;
-    })(AbstractFlattener);
-    Djee.CompositeFlattener = CompositeFlattener;
-    var FlattenerBuilder = (function () {
-        function FlattenerBuilder() {
-            this._flatteners = [];
+    }(AbstractFlattener));
+    Djee.flatteners = {
+        composite: function () {
+            var flatteners = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                flatteners[_i] = arguments[_i];
+            }
+            return new CompositeFlattener(flatteners);
+        },
+        primitive: function (getter, setter) {
+            return new PrimitiveFlattener(getter, setter);
+        },
+        array: function (getter, size) {
+            return new ArrayFlattener(size, getter);
+        },
+        child: function (getter, flattener) {
+            return new ChildFlattener(flattener, getter);
         }
-        FlattenerBuilder.prototype.add = function (flattener) {
-            this._flatteners.push(flattener);
-            return flattener;
-        };
-        FlattenerBuilder.prototype.primitive = function (getter, setter) {
-            return this.add(new PrimitiveFlattener(getter, setter));
-        };
-        FlattenerBuilder.prototype.array = function (getter, size) {
-            return this.add(new ArrayFlattener(size, getter));
-        };
-        FlattenerBuilder.prototype.child = function (getter, flattener) {
-            return this.add(new ChildFlattener(flattener.build(), getter));
-        };
-        FlattenerBuilder.prototype.build = function () {
-            return new CompositeFlattener(this._flatteners);
-        };
-        return FlattenerBuilder;
-    })();
-    Djee.FlattenerBuilder = FlattenerBuilder;
+    };
     function flatten(flattener, structures, array, index) {
         if (array === void 0) { array = new Array(flattener.size * structures.length); }
         if (index === void 0) { index = 0; }
@@ -290,25 +291,11 @@ var Djee;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Context = (function () {
+    var Context = /** @class */ (function () {
         function Context(canvasId) {
-            this._canvas = this.getCanvas(canvasId);
-            this._gl = this.getContext(this._canvas);
+            this.canvas = this.getCanvas(canvasId);
+            this.gl = this.getContext(this.canvas);
         }
-        Object.defineProperty(Context.prototype, "canvas", {
-            get: function () {
-                return this._canvas;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Context.prototype, "gl", {
-            get: function () {
-                return this._gl;
-            },
-            enumerable: true,
-            configurable: true
-        });
         Context.prototype.getCanvas = function (canvasId) {
             var canvas = document.getElementById(canvasId);
             if (!canvas) {
@@ -317,23 +304,23 @@ var Djee;
             return canvas;
         };
         Context.prototype.getContext = function (canvas) {
-            var gl;
-            try {
-                gl =
-                    canvas.getContext("experimental-webgl") ||
-                        canvas.getContext("webgl");
-            }
-            catch (e) {
-                console.error(e);
-                gl = null;
-            }
+            var gl = this.doGetContext(canvas);
             if (!gl) {
                 throw "Your browser seems not to support WebGL!";
             }
             return gl;
         };
+        Context.prototype.doGetContext = function (canvas) {
+            try {
+                return canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+            }
+            catch (e) {
+                console.error(e);
+                return null;
+            }
+        };
         Context.prototype.with = function (glCode) {
-            return glCode(this._gl);
+            return glCode(this.gl);
         };
         Context.prototype.shaderFromElement = function (scriptId) {
             return Djee.Shader.fromElement(this, scriptId);
@@ -344,7 +331,7 @@ var Djee;
         Context.prototype.linkFromElements = function (scriptIds) {
             var _this = this;
             var shaders = scriptIds.map(function (id) { return _this.shaderFromElement(id); });
-            return new Djee.Program(this, shaders);
+            return this.link(shaders);
         };
         Context.prototype.link = function (shaders) {
             return new Djee.Program(this, shaders);
@@ -353,52 +340,24 @@ var Djee;
             return new Djee.Buffer(this);
         };
         return Context;
-    })();
+    }());
     Djee.Context = Context;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Shader = (function () {
+    var Shader = /** @class */ (function () {
         function Shader(context, type, code) {
-            this._context = context;
-            this._type = type;
-            this._code = code;
-            this._shader = this.makeShader(context.gl, type, code);
+            this.context = context;
+            this.type = type;
+            this.code = code;
+            this.context = context;
+            this.type = type;
+            this.code = code;
+            this.shader = this.makeShader(context.gl, type, code);
         }
-        Object.defineProperty(Shader.prototype, "context", {
-            get: function () {
-                return this._context;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Shader.prototype, "type", {
-            get: function () {
-                return this._type;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Shader.prototype, "code", {
-            get: function () {
-                return this._code;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Shader.prototype, "shader", {
-            get: function () {
-                return this._shader;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Shader.prototype.delete = function () {
-            this._context.gl.deleteShader(this._shader);
-        };
         Shader.fromElement = function (context, scriptId) {
             var script = this.getScript(scriptId);
-            var type = this.getShaderType(script.getAttribute(type));
+            var type = this.getShaderType(script.getAttribute('type'));
             var code = script.innerHTML;
             return new Shader(context, type, code);
         };
@@ -429,44 +388,26 @@ var Djee;
             }
             return shader;
         };
+        Shader.prototype.delete = function () {
+            this.context.gl.deleteShader(this.shader);
+        };
         return Shader;
-    })();
+    }());
     Djee.Shader = Shader;
+    var ShaderType;
     (function (ShaderType) {
         ShaderType[ShaderType["VertexShader"] = WebGLRenderingContext.VERTEX_SHADER] = "VertexShader";
         ShaderType[ShaderType["FragmentShader"] = WebGLRenderingContext.FRAGMENT_SHADER] = "FragmentShader";
-    })(Djee.ShaderType || (Djee.ShaderType = {}));
-    var ShaderType = Djee.ShaderType;
+    })(ShaderType = Djee.ShaderType || (Djee.ShaderType = {}));
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Program = (function () {
+    var Program = /** @class */ (function () {
         function Program(context, shaders) {
-            this._context = context;
-            this._shaders = shaders;
-            this._program = this.makeProgram(context.gl, shaders);
+            this.context = context;
+            this.shaders = shaders;
+            this.program = this.makeProgram(context.gl, shaders);
         }
-        Object.defineProperty(Program.prototype, "context", {
-            get: function () {
-                return this._context;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Program.prototype, "shaders", {
-            get: function () {
-                return this._shaders;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Program.prototype, "program", {
-            get: function () {
-                return this._program;
-            },
-            enumerable: true,
-            configurable: true
-        });
         Program.prototype.makeProgram = function (gl, shaders) {
             var program = gl.createProgram();
             shaders.forEach(function (s) {
@@ -480,12 +421,12 @@ var Djee;
         };
         Program.prototype.delete = function () {
             var _this = this;
-            var gl = this._context.gl;
-            this._shaders.forEach(function (shader) { return gl.detachShader(_this._program, shader.shader); });
-            gl.deleteProgram(this._program);
+            var gl = this.context.gl;
+            this.shaders.forEach(function (shader) { return gl.detachShader(_this.program, shader.shader); });
+            gl.deleteProgram(this.program);
         };
         Program.prototype.use = function () {
-            this._context.gl.useProgram(this._program);
+            this.context.gl.useProgram(this.program);
         };
         Program.prototype.locateAttribute = function (name, size) {
             return new Djee.Attribute(this, name, size);
@@ -494,101 +435,43 @@ var Djee;
             return new Djee.Uniform(this, name, size);
         };
         return Program;
-    })();
+    }());
     Djee.Program = Program;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Attribute = (function () {
+    var Attribute = /** @class */ (function () {
         function Attribute(program, name, size) {
-            this._program = program;
-            this._name = name;
-            this._size = size;
-            this._location = program.context.gl.getAttribLocation(program.program, name);
+            this.program = program;
+            this.name = name;
+            this.size = size;
+            this.location = program.context.gl.getAttribLocation(program.program, name);
         }
-        Object.defineProperty(Attribute.prototype, "program", {
-            get: function () {
-                return this._program;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Attribute.prototype, "name", {
-            get: function () {
-                return this._name;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Attribute.prototype, "size", {
-            get: function () {
-                return this._size;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Attribute.prototype, "location", {
-            get: function () {
-                return this._location;
-            },
-            enumerable: true,
-            configurable: true
-        });
         Attribute.prototype.pointTo = function (buffer, stride, offset) {
             var _this = this;
-            if (stride === void 0) { stride = this._size; }
+            if (stride === void 0) { stride = this.size; }
             if (offset === void 0) { offset = 0; }
             buffer.bind(function (gl) {
-                gl.vertexAttribPointer(_this._location, _this._size, gl.FLOAT, false, stride * 4, offset * 4);
-                gl.enableVertexAttribArray(_this._location);
+                gl.vertexAttribPointer(_this.location, _this.size, gl.FLOAT, false, stride * 4, offset * 4);
+                gl.enableVertexAttribArray(_this.location);
             });
         };
         return Attribute;
-    })();
+    }());
     Djee.Attribute = Attribute;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Uniform = (function () {
+    var Uniform = /** @class */ (function () {
         function Uniform(program, name, size) {
-            var _this = this;
-            this._program = program;
-            this._name = name;
-            this._size = size;
+            this.program = program;
+            this.name = name;
+            this.size = size;
+            var gl = program.context.gl;
+            this.location = gl.getUniformLocation(program.program, name);
+            this.setter = this.getSetter(gl, size);
             this._data = new Array(size);
-            program.context.with(function (gl) {
-                _this._location = gl.getUniformLocation(program.program, name);
-                _this._setter = _this.getSetter(gl, size);
-            });
         }
-        Object.defineProperty(Uniform.prototype, "program", {
-            get: function () {
-                return this._program;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Uniform.prototype, "name", {
-            get: function () {
-                return this._name;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Uniform.prototype, "size", {
-            get: function () {
-                return this._size;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Uniform.prototype, "location", {
-            get: function () {
-                return this._location;
-            },
-            enumerable: true,
-            configurable: true
-        });
         Uniform.prototype.getSetter = function (gl, size) {
             var l = this.location;
             switch (size) {
@@ -601,54 +484,40 @@ var Djee;
         };
         Object.defineProperty(Uniform.prototype, "data", {
             get: function () {
-                return Djee.copyOf(this._data.slice());
+                return Djee.copyOf(this._data);
             },
             set: function (data) {
-                if (data.length < this._size) {
-                    throw "Arrays of length '" + data.length + "' cannot be assigned to uniform vector '" + this._name + "' which has size '" + this._size + "'";
+                if (data.length < this.size) {
+                    throw "Arrays of length '" + data.length + "' cannot be assigned to uniform vector '" + this.name + "' which has size '" + this.size + "'";
                 }
-                this._setter(new Float32Array(data));
+                this.setter(new Float32Array(data));
                 this._data = Djee.copyOf(data);
             },
             enumerable: true,
             configurable: true
         });
         return Uniform;
-    })();
+    }());
     Djee.Uniform = Uniform;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
-    var Buffer = (function () {
+    var Buffer = /** @class */ (function () {
         function Buffer(context) {
-            this._context = context;
-            this._buffer = context.gl.createBuffer();
+            this.context = context;
             this._data = [];
+            this.buffer = context.gl.createBuffer();
         }
-        Object.defineProperty(Buffer.prototype, "context", {
-            get: function () {
-                return this._context;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Buffer.prototype, "buffer", {
-            get: function () {
-                return this._buffer;
-            },
-            enumerable: true,
-            configurable: true
-        });
         Buffer.prototype.bind = function (glCode) {
             var _this = this;
-            return this._context.with(function (gl) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, _this._buffer);
+            return this.context.with(function (gl) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, _this.buffer);
                 return glCode(gl);
             });
         };
         Object.defineProperty(Buffer.prototype, "data", {
             get: function () {
-                return Djee.copyOf(this._data.slice());
+                return Djee.copyOf(this._data);
             },
             set: function (data) {
                 var array = new Float32Array(data);
@@ -661,7 +530,7 @@ var Djee;
             configurable: true
         });
         return Buffer;
-    })();
+    }());
     Djee.Buffer = Buffer;
 })(Djee || (Djee = {}));
 /// <reference path="flattener.ts" />
@@ -672,6 +541,13 @@ var Djee;
 /// <reference path="uniform.ts" />
 /// <reference path="buffer.ts" />
 var Djee;
+/// <reference path="flattener.ts" />
+/// <reference path="context.ts" />
+/// <reference path="shader.ts" />
+/// <reference path="program.ts" />
+/// <reference path="attribute.ts" />
+/// <reference path="uniform.ts" />
+/// <reference path="buffer.ts" />
 (function (Djee) {
     function copyOf(array) {
         return array.slice(0, array.length);
@@ -680,7 +556,7 @@ var Djee;
 })(Djee || (Djee = {}));
 var Gear;
 (function (Gear) {
-    var Call = (function () {
+    var Call = /** @class */ (function () {
         function Call(callable) {
             this._timer = null;
             this._callable = callable;
@@ -705,12 +581,12 @@ var Gear;
             }
         };
         return Call;
-    })();
+    }());
     Gear.Call = Call;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Pluggable = (function () {
+    var Pluggable = /** @class */ (function () {
         function Pluggable() {
             this._pluggedComponents = [];
         }
@@ -750,12 +626,12 @@ var Gear;
         Pluggable.prototype.prePlug = function () {
         };
         return Pluggable;
-    })();
+    }());
     Gear.Pluggable = Pluggable;
-    var ExclusivelyPluggable = (function (_super) {
+    var ExclusivelyPluggable = /** @class */ (function (_super) {
         __extends(ExclusivelyPluggable, _super);
         function ExclusivelyPluggable() {
-            _super.apply(this, arguments);
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         Object.defineProperty(ExclusivelyPluggable.prototype, "pluggedComponent", {
             get: function () {
@@ -768,15 +644,15 @@ var Gear;
             this.unplugAll();
         };
         return ExclusivelyPluggable;
-    })(Pluggable);
+    }(Pluggable));
     Gear.ExclusivelyPluggable = ExclusivelyPluggable;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Actuator = (function (_super) {
+    var Actuator = /** @class */ (function (_super) {
         __extends(Actuator, _super);
         function Actuator() {
-            _super.apply(this, arguments);
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         Actuator.prototype.self = function () {
             return this;
@@ -798,18 +674,18 @@ var Gear;
             this.controllable.reactTo(action);
         };
         return Actuator;
-    })(Gear.ExclusivelyPluggable);
+    }(Gear.ExclusivelyPluggable));
     Gear.Actuator = Actuator;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Sensor = (function (_super) {
+    var Sensor = /** @class */ (function (_super) {
         __extends(Sensor, _super);
         function Sensor(consumer) {
-            var _this = this;
-            _super.call(this);
-            this._consumer = consumer;
-            this._sensing = new Gear.Call(function () { return _this.sense(_this.measurable.sample); });
+            var _this = _super.call(this) || this;
+            _this._consumer = consumer;
+            _this._sensing = new Gear.Call(function () { return _this.sense(_this.measurable.sample); });
+            return _this;
         }
         Sensor.prototype.self = function () {
             return this;
@@ -839,16 +715,17 @@ var Gear;
             configurable: true
         });
         return Sensor;
-    })(Gear.ExclusivelyPluggable);
+    }(Gear.ExclusivelyPluggable));
     Gear.Sensor = Sensor;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Controllable = (function (_super) {
+    var Controllable = /** @class */ (function (_super) {
         __extends(Controllable, _super);
         function Controllable(consumer) {
-            _super.call(this);
-            this._consumer = consumer;
+            var _this = _super.call(this) || this;
+            _this._consumer = consumer;
+            return _this;
         }
         Controllable.prototype.self = function () {
             return this;
@@ -871,16 +748,17 @@ var Gear;
             this._consumer(action);
         };
         return Controllable;
-    })(Gear.ExclusivelyPluggable);
+    }(Gear.ExclusivelyPluggable));
     Gear.Controllable = Controllable;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Measurable = (function (_super) {
+    var Measurable = /** @class */ (function (_super) {
         __extends(Measurable, _super);
         function Measurable(value) {
-            _super.call(this);
-            this._value = value;
+            var _this = _super.call(this) || this;
+            _this._value = value;
+            return _this;
         }
         Measurable.prototype.self = function () {
             return this;
@@ -911,12 +789,12 @@ var Gear;
             configurable: true
         });
         return Measurable;
-    })(Gear.Pluggable);
+    }(Gear.Pluggable));
     Gear.Measurable = Measurable;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Value = (function () {
+    var Value = /** @class */ (function () {
         function Value(value, reactor) {
             var _this = this;
             this._reactor = reactor;
@@ -942,16 +820,16 @@ var Gear;
             this._out.conduct(newValue);
         };
         return Value;
-    })();
+    }());
     Gear.Value = Value;
-    var SimpleValue = (function (_super) {
+    var SimpleValue = /** @class */ (function (_super) {
         __extends(SimpleValue, _super);
         function SimpleValue(value, reactor) {
             if (reactor === void 0) { reactor = function (a, b) { return a; }; }
-            _super.call(this, value, reactor);
+            return _super.call(this, value, reactor) || this;
         }
         return SimpleValue;
-    })(Value);
+    }(Value));
     Gear.SimpleValue = SimpleValue;
 })(Gear || (Gear = {}));
 /// <reference path="call.ts" />
@@ -964,9 +842,9 @@ var Gear;
 var GasketTwist;
 (function (GasketTwist) {
     function vectorFlattener(size) {
-        return new Djee.ArrayFlattener(size, function (v) { return v.coordinates; });
+        return Djee.flatteners.array(function (v) { return v.coordinates; }, size);
     }
-    var Rendering = (function () {
+    var Rendering = /** @class */ (function () {
         function Rendering() {
             this._twist = new Gear.SimpleValue(0);
             this._scale = new Gear.SimpleValue(1);
@@ -1002,13 +880,13 @@ var GasketTwist;
             configurable: true
         });
         return Rendering;
-    })();
+    }());
     GasketTwist.Rendering = Rendering;
     function vec(angleIndex) {
         var angle = Math.PI * (0.5 + 2 * angleIndex / 3);
         return Space.vec([Math.cos(angle), Math.sin(angle)]);
     }
-    var Sierpinski = (function () {
+    var Sierpinski = /** @class */ (function () {
         function Sierpinski(a, b, c, depth) {
             var _this = this;
             if (a === void 0) { a = vec(0); }
@@ -1118,7 +996,7 @@ var GasketTwist;
         Sierpinski.corners = function (s) { return s._corners; };
         Sierpinski.centers = function (s) { return s._centers; };
         return Sierpinski;
-    })();
+    }());
     GasketTwist.Sierpinski = Sierpinski;
 })(GasketTwist || (GasketTwist = {}));
 var GasketTwist;
@@ -1129,7 +1007,7 @@ var GasketTwist;
     function round(value) {
         return Math.round(1000 * value) / 1000;
     }
-    var View = (function () {
+    var View = /** @class */ (function () {
         function View(canvasId, depthId, twistId, scaleId) {
             var _this = this;
             this._inArrays = new Gear.Sensor(function (arrays) { return _this.sierpinski = arrays; });
@@ -1241,12 +1119,12 @@ var GasketTwist;
             }
         };
         return View;
-    })();
+    }());
     GasketTwist.View = View;
 })(GasketTwist || (GasketTwist = {}));
 var GasketTwist;
 (function (GasketTwist) {
-    var Controller = (function () {
+    var Controller = /** @class */ (function () {
         function Controller(canvas, cornersCheckbox, centersCheckbox, twistCheckbox, scaleCheckbox, depthIncButton, depthDecButton) {
             this._outShowCorners = new Gear.Actuator();
             this._outShowCenters = new Gear.Actuator();
@@ -1351,7 +1229,7 @@ var GasketTwist;
             return parent ? this.y(parent) + result : result;
         };
         return Controller;
-    })();
+    }());
     GasketTwist.Controller = Controller;
 })(GasketTwist || (GasketTwist = {}));
 /// <reference path="../space/_.ts" />
@@ -1361,6 +1239,12 @@ var GasketTwist;
 /// <reference path="view.ts" />
 /// <reference path="controller.ts" />
 var GasketTwist;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="model.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
 (function (GasketTwist) {
     window.onload = function (e) {
         var sierpinski = new GasketTwist.Sierpinski();

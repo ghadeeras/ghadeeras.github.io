@@ -1,7 +1,7 @@
 module GasketTwist {
     
     function vectorFlattener(size: number): Djee.Flattener<Space.Vector, number> {
-        return new Djee.ArrayFlattener<Space.Vector, number>(size, v => v.coordinates);
+        return Djee.flatteners.array<Space.Vector, number>(v => v.coordinates, size);
     }
     
     export class Rendering {

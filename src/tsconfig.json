@@ -1,11 +1,10 @@
 {
     "compilerOptions": {
-        "moduleResolution": "node",
-        "module": "commonjs",
+        "module": "System",
         "target": "es5",
-        "rootDir": ".",
         "outFile": "../gen/ghadeeras.js",
         "declaration": true,
+        "declarationMap": true,
         "sourceMap": true
     },
     "files": [
