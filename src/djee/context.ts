@@ -2,24 +2,16 @@ module Djee {
 
     export class Context {
 
-        private _canvas: HTMLCanvasElement;
-        private _gl: WebGLRenderingContext;
-
-        get canvas() {
-            return this._canvas;
-        }
-
-        get gl() {
-            return this._gl;
-        }
+        readonly canvas: HTMLCanvasElement;
+        readonly gl: WebGLRenderingContext;
 
         constructor(canvasId: string) {
-            this._canvas = this.getCanvas(canvasId);
-            this._gl = this.getContext(this._canvas);
+            this.canvas = this.getCanvas(canvasId);
+            this.gl = this.getContext(this.canvas);
         }
 
         private getCanvas(canvasId: string) {
-            var canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+            const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
             if (!canvas) {
                 throw `No canvas found with ID: ${canvasId}`;
             }
@@ -27,23 +19,24 @@ module Djee {
         }
 
         private getContext(canvas: HTMLCanvasElement) {
-            var gl: WebGLRenderingContext;
-            try {
-                gl =
-                    canvas.getContext("experimental-webgl") ||
-                    canvas.getContext("webgl") as WebGLRenderingContext;
-            } catch (e) {
-                console.error(e);
-                gl = null;
-            }
+            const gl: WebGLRenderingContext = this.doGetContext(canvas);
             if (!gl) {
                 throw "Your browser seems not to support WebGL!";
             }
             return gl;
         }
 
+        private doGetContext(canvas: HTMLCanvasElement) {
+            try {
+                return canvas.getContext("webgl") || canvas.getContext("experimental-webgl") as WebGLRenderingContext;
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
+        }
+
         with<T>(glCode: (gl: WebGLRenderingContext) => T) {
-            return glCode(this._gl);
+            return glCode(this.gl);
         }
 
         shaderFromElement(scriptId: string) {
@@ -55,8 +48,8 @@ module Djee {
         }
 
         linkFromElements(scriptIds: string[]) {
-            var shaders = scriptIds.map(id => this.shaderFromElement(id));
-            return new Program(this, shaders);
+            const shaders = scriptIds.map(id => this.shaderFromElement(id));
+            return this.link(shaders);
         }
         
         link(shaders: Shader[]) {

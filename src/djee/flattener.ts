@@ -22,12 +22,9 @@ module Djee {
         
     }
     
-    export abstract class AbstractFlattener<S, P> implements Flattener<S, P> {
+    abstract class AbstractFlattener<S, P> implements Flattener<S, P> {
         
-        private _size: number;
-        
-        constructor(size: number) {
-            this._size = size;
+        constructor(readonly size: number) {
         }
         
         protected abstract subFlatteners(): Flattener<any, P>[];
@@ -36,19 +33,15 @@ module Djee {
 
         protected abstract doUnflatten(structure: S, array: P[], index: number);
         
-        get size(): number {
-            return this._size;
-        }
-
         offsetOf(child: Flattener<any, P>): number {
             if (this == child) {
                 return 0;
             } else {
-                var offset = 0;
-                var subFlatteners = this.subFlatteners(); 
-                for (var i = 0; i < subFlatteners.length; i++) {
-                    var subFlattener = subFlatteners[i];
-                    var subOffset = subFlattener.offsetOf(child);
+                let offset = 0;
+                const subFlatteners = this.subFlatteners(); 
+                for (let i = 0; i < subFlatteners.length; i++) {
+                    const subFlattener = subFlatteners[i];
+                    const subOffset = subFlattener.offsetOf(child);
                     if (subOffset >= 0) {
                         return offset + subOffset; 
                     } else {
@@ -70,15 +63,10 @@ module Djee {
         
     }
     
-    export class PrimitiveFlattener<S, P> extends AbstractFlattener<S, P> {
+    class PrimitiveFlattener<S, P> extends AbstractFlattener<S, P> {
         
-        private _getter: Getter<S, P>;
-        private _setter: Setter<S, P>;
-        
-        constructor(getter: Getter<S, P>, setter: Setter<S, P>) {
+        constructor(private readonly getter: Getter<S, P>, private readonly setter: Setter<S, P>) {
             super(1);
-            this._getter = getter;
-            this._setter = setter;
         }
         
         protected subFlatteners(): Flattener<any, P>[] {
@@ -86,93 +74,75 @@ module Djee {
         }
 
         protected doFlatten(structure: S, array: P[], index: number) {
-            array[index] = this._getter(structure);
+            array[index] = this.getter(structure);
         }
 
         protected doUnflatten(structure: S, array: P[], index: number) {
-            this._setter(structure, array[index]);
+            this.setter(structure, array[index]);
         }
 
     }
     
-    export class ArrayFlattener<S, P> extends AbstractFlattener<S, P> {
+    class ArrayFlattener<S, P> extends AbstractFlattener<S, P> {
         
-        private _getter: Getter<S, P[]>;
-        
-        constructor(size: number, getter: Getter<S, P[]>) {
+        constructor(size: number, private readonly getter: Getter<S, P[]>) {
             super(size);
-            this._getter = getter;
+            this.getter = getter;
         }
         
-        private copy(structure: S, array: P[], index: number, copier: CopyingOp<P>) {
-            var structureArray = this._getter(structure);
-            for (var i = 0; i < this.size; i++) {
+        protected subFlatteners(): Flattener<any, P>[] {
+            return [];
+        }
+
+        protected doFlatten(structure: S, array: P[], index: number) {
+            this.copy(structure, array, (sa, a, i) => a[index + i] = sa[i]);
+        }
+
+        protected doUnflatten(structure: S, array: P[], index: number) {
+            this.copy(structure, array, (sa, a, i) => sa[i] = a[index + i]);
+        }
+
+        private copy(structure: S, array: P[], copier: CopyingOp<P>) {
+            const structureArray = this.getter(structure);
+            for (let i = 0; i < this.size; i++) {
                 copier(structureArray, array, i);
             }
         }
 
-        protected subFlatteners(): Flattener<any, P>[] {
-            return [];
-        }
-
-        protected doFlatten(structure: S, array: P[], index: number) {
-            this.copy(structure, array, index, (sa, a, i) => a[index + i] = sa[i]);
-        }
-
-        protected doUnflatten(structure: S, array: P[], index: number) {
-            this.copy(structure, array, index, (sa, a, i) => sa[i] = a[index + i]);
-        }
-
     }
     
-    export class ChildFlattener<S, C, P> extends AbstractFlattener<S, P> {
+    class ChildFlattener<S, C, P> extends AbstractFlattener<S, P> {
         
-        private _flattener: Flattener<C, P>;
-        private _getter: Getter<S, C>;
-        
-        constructor(flattener: Flattener<C, P>, getter: Getter<S, C>) {
+        constructor(private readonly flattener: Flattener<C, P>, private readonly getter: Getter<S, C>) {
             super(flattener.size);
-            this._flattener = flattener;
-            this._getter = getter;
         }
         
-        private copy(structure: S, array: P[], index: number, copier: FlatteningOp<C, P>) {
-            copier(this._getter(structure), array, index);
-        }
-
         protected subFlatteners(): Flattener<any, P>[] {
-            return [this._flattener];
+            return [this.flattener];
         }
 
         protected doFlatten(structure: S, array: P[], index: number) {
-            this.copy(structure, array, index, (s, a, i) => this._flattener.flatten(s, a, i));
+            this.copy(structure, array, index, (s, a, i) => this.flattener.flatten(s, a, i));
         }
 
         protected doUnflatten(structure: S, array: P[], index: number) {
-            this.copy(structure, array, index, (s, a, i) => this._flattener.unflatten(s, a, i));
+            this.copy(structure, array, index, (s, a, i) => this.flattener.unflatten(s, a, i));
+        }
+
+        private copy(structure: S, array: P[], index: number, copier: FlatteningOp<C, P>) {
+            copier(this.getter(structure), array, index);
         }
 
     }
     
-    export class CompositeFlattener<S, P> extends AbstractFlattener<S, P> {
+    class CompositeFlattener<S, P> extends AbstractFlattener<S, P> {
         
-        private _flatteners: Flattener<S, P>[];
-        
-        constructor(flatteners: Flattener<S, P>[]) {
+        constructor(private readonly flatteners: Flattener<S, P>[]) {
             super(flatteners.map(f => f.size).reduce(sum)); 
-            this._flatteners = flatteners;
         }
         
-        private copy(structure: S, array: P[], index: number, copier: Getter<Flattener<S, P>, FlatteningOp<S, P>>) {
-            for (var i = 0; i < this._flatteners.length; i++) {
-                var f = this._flatteners[i];
-                copier(f)(structure, array, index);
-                index += f.size;
-            }
-        }
-
         protected subFlatteners(): Flattener<any, P>[] {
-            return this._flatteners;
+            return this.flatteners;
         }
 
         protected doFlatten(structure: S, array: P[], index: number) {
@@ -183,31 +153,32 @@ module Djee {
             this.copy(structure, array, index, f => (s, a, i) => f.unflatten(s, a, i));
         }
 
+        private copy(structure: S, array: P[], index: number, copier: Getter<Flattener<S, P>, FlatteningOp<S, P>>) {
+            for (let i = 0; i < this.flatteners.length; i++) {
+                const f = this.flatteners[i];
+                copier(f)(structure, array, index);
+                index += f.size;
+            }
+        }
+
     }
-    
-    export abstract class FlattenerBuilder<S, P> {
+
+    export const flatteners = {
+
+        composite: function<S, C, P>(...flatteners: Flattener<S, P>[]): Flattener<S, P> {
+            return new CompositeFlattener(flatteners);
+        },
         
-        private _flatteners: Flattener<S, P>[] = [];
+        primitive: function<S, P>(getter: Getter<S, P>, setter: Setter<S, P>): Flattener<S, P> {
+            return new PrimitiveFlattener(getter, setter);
+        },
         
-        private add(flattener: Flattener<S, P>) {
-            this._flatteners.push(flattener);
-            return flattener;
-        }
+        array: function<S, P>(getter: Getter<S, P[]>, size: number): Flattener<S, P> {
+            return new ArrayFlattener(size, getter);
+        },
         
-        protected primitive(getter: Getter<S, P>, setter: Setter<S, P>) {
-            return this.add(new PrimitiveFlattener(getter, setter));
-        }
-        
-        protected array(getter: Getter<S, P[]>, size: number) {
-            return this.add(new ArrayFlattener(size, getter));
-        }
-        
-        protected child<C>(getter: Getter<S, C>, flattener: FlattenerBuilder<C, P>) {
-            return this.add(new ChildFlattener(flattener.build(), getter));
-        }
-        
-        build(): Flattener<S, P> {
-            return new CompositeFlattener(this._flatteners);
+        child: function<S, C, P>(getter: Getter<S, C>, flattener: Flattener<C, P>): Flattener<S, P> {
+            return new ChildFlattener(flattener, getter);
         }
         
     }
@@ -218,7 +189,7 @@ module Djee {
         array: P[] = new Array(flattener.size * structures.length), 
         index: number = 0
     ): P[] {
-        for (var i = 0; i < structures.length; i++) {
+        for (let i = 0; i < structures.length; i++) {
             flattener.flatten(structures[i], array, index);
             index += flattener.size;
         }

@@ -2,37 +2,27 @@ module Djee {
 
     export class Buffer {
 
-        private _context: Context;
-        private _buffer: WebGLBuffer;
-        private _data: number[];
+        readonly buffer: WebGLBuffer;
 
-        get context() {
-            return this._context;
-        }
+        private _data: number[] = [];
 
-        get buffer() {
-            return this._buffer;
-        }
-
-        constructor(context: Context) {
-            this._context = context;
-            this._buffer = context.gl.createBuffer();
-            this._data = [];
+        constructor(readonly context: Context) {
+            this.buffer = context.gl.createBuffer();
         }
 
         bind<T>(glCode: (gl: WebGLRenderingContext) => T) {
-            return this._context.with(gl => {
-                gl.bindBuffer(gl.ARRAY_BUFFER, this._buffer);
+            return this.context.with(gl => {
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
                 return glCode(gl);
             });
         }
 
         get data() {
-            return copyOf(this._data.slice());
+            return copyOf(this._data);
         }
 
         set data(data: number[]) {
-            var array = new Float32Array(data);
+            const array = new Float32Array(data);
             this.bind(gl =>
                 gl.bufferData(gl.ARRAY_BUFFER, array, gl.DYNAMIC_DRAW)
             );

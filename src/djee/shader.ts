@@ -2,47 +2,24 @@ module Djee {
 
     export class Shader {
 
-        private _context: Context;
-        private _type: ShaderType;
-        private _code: string;
-        private _shader: WebGLShader;
+        readonly shader: WebGLShader;
 
-        get context() {
-            return this._context;
-        }
-
-        get type() {
-            return this._type;
-        }
-
-        get code() {
-            return this._code;
-        }
-
-        get shader() {
-            return this._shader;
-        }
-
-        constructor(context: Context, type: ShaderType, code: string) {
-            this._context = context;
-            this._type = type;
-            this._code = code;
-            this._shader = this.makeShader(context.gl, type, code);
+        constructor(readonly context: Context, readonly type: ShaderType, readonly code: string) {
+            this.context = context;
+            this.type = type;
+            this.code = code;
+            this.shader = this.makeShader(context.gl, type, code);
         }
         
-        delete() {
-            this._context.gl.deleteShader(this._shader);
-        }
-
         static fromElement(context: Context, scriptId: string) {
-            var script = this.getScript(scriptId);
-            var type = this.getShaderType(script.getAttribute(type));
-            var code = script.innerHTML;
+            const script = this.getScript(scriptId);
+            const type = this.getShaderType(script.getAttribute('type'));
+            const code = script.innerHTML;
             return new Shader(context, type, code);
         }
 
         private static getScript(scriptId: string) {
-            var script = document.getElementById(scriptId);
+            const script = document.getElementById(scriptId);
             if (!script) {
                 throw `No script found with ID: ${scriptId}`
             }
@@ -60,13 +37,17 @@ module Djee {
         }
 
         private makeShader(gl: WebGLRenderingContext, type: ShaderType, code: string) {
-            var shader = gl.createShader(type);
+            const shader = gl.createShader(type);
             gl.shaderSource(shader, code);
             gl.compileShader(shader);
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                 throw `Error compiling shader: ${gl.getShaderInfoLog(shader)}`;
             }
             return shader;
+        }
+
+        delete() {
+            this.context.gl.deleteShader(this.shader);
         }
 
     }
