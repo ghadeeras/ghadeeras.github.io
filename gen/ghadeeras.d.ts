@@ -30,6 +30,7 @@ declare module Djee {
         size: number;
         offsetOf<C>(child: Flattener<C, P>): number;
         flatten(structure: S, array?: P[], index?: number): P[];
+        flattenAll(structures: S[], array?: P[], index?: number): P[];
         unflatten(structure: S, array: P[], index?: number): any;
     }
     const flatteners: {
@@ -38,7 +39,6 @@ declare module Djee {
         array: <S, P>(getter: Getter<S, P[]>, size: number) => Flattener<S, P>;
         child: <S, C, P>(getter: Getter<S, C>, flattener: Flattener<C, P>) => Flattener<S, P>;
     };
-    function flatten<S, P>(flattener: Flattener<S, P>, structures: S[], array?: P[], index?: number): P[];
 }
 declare module Djee {
     class Context {
@@ -124,6 +124,9 @@ declare module Djee {
     function copyOf<T>(array: T[]): T[];
 }
 declare module Gear {
+    function lazy<T>(constructor: Supplier<T>): Supplier<T>;
+}
+declare module Gear {
     class Call {
         private _callable;
         private _timer;
@@ -134,192 +137,164 @@ declare module Gear {
     }
 }
 declare module Gear {
-    abstract class Pluggable<A, B> {
-        private _pluggedComponents;
-        protected abstract self(): A;
-        protected readonly itself: A;
-        protected readonly pluggedComponents: B[];
-        protected plug(component: Pluggable<B, A>): void;
-        protected unplug(component: Pluggable<B, A>): void;
-        protected unplugAll(): void;
-        private doPlug;
-        private doUnplug;
-        protected prePlug(): void;
+    interface Source<T> {
+        readonly producer: Producer<T>;
+        to(...sinks: Sink<T>[]): void;
     }
-    abstract class ExclusivelyPluggable<A, B> extends Pluggable<A, B> {
-        protected readonly pluggedComponent: any;
-        protected prePlug(): void;
+    interface Sink<T> {
+        readonly consumer: Consumer<T>;
     }
+    abstract class BaseSource<T> implements Source<T> {
+        abstract readonly producer: Producer<T>;
+        to(...sinks: Sink<T>[]): void;
+    }
+    class CompositeSource<T> extends BaseSource<T> {
+        private readonly sources;
+        private readonly _producer;
+        constructor(sources: Source<T>[]);
+        readonly producer: Producer<T>;
+    }
+    class CompositeSink<T> implements Sink<T> {
+        private readonly sinks;
+        private readonly _consumer;
+        constructor(sinks: Sink<T>[]);
+        readonly consumer: Consumer<T>;
+    }
+    class Flow<T> extends BaseSource<T> {
+        private readonly output;
+        private constructor();
+        filter(predicate: Predicate<T>): Flow<T>;
+        map<R>(mapper: Mapper<T, R>): Flow<R>;
+        reduce<R>(reducer: Reducer<T, R>, identity: R): Flow<R>;
+        then<R>(effect: Effect<T, R>): Flow<R>;
+        branch(...flowBuilders: Consumer<Flow<T>>[]): this;
+        readonly producer: Consumer<Consumer<T>>;
+        static from<T>(...sources: Source<T>[]): Flow<T>;
+    }
+    function consumerFlow<T>(flowBuilder: Consumer<Flow<T>>): Consumer<T>;
+    function sinkFlow<T>(flowBuilder: Consumer<Flow<T>>): Sink<T>;
+    function sink<T>(consumer: Consumer<T>): Sink<T>;
 }
 declare module Gear {
-    class Actuator<A> extends ExclusivelyPluggable<Actuator<A>, Controllable<A>> {
-        protected self(): this;
-        readonly controllable: any;
-        drives(controllable: IsControllable<A>): void;
-        drivesNone(): void;
-        perform(action: A): void;
-    }
-}
-declare module Gear {
-    class Sensor<V> extends ExclusivelyPluggable<Sensor<V>, Measurable<V>> {
-        private _consumer;
-        private _sensing;
-        constructor(consumer: Consumer<V>);
-        protected self(): this;
-        readonly measurable: any;
-        probes(measurable: IsMeasurable<V>): void;
-        probesNone(): void;
-        sense(value: V): void;
-        readonly reading: any;
-    }
-}
-declare module Gear {
-    interface IsControllable<A> {
-        asControllable: Controllable<A>;
-    }
-    class Controllable<A> extends ExclusivelyPluggable<Controllable<A>, Actuator<A>> implements IsControllable<A> {
-        private _consumer;
-        constructor(consumer: Consumer<A>);
-        protected self(): this;
-        readonly asControllable: this;
-        readonly actuator: any;
-        reactTo(action: A): void;
-    }
-}
-declare module Gear {
-    interface IsMeasurable<V> {
-        asMeasurable: Measurable<V>;
-    }
-    class Measurable<V> extends Pluggable<Measurable<V>, Sensor<V>> implements IsMeasurable<V> {
+    class Value<T> extends BaseSource<T> implements Sink<T> {
         private _value;
-        constructor(value: V);
-        protected self(): this;
-        readonly asMeasurable: this;
-        readonly sensors: any;
-        conduct(value: V): void;
-        readonly sample: V;
+        private readonly consumers;
+        constructor(_value?: T);
+        value: T;
+        private setValue;
+        supply(...consumers: Consumer<T>[]): this;
+        private notify;
+        readonly consumer: Consumer<T>;
+        readonly producer: Producer<T>;
+        static setOf<C>(...values: Value<C>[]): ValueSet<C>;
+    }
+    class ValueSet<T> extends BaseSource<T> implements Sink<T> {
+        private readonly source;
+        private readonly sink;
+        constructor(values: Value<T>[]);
+        readonly producer: Producer<T>;
+        readonly consumer: Consumer<T>;
     }
 }
 declare module Gear {
-    type Reactor<A, V> = (action: A, oldValue: V) => V;
-    class Value<A, V> implements IsControllable<A>, IsMeasurable<V> {
-        private _reactor;
-        private _in;
-        private _out;
-        readonly asControllable: Controllable<A>;
-        readonly asMeasurable: Measurable<V>;
-        constructor(value: V, reactor: Reactor<A, V>);
-        private reactTo;
+    function reduce<T, R>(reducer: Reducer<T, R>, identity: R): Effect<T, R>;
+    function map<T, R>(mapper: Mapper<T, R>): Effect<T, R>;
+    function filter<T>(predicate: Predicate<T>): Effect<T, T>;
+    function later<T>(): Effect<T, T>;
+    function flowSwitch<T>(on: Source<boolean>): Effect<T, T>;
+    function defaultsTo<T>(value: T): Effect<T, T>;
+}
+declare module Gear {
+    type PointerPosition = [number, number];
+    type MouseButtons = [boolean, boolean, boolean];
+    function checkbox(elementId: string): Source<boolean>;
+    class ElementEvents {
+        readonly element: HTMLElement;
+        readonly elementPos: PointerPosition;
+        private readonly lazyClick;
+        private readonly lazyMousePos;
+        private readonly lazyTouchPos;
+        private readonly lazyMouseButtons;
+        constructor(element: HTMLElement);
+        parent(): ElementEvents;
+        private newClick;
+        private newMousePos;
+        private newTouchPos;
+        private relativePos;
+        private newMouseButtons;
+        private setButton;
+        readonly click: Source<[number, number]>;
+        readonly mousePos: Source<[number, number]>;
+        readonly touchPos: Source<[number, number][]>;
+        readonly mouseButons: Source<[boolean, boolean, boolean]>;
+        static create(elementId: string): ElementEvents;
     }
-    class SimpleValue<V> extends Value<V, V> {
-        constructor(value: V, reactor?: Reactor<V, V>);
-    }
+}
+declare module Gear {
+    function text(elementId: string): Sink<string>;
 }
 declare module Gear {
     type Callable = () => void;
+    type Supplier<T> = () => T;
     type Consumer<T> = (input: T) => void;
+    type Producer<T> = Consumer<Consumer<T>>;
+    type Reducer<T, R> = (value: T, accumulator: R) => R;
+    type Mapper<T, R> = (value: T) => R;
+    type Predicate<T> = Mapper<T, boolean>;
+    type Effect<C, E> = (value: C, result: Consumer<E>) => void;
+    function intact<T>(): Mapper<T, T>;
+    function compositeConsumer<T>(...consumers: Consumer<T>[]): Consumer<T>;
+    function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect<C, E>, effectConsumer: Consumer<E>): void;
 }
-declare module GasketTwist {
-    class Rendering {
-        private _twist;
-        private _scale;
-        private _showCorners;
-        private _showCenters;
-        readonly twist: Gear.SimpleValue<number>;
-        readonly scale: Gear.SimpleValue<number>;
-        readonly showCorners: Gear.SimpleValue<boolean>;
-        readonly showCenters: Gear.SimpleValue<boolean>;
-    }
+declare module GasketTwist2 {
     interface FlattenedSierpinski {
         corners: number[];
         centers: number[];
         stride: number;
     }
-    class Sierpinski {
-        private _a;
-        private _b;
-        private _c;
-        private _corners;
-        private _centers;
-        private _tesselation;
-        private _inA;
-        private _inB;
-        private _inC;
-        private _depth;
-        private _outArrays;
-        readonly inA: Gear.Controllable<Space.Vector>;
-        readonly inB: Gear.Controllable<Space.Vector>;
-        readonly inC: Gear.Controllable<Space.Vector>;
-        readonly depth: Gear.SimpleValue<number>;
-        readonly outArrays: any;
-        constructor(a?: Space.Vector, b?: Space.Vector, c?: Space.Vector, depth?: number);
-        private tesselateTriangle;
-        private static corners;
-        private static centers;
-        private doTesselateTriangle;
-        private readonly flattened;
-    }
+    function sierpinski(depth?: Gear.Source<number>, a?: Gear.Source<Space.Vector>, b?: Gear.Source<Space.Vector>, c?: Gear.Source<Space.Vector>): Gear.Source<FlattenedSierpinski>;
+    function tesselatedTriangle(a: Space.Vector, b: Space.Vector, c: Space.Vector, depth: number): FlattenedSierpinski;
 }
-declare module GasketTwist {
+declare module GasketTwist2 {
     class View {
-        private _depthDiv;
-        private _twistDiv;
-        private _scaleDiv;
-        private _context;
-        private _vertexShader;
-        private _fragmentShader;
-        private _program;
-        private _position;
-        private _twist;
-        private _scale;
-        private _cornersBuffer;
-        private _centersBuffer;
-        private _inArrays;
-        private _inTwist;
-        private _inScale;
-        private _inShowCorners;
-        private _inShowCenters;
-        private _inDepth;
-        private _rendering;
-        readonly inArrays: Gear.Sensor<FlattenedSierpinski>;
-        readonly inTwist: Gear.Sensor<number>;
-        readonly inScale: Gear.Sensor<number>;
-        readonly inShowCorners: Gear.Sensor<boolean>;
-        readonly inShowCenters: Gear.Sensor<boolean>;
-        readonly inDepth: Gear.Sensor<number>;
+        private readonly context;
+        private readonly vertexShader;
+        private readonly fragmentShader;
+        private readonly program;
+        private readonly shaderPosition;
+        private readonly shaderTwist;
+        private readonly shaderScale;
+        private readonly cornersBuffer;
+        private readonly centersBuffer;
+        private mustShowCorners;
+        private mustShowCenters;
+        private stride;
+        readonly sierpinsky: Gear.Sink<FlattenedSierpinski>;
+        readonly showCorners: Gear.Sink<boolean>;
+        readonly showCenters: Gear.Sink<boolean>;
+        readonly depth: Gear.Sink<number>;
+        readonly twist: Gear.Sink<number>;
+        readonly scale: Gear.Sink<number>;
         constructor(canvasId: string, depthId: string, twistId: string, scaleId: string);
-        private sierpinski;
-        private twist;
-        private scale;
+        private source;
+        private setSierpinski;
+        private setTwist;
+        private setScale;
+        private setShowCorners;
+        private setShowCenters;
         private draw;
     }
 }
-declare module GasketTwist {
+declare module GasketTwist2 {
     class Controller {
-        private _canvas;
-        private _cornersCheckbox;
-        private _centersCheckbox;
-        private _twistCheckbox;
-        private _scaleCheckbox;
-        private _depthIncButton;
-        private _depthDecButton;
-        private _outShowCorners;
-        private _outShowCenters;
-        private _outDepth;
-        private _outTwist;
-        private _outScale;
-        readonly outShowCorners: Gear.Actuator<boolean>;
-        readonly outShowCenters: Gear.Actuator<boolean>;
-        readonly outDepth: Gear.Actuator<number>;
-        readonly outTwist: Gear.Actuator<number>;
-        readonly outScale: Gear.Actuator<number>;
-        constructor(canvas: string, cornersCheckbox: string, centersCheckbox: string, twistCheckbox: string, scaleCheckbox: string, depthIncButton: string, depthDecButton: string);
-        private registerEvents;
-        private doMove;
-        private x;
-        private y;
+        readonly showCorners: Gear.Source<boolean>;
+        readonly showCenters: Gear.Source<boolean>;
+        readonly depth: Gear.Source<number>;
+        readonly twist: Gear.Source<number>;
+        readonly scale: Gear.Source<number>;
+        constructor(canvasId: string, cornersCheckboxId: string, centersCheckboxId: string, twistCheckboxId: string, scaleCheckboxId: string, depthIncButtonId: string, depthDecButtonId: string);
     }
 }
-declare module GasketTwist {
+declare module GasketTwist2 {
 }
 //# sourceMappingURL=ghadeeras.d.ts.map

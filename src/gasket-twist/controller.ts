@@ -1,117 +1,49 @@
-module GasketTwist {
+module GasketTwist2 {
 
     export class Controller {
 
-        private _canvas: HTMLElement;
-        private _cornersCheckbox: HTMLInputElement;
-        private _centersCheckbox: HTMLInputElement;
-        private _twistCheckbox: HTMLInputElement;
-        private _scaleCheckbox: HTMLInputElement;
-        private _depthIncButton: HTMLElement;
-        private _depthDecButton: HTMLElement;
+        readonly showCorners: Gear.Source<boolean>;
+        readonly showCenters: Gear.Source<boolean>;
+        readonly depth: Gear.Source<number>;
+        readonly twist: Gear.Source<number>;
+        readonly scale: Gear.Source<number>;
         
-        private _outShowCorners = new Gear.Actuator<boolean>();
-        private _outShowCenters = new Gear.Actuator<boolean>();
-        private _outDepth = new Gear.Actuator<number>();
-        private _outTwist = new Gear.Actuator<number>();
-        private _outScale = new Gear.Actuator<number>();
-        
-        get outShowCorners() {
-            return this._outShowCorners;
-        }
-
-        get outShowCenters() {
-            return this._outShowCenters;
-        }
-
-        get outDepth() {
-            return this._outDepth;
-        }
-
-        get outTwist() {
-            return this._outTwist;
-        }
-
-        get outScale() {
-            return this._outScale;
-        }
-
         constructor(
-            canvas: string,
-            cornersCheckbox: string,
-            centersCheckbox: string,
-            twistCheckbox: string,
-            scaleCheckbox: string,
-            depthIncButton: string,
-            depthDecButton: string
+            canvasId: string,
+            cornersCheckboxId: string,
+            centersCheckboxId: string,
+            twistCheckboxId: string,
+            scaleCheckboxId: string,
+            depthIncButtonId: string,
+            depthDecButtonId: string
         ) {
-            this._canvas = document.getElementById(canvas) as HTMLCanvasElement;
-            this._cornersCheckbox = document.getElementById(cornersCheckbox) as HTMLInputElement;
-            this._centersCheckbox = document.getElementById(centersCheckbox) as HTMLInputElement;
-            this._twistCheckbox = document.getElementById(twistCheckbox) as HTMLInputElement;
-            this._scaleCheckbox = document.getElementById(scaleCheckbox) as HTMLInputElement;
-            this._depthIncButton = document.getElementById(depthIncButton);
-            this._depthDecButton = document.getElementById(depthDecButton);
+            const canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+            const depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
+            const depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
+            const twistEnabled = Gear.checkbox(twistCheckboxId);
+            const scaleEnabled = Gear.checkbox(scaleCheckboxId);
 
-            this.registerEvents();
+            this.showCorners = Gear.checkbox(cornersCheckboxId);
+            this.showCenters = Gear.checkbox(centersCheckboxId);
+
+            const dragEnabled = Gear.Flow.from(canvas.mouseButons).map(([l, m, r]) => l || m || r);
+            const mousePos = Gear.Flow.from(
+                Gear.Flow.from(canvas.mousePos).then(Gear.flowSwitch(dragEnabled)), 
+                Gear.Flow.from(canvas.touchPos).map(ps => ps[0])
+            ).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+            this.twist = mousePos
+                .map(([x, y]) => Math.PI * (4 * x / canvas.element.clientWidth - 2))
+                .then(Gear.flowSwitch(twistEnabled));
+            this.scale = mousePos
+                .map(([x, y]) => 2 - 4 * y / canvas.element.clientHeight)
+                .then(Gear.flowSwitch(scaleEnabled));;
+            
+            this.depth = Gear.Flow.from(
+                Gear.Flow.from(depthDecButton.click).map(() => -1),
+                Gear.Flow.from(depthIncButton.click).map(() => 1),
+            ).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);
         }
 
-        private registerEvents() {
-            var root = this._canvas.parentElement.parentElement;
-            root.onmousemove = e => {
-                if (e.buttons != 0) {
-                    var targetX = this.x(root);
-                    var targetY = this.y(root);
-                    this.doMove(e.pageX - targetX, e.pageY - targetY);
-                }
-                e.preventDefault();
-            };
-            root.onmousedown = this._canvas.onmousemove;
-            root.ontouchmove = e => {
-                if (e.changedTouches.length != 0) {
-                    var t = e.changedTouches[0];
-                    var targetX = this.x(root);
-                    var targetY = this.y(root);
-                    this.doMove(t.pageX - targetX, t.pageY - targetY);
-                }
-                e.preventDefault();
-            };
-            root.ontouchstart = this._canvas.ontouchmove;
-            this._cornersCheckbox.onchange = e => {
-                this._outShowCorners.perform(this._cornersCheckbox.checked);
-            };
-            this._centersCheckbox.onchange = e => {
-                this._outShowCenters.perform(this._centersCheckbox.checked);
-            };
-            this._depthIncButton.onclick = e => {
-                this._outDepth.perform(+1); 
-            };
-            this._depthDecButton.onclick = e => {
-                this._outDepth.perform(-1); 
-            };
-        }
-
-        private doMove(x: number, y: number) {
-            if (this._scaleCheckbox.checked) {
-                this._outScale.perform(2 - 4 * y / this._canvas.clientHeight);
-            }
-            if (this._twistCheckbox.checked) {
-                this._outTwist.perform(Math.PI * (4 * x / this._canvas.clientWidth - 2));
-            }
-        }
-
-        private x(element: HTMLElement): number {
-            var result = element.offsetLeft;
-            var parent = element.parentElement;
-            return parent ? this.x(parent) + result : result;
-        }
-
-        private y(element: HTMLElement): number {
-            var result = element.offsetTop;
-            var parent = element.parentElement;
-            return parent ? this.y(parent) + result : result;
-        }
-        
     }
 
 }
