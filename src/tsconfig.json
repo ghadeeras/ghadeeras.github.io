@@ -8,6 +8,7 @@
         "sourceMap": true
     },
     "files": [
+        "gasket-twist/_.ts",
         "gasket-twist/_.ts"
     ]
 }

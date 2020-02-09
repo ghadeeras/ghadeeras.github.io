@@ -18,6 +18,8 @@ module Djee {
 
         flatten(structure: S, array?: P[], index?: number): P[];
 
+        flattenAll(structures: S[], array?: P[], index?: number): P[];
+
         unflatten(structure: S, array: P[], index?: number);
         
     }
@@ -57,6 +59,14 @@ module Djee {
             return array;
         }
 
+        flattenAll(structures: S[], array: P[] = new Array(this.size * structures.length), index: number = 0): P[] {
+            for (let i = 0; i < structures.length; i++) {
+                this.flatten(structures[i], array, index);
+                index += this.size;
+            }
+            return array;
+        }
+        
         unflatten(structure: S, array: P[], index: number = 0) {
             this.doUnflatten(structure, array, index);
         }
@@ -181,19 +191,6 @@ module Djee {
             return new ChildFlattener(flattener, getter);
         }
         
-    }
-    
-    export function flatten<S, P>(
-        flattener: Flattener<S, P>,
-        structures: S[], 
-        array: P[] = new Array(flattener.size * structures.length), 
-        index: number = 0
-    ): P[] {
-        for (let i = 0; i < structures.length; i++) {
-            flattener.flatten(structures[i], array, index);
-            index += flattener.size;
-        }
-        return array;
     }
     
 }

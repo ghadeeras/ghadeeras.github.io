@@ -1,4 +1,4 @@
-module GasketTwist {
+module GasketTwist2 {
 
     var vertexShader = `
       attribute vec2 vPosition;
@@ -32,111 +32,101 @@ module GasketTwist {
 
     export class View {
         
-        private _depthDiv: HTMLElement;
-        private _twistDiv: HTMLElement;
-        private _scaleDiv: HTMLElement;
-        
-        private _context: Djee.Context;
-        private _vertexShader: Djee.Shader;
-        private _fragmentShader: Djee.Shader;
-        private _program: Djee.Program;
+        private readonly context: Djee.Context;
+        private readonly vertexShader: Djee.Shader;
+        private readonly fragmentShader: Djee.Shader;
+        private readonly program: Djee.Program;
 
-        private _position: Djee.Attribute;
-        private _twist: Djee.Uniform;
-        private _scale: Djee.Uniform;
+        private readonly shaderPosition: Djee.Attribute;
+        private readonly shaderTwist: Djee.Uniform;
+        private readonly shaderScale: Djee.Uniform;
+        private readonly cornersBuffer: Djee.Buffer;
+        private readonly centersBuffer: Djee.Buffer;
 
-        private _cornersBuffer: Djee.Buffer;
-        private _centersBuffer: Djee.Buffer;
+        private mustShowCorners: boolean;
+        private mustShowCenters: boolean;
+        private stride: number;
 
-        private _inArrays = new Gear.Sensor<FlattenedSierpinski>(arrays => this.sierpinski = arrays);
-        private _inTwist = new Gear.Sensor<number>(twist => {
-            this.twist = twist;
-            this._twistDiv.innerText = round(twist).toString();
-        });
-        private _inScale = new Gear.Sensor<number>(scale => {
-            this.scale = scale;
-            this._scaleDiv.innerText = round(scale).toString();
-        });
-        private _inShowCorners = new Gear.Sensor<boolean>(showCorners => this._rendering.later());
-        private _inShowCenters = new Gear.Sensor<boolean>(showCenters => this._rendering.later());
-        private _inDepth = new Gear.Sensor<number>(depth => this._depthDiv.innerText = depth.toString());
-        
-        private _rendering = new Gear.Call(() => this.draw());
-        
-        get inArrays() {
-            return this._inArrays; 
+        readonly sierpinsky: Gear.Sink<FlattenedSierpinski>;
+        readonly showCorners: Gear.Sink<boolean>;
+        readonly showCenters: Gear.Sink<boolean>;
+        readonly depth: Gear.Sink<number>;
+        readonly twist: Gear.Sink<number>;
+        readonly scale: Gear.Sink<number>;        
+
+        constructor(
+            canvasId: string, 
+            depthId: string, 
+            twistId: string, 
+            scaleId: string,
+        ) {
+            this.context = new Djee.Context(canvasId);
+
+            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
+            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
+            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+            this.program.use();
+
+            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
+            this.shaderTwist = this.program.locateUniform("twist", 1);
+            this.shaderScale = this.program.locateUniform("scale", 1);
+
+            this.cornersBuffer = this.context.newBuffer();
+            this.centersBuffer = this.context.newBuffer();
+
+            this.context.gl.clearColor(1, 1, 1, 1);
+
+            this.sierpinsky = Gear.sink(s => this.setSierpinski(s));
+            this.depth = Gear.sinkFlow(flow => flow.map(v => v + "").to(Gear.text(depthId)));
+            this.twist = Gear.sinkFlow(flow => flow.branch(flow => flow.to(Gear.sink(t => this.setTwist(t)))).map(v => v + "").to(Gear.text(twistId)));
+            this.scale = Gear.sinkFlow(flow => flow.branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
+            this.showCorners = Gear.sink(show => this.setShowCorners(show));
+            this.showCenters = Gear.sink(show => this.setShowCenters(show));
         }
 
-        get inTwist() {
-            return this._inTwist; 
+        private source<T>(value: T): Gear.Value<T> {
+            return new Gear.Value(value);
         }
 
-        get inScale() {
-            return this._inScale; 
-        }
-
-        get inShowCorners() {
-            return this._inShowCorners; 
-        }
-
-        get inShowCenters() {
-            return this._inShowCenters; 
-        }
-        
-        get inDepth() {
-            return this._inDepth;
-        }
-
-        constructor(canvasId: string, depthId: string, twistId: string, scaleId: string) {
-            this._depthDiv = document.getElementById(depthId);
-            this._twistDiv = document.getElementById(twistId);
-            this._scaleDiv = document.getElementById(scaleId);
-            this._context = new Djee.Context(canvasId);
-            var context = this._context;
-
-            this._vertexShader = context.shader(ST.VertexShader, vertexShader);
-            this._fragmentShader = context.shader(ST.FragmentShader, fragmentShader);
-            this._program = context.link([this._vertexShader, this._fragmentShader]);
-            this._program.use();
-
-            this._position = this._program.locateAttribute("vPosition", 2);
-            this._twist = this._program.locateUniform("twist", 1);
-            this._scale = this._program.locateUniform("scale", 1);
-
-            this._cornersBuffer = context.newBuffer();
-            this._centersBuffer = context.newBuffer();
-
-            context.gl.clearColor(1, 1, 1, 1);
-        }
-
-        private set sierpinski(flattenedSierpinski: FlattenedSierpinski) {
-            this._cornersBuffer.data = flattenedSierpinski.corners;
-            this._centersBuffer.data = flattenedSierpinski.centers;
-            this._rendering.later();
+        private setSierpinski(flattenedSierpinski: FlattenedSierpinski) {
+            this.cornersBuffer.data = flattenedSierpinski.corners;
+            this.centersBuffer.data = flattenedSierpinski.centers;
+            this.stride = flattenedSierpinski.stride;
+            this.draw();
         }
         
-        private set twist(twist: number) {
-            this._twist.data = [twist];
-            this._rendering.later();
+        private setTwist(twist: number) {
+            this.shaderTwist.data = [twist];
+            this.draw();
         }
 
-        private set scale(scale: number) {
-            this._scale.data = [scale];
-            this._rendering.later();
+        private setScale(scale: number) {
+            this.shaderScale.data = [scale];
+            this.draw();
+        }
+
+        private setShowCorners(showCorners: boolean) {
+            this.mustShowCorners = showCorners
+            this.draw()
+        }
+
+        private setShowCenters(showCenters: boolean) {
+            this.mustShowCenters = showCenters
+            this.draw()
         }
 
         private draw() {
-            var gl = this._context.gl;
+            var gl = this.context.gl;
             gl.clear(gl.COLOR_BUFFER_BIT);
 
-            if (this._inShowCorners.reading) {
-                this._position.pointTo(this._cornersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this._cornersBuffer.data.length / 2);
+            if (this.mustShowCorners) {
+                this.shaderPosition.pointTo(this.cornersBuffer);
+                gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
             }
 
-            if (this._inShowCenters.reading) {
-                this._position.pointTo(this._centersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this._centersBuffer.data.length / 2);
+            if (this.mustShowCenters) {
+                this.shaderPosition.pointTo(this.centersBuffer);
+                gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
             }
         }
 

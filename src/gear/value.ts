@@ -1,41 +1,71 @@
 module Gear {
-    
-    export type Reactor<A, V> = (action: A, oldValue: V) => V; 
-    
-    export class Value<A, V> implements IsControllable<A>, IsMeasurable<V> {
-        
-        private _reactor: Reactor<A, V>;
 
-        private _in: Controllable<A>;
-        private _out: Measurable<V>;
+    export class Value<T> extends BaseSource<T> implements Sink<T> {
+
+        private readonly consumers: Consumer<T>[] = [];
         
-        get asControllable() {
-            return this._in;
+        constructor(private _value: T = null) {
+            super();
         }
-        
-        get asMeasurable() {
-            return this._out;
+
+        get value() {
+            return this._value;
         }
-        
-        constructor(value: V, reactor: Reactor<A, V>) {
-            this._reactor = reactor;
-            this._in = new Controllable<A>(a => this.reactTo(a));
-            this._out = new Measurable<V>(value);
+
+        set value(newValue: T) {
+            this.setValue(newValue);
         }
-        
-        private reactTo(action: A) {
-            var newValue = this._reactor(action, this._out.sample);
-            this._out.conduct(newValue);
+
+        private setValue(newValue: T) {
+            this._value = newValue;
+            this.notify(this.consumers);
         }
-        
+
+        supply(...consumers: Consumer<T>[]) {
+            this.consumers.push(...consumers);
+            this.notify(consumers);
+            return this;
+        }
+
+        private notify(consumers: Consumer<T>[]) {
+            for (const consumer of consumers) {
+                consumer(this.value);
+            }
+        }
+
+        get consumer(): Consumer<T> {
+            return value => this.setValue(value);
+        }
+
+        get producer(): Producer<T> {
+            return consumer => this.supply(consumer);
+        }
+
+        static setOf<C>(...values: Value<C>[]): ValueSet<C> {
+            return new ValueSet(values);
+        }
+
     }
-    
-    export class SimpleValue<V> extends Value<V, V> {
-        
-        constructor(value: V, reactor: Reactor<V, V> = (a, b) => a) {
-            super(value, reactor);
+
+    export class ValueSet<T> extends BaseSource<T> implements Sink<T> {
+
+        private readonly source: Source<T>
+        private readonly sink: Sink<T>
+
+        constructor(values: Value<T>[]) {
+            super();
+            this.source = new CompositeSource(values);
+            this.sink = new CompositeSink(values);
         }
-        
+
+        get producer(): Producer<T> {
+            return this.source.producer;
+        }
+
+        get consumer(): Consumer<T> {
+            return this.sink.consumer;
+        }
+
     }
-    
+
 }

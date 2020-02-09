@@ -11,6 +11,17 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var Space;
 (function (Space) {
     var Vector = /** @class */ (function () {
@@ -161,6 +172,15 @@ var Djee;
             this.doFlatten(structure, array, index);
             return array;
         };
+        AbstractFlattener.prototype.flattenAll = function (structures, array, index) {
+            if (array === void 0) { array = new Array(this.size * structures.length); }
+            if (index === void 0) { index = 0; }
+            for (var i = 0; i < structures.length; i++) {
+                this.flatten(structures[i], array, index);
+                index += this.size;
+            }
+            return array;
+        };
         AbstractFlattener.prototype.unflatten = function (structure, array, index) {
             if (index === void 0) { index = 0; }
             this.doUnflatten(structure, array, index);
@@ -278,16 +298,6 @@ var Djee;
             return new ChildFlattener(flattener, getter);
         }
     };
-    function flatten(flattener, structures, array, index) {
-        if (array === void 0) { array = new Array(flattener.size * structures.length); }
-        if (index === void 0) { index = 0; }
-        for (var i = 0; i < structures.length; i++) {
-            flattener.flatten(structures[i], array, index);
-            index += flattener.size;
-        }
-        return array;
-    }
-    Djee.flatten = flatten;
 })(Djee || (Djee = {}));
 var Djee;
 (function (Djee) {
@@ -556,6 +566,27 @@ var Djee;
 })(Djee || (Djee = {}));
 var Gear;
 (function (Gear) {
+    var Lazy = /** @class */ (function () {
+        function Lazy(supplier) {
+            this.supplier = supplier;
+            this._value = null;
+        }
+        Lazy.prototype.get = function () {
+            if (!this._value) {
+                this._value = this.supplier();
+            }
+            return this._value;
+        };
+        return Lazy;
+    }());
+    function lazy(constructor) {
+        var lazy = new Lazy(constructor);
+        return function () { return lazy.get(); };
+    }
+    Gear.lazy = lazy;
+})(Gear || (Gear = {}));
+var Gear;
+(function (Gear) {
     var Call = /** @class */ (function () {
         function Call(callable) {
             this._timer = null;
@@ -586,421 +617,487 @@ var Gear;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Pluggable = /** @class */ (function () {
-        function Pluggable() {
-            this._pluggedComponents = [];
+    var BaseSource = /** @class */ (function () {
+        function BaseSource() {
         }
-        Object.defineProperty(Pluggable.prototype, "itself", {
-            get: function () {
-                return this.self();
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Pluggable.prototype, "pluggedComponents", {
-            get: function () {
-                return this._pluggedComponents.map(function (c) { return c.itself; });
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Pluggable.prototype.plug = function (component) {
-            this.doPlug(component);
-            component.doPlug(this);
+        BaseSource.prototype.to = function () {
+            var sinks = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                sinks[_i] = arguments[_i];
+            }
+            var sink = new CompositeSink(sinks);
+            this.producer(sink.consumer);
         };
-        Pluggable.prototype.unplug = function (component) {
-            this.doUnplug(component);
-            component.doUnplug(this);
-        };
-        Pluggable.prototype.unplugAll = function () {
-            var _this = this;
-            this._pluggedComponents.forEach(function (c) { return _this.unplug(c); });
-        };
-        Pluggable.prototype.doPlug = function (component) {
-            this.prePlug();
-            this._pluggedComponents.push(component);
-        };
-        Pluggable.prototype.doUnplug = function (component) {
-            this._pluggedComponents.splice(this._pluggedComponents.indexOf(component), 1);
-        };
-        Pluggable.prototype.prePlug = function () {
-        };
-        return Pluggable;
+        return BaseSource;
     }());
-    Gear.Pluggable = Pluggable;
-    var ExclusivelyPluggable = /** @class */ (function (_super) {
-        __extends(ExclusivelyPluggable, _super);
-        function ExclusivelyPluggable() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        Object.defineProperty(ExclusivelyPluggable.prototype, "pluggedComponent", {
-            get: function () {
-                return this.pluggedComponents.length > 0 ? this.pluggedComponents[0] : null;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        ExclusivelyPluggable.prototype.prePlug = function () {
-            this.unplugAll();
-        };
-        return ExclusivelyPluggable;
-    }(Pluggable));
-    Gear.ExclusivelyPluggable = ExclusivelyPluggable;
-})(Gear || (Gear = {}));
-var Gear;
-(function (Gear) {
-    var Actuator = /** @class */ (function (_super) {
-        __extends(Actuator, _super);
-        function Actuator() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
-        Actuator.prototype.self = function () {
-            return this;
-        };
-        Object.defineProperty(Actuator.prototype, "controllable", {
-            get: function () {
-                return this.pluggedComponent;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Actuator.prototype.drives = function (controllable) {
-            this.plug(controllable.asControllable);
-        };
-        Actuator.prototype.drivesNone = function () {
-            this.unplugAll();
-        };
-        Actuator.prototype.perform = function (action) {
-            this.controllable.reactTo(action);
-        };
-        return Actuator;
-    }(Gear.ExclusivelyPluggable));
-    Gear.Actuator = Actuator;
-})(Gear || (Gear = {}));
-var Gear;
-(function (Gear) {
-    var Sensor = /** @class */ (function (_super) {
-        __extends(Sensor, _super);
-        function Sensor(consumer) {
+    Gear.BaseSource = BaseSource;
+    var CompositeSource = /** @class */ (function (_super) {
+        __extends(CompositeSource, _super);
+        function CompositeSource(sources) {
             var _this = _super.call(this) || this;
-            _this._consumer = consumer;
-            _this._sensing = new Gear.Call(function () { return _this.sense(_this.measurable.sample); });
+            _this.sources = sources;
+            var producers = _this.sources.map(function (source) { return source.producer; });
+            _this._producer = Gear.compositeConsumer.apply(void 0, producers);
             return _this;
         }
-        Sensor.prototype.self = function () {
+        Object.defineProperty(CompositeSource.prototype, "producer", {
+            get: function () {
+                return this._producer;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return CompositeSource;
+    }(BaseSource));
+    Gear.CompositeSource = CompositeSource;
+    var CompositeSink = /** @class */ (function () {
+        function CompositeSink(sinks) {
+            this.sinks = sinks;
+            var consumers = this.sinks.map(function (sink) { return sink.consumer; });
+            this._consumer = Gear.compositeConsumer.apply(void 0, consumers);
+        }
+        Object.defineProperty(CompositeSink.prototype, "consumer", {
+            get: function () {
+                return this._consumer;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return CompositeSink;
+    }());
+    Gear.CompositeSink = CompositeSink;
+    var Flow = /** @class */ (function (_super) {
+        __extends(Flow, _super);
+        function Flow(output) {
+            var _this = _super.call(this) || this;
+            _this.output = output;
+            return _this;
+        }
+        Flow.prototype.filter = function (predicate) {
+            return this.then(Gear.filter(predicate));
+        };
+        Flow.prototype.map = function (mapper) {
+            return this.then(Gear.map(mapper));
+        };
+        Flow.prototype.reduce = function (reducer, identity) {
+            return this.then(Gear.reduce(reducer, identity));
+        };
+        Flow.prototype.then = function (effect) {
+            var newOutput = new Gear.Value();
+            Gear.causeEffectLink(this.output, effect, newOutput.consumer);
+            return new Flow(newOutput.producer);
+        };
+        Flow.prototype.branch = function () {
+            var _this = this;
+            var flowBuilders = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                flowBuilders[_i] = arguments[_i];
+            }
+            flowBuilders.forEach(function (builder) { return builder(_this); });
             return this;
         };
-        Object.defineProperty(Sensor.prototype, "measurable", {
+        Object.defineProperty(Flow.prototype, "producer", {
             get: function () {
-                return this.pluggedComponent;
+                return this.output;
             },
             enumerable: true,
             configurable: true
         });
-        Sensor.prototype.probes = function (measurable) {
-            this.plug(measurable.asMeasurable);
-            this._sensing.later();
+        Flow.from = function () {
+            var sources = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                sources[_i] = arguments[_i];
+            }
+            var source = new CompositeSource(sources);
+            return new Flow(source.producer);
         };
-        Sensor.prototype.probesNone = function () {
-            this.unplugAll();
-        };
-        Sensor.prototype.sense = function (value) {
-            this._consumer(value);
-        };
-        Object.defineProperty(Sensor.prototype, "reading", {
-            get: function () {
-                return this.measurable.sample;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        return Sensor;
-    }(Gear.ExclusivelyPluggable));
-    Gear.Sensor = Sensor;
+        return Flow;
+    }(BaseSource));
+    Gear.Flow = Flow;
+    function consumerFlow(flowBuilder) {
+        return sinkFlow(flowBuilder).consumer;
+    }
+    Gear.consumerFlow = consumerFlow;
+    function sinkFlow(flowBuilder) {
+        var value = new Gear.Value();
+        Flow.from(value).branch(flowBuilder);
+        return value;
+    }
+    Gear.sinkFlow = sinkFlow;
+    function sink(consumer) {
+        return { consumer: consumer };
+    }
+    Gear.sink = sink;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Controllable = /** @class */ (function (_super) {
-        __extends(Controllable, _super);
-        function Controllable(consumer) {
+    var Value = /** @class */ (function (_super) {
+        __extends(Value, _super);
+        function Value(_value) {
+            if (_value === void 0) { _value = null; }
             var _this = _super.call(this) || this;
-            _this._consumer = consumer;
+            _this._value = _value;
+            _this.consumers = [];
             return _this;
         }
-        Controllable.prototype.self = function () {
-            return this;
-        };
-        Object.defineProperty(Controllable.prototype, "asControllable", {
-            get: function () {
-                return this;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Controllable.prototype, "actuator", {
-            get: function () {
-                return this.pluggedComponent;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Controllable.prototype.reactTo = function (action) {
-            this._consumer(action);
-        };
-        return Controllable;
-    }(Gear.ExclusivelyPluggable));
-    Gear.Controllable = Controllable;
-})(Gear || (Gear = {}));
-var Gear;
-(function (Gear) {
-    var Measurable = /** @class */ (function (_super) {
-        __extends(Measurable, _super);
-        function Measurable(value) {
-            var _this = _super.call(this) || this;
-            _this._value = value;
-            return _this;
-        }
-        Measurable.prototype.self = function () {
-            return this;
-        };
-        Object.defineProperty(Measurable.prototype, "asMeasurable", {
-            get: function () {
-                return this;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Measurable.prototype, "sensors", {
-            get: function () {
-                return this.pluggedComponents;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Measurable.prototype.conduct = function (value) {
-            this._value = value;
-            this.sensors.forEach(function (s) { return s.sense(value); });
-        };
-        Object.defineProperty(Measurable.prototype, "sample", {
+        Object.defineProperty(Value.prototype, "value", {
             get: function () {
                 return this._value;
             },
+            set: function (newValue) {
+                this.setValue(newValue);
+            },
             enumerable: true,
             configurable: true
         });
-        return Measurable;
-    }(Gear.Pluggable));
-    Gear.Measurable = Measurable;
+        Value.prototype.setValue = function (newValue) {
+            this._value = newValue;
+            this.notify(this.consumers);
+        };
+        Value.prototype.supply = function () {
+            var _a;
+            var consumers = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                consumers[_i] = arguments[_i];
+            }
+            (_a = this.consumers).push.apply(_a, consumers);
+            this.notify(consumers);
+            return this;
+        };
+        Value.prototype.notify = function (consumers) {
+            for (var _i = 0, consumers_1 = consumers; _i < consumers_1.length; _i++) {
+                var consumer = consumers_1[_i];
+                consumer(this.value);
+            }
+        };
+        Object.defineProperty(Value.prototype, "consumer", {
+            get: function () {
+                var _this = this;
+                return function (value) { return _this.setValue(value); };
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Value.prototype, "producer", {
+            get: function () {
+                var _this = this;
+                return function (consumer) { return _this.supply(consumer); };
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Value.setOf = function () {
+            var values = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                values[_i] = arguments[_i];
+            }
+            return new ValueSet(values);
+        };
+        return Value;
+    }(Gear.BaseSource));
+    Gear.Value = Value;
+    var ValueSet = /** @class */ (function (_super) {
+        __extends(ValueSet, _super);
+        function ValueSet(values) {
+            var _this = _super.call(this) || this;
+            _this.source = new Gear.CompositeSource(values);
+            _this.sink = new Gear.CompositeSink(values);
+            return _this;
+        }
+        Object.defineProperty(ValueSet.prototype, "producer", {
+            get: function () {
+                return this.source.producer;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ValueSet.prototype, "consumer", {
+            get: function () {
+                return this.sink.consumer;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ValueSet;
+    }(Gear.BaseSource));
+    Gear.ValueSet = ValueSet;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
-    var Value = /** @class */ (function () {
-        function Value(value, reactor) {
-            var _this = this;
-            this._reactor = reactor;
-            this._in = new Gear.Controllable(function (a) { return _this.reactTo(a); });
-            this._out = new Gear.Measurable(value);
-        }
-        Object.defineProperty(Value.prototype, "asControllable", {
-            get: function () {
-                return this._in;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Value.prototype, "asMeasurable", {
-            get: function () {
-                return this._out;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Value.prototype.reactTo = function (action) {
-            var newValue = this._reactor(action, this._out.sample);
-            this._out.conduct(newValue);
-        };
-        return Value;
-    }());
-    Gear.Value = Value;
-    var SimpleValue = /** @class */ (function (_super) {
-        __extends(SimpleValue, _super);
-        function SimpleValue(value, reactor) {
-            if (reactor === void 0) { reactor = function (a, b) { return a; }; }
-            return _super.call(this, value, reactor) || this;
-        }
-        return SimpleValue;
-    }(Value));
-    Gear.SimpleValue = SimpleValue;
-})(Gear || (Gear = {}));
-/// <reference path="call.ts" />
-/// <reference path="pluggable.ts" />
-/// <reference path="actuator.ts" />
-/// <reference path="sensor.ts" />
-/// <reference path="controllable.ts" />
-/// <reference path="measurable.ts" />
-/// <reference path="value.ts" />
-var GasketTwist;
-(function (GasketTwist) {
-    function vectorFlattener(size) {
-        return Djee.flatteners.array(function (v) { return v.coordinates; }, size);
+    function reduce(reducer, identity) {
+        var accumulator = [identity];
+        return function (value, result) { return result(accumulator[0] = reducer(value, accumulator[0])); };
     }
-    var Rendering = /** @class */ (function () {
-        function Rendering() {
-            this._twist = new Gear.SimpleValue(0);
-            this._scale = new Gear.SimpleValue(1);
-            this._showCorners = new Gear.SimpleValue(true);
-            this._showCenters = new Gear.SimpleValue(true);
+    Gear.reduce = reduce;
+    function map(mapper) {
+        return function (value, result) { return result(mapper(value)); };
+    }
+    Gear.map = map;
+    function filter(predicate) {
+        return function (value, result) {
+            if (predicate(value)) {
+                result(value);
+            }
+        };
+    }
+    Gear.filter = filter;
+    function later() {
+        var consumerRef = [function () { }];
+        var call = new Gear.Call(function () { return consumerRef[0](); });
+        return function (value, result) {
+            consumerRef[0] = function () { return result(value); };
+            call.later();
+        };
+    }
+    Gear.later = later;
+    function flowSwitch(on) {
+        var onRef = [true];
+        on.to(Gear.sink(function (value) { onRef[0] = value; }));
+        return filter(function (value) { return onRef[0]; });
+    }
+    Gear.flowSwitch = flowSwitch;
+    function defaultsTo(value) {
+        return map(function (v) { return v ? v : value; });
+    }
+    Gear.defaultsTo = defaultsTo;
+})(Gear || (Gear = {}));
+var Gear;
+(function (Gear) {
+    function checkbox(elementId) {
+        var element = document.getElementById(elementId);
+        var value = new Gear.Value(element.checked);
+        element.onchange = function (e) { return value.value = element.checked; };
+        return value;
+    }
+    Gear.checkbox = checkbox;
+    var ElementEvents = /** @class */ (function () {
+        function ElementEvents(element) {
+            var _this = this;
+            this.element = element;
+            this.elementPos = pagePos(this.element);
+            this.lazyClick = Gear.lazy(function () { return _this.newClick(); });
+            this.lazyMousePos = Gear.lazy(function () { return _this.newMousePos(); });
+            this.lazyTouchPos = Gear.lazy(function () { return _this.newTouchPos(); });
+            this.lazyMouseButtons = Gear.lazy(function () { return _this.newMouseButtons(); });
         }
-        Object.defineProperty(Rendering.prototype, "twist", {
+        ElementEvents.prototype.parent = function () {
+            return new ElementEvents(this.element.parentElement);
+        };
+        ElementEvents.prototype.newClick = function () {
+            var _this = this;
+            var value = pointerPositionValue([0, 0]);
+            this.element.onclick = function (e) { return value.value = _this.relativePos(e); };
+            return value;
+        };
+        ElementEvents.prototype.newMousePos = function () {
+            var _this = this;
+            var value = pointerPositionValue([0, 0]);
+            this.element.onmousemove = function (e) {
+                value.value = _this.relativePos(e);
+                e.preventDefault();
+            };
+            return value;
+        };
+        ElementEvents.prototype.newTouchPos = function () {
+            var _this = this;
+            var value = new Gear.Value([]);
+            this.element.ontouchmove = this.element.ontouchstart = function (e) {
+                var touches = [];
+                for (var i = 0; i < e.touches.length; i++) {
+                    touches.push(_this.relativePos(e.touches.item(i)));
+                }
+                value.value = touches;
+                e.preventDefault();
+            };
+            return value;
+        };
+        ElementEvents.prototype.relativePos = function (p) {
+            var pointerPos = pos(p.pageX, p.pageY);
+            return sub(pointerPos, this.elementPos);
+        };
+        ElementEvents.prototype.newMouseButtons = function () {
+            var _this = this;
+            var value = mouseButtonsValue([false, false, false]);
+            this.element.onmousedown = function (e) { return _this.setButton(value, e.button, true); };
+            this.element.onmouseup = function (e) { return _this.setButton(value, e.button, false); };
+            return value;
+        };
+        ElementEvents.prototype.setButton = function (buttons, button, pressed) {
+            buttons.value = updatedButtons(buttons.value, button, pressed);
+        };
+        Object.defineProperty(ElementEvents.prototype, "click", {
             get: function () {
-                return this._twist;
+                return this.lazyClick();
             },
             enumerable: true,
             configurable: true
         });
-        Object.defineProperty(Rendering.prototype, "scale", {
+        Object.defineProperty(ElementEvents.prototype, "mousePos", {
             get: function () {
-                return this._scale;
+                return this.lazyMousePos();
             },
             enumerable: true,
             configurable: true
         });
-        Object.defineProperty(Rendering.prototype, "showCorners", {
+        Object.defineProperty(ElementEvents.prototype, "touchPos", {
             get: function () {
-                return this._showCorners;
+                return this.lazyTouchPos();
             },
             enumerable: true,
             configurable: true
         });
-        Object.defineProperty(Rendering.prototype, "showCenters", {
+        Object.defineProperty(ElementEvents.prototype, "mouseButons", {
             get: function () {
-                return this._showCenters;
+                return this.lazyMouseButtons();
             },
             enumerable: true,
             configurable: true
         });
-        return Rendering;
+        ElementEvents.create = function (elementId) {
+            return new ElementEvents(document.getElementById(elementId));
+        };
+        return ElementEvents;
     }());
-    GasketTwist.Rendering = Rendering;
-    function vec(angleIndex) {
-        var angle = Math.PI * (0.5 + 2 * angleIndex / 3);
+    Gear.ElementEvents = ElementEvents;
+    function pagePos(element) {
+        var result = pos(element.offsetLeft, element.offsetTop);
+        var parent = element.parentElement;
+        return parent ? add(pagePos(parent), result) : result;
+    }
+    function pos(x, y) {
+        return [x, y];
+    }
+    function add(pos1, pos2) {
+        var x1 = pos1[0], y1 = pos1[1];
+        var x2 = pos2[0], y2 = pos2[1];
+        return [x1 + x2, y1 + y2];
+    }
+    function sub(pos1, pos2) {
+        var x1 = pos1[0], y1 = pos1[1];
+        var x2 = pos2[0], y2 = pos2[1];
+        return [x1 - x2, y1 - y2];
+    }
+    function pointerPositionValue(initialPos) {
+        return new Gear.Value(initialPos);
+    }
+    function mouseButtonsValue(initialButtons) {
+        return new Gear.Value(initialButtons);
+    }
+    function updatedButtons(buttons, button, pressed) {
+        var result = buttons;
+        result[button % 3] = pressed;
+        return result;
+    }
+})(Gear || (Gear = {}));
+var Gear;
+(function (Gear) {
+    function text(elementId) {
+        var element = document.getElementById(elementId);
+        return Gear.sink(function (text) { element.textContent = text; });
+    }
+    Gear.text = text;
+})(Gear || (Gear = {}));
+/// <reference path="lazy.ts" />
+/// <reference path="call.ts" />
+/// <reference path="flow.ts" />
+/// <reference path="value.ts" />
+/// <reference path="value.ts" />
+/// <reference path="effects.ts" />
+/// <reference path="ui-input.ts" />
+/// <reference path="ui-output.ts" />
+var Gear;
+/// <reference path="lazy.ts" />
+/// <reference path="call.ts" />
+/// <reference path="flow.ts" />
+/// <reference path="value.ts" />
+/// <reference path="value.ts" />
+/// <reference path="effects.ts" />
+/// <reference path="ui-input.ts" />
+/// <reference path="ui-output.ts" />
+(function (Gear) {
+    function intact() {
+        return function (value) { return value; };
+    }
+    Gear.intact = intact;
+    function compositeConsumer() {
+        var consumers = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            consumers[_i] = arguments[_i];
+        }
+        switch (consumers.length) {
+            case 0: return function () { };
+            case 1: return consumers[0];
+            default: return function (value) {
+                for (var _i = 0, consumers_2 = consumers; _i < consumers_2.length; _i++) {
+                    var consumer = consumers_2[_i];
+                    consumer(value);
+                }
+            };
+        }
+    }
+    Gear.compositeConsumer = compositeConsumer;
+    function causeEffectLink(causeProducer, effect, effectConsumer) {
+        return causeProducer(function (cause) { return effect(cause, effectConsumer); });
+    }
+    Gear.causeEffectLink = causeEffectLink;
+})(Gear || (Gear = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
+    var defaultSierpinski = {
+        depth: 5,
+        a: vec(90),
+        b: vec(210),
+        c: vec(330)
+    };
+    function sierpinski(depth, a, b, c) {
+        if (depth === void 0) { depth = new Gear.Value(defaultSierpinski.depth); }
+        if (a === void 0) { a = new Gear.Value(defaultSierpinski.a); }
+        if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
+        if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
+        var sierpinski = __assign({}, defaultSierpinski);
+        return from(from(depth).reduce(function (d, s) { return s = __assign({}, s, { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign({}, s, { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign({}, s, { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign({}, s, { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
+    }
+    GasketTwist2.sierpinski = sierpinski;
+    function from() {
+        var _a;
+        var sources = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            sources[_i] = arguments[_i];
+        }
+        return (_a = Gear.Flow).from.apply(_a, sources);
+    }
+    function vec(angleInDegrees) {
+        var angle = Math.PI * angleInDegrees / 180;
         return Space.vec([Math.cos(angle), Math.sin(angle)]);
     }
-    var Sierpinski = /** @class */ (function () {
-        function Sierpinski(a, b, c, depth) {
-            var _this = this;
-            if (a === void 0) { a = vec(0); }
-            if (b === void 0) { b = vec(1); }
-            if (c === void 0) { c = vec(2); }
-            if (depth === void 0) { depth = 5; }
-            this._tesselation = new Gear.Call(function () { return _this._outArrays.conduct(_this.flattened); });
-            this._inA = new Gear.Controllable(function (a) {
-                _this._a = a;
-                _this._tesselation.later();
-            });
-            this._inB = new Gear.Controllable(function (b) {
-                _this._b = b;
-                _this._tesselation.later();
-            });
-            this._inC = new Gear.Controllable(function (c) {
-                _this._c = c;
-                _this._tesselation.later();
-            });
-            this._depth = new Gear.SimpleValue(5, function (inc, oldValue) {
-                var newValue = oldValue + inc;
-                if (newValue > 9) {
-                    newValue = 9;
-                }
-                else if (newValue < 0) {
-                    newValue = 0;
-                }
-                _this._tesselation.later();
-                return newValue;
-            });
-            this._a = a;
-            this._b = b;
-            this._c = c;
-            this._outArrays = new Gear.Measurable(this.flattened);
+    function tesselatedTriangle(a, b, c, depth) {
+        var result = {
+            corners: [],
+            centers: [],
+            stride: a.coordinates.length
+        };
+        doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
+        return result;
+    }
+    GasketTwist2.tesselatedTriangle = tesselatedTriangle;
+    function doTesselateTriangle(a, b, c, depth, corners, centers) {
+        if (depth < 1) {
+            corners.push.apply(corners, a.coordinates.concat(b.coordinates, c.coordinates));
         }
-        Object.defineProperty(Sierpinski.prototype, "inA", {
-            get: function () {
-                return this._inA;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Sierpinski.prototype, "inB", {
-            get: function () {
-                return this._inB;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Sierpinski.prototype, "inC", {
-            get: function () {
-                return this._inC;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Sierpinski.prototype, "depth", {
-            get: function () {
-                return this._depth;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Sierpinski.prototype, "outArrays", {
-            get: function () {
-                return this._outArrays;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Sierpinski.prototype.tesselateTriangle = function () {
-            var depth = this._depth.asMeasurable.sample;
-            this._corners = [];
-            this._centers = [];
-            this.doTesselateTriangle(this._a, this._b, this._c, depth);
-        };
-        Sierpinski.prototype.doTesselateTriangle = function (a, b, c, counter, selector) {
-            if (selector === void 0) { selector = Sierpinski.corners; }
-            if (counter == 0) {
-                selector(this).push(a, b, c);
-            }
-            else {
-                var ab = a.mix(b, 0.5);
-                var bc = b.mix(c, 0.5);
-                var ca = c.mix(a, 0.5);
-                var newCounter = counter - 1;
-                this.doTesselateTriangle(a, ab, ca, newCounter, selector);
-                this.doTesselateTriangle(ab, b, bc, newCounter, selector);
-                this.doTesselateTriangle(ca, bc, c, newCounter, selector);
-                this.doTesselateTriangle(ab, bc, ca, newCounter, Sierpinski.centers);
-            }
-        };
-        Object.defineProperty(Sierpinski.prototype, "flattened", {
-            get: function () {
-                this.tesselateTriangle();
-                var stride = this._a.coordinates.length;
-                var flattener = vectorFlattener(stride);
-                return {
-                    corners: Djee.flatten(flattener, this._corners),
-                    centers: Djee.flatten(flattener, this._centers),
-                    stride: stride
-                };
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Sierpinski.corners = function (s) { return s._corners; };
-        Sierpinski.centers = function (s) { return s._centers; };
-        return Sierpinski;
-    }());
-    GasketTwist.Sierpinski = Sierpinski;
-})(GasketTwist || (GasketTwist = {}));
-var GasketTwist;
-(function (GasketTwist) {
+        else {
+            var ab = a.mix(b, 0.5);
+            var bc = b.mix(c, 0.5);
+            var ca = c.mix(a, 0.5);
+            var newDepth = depth - 1;
+            doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
+            doTesselateTriangle(ab, b, bc, newDepth, corners, centers);
+            doTesselateTriangle(ca, bc, c, newDepth, corners, centers);
+            doTesselateTriangle(ab, bc, ca, newDepth, centers, centers);
+        }
+    }
+})(GasketTwist2 || (GasketTwist2 = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
     var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
     var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
     var ST = Djee.ShaderType;
@@ -1010,258 +1107,123 @@ var GasketTwist;
     var View = /** @class */ (function () {
         function View(canvasId, depthId, twistId, scaleId) {
             var _this = this;
-            this._inArrays = new Gear.Sensor(function (arrays) { return _this.sierpinski = arrays; });
-            this._inTwist = new Gear.Sensor(function (twist) {
-                _this.twist = twist;
-                _this._twistDiv.innerText = round(twist).toString();
-            });
-            this._inScale = new Gear.Sensor(function (scale) {
-                _this.scale = scale;
-                _this._scaleDiv.innerText = round(scale).toString();
-            });
-            this._inShowCorners = new Gear.Sensor(function (showCorners) { return _this._rendering.later(); });
-            this._inShowCenters = new Gear.Sensor(function (showCenters) { return _this._rendering.later(); });
-            this._inDepth = new Gear.Sensor(function (depth) { return _this._depthDiv.innerText = depth.toString(); });
-            this._rendering = new Gear.Call(function () { return _this.draw(); });
-            this._depthDiv = document.getElementById(depthId);
-            this._twistDiv = document.getElementById(twistId);
-            this._scaleDiv = document.getElementById(scaleId);
-            this._context = new Djee.Context(canvasId);
-            var context = this._context;
-            this._vertexShader = context.shader(ST.VertexShader, vertexShader);
-            this._fragmentShader = context.shader(ST.FragmentShader, fragmentShader);
-            this._program = context.link([this._vertexShader, this._fragmentShader]);
-            this._program.use();
-            this._position = this._program.locateAttribute("vPosition", 2);
-            this._twist = this._program.locateUniform("twist", 1);
-            this._scale = this._program.locateUniform("scale", 1);
-            this._cornersBuffer = context.newBuffer();
-            this._centersBuffer = context.newBuffer();
-            context.gl.clearColor(1, 1, 1, 1);
+            this.context = new Djee.Context(canvasId);
+            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
+            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
+            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+            this.program.use();
+            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
+            this.shaderTwist = this.program.locateUniform("twist", 1);
+            this.shaderScale = this.program.locateUniform("scale", 1);
+            this.cornersBuffer = this.context.newBuffer();
+            this.centersBuffer = this.context.newBuffer();
+            this.context.gl.clearColor(1, 1, 1, 1);
+            this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
+            this.depth = Gear.sinkFlow(function (flow) { return flow.map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
+            this.twist = Gear.sinkFlow(function (flow) { return flow.branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
+            this.scale = Gear.sinkFlow(function (flow) { return flow.branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
+            this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
+            this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
         }
-        Object.defineProperty(View.prototype, "inArrays", {
-            get: function () {
-                return this._inArrays;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "inTwist", {
-            get: function () {
-                return this._inTwist;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "inScale", {
-            get: function () {
-                return this._inScale;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "inShowCorners", {
-            get: function () {
-                return this._inShowCorners;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "inShowCenters", {
-            get: function () {
-                return this._inShowCenters;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "inDepth", {
-            get: function () {
-                return this._inDepth;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "sierpinski", {
-            set: function (flattenedSierpinski) {
-                this._cornersBuffer.data = flattenedSierpinski.corners;
-                this._centersBuffer.data = flattenedSierpinski.centers;
-                this._rendering.later();
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "twist", {
-            set: function (twist) {
-                this._twist.data = [twist];
-                this._rendering.later();
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(View.prototype, "scale", {
-            set: function (scale) {
-                this._scale.data = [scale];
-                this._rendering.later();
-            },
-            enumerable: true,
-            configurable: true
-        });
+        View.prototype.source = function (value) {
+            return new Gear.Value(value);
+        };
+        View.prototype.setSierpinski = function (flattenedSierpinski) {
+            this.cornersBuffer.data = flattenedSierpinski.corners;
+            this.centersBuffer.data = flattenedSierpinski.centers;
+            this.stride = flattenedSierpinski.stride;
+            this.draw();
+        };
+        View.prototype.setTwist = function (twist) {
+            this.shaderTwist.data = [twist];
+            this.draw();
+        };
+        View.prototype.setScale = function (scale) {
+            this.shaderScale.data = [scale];
+            this.draw();
+        };
+        View.prototype.setShowCorners = function (showCorners) {
+            this.mustShowCorners = showCorners;
+            this.draw();
+        };
+        View.prototype.setShowCenters = function (showCenters) {
+            this.mustShowCenters = showCenters;
+            this.draw();
+        };
         View.prototype.draw = function () {
-            var gl = this._context.gl;
+            var gl = this.context.gl;
             gl.clear(gl.COLOR_BUFFER_BIT);
-            if (this._inShowCorners.reading) {
-                this._position.pointTo(this._cornersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this._cornersBuffer.data.length / 2);
+            if (this.mustShowCorners) {
+                this.shaderPosition.pointTo(this.cornersBuffer);
+                gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
             }
-            if (this._inShowCenters.reading) {
-                this._position.pointTo(this._centersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this._centersBuffer.data.length / 2);
+            if (this.mustShowCenters) {
+                this.shaderPosition.pointTo(this.centersBuffer);
+                gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
             }
         };
         return View;
     }());
-    GasketTwist.View = View;
-})(GasketTwist || (GasketTwist = {}));
-var GasketTwist;
-(function (GasketTwist) {
+    GasketTwist2.View = View;
+})(GasketTwist2 || (GasketTwist2 = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
     var Controller = /** @class */ (function () {
-        function Controller(canvas, cornersCheckbox, centersCheckbox, twistCheckbox, scaleCheckbox, depthIncButton, depthDecButton) {
-            this._outShowCorners = new Gear.Actuator();
-            this._outShowCenters = new Gear.Actuator();
-            this._outDepth = new Gear.Actuator();
-            this._outTwist = new Gear.Actuator();
-            this._outScale = new Gear.Actuator();
-            this._canvas = document.getElementById(canvas);
-            this._cornersCheckbox = document.getElementById(cornersCheckbox);
-            this._centersCheckbox = document.getElementById(centersCheckbox);
-            this._twistCheckbox = document.getElementById(twistCheckbox);
-            this._scaleCheckbox = document.getElementById(scaleCheckbox);
-            this._depthIncButton = document.getElementById(depthIncButton);
-            this._depthDecButton = document.getElementById(depthDecButton);
-            this.registerEvents();
+        function Controller(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
+            var canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+            var depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
+            var depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
+            var twistEnabled = Gear.checkbox(twistCheckboxId);
+            var scaleEnabled = Gear.checkbox(scaleCheckboxId);
+            this.showCorners = Gear.checkbox(cornersCheckboxId);
+            this.showCenters = Gear.checkbox(centersCheckboxId);
+            var dragEnabled = Gear.Flow.from(canvas.mouseButons).map(function (_a) {
+                var l = _a[0], m = _a[1], r = _a[2];
+                return l || m || r;
+            });
+            var mousePos = Gear.Flow.from(Gear.Flow.from(canvas.mousePos).then(Gear.flowSwitch(dragEnabled)), Gear.Flow.from(canvas.touchPos).map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+            this.twist = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return Math.PI * (4 * x / canvas.element.clientWidth - 2);
+            })
+                .then(Gear.flowSwitch(twistEnabled));
+            this.scale = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return 2 - 4 * y / canvas.element.clientHeight;
+            })
+                .then(Gear.flowSwitch(scaleEnabled));
+            ;
+            this.depth = Gear.Flow.from(Gear.Flow.from(depthDecButton.click).map(function () { return -1; }), Gear.Flow.from(depthIncButton.click).map(function () { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
         }
-        Object.defineProperty(Controller.prototype, "outShowCorners", {
-            get: function () {
-                return this._outShowCorners;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Controller.prototype, "outShowCenters", {
-            get: function () {
-                return this._outShowCenters;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Controller.prototype, "outDepth", {
-            get: function () {
-                return this._outDepth;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Controller.prototype, "outTwist", {
-            get: function () {
-                return this._outTwist;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Controller.prototype, "outScale", {
-            get: function () {
-                return this._outScale;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Controller.prototype.registerEvents = function () {
-            var _this = this;
-            var root = this._canvas.parentElement.parentElement;
-            root.onmousemove = function (e) {
-                if (e.buttons != 0) {
-                    var targetX = _this.x(root);
-                    var targetY = _this.y(root);
-                    _this.doMove(e.pageX - targetX, e.pageY - targetY);
-                }
-                e.preventDefault();
-            };
-            root.onmousedown = this._canvas.onmousemove;
-            root.ontouchmove = function (e) {
-                if (e.changedTouches.length != 0) {
-                    var t = e.changedTouches[0];
-                    var targetX = _this.x(root);
-                    var targetY = _this.y(root);
-                    _this.doMove(t.pageX - targetX, t.pageY - targetY);
-                }
-                e.preventDefault();
-            };
-            root.ontouchstart = this._canvas.ontouchmove;
-            this._cornersCheckbox.onchange = function (e) {
-                _this._outShowCorners.perform(_this._cornersCheckbox.checked);
-            };
-            this._centersCheckbox.onchange = function (e) {
-                _this._outShowCenters.perform(_this._centersCheckbox.checked);
-            };
-            this._depthIncButton.onclick = function (e) {
-                _this._outDepth.perform(+1);
-            };
-            this._depthDecButton.onclick = function (e) {
-                _this._outDepth.perform(-1);
-            };
-        };
-        Controller.prototype.doMove = function (x, y) {
-            if (this._scaleCheckbox.checked) {
-                this._outScale.perform(2 - 4 * y / this._canvas.clientHeight);
-            }
-            if (this._twistCheckbox.checked) {
-                this._outTwist.perform(Math.PI * (4 * x / this._canvas.clientWidth - 2));
-            }
-        };
-        Controller.prototype.x = function (element) {
-            var result = element.offsetLeft;
-            var parent = element.parentElement;
-            return parent ? this.x(parent) + result : result;
-        };
-        Controller.prototype.y = function (element) {
-            var result = element.offsetTop;
-            var parent = element.parentElement;
-            return parent ? this.y(parent) + result : result;
-        };
         return Controller;
     }());
-    GasketTwist.Controller = Controller;
-})(GasketTwist || (GasketTwist = {}));
+    GasketTwist2.Controller = Controller;
+})(GasketTwist2 || (GasketTwist2 = {}));
 /// <reference path="../space/_.ts" />
 /// <reference path="../djee/_.ts" />
 /// <reference path="../gear/_.ts" />
 /// <reference path="model.ts" />
 /// <reference path="view.ts" />
 /// <reference path="controller.ts" />
-var GasketTwist;
+var GasketTwist2;
 /// <reference path="../space/_.ts" />
 /// <reference path="../djee/_.ts" />
 /// <reference path="../gear/_.ts" />
 /// <reference path="model.ts" />
 /// <reference path="view.ts" />
 /// <reference path="controller.ts" />
-(function (GasketTwist) {
+(function (GasketTwist2) {
     window.onload = function (e) {
-        var sierpinski = new GasketTwist.Sierpinski();
-        var rendering = new GasketTwist.Rendering();
-        var view = new GasketTwist.View("canvas-gl", "division-depth", "twist", "scale");
-        var controller = new GasketTwist.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
-        controller.outDepth.drives(sierpinski.depth);
-        controller.outScale.drives(rendering.scale);
-        controller.outTwist.drives(rendering.twist);
-        controller.outShowCorners.drives(rendering.showCorners);
-        controller.outShowCenters.drives(rendering.showCenters);
-        view.inArrays.probes(sierpinski.outArrays);
-        view.inScale.probes(rendering.scale);
-        view.inTwist.probes(rendering.twist);
-        view.inShowCorners.probes(rendering.showCorners);
-        view.inShowCenters.probes(rendering.showCenters);
-        view.inDepth.probes(sierpinski.depth);
+        var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
+        var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
+        controller.depth.to(view.depth);
+        controller.twist.to(view.twist);
+        controller.scale.to(view.scale);
+        controller.showCorners.to(view.showCorners);
+        controller.showCenters.to(view.showCenters);
+        GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
     };
-})(GasketTwist || (GasketTwist = {}));
+})(GasketTwist2 || (GasketTwist2 = {}));
 //# sourceMappingURL=ghadeeras.js.map
