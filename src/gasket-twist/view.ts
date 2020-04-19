@@ -77,9 +77,9 @@ module GasketTwist2 {
             this.context.gl.clearColor(1, 1, 1, 1);
 
             this.sierpinsky = Gear.sink(s => this.setSierpinski(s));
-            this.depth = Gear.sinkFlow(flow => flow.map(v => v + "").to(Gear.text(depthId)));
-            this.twist = Gear.sinkFlow(flow => flow.branch(flow => flow.to(Gear.sink(t => this.setTwist(t)))).map(v => v + "").to(Gear.text(twistId)));
-            this.scale = Gear.sinkFlow(flow => flow.branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
+            this.depth = Gear.sinkFlow(flow => flow.defaultsTo(5).map(v => v + "").to(Gear.text(depthId)));
+            this.twist = Gear.sinkFlow(flow => flow.defaultsTo(0).branch(flow => flow.to(Gear.sink(t => this.setTwist(t)))).map(v => v + "").to(Gear.text(twistId)));
+            this.scale = Gear.sinkFlow(flow => flow.defaultsTo(1).branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
             this.showCorners = Gear.sink(show => this.setShowCorners(show));
             this.showCenters = Gear.sink(show => this.setShowCenters(show));
         }
@@ -116,18 +116,20 @@ module GasketTwist2 {
         }
 
         private draw() {
-            var gl = this.context.gl;
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            if (this.mustShowCorners) {
-                this.shaderPosition.pointTo(this.cornersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
-            }
-
-            if (this.mustShowCenters) {
-                this.shaderPosition.pointTo(this.centersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
-            }
+            setTimeout(() => {
+                var gl = this.context.gl;
+                gl.clear(gl.COLOR_BUFFER_BIT);
+    
+                if (this.mustShowCorners) {
+                    this.shaderPosition.pointTo(this.cornersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
+                }
+    
+                if (this.mustShowCenters) {
+                    this.shaderPosition.pointTo(this.centersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
+                }
+            });
         }
 
     }

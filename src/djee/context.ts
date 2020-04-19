@@ -43,6 +43,14 @@ module Djee {
             return Shader.fromElement(this, scriptId);
         }
 
+        vertexShader(code: string) {
+            return this.shader(ShaderType.VertexShader, code);
+        }
+
+        fragmentShader(code: string) {
+            return this.shader(ShaderType.FragmentShader, code);
+        }
+
         shader(type: ShaderType, code: string) {
             return new Shader(this, type, code);
         }

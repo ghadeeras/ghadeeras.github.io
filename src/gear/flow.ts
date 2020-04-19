@@ -18,6 +18,10 @@ module Gear {
 
         abstract get producer(): Producer<T>;
 
+        flow() {
+            return Flow.from(this);
+        }
+
         to(...sinks: Sink<T>[]) {
             const sink = new CompositeSink(sinks);
             this.producer(sink.consumer);
@@ -74,8 +78,19 @@ module Gear {
             return this.then(reduce(reducer, identity));
         }
 
-        then<R>(effect: Effect<T, R>) {
-            const newOutput = new Value<R>()
+        defaultsTo(value: T) {
+            return this.through(defaultsTo(value));
+        }
+
+        then<R>(effect: Effect<T, R>, defaultValue: T = null) {
+            const safeEffect: Effect<T, R> = defaultValue != null ? 
+                (value, resultConsumer) => effect(value != null ? value : defaultValue, resultConsumer) :
+                (value, resultConsumer) => (value != null) ? effect(value, resultConsumer) : {}; 
+            return this.through(safeEffect);
+        }
+
+        through<R>(effect: Effect<T, R>) {
+            const newOutput = new Value<R>();
             causeEffectLink(this.output, effect, newOutput.consumer);
             return new Flow(newOutput.producer);
         }

@@ -11,6 +11,13 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -335,6 +342,12 @@ var Djee;
         Context.prototype.shaderFromElement = function (scriptId) {
             return Djee.Shader.fromElement(this, scriptId);
         };
+        Context.prototype.vertexShader = function (code) {
+            return this.shader(Djee.ShaderType.VertexShader, code);
+        };
+        Context.prototype.fragmentShader = function (code) {
+            return this.shader(Djee.ShaderType.FragmentShader, code);
+        };
         Context.prototype.shader = function (type, code) {
             return new Djee.Shader(this, type, code);
         };
@@ -432,7 +445,10 @@ var Djee;
         Program.prototype.delete = function () {
             var _this = this;
             var gl = this.context.gl;
-            this.shaders.forEach(function (shader) { return gl.detachShader(_this.program, shader.shader); });
+            this.shaders.forEach(function (shader) {
+                gl.detachShader(_this.program, shader.shader);
+                gl.deleteShader(shader.shader);
+            });
             gl.deleteProgram(this.program);
         };
         Program.prototype.use = function () {
@@ -443,6 +459,50 @@ var Djee;
         };
         Program.prototype.locateUniform = function (name, size) {
             return new Djee.Uniform(this, name, size);
+        };
+        Object.defineProperty(Program.prototype, "uniforms", {
+            get: function () {
+                var _this = this;
+                var gl = this.context.gl;
+                return this.activeInfos(gl.ACTIVE_UNIFORMS, function (i) { return gl.getActiveUniform(_this.program, i); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Program.prototype, "attributes", {
+            get: function () {
+                var _this = this;
+                var gl = this.context.gl;
+                return this.activeInfos(gl.ACTIVE_ATTRIBUTES, function (i) { return gl.getActiveAttrib(_this.program, i); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Program.prototype.activeInfos = function (type, getter) {
+            var gl = this.context.gl;
+            var count = gl.getProgramParameter(this.program, type);
+            var result = [];
+            for (var i = 0; i < count; i++) {
+                var info = getter(i);
+                result.push({
+                    name: info.name,
+                    type: info.type,
+                    dimensions: this.dimensions(info),
+                    size: info.size
+                });
+            }
+            return result;
+        };
+        Program.prototype.dimensions = function (info) {
+            var gl = this.context.gl;
+            switch (info.type) {
+                case gl.FLOAT: return 1;
+                case gl.FLOAT_VEC2: return 2;
+                case gl.FLOAT_VEC3: return 3;
+                case gl.FLOAT_VEC4: return 4;
+                default: throw "Unsupported type: " + info.type;
+            }
+            ;
         };
         return Program;
     }());
@@ -620,6 +680,9 @@ var Gear;
     var BaseSource = /** @class */ (function () {
         function BaseSource() {
         }
+        BaseSource.prototype.flow = function () {
+            return Flow.from(this);
+        };
         BaseSource.prototype.to = function () {
             var sinks = [];
             for (var _i = 0; _i < arguments.length; _i++) {
@@ -682,7 +745,17 @@ var Gear;
         Flow.prototype.reduce = function (reducer, identity) {
             return this.then(Gear.reduce(reducer, identity));
         };
-        Flow.prototype.then = function (effect) {
+        Flow.prototype.defaultsTo = function (value) {
+            return this.through(Gear.defaultsTo(value));
+        };
+        Flow.prototype.then = function (effect, defaultValue) {
+            if (defaultValue === void 0) { defaultValue = null; }
+            var safeEffect = defaultValue != null ?
+                function (value, resultConsumer) { return effect(value != null ? value : defaultValue, resultConsumer); } :
+                function (value, resultConsumer) { return (value != null) ? effect(value, resultConsumer) : {}; };
+            return this.through(safeEffect);
+        };
+        Flow.prototype.through = function (effect) {
             var newOutput = new Gear.Value();
             Gear.causeEffectLink(this.output, effect, newOutput.consumer);
             return new Flow(newOutput.producer);
@@ -761,13 +834,18 @@ var Gear;
                 consumers[_i] = arguments[_i];
             }
             (_a = this.consumers).push.apply(_a, consumers);
-            this.notify(consumers);
+            try {
+                this.notify(consumers);
+            }
+            catch (e) {
+                console.log(e);
+            }
             return this;
         };
         Value.prototype.notify = function (consumers) {
             for (var _i = 0, consumers_1 = consumers; _i < consumers_1.length; _i++) {
                 var consumer = consumers_1[_i];
-                consumer(this.value);
+                consumer(this._value);
             }
         };
         Object.defineProperty(Value.prototype, "consumer", {
@@ -850,16 +928,37 @@ var Gear;
         };
     }
     Gear.later = later;
-    function flowSwitch(on) {
-        var onRef = [true];
+    function flowSwitch(on, initialState) {
+        if (initialState === void 0) { initialState = false; }
+        var onRef = [initialState];
         on.to(Gear.sink(function (value) { onRef[0] = value; }));
         return filter(function (value) { return onRef[0]; });
     }
     Gear.flowSwitch = flowSwitch;
+    function repeater(interval, restValue) {
+        var valueRef = [restValue];
+        var timerRef = [null];
+        return function (newValue, consumer) {
+            if (newValue != null && newValue != restValue) {
+                valueRef[0] = newValue;
+                timerRef[0] = setInterval(function () { return consumer(valueRef[0]); }, interval);
+            }
+            else {
+                valueRef[0] = restValue;
+                clearInterval(timerRef[0]);
+            }
+            consumer(newValue);
+        };
+    }
+    Gear.repeater = repeater;
     function defaultsTo(value) {
-        return map(function (v) { return v ? v : value; });
+        return map(function (v) { return v != null ? v : value; });
     }
     Gear.defaultsTo = defaultsTo;
+    function choice(truwValue, falseValue) {
+        return map(function (v) { return v ? truwValue : falseValue; });
+    }
+    Gear.choice = choice;
 })(Gear || (Gear = {}));
 var Gear;
 (function (Gear) {
@@ -867,9 +966,20 @@ var Gear;
         var element = document.getElementById(elementId);
         var value = new Gear.Value(element.checked);
         element.onchange = function (e) { return value.value = element.checked; };
-        return value;
+        return value.flow();
     }
     Gear.checkbox = checkbox;
+    function readableValue(elementId) {
+        var element = document.getElementById(elementId);
+        var value = new Gear.Value(element.value);
+        element.onchange = function (e) { return value.value = element.value; };
+        return Gear.Flow.from(value);
+    }
+    Gear.readableValue = readableValue;
+    function elementEvents(elementId) {
+        return ElementEvents.create(elementId);
+    }
+    Gear.elementEvents = elementEvents;
     var ElementEvents = /** @class */ (function () {
         function ElementEvents(element) {
             var _this = this;
@@ -886,8 +996,11 @@ var Gear;
         ElementEvents.prototype.newClick = function () {
             var _this = this;
             var value = pointerPositionValue([0, 0]);
-            this.element.onclick = function (e) { return value.value = _this.relativePos(e); };
-            return value;
+            this.element.onclick = function (e) {
+                value.value = _this.relativePos(e);
+                e.preventDefault();
+            };
+            return value.flow();
         };
         ElementEvents.prototype.newMousePos = function () {
             var _this = this;
@@ -896,7 +1009,7 @@ var Gear;
                 value.value = _this.relativePos(e);
                 e.preventDefault();
             };
-            return value;
+            return value.flow();
         };
         ElementEvents.prototype.newTouchPos = function () {
             var _this = this;
@@ -909,7 +1022,7 @@ var Gear;
                 value.value = touches;
                 e.preventDefault();
             };
-            return value;
+            return value.flow();
         };
         ElementEvents.prototype.relativePos = function (p) {
             var pointerPos = pos(p.pageX, p.pageY);
@@ -918,9 +1031,15 @@ var Gear;
         ElementEvents.prototype.newMouseButtons = function () {
             var _this = this;
             var value = mouseButtonsValue([false, false, false]);
-            this.element.onmousedown = function (e) { return _this.setButton(value, e.button, true); };
-            this.element.onmouseup = function (e) { return _this.setButton(value, e.button, false); };
-            return value;
+            this.element.onmousedown = function (e) {
+                _this.setButton(value, e.button, true);
+                e.preventDefault();
+            };
+            this.element.onmouseup = function (e) {
+                _this.setButton(value, e.button, false);
+                e.preventDefault();
+            };
+            return value.flow();
         };
         ElementEvents.prototype.setButton = function (buttons, button, pressed) {
             buttons.value = updatedButtons(buttons.value, button, pressed);
@@ -996,6 +1115,11 @@ var Gear;
         return Gear.sink(function (text) { element.textContent = text; });
     }
     Gear.text = text;
+    function writeableValue(elementId) {
+        var element = document.getElementById(elementId);
+        return Gear.sink(function (text) { element.value = text; });
+    }
+    Gear.writeableValue = writeableValue;
 })(Gear || (Gear = {}));
 /// <reference path="lazy.ts" />
 /// <reference path="call.ts" />
@@ -1041,6 +1165,392 @@ var Gear;
     }
     Gear.causeEffectLink = causeEffectLink;
 })(Gear || (Gear = {}));
+var WebGLLab;
+(function (WebGLLab) {
+    WebGLLab.samples = [
+        {
+            name: "Basic (Almost Empty)",
+            vertexShader: trimMargin("\n                precision highp float;\n                \n                attribute vec2 vertex;\n\n                uniform float w;\n                \n                void main() {\n                    gl_Position = vec4(vertex, 0.0, w + 2.0);\n                }\n            "),
+            fragmentShader: trimMargin("\n                precision mediump float;\n\n                uniform vec3 color;\n\n                const vec3 one = vec3(1.0, 1.0, 1.0);\n\n                void main() {\n                    gl_FragColor = vec4((color + one) / 2.0, 1.0);\n                }\n            ")
+        },
+        {
+            name: "3D Sinc (Vertex Shader Lighting)",
+            vertexShader: trimMargin("\n                precision highp float;\n        \n                attribute vec2 vertex;\n                uniform float magnitude;\n                uniform float phase;\n                                \n                uniform vec2 eyeDirection;\n                uniform float eyeDistance;\n                uniform float focalRatio;\n                                \n                uniform vec2 lightDirection;\n                uniform float lightDistance;\n                uniform float shininess;\n\n                varying float shade;\n                                \n                const float PI = 3.1415926535897932384626433832795;\n                const float epsilon = 0.01;\n                const vec2 dx = vec2(epsilon, 0.0); \n                const vec2 dy = vec2(0.0, epsilon); \n                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                \n                float sinc(in float x) {\n                    return -epsilon < x && x < epsilon ? 1.0 : sin(x) / x;\n                }\n                                \n                vec3 surface(in vec2 v) {\n                    return vec3(v.y, magnitude * sinc(4.0 * PI * (length(v) + phase)), v.x);\n                }\n                \n                vec3 normalAt(in vec2 v) {\n                    vec3 dsx = surface(v + dx) - surface(v - dx);\n                    vec3 dsy = surface(v + dy) - surface(v - dy);\n                    return normalize(cross(dsx, dsy));\n                }\n\n                vec3 rotate(in vec3 v, in vec2 direction) {\n                    float azimuth  = +PI * direction.x;\n                    float altitude = -PI * direction.y / 2.0;\n                    float sy = sin(azimuth);\n                    float cy = cos(azimuth);\n                    float sx = sin(altitude);\n                    float cx = cos(altitude);\n                    return vec3(\n                        +cy * v.x + sy * sx * v.y + sy * cx * v.z,\n                                         cx * v.y -      sx * v.z,\n                        -sy * v.x + cy * sx * v.y + cy * cx * v.z\n                    );\n                }\n\n                vec3 model(in vec3 v) {\n                    return rotate(v, eyeDirection);\n                }\n                                \n                vec3 view(in vec3 v) {\n                    float distance = adapt(eyeDistance, 1.0, 9.0);\n                    return vec3(v.x, v.y, v.z - distance);\n                }\n                                \n                vec4 project(in vec3 v) {\n                    float f = adapt(focalRatio, 1.0, 9.0);\n                    float z = 1.25 * v.z / f + 2.25;\n                    return vec4(v.xy, -z / f, -v.z / f);\n                }\n                                \n                vec3 lightRayAt(in vec3 v) {\n                    float distance = adapt(lightDistance, 1.0, 9.0);\n                    vec3 lightPosition = rotate(vec3(0.0, 0.0, distance), lightDirection);\n                    return normalize(v - lightPosition);\n                }\n\n                void main() {\n                    vec3 position = model(surface(vertex));\n                    vec3 normal = model(normalAt(vertex));\n                    vec3 lightRay = lightRayAt(position);\n                    position = view(position);\n\n                    float s = adapt(shininess, 0.0, 1.0);\n\n                    vec3 p = normalize(position);\n                    vec3 n = normalize(normal);\n                    vec3 l = normalize(lightRay);\n                \n                    float facing = -dot(p, n);\n                    facing = facing >= 0.0 ? 1.0 : -1.0;\n                    n *= facing;\n                \n                    float cosLN = -dot(l, n);\n                    vec3 r = n * 2.0 * cosLN + l;\n                    float cosRP = -dot(r, p);\n                    float diffuse = (cosLN + 1.0) / 2.0;\n                    diffuse *= diffuse;\n                    float shine = clamp(cosRP, 0.0, 1.0);\n                    shine = pow(shine, 8.0);\n                \n                    shade = (diffuse + shine * s) * facing;\n\n                    gl_Position = project(position);\n                }\n            "),
+            fragmentShader: trimMargin("\n                precision mediump float;\n\n                varying float shade;\n                \n                uniform vec3 color;\n\n                void main() {\n                    gl_FragColor = vec4(abs(shade) * (sign(shade) * color + vec3(1.0)) / 2.0, 1.0);\n                }\n            ")
+        },
+        {
+            name: "3D Sinc (Fragment Shader Lighting)",
+            vertexShader: trimMargin("\n                precision highp float;\n                \n                attribute vec2 vertex;\n                uniform float magnitude;\n                uniform float phase;\n                                \n                uniform vec2 eyeDirection;\n                uniform float eyeDistance;\n                uniform float focalRatio;\n                                \n                uniform vec2 lightDirection;\n                uniform float lightDistance;\n                \n                varying vec3 position;\n                varying vec3 normal;\n                varying vec3 lightRay;\n                                \n                const float PI = 3.1415926535897932384626433832795;\n                const float epsilon = 0.01;\n                const vec2 dx = vec2(epsilon, 0.0); \n                const vec2 dy = vec2(0.0, epsilon); \n                                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                                \n                float sinc(in float x) {\n                    return -epsilon < x && x < epsilon ? 1.0 : sin(x) / x;\n                }\n                                \n                vec3 surface(in vec2 v) {\n                    return vec3(v.y, magnitude * sinc(4.0 * PI * (length(v) + phase)), v.x);\n                }\n                                \n                vec3 normalAt(in vec2 v) {\n                    vec3 dsx = surface(v + dx) - surface(v - dx);\n                    vec3 dsy = surface(v + dy) - surface(v - dy);\n                    return cross(dsx, dsy);\n                }\n                \n                vec3 rotate(in vec3 v, in vec2 direction) {\n                    float azimuth  = +PI * direction.x;\n                    float altitude = -PI * direction.y / 2.0;\n                    float sy = sin(azimuth);\n                    float cy = cos(azimuth);\n                    float sx = sin(altitude);\n                    float cx = cos(altitude);\n                    return vec3(\n                        +cy * v.x + sy * sx * v.y + sy * cx * v.z,\n                                        cx * v.y -      sx * v.z,\n                        -sy * v.x + cy * sx * v.y + cy * cx * v.z\n                    );\n                }\n                \n                vec3 model(in vec3 v) {\n                    return rotate(v, eyeDirection);\n                }\n                                \n                vec3 view(in vec3 v) {\n                    float distance = adapt(eyeDistance, 1.0, 9.0);\n                    return vec3(v.x, v.y, v.z - distance);\n                }\n                                \n                vec4 project(in vec3 v) {\n                    float f = adapt(focalRatio, 1.0, 9.0);\n                    float z = 1.25 * v.z / f + 2.25;\n                    return vec4(v.xy, -z / f, -v.z / f);\n                }\n                                \n                vec3 lightRayAt(in vec3 v) {\n                    float distance = adapt(lightDistance, 1.0, 9.0);\n                    vec3 lightPosition = rotate(vec3(0.0, 0.0, distance), lightDirection);\n                    return v - lightPosition;\n                }\n                \n                void main() {\n                    position = model(surface(vertex));\n                    normal = model(normalAt(vertex));\n                    lightRay = lightRayAt(position);\n                    position = view(position);\n                    gl_Position = project(position);\n                }\n            "),
+            fragmentShader: trimMargin("\n                precision mediump float;\n\n                varying vec3 position;\n                varying vec3 normal;\n                varying vec3 lightRay;\n                                \n                uniform vec3 color;\n                uniform float shininess;\n                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                                \n                void main() {\n                    float s = adapt(shininess, 0.0, 1.0);\n\n                    vec3 p = normalize(position);\n                    vec3 n = normalize(normal);\n                    vec3 l = normalize(lightRay);\n                \n                    float facing = -dot(p, n);\n                    facing = facing >= 0.0 ? 1.0 : -1.0;\n                    n *= facing;\n                \n                    float cosLN = -dot(l, n);\n                    vec3 r = n * 2.0 * cosLN + l;\n                    float cosRP = -dot(r, p);\n                    float diffuse = (cosLN + 1.0) / 2.0;\n                    diffuse *= diffuse;\n                    float shine = clamp(cosRP, 0.0, 1.0);\n                    shine = pow(shine, 8.0);\n                \n                    float shade = diffuse + shine * s;\n                    gl_FragColor = vec4(shade * (facing * color + vec3(1.0)) / 2.0, 1.0);\n                }\n            ")
+        }
+    ];
+    function trimMargin(code) {
+        var lines = code.split("\n");
+        var margin = lines
+            .map(function (line) { return line.search(/[^\s]/); })
+            .filter(function (index) { return index >= 0; })
+            .reduce(function (a, b) { return a < b ? a : b; });
+        return lines
+            .map(function (line) { return line.length > margin ? line.substring(margin) : line; })
+            .reduce(function (a, b) { return a + "\n" + b; })
+            .trim();
+    }
+})(WebGLLab || (WebGLLab = {}));
+var WebGLLab;
+(function (WebGLLab) {
+    var View = /** @class */ (function () {
+        function View(convasId, samples) {
+            this.lod = 50;
+            this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
+            this.cullingEnabled = false;
+            setOptions("shader-template", options(samples));
+            this.context = new Djee.Context(convasId);
+            this.buffer = this.context.newBuffer();
+            this.defaultSample = samples[0];
+        }
+        Object.defineProperty(View.prototype, "mesh", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(false)
+                    .then(Gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
+                    .producer(function (mode) {
+                    _this.mode = mode;
+                    _this.draw();
+                }); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "levelOfDetail", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(_this.lod)
+                    .filter(function (lod) { return lod > 0 && lod <= 100; })
+                    .branch(function (flow) { return flow.to(Gear.sink(function (lod) { return _this.resetBuffer(lod); })); }, function (flow) { return flow.map(function (lod) { return (lod + 1000).toString().substring(1); }).to(Gear.text("lod")); }); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "compiler", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(_this.defaultSample)
+                    .map(function (shaders) { return _this.recompile(shaders); })
+                    .map(function (program) { return _this.reflectOn(program); })
+                    .map(function (reflection) { return _this.programScalars = _this.toScalars(reflection); })
+                    .branch(function (flow) { return flow.producer(function (scalars) { return _this.draw(); }); }, function (flow) { return flow.producer(function (scalars) { return setOptions("mouse-x", __spreadArrays([noneOption()], options(scalars))); }); }, function (flow) { return flow.producer(function (scalars) { return setOptions("mouse-y", __spreadArrays([noneOption()], options(scalars))); }); }); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "editor", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(_this.defaultSample)
+                    .branch(function (flow) { return flow.map(function (template) { return template.vertexShader; }).to(Gear.writeableValue("vertex-shader")); }, function (flow) { return flow.map(function (template) { return template.fragmentShader; }).to(Gear.writeableValue("fragment-shader")); }); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "xBinding", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(0)
+                    .map(function (index) { return _this.xScalar = index >= 0 ? _this.programScalars[index] : null; })
+                    .map(function (scalar) { return scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : ""; })
+                    .to(Gear.text("mouse-x-val")); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "yBinding", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow
+                    .defaultsTo(0)
+                    .map(function (index) { return _this.yScalar = index >= 0 ? _this.programScalars[index] : null; })
+                    .map(function (scalar) { return scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : ""; })
+                    .to(Gear.text("mouse-y-val")); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "xy", {
+            get: function () {
+                var _this = this;
+                return Gear.lazy(function () { return Gear.sinkFlow(function (flow) { return flow.defaultsTo([0, 0]).producer(function (_a) {
+                    var x = _a[0], y = _a[1];
+                    _this.setValue("mouse-x-val", _this.xScalar, x);
+                    _this.setValue("mouse-y-val", _this.yScalar, y);
+                    _this.draw();
+                }); }); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        View.prototype.recompile = function (shaders) {
+            try {
+                if (this.program != null) {
+                    this.program.delete();
+                }
+                this.program = this.context.link([
+                    this.context.vertexShader(shaders.vertexShader),
+                    this.context.fragmentShader(shaders.fragmentShader),
+                ]);
+                this.program.use();
+                return this.program;
+            }
+            catch (e) {
+                alert(e);
+            }
+        };
+        View.prototype.setValue = function (boundElement, scalar, value) {
+            if (scalar != null) {
+                var data = scalar.uniform.data;
+                data[scalar.index] = value;
+                scalar.uniform.data = data;
+                Gear.text(boundElement).consumer(round3(value).toString());
+            }
+            else {
+                Gear.text(boundElement).consumer("");
+            }
+        };
+        View.prototype.reflectOn = function (program) {
+            return {
+                program: program,
+                attributes: program.attributes.filter(function (attribute) { return attribute.size == 1; }),
+                uniforms: program.uniforms.filter(function (uniform) { return uniform.size == 1; })
+            };
+        };
+        View.prototype.toScalars = function (reflection) {
+            var result = [];
+            for (var _i = 0, _a = reflection.attributes; _i < _a.length; _i++) {
+                var attribute = _a[_i];
+                var size = attribute.dimensions;
+                var glAttribute = reflection.program.locateAttribute(attribute.name, size);
+                glAttribute.pointTo(this.buffer, 4);
+            }
+            for (var _b = 0, _c = reflection.uniforms; _b < _c.length; _b++) {
+                var uniform = _c[_b];
+                var dimensions = uniform.dimensions;
+                var glUniform = reflection.program.locateUniform(uniform.name, dimensions);
+                var data = [];
+                for (var j = 0; j < dimensions; j++) {
+                    var scalar = {
+                        uniform: glUniform,
+                        index: j,
+                        name: uniform.name + (dimensions > 1 ? "[" + j + "]" : "")
+                    };
+                    data.push(0);
+                    result.push(scalar);
+                }
+                glUniform.data = data;
+            }
+            return result.sort(function (s1, s2) {
+                var sizeComparison = s1.uniform.size - s2.uniform.size;
+                return sizeComparison != 0 ? sizeComparison : s1.name.localeCompare(s2.name);
+            });
+        };
+        View.prototype.resetBuffer = function (lod) {
+            var data = [];
+            for (var y = 0; y < lod; y++) {
+                for (var x = 0; x <= lod; x++) {
+                    data.push(2 * x / lod - 1.0, 2 * (y + 1) / lod - 1.0, 0, 1);
+                    data.push(2 * x / lod - 1.0, 2 * y / lod - 1.0, 0, 1);
+                }
+            }
+            this.lod = lod;
+            this.buffer.data = data;
+            this.draw();
+        };
+        View.prototype.draw = function () {
+            if (this.program) {
+                var gl = this.context.gl;
+                gl.frontFace(gl.CCW);
+                gl.cullFace(gl.BACK);
+                gl.enable(gl.DEPTH_TEST);
+                if (this.cullingEnabled) {
+                    gl.enable(gl.CULL_FACE);
+                }
+                else {
+                    gl.disable(gl.CULL_FACE);
+                }
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                var rowVertexCount = 2 * (this.lod + 1);
+                for (var y = 0; y < this.lod; y++) {
+                    gl.drawArrays(this.mode, y * rowVertexCount, rowVertexCount);
+                }
+            }
+        };
+        return View;
+    }());
+    WebGLLab.View = View;
+    function setOptions(elementId, options) {
+        var element = document.getElementById(elementId);
+        element.innerHTML = "";
+        options.forEach(function (option) { return element.add(option); });
+    }
+    function options(values) {
+        return values.map(function (value, i) { return new Option(value.name, i.toString()); });
+    }
+    function noneOption() {
+        return new Option("NONE", "-1");
+    }
+    function round3(n) {
+        return Math.round(n * 1000) / 1000;
+    }
+})(WebGLLab || (WebGLLab = {}));
+var WebGLLab;
+(function (WebGLLab) {
+    var Controller = /** @class */ (function () {
+        function Controller() {
+        }
+        Object.defineProperty(Controller.prototype, "program", {
+            get: function () {
+                return Gear.lazy(function () { return programFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "mesh", {
+            get: function () {
+                return Gear.lazy(function () { return Gear.checkbox("mesh"); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "levelOfDetails", {
+            get: function () {
+                return Gear.lazy(function () { return levelOfDetailsFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "programSample", {
+            get: function () {
+                return Gear.lazy(function () { return programSampleFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "mouseXBinding", {
+            get: function () {
+                return Gear.lazy(function () { return mouseXBindingFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "mouseYBinding", {
+            get: function () {
+                return Gear.lazy(function () { return mouseYBindingFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Controller.prototype, "mouseXY", {
+            get: function () {
+                return Gear.lazy(function () { return mouseXYFlow(); });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return Controller;
+    }());
+    WebGLLab.Controller = Controller;
+    function programFlow() {
+        var compileBtn = Gear.ElementEvents.create("compile-button");
+        return compileBtn.click.map(function (pos) { return program(); });
+    }
+    function program() {
+        var vertexShaderElement = document.getElementById("vertex-shader");
+        var fragmentShaderElement = document.getElementById("fragment-shader");
+        return {
+            name: "Program",
+            vertexShader: vertexShaderElement.value,
+            fragmentShader: fragmentShaderElement.value
+        };
+    }
+    function levelOfDetailsFlow() {
+        var inc = Gear.elementEvents("lod-inc").mouseButons
+            .map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        })
+            .map(function (pressed) { return pressed ? +1 : 0; });
+        var dec = Gear.elementEvents("lod-dec").mouseButons
+            .map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        })
+            .map(function (pressed) { return pressed ? -1 : 0; });
+        return Gear.Flow.from(inc, dec)
+            .then(Gear.repeater(128, 0))
+            .reduce(function (i, lod) { return clamp(lod + i, 0, 100); }, 50);
+    }
+    function programSampleFlow() {
+        return Gear.readableValue("shader-template")
+            .map(function (value) { return parseInt(value); });
+    }
+    function mouseXBindingFlow() {
+        return Gear.readableValue("mouse-x")
+            .map(function (value) { return parseInt(value); });
+    }
+    function mouseYBindingFlow() {
+        return Gear.readableValue("mouse-y")
+            .map(function (value) { return parseInt(value); });
+    }
+    function mouseXYFlow() {
+        var canvas = Gear.ElementEvents.create("canvas-gl");
+        var dragEnabled = canvas.mouseButons.map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        }).then(Gear.defaultsTo(false));
+        return canvas.mousePos
+            .then(Gear.flowSwitch(dragEnabled))
+            .map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight];
+        });
+    }
+    function clamp(n, min, max) {
+        return n < min ? min : (n > max ? max : n);
+    }
+})(WebGLLab || (WebGLLab = {}));
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="samples.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+var WebGLLab;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="samples.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+(function (WebGLLab) {
+    function init() {
+        window.onload = function (e) { return doInit(); };
+    }
+    WebGLLab.init = init;
+    function doInit() {
+        var controller = new WebGLLab.Controller();
+        var view = new WebGLLab.View("canvas-gl", WebGLLab.samples);
+        controller.levelOfDetails().to(view.levelOfDetail());
+        controller.programSample().map(function (index) { return WebGLLab.samples[index]; }).to(view.editor());
+        controller.program().to(view.compiler());
+        controller.mesh().to(view.mesh());
+        controller.mouseXBinding().to(view.xBinding());
+        controller.mouseYBinding().to(view.yBinding());
+        controller.mouseXY().to(view.xy());
+    }
+})(WebGLLab || (WebGLLab = {}));
 var GasketTwist2;
 (function (GasketTwist2) {
     var defaultSierpinski = {
@@ -1055,7 +1565,7 @@ var GasketTwist2;
         if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
         if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
         var sierpinski = __assign({}, defaultSierpinski);
-        return from(from(depth).reduce(function (d, s) { return s = __assign({}, s, { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign({}, s, { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign({}, s, { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign({}, s, { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
+        return from(from(depth).reduce(function (d, s) { return s = __assign(__assign({}, s), { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign(__assign({}, s), { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign(__assign({}, s), { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign(__assign({}, s), { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
     }
     GasketTwist2.sierpinski = sierpinski;
     function from() {
@@ -1082,7 +1592,7 @@ var GasketTwist2;
     GasketTwist2.tesselatedTriangle = tesselatedTriangle;
     function doTesselateTriangle(a, b, c, depth, corners, centers) {
         if (depth < 1) {
-            corners.push.apply(corners, a.coordinates.concat(b.coordinates, c.coordinates));
+            corners.push.apply(corners, __spreadArrays(a.coordinates, b.coordinates, c.coordinates));
         }
         else {
             var ab = a.mix(b, 0.5);
@@ -1119,9 +1629,9 @@ var GasketTwist2;
             this.centersBuffer = this.context.newBuffer();
             this.context.gl.clearColor(1, 1, 1, 1);
             this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
-            this.depth = Gear.sinkFlow(function (flow) { return flow.map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
-            this.twist = Gear.sinkFlow(function (flow) { return flow.branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
-            this.scale = Gear.sinkFlow(function (flow) { return flow.branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
+            this.depth = Gear.sinkFlow(function (flow) { return flow.defaultsTo(5).map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
+            this.twist = Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
+            this.scale = Gear.sinkFlow(function (flow) { return flow.defaultsTo(1).branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
             this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
             this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
         }
@@ -1151,16 +1661,19 @@ var GasketTwist2;
             this.draw();
         };
         View.prototype.draw = function () {
-            var gl = this.context.gl;
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            if (this.mustShowCorners) {
-                this.shaderPosition.pointTo(this.cornersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
-            }
-            if (this.mustShowCenters) {
-                this.shaderPosition.pointTo(this.centersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
-            }
+            var _this = this;
+            setTimeout(function () {
+                var gl = _this.context.gl;
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (_this.mustShowCorners) {
+                    _this.shaderPosition.pointTo(_this.cornersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.cornersBuffer.data.length / _this.stride);
+                }
+                if (_this.mustShowCenters) {
+                    _this.shaderPosition.pointTo(_this.centersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.centersBuffer.data.length / _this.stride);
+                }
+            });
         };
         return View;
     }());
@@ -1177,11 +1690,11 @@ var GasketTwist2;
             var scaleEnabled = Gear.checkbox(scaleCheckboxId);
             this.showCorners = Gear.checkbox(cornersCheckboxId);
             this.showCenters = Gear.checkbox(centersCheckboxId);
-            var dragEnabled = Gear.Flow.from(canvas.mouseButons).map(function (_a) {
+            var dragEnabled = canvas.mouseButons.map(function (_a) {
                 var l = _a[0], m = _a[1], r = _a[2];
                 return l || m || r;
             });
-            var mousePos = Gear.Flow.from(Gear.Flow.from(canvas.mousePos).then(Gear.flowSwitch(dragEnabled)), Gear.Flow.from(canvas.touchPos).map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+            var mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
             this.twist = mousePos
                 .map(function (_a) {
                 var x = _a[0], y = _a[1];
@@ -1195,7 +1708,7 @@ var GasketTwist2;
             })
                 .then(Gear.flowSwitch(scaleEnabled));
             ;
-            this.depth = Gear.Flow.from(Gear.Flow.from(depthDecButton.click).map(function () { return -1; }), Gear.Flow.from(depthIncButton.click).map(function () { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
+            this.depth = Gear.Flow.from(depthDecButton.click.map(function (e) { return -1; }), depthIncButton.click.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
         }
         return Controller;
     }());
@@ -1215,15 +1728,17 @@ var GasketTwist2;
 /// <reference path="view.ts" />
 /// <reference path="controller.ts" />
 (function (GasketTwist2) {
-    window.onload = function (e) {
-        var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
-        var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
-        controller.depth.to(view.depth);
-        controller.twist.to(view.twist);
-        controller.scale.to(view.scale);
-        controller.showCorners.to(view.showCorners);
-        controller.showCenters.to(view.showCenters);
-        GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
-    };
+    function init() {
+        window.onload = function (e) {
+            var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
+            var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
+            controller.depth.to(view.depth);
+            controller.twist.to(view.twist);
+            controller.scale.to(view.scale);
+            controller.showCorners.to(view.showCorners);
+            controller.showCenters.to(view.showCenters);
+            GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
+        };
+    }
+    GasketTwist2.init = init;
 })(GasketTwist2 || (GasketTwist2 = {}));
-//# sourceMappingURL=ghadeeras.js.map

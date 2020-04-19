@@ -5,4 +5,9 @@ module Gear {
         return sink(text => { element.textContent = text });
     }
 
+    export function writeableValue(elementId: string): Sink<string> {
+        const element = document.getElementById(elementId) as HTMLInputElement;
+        return sink(text => { element.value = text });
+    }
+
 }

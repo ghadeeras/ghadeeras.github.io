@@ -3,11 +3,22 @@ module Gear {
     export type PointerPosition = [number, number];
     export type MouseButtons = [boolean, boolean, boolean];
 
-    export function checkbox(elementId: string): Source<boolean> {
+    export function checkbox(elementId: string): Flow<boolean> {
         const element = document.getElementById(elementId) as HTMLInputElement;
         const value = new Value(element.checked);
         element.onchange = e => value.value = element.checked;
-        return value;
+        return value.flow();
+    }
+
+    export function readableValue(elementId: string): Flow<string> {
+        const element = document.getElementById(elementId) as HTMLInputElement;
+        const value = new Value(element.value);
+        element.onchange = e => value.value = element.value;
+        return Flow.from(value);
+    }
+
+    export function elementEvents(elementId: string) {
+        return ElementEvents.create(elementId);
     }
 
     export class ElementEvents {
@@ -15,10 +26,10 @@ module Gear {
         readonly element: HTMLElement;
         readonly elementPos: PointerPosition;
 
-        private readonly lazyClick: Supplier<Source<PointerPosition>>;
-        private readonly lazyMousePos: Supplier<Source<PointerPosition>>;
-        private readonly lazyTouchPos: Supplier<Source<PointerPosition[]>>;
-        private readonly lazyMouseButtons: Supplier<Source<MouseButtons>>;
+        private readonly lazyClick: Supplier<Flow<PointerPosition>>;
+        private readonly lazyMousePos: Supplier<Flow<PointerPosition>>;
+        private readonly lazyTouchPos: Supplier<Flow<PointerPosition[]>>;
+        private readonly lazyMouseButtons: Supplier<Flow<MouseButtons>>;
 
         constructor(element: HTMLElement) {
             this.element = element;
@@ -33,22 +44,25 @@ module Gear {
             return new ElementEvents(this.element.parentElement);
         }
 
-        private newClick(): Source<PointerPosition> {
+        private newClick(): Flow<PointerPosition> {
             const value = pointerPositionValue([0, 0]);
-            this.element.onclick = e => value.value = this.relativePos(e);
-            return value;
+            this.element.onclick = e => {
+                value.value = this.relativePos(e);
+                e.preventDefault();
+            }
+            return value.flow();
         }
     
-        private newMousePos(): Source<PointerPosition> {
+        private newMousePos(): Flow<PointerPosition> {
             const value = pointerPositionValue([0, 0]);
             this.element.onmousemove = e => {
                 value.value = this.relativePos(e);
                 e.preventDefault();
             };
-            return value;
+            return value.flow();
         }
 
-        private newTouchPos(): Source<PointerPosition[]> {
+        private newTouchPos(): Flow<PointerPosition[]> {
             const value: Value<PointerPosition[]> = new Value([]);
             this.element.ontouchmove = this.element.ontouchstart = e => {
                 const touches: PointerPosition[] = [];
@@ -58,7 +72,7 @@ module Gear {
                 value.value = touches;
                 e.preventDefault();
             };
-            return value;
+            return value.flow();
         }
 
         private relativePos(p: Pointer) {
@@ -66,11 +80,17 @@ module Gear {
             return sub(pointerPos, this.elementPos);
         }
 
-        private newMouseButtons(): Source<MouseButtons> {
+        private newMouseButtons(): Flow<MouseButtons> {
             const value = mouseButtonsValue([false, false, false]);
-            this.element.onmousedown = e => this.setButton(value, e.button, true);
-            this.element.onmouseup = e => this.setButton(value, e.button, false);
-            return value;
+            this.element.onmousedown = e => {
+                this.setButton(value, e.button, true);
+                e.preventDefault();
+            }
+            this.element.onmouseup = e => {
+                this.setButton(value, e.button, false);
+                e.preventDefault();
+            }
+            return value.flow();
         }
 
         private setButton(buttons: Value<MouseButtons>, button: number, pressed: boolean) {

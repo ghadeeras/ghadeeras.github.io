@@ -26,14 +26,33 @@ module Gear {
         }
     }
 
-    export function flowSwitch<T>(on: Source<boolean>): Effect<T, T> {
-        const onRef: boolean[] = [true];
+    export function flowSwitch<T>(on: Source<boolean>, initialState: boolean = false): Effect<T, T> {
+        const onRef: boolean[] = [initialState];
         on.to(sink(value => { onRef[0] = value }));
         return filter(value => onRef[0]);
     }
 
+    export function repeater<T>(interval: number, restValue: T): Effect<T, T> {
+        const valueRef: T[] = [restValue];
+        const timerRef: number[] = [null];
+        return (newValue, consumer) => {
+            if (newValue != null && newValue != restValue) {
+                valueRef[0] = newValue;
+                timerRef[0] = setInterval(() => consumer(valueRef[0]), interval);
+            } else {
+                valueRef[0] = restValue;
+                clearInterval(timerRef[0])
+            }
+            consumer(newValue);
+        };
+    }
+
     export function defaultsTo<T>(value: T): Effect<T, T> {
-        return map(v => v ? v : value);
+        return map(v => v != null ? v : value);
+    }
+
+    export function choice<T>(truwValue: T, falseValue: T): Effect<boolean, T> {
+        return map(v => v ? truwValue : falseValue);
     }
 
 }

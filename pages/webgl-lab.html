@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>WebGL Lab</title>
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
+    <script src="../gen/ghadeeras.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        WebGLLab.init();
+    </script>
+</head>
+
+    <div id="head">
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
+    </div>
+
+    <div id="content">
+
+        <div id="side">
+
+            <div class="section">
+                <strong>WebGL Lab</strong>
+            </div>
+
+            <div>
+                <p>
+                    <div>Shaders Template:</div>
+                    <select id="shader-template" name="shader-template"></select>
+                </p>
+                <p>
+                    <div>Vertex Shader:</div>
+                    <textarea id="vertex-shader" name="vertex-shader" style="width: 100%;" rows="12" wrap="off"></textarea>
+                </p>
+                <p>
+                    <div>Fragment Shader:</div>
+                    <textarea id="fragment-shader" name="fragment-shader" style="width: 100%;" rows="12" wrap="off"></textarea>
+                </p>
+                <p>
+                    <button id="compile-button">Compile & Link</button>
+                </p>
+            </div>
+
+        </div>
+
+        <div id="main">
+            <div class="view">
+                <canvas id="canvas-gl" width="640" height="640">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+            </div>
+        </div>
+
+        <div id="other-side">
+
+            <div class="section">
+                <strong>Controls</strong>
+            </div>
+    
+            <div>
+                <p>
+                    <span>Mesh: </span><input type="checkbox" id="mesh" name="mesh" />
+                </p>
+                <p>
+                    <span>LOD: </span>
+                    <button id="lod-inc">+</button>
+                    <span id="lod">5</span>
+                    <button id="lod-dec">-</button>
+                </p>
+                <p>
+                    <div>Bind Mouse X to: <select id="mouse-x" name="mouse-x"></select> = </div><span id="mouse-x-val">0</span>&nbsp;
+                </p>
+                <p>
+                    <div>Bind Mouse Y to: <select id="mouse-y" name="mouse-y"></select> = </div><span id="mouse-y-val">0</span>&nbsp;
+                </p>
+            </div>
+    
+        </div>
+    
+    </div>
+
+</body>
+
+</html>

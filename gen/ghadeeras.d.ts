@@ -11,9 +11,9 @@ declare module Space {
         scale(factor: number): Vector;
         dot(v: Vector): number;
         mix(v: Vector, weight: number): Vector;
-        readonly lengthSquared: number;
-        readonly length: number;
-        readonly unit: Vector;
+        get lengthSquared(): number;
+        get length(): number;
+        get unit(): Vector;
         angle(v: Vector): number;
         c(...indexes: number[]): Vector;
         cross(v: Vector): Vector;
@@ -35,9 +35,9 @@ declare module Djee {
     }
     const flatteners: {
         composite: <S, C, P>(...flatteners: Flattener<S, P>[]) => Flattener<S, P>;
-        primitive: <S, P>(getter: Getter<S, P>, setter: Setter<S, P>) => Flattener<S, P>;
-        array: <S, P>(getter: Getter<S, P[]>, size: number) => Flattener<S, P>;
-        child: <S, C, P>(getter: Getter<S, C>, flattener: Flattener<C, P>) => Flattener<S, P>;
+        primitive: <S_1, P_1>(getter: Getter<S_1, P_1>, setter: Setter<S_1, P_1>) => Flattener<S_1, P_1>;
+        array: <S_2, P_2>(getter: Getter<S_2, P_2[]>, size: number) => Flattener<S_2, P_2>;
+        child: <S_3, C_1, P_3>(getter: Getter<S_3, C_1>, flattener: Flattener<C_1, P_3>) => Flattener<S_3, P_3>;
     };
 }
 declare module Djee {
@@ -50,6 +50,8 @@ declare module Djee {
         private doGetContext;
         with<T>(glCode: (gl: WebGLRenderingContext) => T): T;
         shaderFromElement(scriptId: string): Shader;
+        vertexShader(code: string): Shader;
+        fragmentShader(code: string): Shader;
         shader(type: ShaderType, code: string): Shader;
         linkFromElements(scriptIds: string[]): Program;
         link(shaders: Shader[]): Program;
@@ -75,6 +77,12 @@ declare module Djee {
     }
 }
 declare module Djee {
+    type Variable = {
+        name: string;
+        type: number;
+        dimensions: number;
+        size: number;
+    };
     class Program {
         readonly context: Context;
         readonly shaders: Shader[];
@@ -85,6 +93,10 @@ declare module Djee {
         use(): void;
         locateAttribute(name: string, size: number): Attribute;
         locateUniform(name: string, size: number): Uniform;
+        get uniforms(): Variable[];
+        get attributes(): Variable[];
+        private activeInfos;
+        private dimensions;
     }
 }
 declare module Djee {
@@ -107,7 +119,8 @@ declare module Djee {
         private _data;
         constructor(program: Program, name: string, size: number);
         private getSetter;
-        data: number[];
+        get data(): number[];
+        set data(data: number[]);
     }
 }
 declare module Djee {
@@ -117,7 +130,8 @@ declare module Djee {
         private _data;
         constructor(context: Context);
         bind<T>(glCode: (gl: WebGLRenderingContext) => T): T;
-        data: number[];
+        get data(): number[];
+        set data(data: number[]);
     }
 }
 declare module Djee {
@@ -145,20 +159,21 @@ declare module Gear {
         readonly consumer: Consumer<T>;
     }
     abstract class BaseSource<T> implements Source<T> {
-        abstract readonly producer: Producer<T>;
+        abstract get producer(): Producer<T>;
+        flow(): Flow<T>;
         to(...sinks: Sink<T>[]): void;
     }
     class CompositeSource<T> extends BaseSource<T> {
         private readonly sources;
         private readonly _producer;
         constructor(sources: Source<T>[]);
-        readonly producer: Producer<T>;
+        get producer(): Producer<T>;
     }
     class CompositeSink<T> implements Sink<T> {
         private readonly sinks;
         private readonly _consumer;
         constructor(sinks: Sink<T>[]);
-        readonly consumer: Consumer<T>;
+        get consumer(): Consumer<T>;
     }
     class Flow<T> extends BaseSource<T> {
         private readonly output;
@@ -166,9 +181,11 @@ declare module Gear {
         filter(predicate: Predicate<T>): Flow<T>;
         map<R>(mapper: Mapper<T, R>): Flow<R>;
         reduce<R>(reducer: Reducer<T, R>, identity: R): Flow<R>;
-        then<R>(effect: Effect<T, R>): Flow<R>;
+        defaultsTo(value: T): Flow<T>;
+        then<R>(effect: Effect<T, R>, defaultValue?: T): Flow<R>;
+        through<R>(effect: Effect<T, R>): Flow<R>;
         branch(...flowBuilders: Consumer<Flow<T>>[]): this;
-        readonly producer: Consumer<Consumer<T>>;
+        get producer(): Consumer<Consumer<T>>;
         static from<T>(...sources: Source<T>[]): Flow<T>;
     }
     function consumerFlow<T>(flowBuilder: Consumer<Flow<T>>): Consumer<T>;
@@ -180,20 +197,21 @@ declare module Gear {
         private _value;
         private readonly consumers;
         constructor(_value?: T);
-        value: T;
+        get value(): T;
+        set value(newValue: T);
         private setValue;
         supply(...consumers: Consumer<T>[]): this;
         private notify;
-        readonly consumer: Consumer<T>;
-        readonly producer: Producer<T>;
+        get consumer(): Consumer<T>;
+        get producer(): Producer<T>;
         static setOf<C>(...values: Value<C>[]): ValueSet<C>;
     }
     class ValueSet<T> extends BaseSource<T> implements Sink<T> {
         private readonly source;
         private readonly sink;
         constructor(values: Value<T>[]);
-        readonly producer: Producer<T>;
-        readonly consumer: Consumer<T>;
+        get producer(): Producer<T>;
+        get consumer(): Consumer<T>;
     }
 }
 declare module Gear {
@@ -201,13 +219,16 @@ declare module Gear {
     function map<T, R>(mapper: Mapper<T, R>): Effect<T, R>;
     function filter<T>(predicate: Predicate<T>): Effect<T, T>;
     function later<T>(): Effect<T, T>;
-    function flowSwitch<T>(on: Source<boolean>): Effect<T, T>;
+    function flowSwitch<T>(on: Source<boolean>, initialState?: boolean): Effect<T, T>;
+    function repeater<T>(interval: number, restValue: T): Effect<T, T>;
     function defaultsTo<T>(value: T): Effect<T, T>;
 }
 declare module Gear {
     type PointerPosition = [number, number];
     type MouseButtons = [boolean, boolean, boolean];
-    function checkbox(elementId: string): Source<boolean>;
+    function checkbox(elementId: string): Flow<boolean>;
+    function readableValue(elementId: string): Flow<string>;
+    function elementEvents(elementId: string): ElementEvents;
     class ElementEvents {
         readonly element: HTMLElement;
         readonly elementPos: PointerPosition;
@@ -223,15 +244,16 @@ declare module Gear {
         private relativePos;
         private newMouseButtons;
         private setButton;
-        readonly click: Source<[number, number]>;
-        readonly mousePos: Source<[number, number]>;
-        readonly touchPos: Source<[number, number][]>;
-        readonly mouseButons: Source<[boolean, boolean, boolean]>;
+        get click(): Flow<PointerPosition>;
+        get mousePos(): Flow<PointerPosition>;
+        get touchPos(): Flow<PointerPosition[]>;
+        get mouseButons(): Flow<MouseButtons>;
         static create(elementId: string): ElementEvents;
     }
 }
 declare module Gear {
     function text(elementId: string): Sink<string>;
+    function writeableValue(elementId: string): Sink<string>;
 }
 declare module Gear {
     type Callable = () => void;
@@ -245,6 +267,59 @@ declare module Gear {
     function intact<T>(): Mapper<T, T>;
     function compositeConsumer<T>(...consumers: Consumer<T>[]): Consumer<T>;
     function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect<C, E>, effectConsumer: Consumer<E>): void;
+}
+declare module WebGLLab {
+    type ProgramSample = {
+        name: string;
+        vertexShader: string;
+        fragmentShader: string;
+    };
+    const samples: ProgramSample[];
+}
+declare module WebGLLab {
+    type Named = {
+        name: string;
+    };
+    class View {
+        private defaultShaders;
+        private context;
+        private buffer;
+        private program;
+        private lod;
+        private mode;
+        private cullingEnabled;
+        private programScalars;
+        private xScalar;
+        private yScalar;
+        constructor(convasId: string, templates: ProgramSample[]);
+        get mesh(): Gear.Supplier<Gear.Sink<boolean>>;
+        get levelOfDetail(): Gear.Supplier<Gear.Sink<number>>;
+        get compiler(): Gear.Supplier<Gear.Sink<ProgramSample>>;
+        get editor(): Gear.Supplier<Gear.Sink<ProgramSample>>;
+        get xBinding(): Gear.Supplier<Gear.Sink<number>>;
+        get yBinding(): Gear.Supplier<Gear.Sink<number>>;
+        get xy(): Gear.Supplier<Gear.Sink<[number, number]>>;
+        private recompile;
+        private setValue;
+        private reflectOn;
+        private toScalars;
+        private resetBuffer;
+        private draw;
+    }
+}
+declare module WebGLLab {
+    class Controller {
+        get program(): Gear.Supplier<Gear.Flow<ProgramSample>>;
+        get mesh(): Gear.Supplier<Gear.Flow<boolean>>;
+        get levelOfDetails(): Gear.Supplier<Gear.Flow<number>>;
+        get programSample(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseXBinding(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseYBinding(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseXY(): Gear.Supplier<Gear.Flow<number[]>>;
+    }
+}
+declare module WebGLLab {
+    function init(): void;
 }
 declare module GasketTwist2 {
     interface FlattenedSierpinski {
@@ -296,5 +371,6 @@ declare module GasketTwist2 {
     }
 }
 declare module GasketTwist2 {
+    function init(): void;
 }
 //# sourceMappingURL=ghadeeras.d.ts.map

@@ -26,10 +26,10 @@ module GasketTwist2 {
             this.showCorners = Gear.checkbox(cornersCheckboxId);
             this.showCenters = Gear.checkbox(centersCheckboxId);
 
-            const dragEnabled = Gear.Flow.from(canvas.mouseButons).map(([l, m, r]) => l || m || r);
+            const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l || m || r);
             const mousePos = Gear.Flow.from(
-                Gear.Flow.from(canvas.mousePos).then(Gear.flowSwitch(dragEnabled)), 
-                Gear.Flow.from(canvas.touchPos).map(ps => ps[0])
+                canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), 
+                canvas.touchPos.map(ps => ps[0])
             ).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
             this.twist = mousePos
                 .map(([x, y]) => Math.PI * (4 * x / canvas.element.clientWidth - 2))
@@ -39,8 +39,8 @@ module GasketTwist2 {
                 .then(Gear.flowSwitch(scaleEnabled));;
             
             this.depth = Gear.Flow.from(
-                Gear.Flow.from(depthDecButton.click).map(() => -1),
-                Gear.Flow.from(depthIncButton.click).map(() => 1),
+                depthDecButton.click.map(e => -1),
+                depthIncButton.click.map(e => 1),
             ).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);
         }
 

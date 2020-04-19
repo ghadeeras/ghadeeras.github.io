@@ -23,13 +23,17 @@ module Gear {
 
         supply(...consumers: Consumer<T>[]) {
             this.consumers.push(...consumers);
-            this.notify(consumers);
+            try {
+                this.notify(consumers);
+            } catch (e) {
+                console.log(e);
+            }
             return this;
         }
 
         private notify(consumers: Consumer<T>[]) {
             for (const consumer of consumers) {
-                consumer(this.value);
+                consumer(this._value);
             }
         }
 
