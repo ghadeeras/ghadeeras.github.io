@@ -25,8 +25,8 @@
 
             <div>
                 <p>
-                    <div>Shaders Template:</div>
-                    <select id="shader-template" name="shader-template"></select>
+                    <div>Shaders Sample:</div>
+                    <select id="shader-sample" name="shader-sample"></select>
                 </p>
                 <p>
                     <div>Vertex Shader:</div>
@@ -64,7 +64,7 @@
                 <p>
                     <span>LOD: </span>
                     <button id="lod-inc">+</button>
-                    <span id="lod">5</span>
+                    <span id="lod">50</span>
                     <button id="lod-dec">-</button>
                 </p>
                 <p>
@@ -73,6 +73,29 @@
                 <p>
                     <div>Bind Mouse Y to: <select id="mouse-y" name="mouse-y"></select> = </div><span id="mouse-y-val">0</span>&nbsp;
                 </p>
+            </div>
+    
+            <div class="section">
+                <strong>Help</strong>
+            </div>
+
+            <div>
+                <p>This is a simple utility page to experiment with WebGL Shaders:
+                <ul>
+                    <li>In the left-side section, you could select from few sample shaders. 
+                        Once selected, their code will appear in the text areas.</li>
+                    <li>You could edit the code, if you are familiar with GLSL ES 2.0.</li>
+                    <li>To make the shaders effective, press the "Compile & Link" buton. 
+                        This will also refill the drop-downs for mouse position bindings.</li>
+                    <li>In the right-side section, you could control the rendering mode (mesh vs filled surface).</li>
+                    <li>You could also control the level of detail (LOD in 1 .. 100).</li>
+                    <li>You could also select which <b>uniform</b> variable (declared in the shaders code) is bound to which mouse coordinate.</li>
+                    <li>If you "drag" the mouse over the middle section (the square section), 
+                        the bound uniform variables will change according to the mouse position, and the scene will be animated accordingly.</li>
+                    <li>Some unifrom variables are multidimensional. For example, if unifrom variable myVariable has two dimensions,
+                        it will appear in the drop-downs as myVariable[0] and myVariable[1].
+                    </li>
+                </ul></p>
             </div>
     
         </div>

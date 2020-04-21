@@ -31,7 +31,7 @@ module WebGLLab {
         private yScalar: Scalar;
         
         constructor(convasId: string, samples: ProgramSample[]) {
-            setOptions("shader-template", options(samples));
+            setOptions("shader-sample", options(samples));
             this.context = new Djee.Context(convasId);
             this.buffer = this.context.newBuffer();
             this.defaultSample = samples[0];

@@ -60,7 +60,7 @@ module WebGLLab {
     }
 
     function programSampleFlow() {
-        return Gear.readableValue("shader-template")
+        return Gear.readableValue("shader-sample")
             .map(value => parseInt(value))
     }
     

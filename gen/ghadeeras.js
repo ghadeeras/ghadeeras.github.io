@@ -1203,7 +1203,7 @@ var WebGLLab;
             this.lod = 50;
             this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
             this.cullingEnabled = false;
-            setOptions("shader-template", options(samples));
+            setOptions("shader-sample", options(samples));
             this.context = new Djee.Context(convasId);
             this.buffer = this.context.newBuffer();
             this.defaultSample = samples[0];
@@ -1493,7 +1493,7 @@ var WebGLLab;
             .reduce(function (i, lod) { return clamp(lod + i, 0, 100); }, 50);
     }
     function programSampleFlow() {
-        return Gear.readableValue("shader-template")
+        return Gear.readableValue("shader-sample")
             .map(function (value) { return parseInt(value); });
     }
     function mouseXBindingFlow() {
