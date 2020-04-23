@@ -21,9 +21,7 @@ module WebGLLab {
                     gl_Position = vec4(vertex, 0.0, w + 2.0);
                 }
             `),
-            fragmentShader: trimMargin(`
-                precision mediump float;
-
+            fragmentShader: fragmentShader(`
                 uniform vec3 color;
 
                 const vec3 one = vec3(1.0, 1.0, 1.0);
@@ -139,9 +137,7 @@ module WebGLLab {
                     gl_Position = project(position);
                 }
             `),
-            fragmentShader: trimMargin(`
-                precision mediump float;
-
+            fragmentShader: fragmentShader(`
                 varying float shade;
                 
                 uniform vec3 color;
@@ -237,9 +233,7 @@ module WebGLLab {
                     gl_Position = project(position);
                 }
             `),
-            fragmentShader: trimMargin(`
-                precision mediump float;
-
+            fragmentShader: fragmentShader(`
                 varying vec3 position;
                 varying vec3 normal;
                 varying vec3 lightRay;
@@ -276,6 +270,18 @@ module WebGLLab {
             `)
         }
     ];
+
+    function fragmentShader(shader: string) {
+        return trimMargin(`
+            #ifdef GL_ES
+            #ifdef GL_FRAGMENT_PRECISION_HIGH
+            precision highp float;
+            #else
+            precision mediump float;
+            #endif
+            #endif
+        `) + "\n\n" + trimMargin(shader);
+    }
 
     function trimMargin(code: string): string {
         const lines = code.split("\n");
