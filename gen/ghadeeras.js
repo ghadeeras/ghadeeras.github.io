@@ -1510,9 +1510,7 @@ var WebGLLab;
             var l = _a[0], m = _a[1], r = _a[2];
             return l;
         }).then(Gear.defaultsTo(false));
-        return canvas.mousePos
-            .then(Gear.flowSwitch(dragEnabled))
-            .map(function (_a) {
+        return Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (pos) { return pos[0]; })).map(function (_a) {
             var x = _a[0], y = _a[1];
             return [2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight];
         });
