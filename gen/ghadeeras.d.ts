@@ -1,28 +1,3 @@
-declare module Space {
-    class Vector {
-        coordinates: number[];
-        constructor(coordinates: number[]);
-        combine(v: Vector, op: (c: number, vc: number) => number): Vector;
-        affect(f: (c: number) => number): Vector;
-        plus(v: Vector): Vector;
-        minus(v: Vector): Vector;
-        multiply(v: Vector): Vector;
-        divide(v: Vector): Vector;
-        scale(factor: number): Vector;
-        dot(v: Vector): number;
-        mix(v: Vector, weight: number): Vector;
-        get lengthSquared(): number;
-        get length(): number;
-        get unit(): Vector;
-        angle(v: Vector): number;
-        c(...indexes: number[]): Vector;
-        cross(v: Vector): Vector;
-        sameAs(v: Vector, precision?: number): boolean;
-    }
-}
-declare module Space {
-    function vec(coordinates: number[]): Vector;
-}
 declare module Djee {
     type Getter<S, P> = (structure: S) => P;
     type Setter<S, P> = (structure: S, primitive: P) => void;
@@ -137,6 +112,31 @@ declare module Djee {
 declare module Djee {
     function copyOf<T>(array: T[]): T[];
 }
+declare module Space {
+    class Vector {
+        coordinates: number[];
+        constructor(coordinates: number[]);
+        combine(v: Vector, op: (c: number, vc: number) => number): Vector;
+        affect(f: (c: number) => number): Vector;
+        plus(v: Vector): Vector;
+        minus(v: Vector): Vector;
+        multiply(v: Vector): Vector;
+        divide(v: Vector): Vector;
+        scale(factor: number): Vector;
+        dot(v: Vector): number;
+        mix(v: Vector, weight: number): Vector;
+        get lengthSquared(): number;
+        get length(): number;
+        get unit(): Vector;
+        angle(v: Vector): number;
+        c(...indexes: number[]): Vector;
+        cross(v: Vector): Vector;
+        sameAs(v: Vector, precision?: number): boolean;
+    }
+}
+declare module Space {
+    function vec(coordinates: number[]): Vector;
+}
 declare module Gear {
     function lazy<T>(constructor: Supplier<T>): Supplier<T>;
 }
@@ -222,6 +222,7 @@ declare module Gear {
     function flowSwitch<T>(on: Source<boolean>, initialState?: boolean): Effect<T, T>;
     function repeater<T>(interval: number, restValue: T): Effect<T, T>;
     function defaultsTo<T>(value: T): Effect<T, T>;
+    function choice<T>(truwValue: T, falseValue: T): Effect<boolean, T>;
 }
 declare module Gear {
     type PointerPosition = [number, number];
@@ -267,59 +268,6 @@ declare module Gear {
     function intact<T>(): Mapper<T, T>;
     function compositeConsumer<T>(...consumers: Consumer<T>[]): Consumer<T>;
     function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect<C, E>, effectConsumer: Consumer<E>): void;
-}
-declare module WebGLLab {
-    type ProgramSample = {
-        name: string;
-        vertexShader: string;
-        fragmentShader: string;
-    };
-    const samples: ProgramSample[];
-}
-declare module WebGLLab {
-    type Named = {
-        name: string;
-    };
-    class View {
-        private defaultShaders;
-        private context;
-        private buffer;
-        private program;
-        private lod;
-        private mode;
-        private cullingEnabled;
-        private programScalars;
-        private xScalar;
-        private yScalar;
-        constructor(convasId: string, templates: ProgramSample[]);
-        get mesh(): Gear.Supplier<Gear.Sink<boolean>>;
-        get levelOfDetail(): Gear.Supplier<Gear.Sink<number>>;
-        get compiler(): Gear.Supplier<Gear.Sink<ProgramSample>>;
-        get editor(): Gear.Supplier<Gear.Sink<ProgramSample>>;
-        get xBinding(): Gear.Supplier<Gear.Sink<number>>;
-        get yBinding(): Gear.Supplier<Gear.Sink<number>>;
-        get xy(): Gear.Supplier<Gear.Sink<[number, number]>>;
-        private recompile;
-        private setValue;
-        private reflectOn;
-        private toScalars;
-        private resetBuffer;
-        private draw;
-    }
-}
-declare module WebGLLab {
-    class Controller {
-        get program(): Gear.Supplier<Gear.Flow<ProgramSample>>;
-        get mesh(): Gear.Supplier<Gear.Flow<boolean>>;
-        get levelOfDetails(): Gear.Supplier<Gear.Flow<number>>;
-        get programSample(): Gear.Supplier<Gear.Flow<number>>;
-        get mouseXBinding(): Gear.Supplier<Gear.Flow<number>>;
-        get mouseYBinding(): Gear.Supplier<Gear.Flow<number>>;
-        get mouseXY(): Gear.Supplier<Gear.Flow<number[]>>;
-    }
-}
-declare module WebGLLab {
-    function init(): void;
 }
 declare module GasketTwist2 {
     interface FlattenedSierpinski {
@@ -371,6 +319,60 @@ declare module GasketTwist2 {
     }
 }
 declare module GasketTwist2 {
+    function init(): void;
+}
+declare module WebGLLab {
+    type ProgramSample = {
+        name: string;
+        vertexShader: string;
+        fragmentShader: string;
+    };
+    const samples: ProgramSample[];
+    function loadShaders(sample: ProgramSample, consumer: Gear.Consumer<ProgramSample>): void;
+}
+declare module WebGLLab {
+    type Named = {
+        name: string;
+    };
+    class View {
+        private context;
+        private buffer;
+        private program;
+        private defaultSample;
+        private lod;
+        private mode;
+        private cullingEnabled;
+        private programScalars;
+        private xScalar;
+        private yScalar;
+        constructor(convasId: string, samples: ProgramSample[]);
+        get mesh(): Gear.Supplier<Gear.Sink<boolean>>;
+        get levelOfDetail(): Gear.Supplier<Gear.Sink<number>>;
+        get compiler(): Gear.Supplier<Gear.Sink<ProgramSample>>;
+        get editor(): Gear.Supplier<Gear.Sink<ProgramSample>>;
+        get xBinding(): Gear.Supplier<Gear.Sink<number>>;
+        get yBinding(): Gear.Supplier<Gear.Sink<number>>;
+        get xy(): Gear.Supplier<Gear.Sink<[number, number]>>;
+        private recompile;
+        private setValue;
+        private reflectOn;
+        private toScalars;
+        private resetBuffer;
+        private draw;
+    }
+}
+declare module WebGLLab {
+    class Controller {
+        get program(): Gear.Supplier<Gear.Flow<ProgramSample>>;
+        get mesh(): Gear.Supplier<Gear.Flow<boolean>>;
+        get levelOfDetails(): Gear.Supplier<Gear.Flow<number>>;
+        get programSample(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseXBinding(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseYBinding(): Gear.Supplier<Gear.Flow<number>>;
+        get mouseXY(): Gear.Supplier<Gear.Flow<number[]>>;
+    }
+}
+declare module WebGLLab {
     function init(): void;
 }
 //# sourceMappingURL=ghadeeras.d.ts.map

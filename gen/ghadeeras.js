@@ -11,13 +11,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __spreadArrays = (this && this.__spreadArrays) || function () {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
-};
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -29,121 +22,13 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-var Space;
-(function (Space) {
-    var Vector = /** @class */ (function () {
-        function Vector(coordinates) {
-            this.coordinates = coordinates;
-        }
-        Vector.prototype.combine = function (v, op) {
-            var max = Math.max(this.coordinates.length, v.coordinates.length);
-            var result = new Array(max);
-            for (var i = 0; i < max; i++) {
-                var c = this.coordinates[i] || 0;
-                var vc = v.coordinates[i] || 0;
-                result[i] = op(c, vc);
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.affect = function (f) {
-            var length = this.coordinates.length;
-            var result = new Array(length);
-            for (var i = 0; i < length; i++) {
-                result[i] = f(this.coordinates[i]);
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.plus = function (v) {
-            return this.combine(v, function (c, cv) { return c + cv; });
-        };
-        Vector.prototype.minus = function (v) {
-            return this.combine(v, function (c, cv) { return c - cv; });
-        };
-        Vector.prototype.multiply = function (v) {
-            return this.combine(v, function (c, cv) { return c * cv; });
-        };
-        Vector.prototype.divide = function (v) {
-            return this.combine(v, function (c, cv) { return c / cv; });
-        };
-        Vector.prototype.scale = function (factor) {
-            return this.affect(function (c) { return factor * c; });
-        };
-        Vector.prototype.dot = function (v) {
-            return this.multiply(v).coordinates.reduce(function (a, b) { return a + b; }, 0);
-        };
-        Vector.prototype.mix = function (v, weight) {
-            return this.scale(1 - weight).plus(v.scale(weight));
-        };
-        Object.defineProperty(Vector.prototype, "lengthSquared", {
-            get: function () {
-                return this.dot(this);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Vector.prototype, "length", {
-            get: function () {
-                return Math.sqrt(this.lengthSquared);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Vector.prototype, "unit", {
-            get: function () {
-                return this.scale(1 / this.length);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Vector.prototype.angle = function (v) {
-            var l2 = this.lengthSquared;
-            var vl2 = v.lengthSquared;
-            var dot = this.dot(v);
-            var cos2 = (dot * dot) / (l2 * vl2);
-            var cos2x = 2 * cos2 - 1;
-            var x = Math.acos(cos2x) / 2;
-            return x;
-        };
-        Vector.prototype.c = function () {
-            var indexes = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                indexes[_i] = arguments[_i];
-            }
-            var result = new Array(indexes.length);
-            for (var i = 0; i < indexes.length; i++) {
-                result[i] = this.coordinates[indexes[i]] || 0;
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.cross = function (v) {
-            var v1 = this.c(0, 1, 2).coordinates;
-            var v2 = v.c(0, 1, 2).coordinates;
-            var result = new Array(3);
-            result[0] = v1[1] * v2[2] - v1[2] * v2[1];
-            result[1] = v1[2] * v2[0] - v1[0] * v2[2];
-            result[2] = v1[0] * v2[1] - v1[1] * v2[0];
-            return new Vector(result);
-        };
-        Vector.prototype.sameAs = function (v, precision) {
-            if (precision === void 0) { precision = 0.001; }
-            var cross = this.cross(v).length;
-            var dot = this.dot(v);
-            var tan = cross / dot;
-            return tan < precision && tan > -precision;
-        };
-        return Vector;
-    }());
-    Space.Vector = Vector;
-})(Space || (Space = {}));
-/// <reference path="vector.ts" />
-var Space;
-/// <reference path="vector.ts" />
-(function (Space) {
-    function vec(coordinates) {
-        return new Space.Vector(coordinates);
-    }
-    Space.vec = vec;
-})(Space || (Space = {}));
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 var Djee;
 (function (Djee) {
     function sum(v1, v2) {
@@ -624,6 +509,121 @@ var Djee;
     }
     Djee.copyOf = copyOf;
 })(Djee || (Djee = {}));
+var Space;
+(function (Space) {
+    var Vector = /** @class */ (function () {
+        function Vector(coordinates) {
+            this.coordinates = coordinates;
+        }
+        Vector.prototype.combine = function (v, op) {
+            var max = Math.max(this.coordinates.length, v.coordinates.length);
+            var result = new Array(max);
+            for (var i = 0; i < max; i++) {
+                var c = this.coordinates[i] || 0;
+                var vc = v.coordinates[i] || 0;
+                result[i] = op(c, vc);
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.affect = function (f) {
+            var length = this.coordinates.length;
+            var result = new Array(length);
+            for (var i = 0; i < length; i++) {
+                result[i] = f(this.coordinates[i]);
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.plus = function (v) {
+            return this.combine(v, function (c, cv) { return c + cv; });
+        };
+        Vector.prototype.minus = function (v) {
+            return this.combine(v, function (c, cv) { return c - cv; });
+        };
+        Vector.prototype.multiply = function (v) {
+            return this.combine(v, function (c, cv) { return c * cv; });
+        };
+        Vector.prototype.divide = function (v) {
+            return this.combine(v, function (c, cv) { return c / cv; });
+        };
+        Vector.prototype.scale = function (factor) {
+            return this.affect(function (c) { return factor * c; });
+        };
+        Vector.prototype.dot = function (v) {
+            return this.multiply(v).coordinates.reduce(function (a, b) { return a + b; }, 0);
+        };
+        Vector.prototype.mix = function (v, weight) {
+            return this.scale(1 - weight).plus(v.scale(weight));
+        };
+        Object.defineProperty(Vector.prototype, "lengthSquared", {
+            get: function () {
+                return this.dot(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Vector.prototype, "length", {
+            get: function () {
+                return Math.sqrt(this.lengthSquared);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Vector.prototype, "unit", {
+            get: function () {
+                return this.scale(1 / this.length);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Vector.prototype.angle = function (v) {
+            var l2 = this.lengthSquared;
+            var vl2 = v.lengthSquared;
+            var dot = this.dot(v);
+            var cos2 = (dot * dot) / (l2 * vl2);
+            var cos2x = 2 * cos2 - 1;
+            var x = Math.acos(cos2x) / 2;
+            return x;
+        };
+        Vector.prototype.c = function () {
+            var indexes = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                indexes[_i] = arguments[_i];
+            }
+            var result = new Array(indexes.length);
+            for (var i = 0; i < indexes.length; i++) {
+                result[i] = this.coordinates[indexes[i]] || 0;
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.cross = function (v) {
+            var v1 = this.c(0, 1, 2).coordinates;
+            var v2 = v.c(0, 1, 2).coordinates;
+            var result = new Array(3);
+            result[0] = v1[1] * v2[2] - v1[2] * v2[1];
+            result[1] = v1[2] * v2[0] - v1[0] * v2[2];
+            result[2] = v1[0] * v2[1] - v1[1] * v2[0];
+            return new Vector(result);
+        };
+        Vector.prototype.sameAs = function (v, precision) {
+            if (precision === void 0) { precision = 0.001; }
+            var cross = this.cross(v).length;
+            var dot = this.dot(v);
+            var tan = cross / dot;
+            return tan < precision && tan > -precision;
+        };
+        return Vector;
+    }());
+    Space.Vector = Vector;
+})(Space || (Space = {}));
+/// <reference path="vector.ts" />
+var Space;
+/// <reference path="vector.ts" />
+(function (Space) {
+    function vec(coordinates) {
+        return new Space.Vector(coordinates);
+    }
+    Space.vec = vec;
+})(Space || (Space = {}));
 var Gear;
 (function (Gear) {
     var Lazy = /** @class */ (function () {
@@ -1165,27 +1165,238 @@ var Gear;
     }
     Gear.causeEffectLink = causeEffectLink;
 })(Gear || (Gear = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
+    var defaultSierpinski = {
+        depth: 5,
+        a: vec(90),
+        b: vec(210),
+        c: vec(330)
+    };
+    function sierpinski(depth, a, b, c) {
+        if (depth === void 0) { depth = new Gear.Value(defaultSierpinski.depth); }
+        if (a === void 0) { a = new Gear.Value(defaultSierpinski.a); }
+        if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
+        if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
+        var sierpinski = __assign({}, defaultSierpinski);
+        return from(from(depth).reduce(function (d, s) { return s = __assign(__assign({}, s), { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign(__assign({}, s), { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign(__assign({}, s), { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign(__assign({}, s), { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
+    }
+    GasketTwist2.sierpinski = sierpinski;
+    function from() {
+        var _a;
+        var sources = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            sources[_i] = arguments[_i];
+        }
+        return (_a = Gear.Flow).from.apply(_a, sources);
+    }
+    function vec(angleInDegrees) {
+        var angle = Math.PI * angleInDegrees / 180;
+        return Space.vec([Math.cos(angle), Math.sin(angle)]);
+    }
+    function tesselatedTriangle(a, b, c, depth) {
+        var result = {
+            corners: [],
+            centers: [],
+            stride: a.coordinates.length
+        };
+        doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
+        return result;
+    }
+    GasketTwist2.tesselatedTriangle = tesselatedTriangle;
+    function doTesselateTriangle(a, b, c, depth, corners, centers) {
+        if (depth < 1) {
+            corners.push.apply(corners, __spreadArrays(a.coordinates, b.coordinates, c.coordinates));
+        }
+        else {
+            var ab = a.mix(b, 0.5);
+            var bc = b.mix(c, 0.5);
+            var ca = c.mix(a, 0.5);
+            var newDepth = depth - 1;
+            doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
+            doTesselateTriangle(ab, b, bc, newDepth, corners, centers);
+            doTesselateTriangle(ca, bc, c, newDepth, corners, centers);
+            doTesselateTriangle(ab, bc, ca, newDepth, centers, centers);
+        }
+    }
+})(GasketTwist2 || (GasketTwist2 = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
+    var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
+    var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
+    var ST = Djee.ShaderType;
+    function round(value) {
+        return Math.round(1000 * value) / 1000;
+    }
+    var View = /** @class */ (function () {
+        function View(canvasId, depthId, twistId, scaleId) {
+            var _this = this;
+            this.context = new Djee.Context(canvasId);
+            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
+            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
+            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+            this.program.use();
+            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
+            this.shaderTwist = this.program.locateUniform("twist", 1);
+            this.shaderScale = this.program.locateUniform("scale", 1);
+            this.cornersBuffer = this.context.newBuffer();
+            this.centersBuffer = this.context.newBuffer();
+            this.context.gl.clearColor(1, 1, 1, 1);
+            this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
+            this.depth = Gear.sinkFlow(function (flow) { return flow.defaultsTo(5).map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
+            this.twist = Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
+            this.scale = Gear.sinkFlow(function (flow) { return flow.defaultsTo(1).branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
+            this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
+            this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
+        }
+        View.prototype.source = function (value) {
+            return new Gear.Value(value);
+        };
+        View.prototype.setSierpinski = function (flattenedSierpinski) {
+            this.cornersBuffer.data = flattenedSierpinski.corners;
+            this.centersBuffer.data = flattenedSierpinski.centers;
+            this.stride = flattenedSierpinski.stride;
+            this.draw();
+        };
+        View.prototype.setTwist = function (twist) {
+            this.shaderTwist.data = [twist];
+            this.draw();
+        };
+        View.prototype.setScale = function (scale) {
+            this.shaderScale.data = [scale];
+            this.draw();
+        };
+        View.prototype.setShowCorners = function (showCorners) {
+            this.mustShowCorners = showCorners;
+            this.draw();
+        };
+        View.prototype.setShowCenters = function (showCenters) {
+            this.mustShowCenters = showCenters;
+            this.draw();
+        };
+        View.prototype.draw = function () {
+            var _this = this;
+            setTimeout(function () {
+                var gl = _this.context.gl;
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (_this.mustShowCorners) {
+                    _this.shaderPosition.pointTo(_this.cornersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.cornersBuffer.data.length / _this.stride);
+                }
+                if (_this.mustShowCenters) {
+                    _this.shaderPosition.pointTo(_this.centersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.centersBuffer.data.length / _this.stride);
+                }
+            });
+        };
+        return View;
+    }());
+    GasketTwist2.View = View;
+})(GasketTwist2 || (GasketTwist2 = {}));
+var GasketTwist2;
+(function (GasketTwist2) {
+    var Controller = /** @class */ (function () {
+        function Controller(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
+            var canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+            var depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
+            var depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
+            var twistEnabled = Gear.checkbox(twistCheckboxId);
+            var scaleEnabled = Gear.checkbox(scaleCheckboxId);
+            this.showCorners = Gear.checkbox(cornersCheckboxId);
+            this.showCenters = Gear.checkbox(centersCheckboxId);
+            var dragEnabled = canvas.mouseButons.map(function (_a) {
+                var l = _a[0], m = _a[1], r = _a[2];
+                return l || m || r;
+            });
+            var mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+            this.twist = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return Math.PI * (4 * x / canvas.element.clientWidth - 2);
+            })
+                .then(Gear.flowSwitch(twistEnabled));
+            this.scale = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return 2 - 4 * y / canvas.element.clientHeight;
+            })
+                .then(Gear.flowSwitch(scaleEnabled));
+            ;
+            this.depth = Gear.Flow.from(depthDecButton.click.map(function (e) { return -1; }), depthIncButton.click.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
+        }
+        return Controller;
+    }());
+    GasketTwist2.Controller = Controller;
+})(GasketTwist2 || (GasketTwist2 = {}));
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="model.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+var GasketTwist2;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="model.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+(function (GasketTwist2) {
+    function init() {
+        window.onload = function (e) {
+            var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
+            var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
+            controller.depth.to(view.depth);
+            controller.twist.to(view.twist);
+            controller.scale.to(view.scale);
+            controller.showCorners.to(view.showCorners);
+            controller.showCenters.to(view.showCenters);
+            GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
+        };
+    }
+    GasketTwist2.init = init;
+})(GasketTwist2 || (GasketTwist2 = {}));
 var WebGLLab;
 (function (WebGLLab) {
     WebGLLab.samples = [
         {
             name: "Basic (Almost Empty)",
-            vertexShader: trimMargin("\n                precision highp float;\n                \n                attribute vec2 vertex;\n\n                uniform float w;\n                \n                void main() {\n                    gl_Position = vec4(vertex, 0.0, w + 2.0);\n                }\n            "),
-            fragmentShader: fragmentShader("\n                uniform vec3 color;\n\n                const vec3 one = vec3(1.0, 1.0, 1.0);\n\n                void main() {\n                    gl_FragColor = vec4((color + one) / 2.0, 1.0);\n                }\n            ")
+            vertexShader: vertexWrapper("\n                attribute vec2 vertex;\n\n                uniform float w;\n                \n                void main() {\n                    gl_Position = vec4(vertex, 0.0, w + 2.0);\n                }\n            "),
+            fragmentShader: fragmentWrapper("\n                uniform vec3 color;\n\n                const vec3 one = vec3(1.0, 1.0, 1.0);\n\n                void main() {\n                    gl_FragColor = vec4((color + one) / 2.0, 1.0);\n                }\n            ")
         },
         {
             name: "3D Sinc (Vertex Shader Lighting)",
-            vertexShader: trimMargin("\n                precision highp float;\n        \n                attribute vec2 vertex;\n                uniform float magnitude;\n                uniform float phase;\n                                \n                uniform vec2 eyeDirection;\n                uniform float eyeDistance;\n                uniform float focalRatio;\n                                \n                uniform vec2 lightDirection;\n                uniform float lightDistance;\n                uniform float shininess;\n\n                varying float shade;\n                                \n                const float PI = 3.1415926535897932384626433832795;\n                const float epsilon = 0.01;\n                const vec2 dx = vec2(epsilon, 0.0); \n                const vec2 dy = vec2(0.0, epsilon); \n                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                \n                float sinc(in float x) {\n                    return -epsilon < x && x < epsilon ? 1.0 : sin(x) / x;\n                }\n                                \n                vec3 surface(in vec2 v) {\n                    return vec3(v.y, magnitude * sinc(4.0 * PI * (length(v) + phase)), v.x);\n                }\n                \n                vec3 normalAt(in vec2 v) {\n                    vec3 dsx = surface(v + dx) - surface(v - dx);\n                    vec3 dsy = surface(v + dy) - surface(v - dy);\n                    return normalize(cross(dsx, dsy));\n                }\n\n                vec3 rotate(in vec3 v, in vec2 direction) {\n                    float azimuth  = +PI * direction.x;\n                    float altitude = -PI * direction.y / 2.0;\n                    float sy = sin(azimuth);\n                    float cy = cos(azimuth);\n                    float sx = sin(altitude);\n                    float cx = cos(altitude);\n                    return vec3(\n                        +cy * v.x + sy * sx * v.y + sy * cx * v.z,\n                                         cx * v.y -      sx * v.z,\n                        -sy * v.x + cy * sx * v.y + cy * cx * v.z\n                    );\n                }\n\n                vec3 model(in vec3 v) {\n                    return rotate(v, eyeDirection);\n                }\n                                \n                vec3 view(in vec3 v) {\n                    float distance = adapt(eyeDistance, 1.0, 9.0);\n                    return vec3(v.x, v.y, v.z - distance);\n                }\n                                \n                vec4 project(in vec3 v) {\n                    float f = adapt(focalRatio, 1.0, 9.0);\n                    float z = 1.25 * v.z / f + 2.25;\n                    return vec4(v.xy, -z / f, -v.z / f);\n                }\n                                \n                vec3 lightRayAt(in vec3 v) {\n                    float distance = adapt(lightDistance, 1.0, 9.0);\n                    vec3 lightPosition = rotate(vec3(0.0, 0.0, distance), lightDirection);\n                    return normalize(v - lightPosition);\n                }\n\n                void main() {\n                    vec3 position = model(surface(vertex));\n                    vec3 normal = model(normalAt(vertex));\n                    vec3 lightRay = lightRayAt(position);\n                    position = view(position);\n\n                    float s = adapt(shininess, 0.0, 1.0);\n\n                    vec3 p = normalize(position);\n                    vec3 n = normalize(normal);\n                    vec3 l = normalize(lightRay);\n                \n                    float facing = -dot(p, n);\n                    facing = facing >= 0.0 ? 1.0 : -1.0;\n                    n *= facing;\n                \n                    float cosLN = -dot(l, n);\n                    vec3 r = n * 2.0 * cosLN + l;\n                    float cosRP = -dot(r, p);\n                    float diffuse = (cosLN + 1.0) / 2.0;\n                    diffuse *= diffuse;\n                    float shine = clamp(cosRP, 0.0, 1.0);\n                    shine = pow(shine, 8.0);\n                \n                    shade = (diffuse + shine * s) * facing;\n\n                    gl_Position = project(position);\n                }\n            "),
-            fragmentShader: fragmentShader("\n                varying float shade;\n                \n                uniform vec3 color;\n\n                void main() {\n                    gl_FragColor = vec4(abs(shade) * (sign(shade) * color + vec3(1.0)) / 2.0, 1.0);\n                }\n            ")
+            vertexShader: 'file:sinc-vert-lighting.vert',
+            fragmentShader: 'file:sinc-vert-lighting.frag'
         },
         {
             name: "3D Sinc (Fragment Shader Lighting)",
-            vertexShader: trimMargin("\n                precision highp float;\n                \n                attribute vec2 vertex;\n                uniform float magnitude;\n                uniform float phase;\n                                \n                uniform vec2 eyeDirection;\n                uniform float eyeDistance;\n                uniform float focalRatio;\n                                \n                uniform vec2 lightDirection;\n                uniform float lightDistance;\n                \n                varying vec3 position;\n                varying vec3 normal;\n                varying vec3 lightRay;\n                                \n                const float PI = 3.1415926535897932384626433832795;\n                const float epsilon = 0.01;\n                const vec2 dx = vec2(epsilon, 0.0); \n                const vec2 dy = vec2(0.0, epsilon); \n                                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                                \n                float sinc(in float x) {\n                    return -epsilon < x && x < epsilon ? 1.0 : sin(x) / x;\n                }\n                                \n                vec3 surface(in vec2 v) {\n                    return vec3(v.y, magnitude * sinc(4.0 * PI * (length(v) + phase)), v.x);\n                }\n                                \n                vec3 normalAt(in vec2 v) {\n                    vec3 dsx = surface(v + dx) - surface(v - dx);\n                    vec3 dsy = surface(v + dy) - surface(v - dy);\n                    return cross(dsx, dsy);\n                }\n                \n                vec3 rotate(in vec3 v, in vec2 direction) {\n                    float azimuth  = +PI * direction.x;\n                    float altitude = -PI * direction.y / 2.0;\n                    float sy = sin(azimuth);\n                    float cy = cos(azimuth);\n                    float sx = sin(altitude);\n                    float cx = cos(altitude);\n                    return vec3(\n                        +cy * v.x + sy * sx * v.y + sy * cx * v.z,\n                                        cx * v.y -      sx * v.z,\n                        -sy * v.x + cy * sx * v.y + cy * cx * v.z\n                    );\n                }\n                \n                vec3 model(in vec3 v) {\n                    return rotate(v, eyeDirection);\n                }\n                                \n                vec3 view(in vec3 v) {\n                    float distance = adapt(eyeDistance, 1.0, 9.0);\n                    return vec3(v.x, v.y, v.z - distance);\n                }\n                                \n                vec4 project(in vec3 v) {\n                    float f = adapt(focalRatio, 1.0, 9.0);\n                    float z = 1.25 * v.z / f + 2.25;\n                    return vec4(v.xy, -z / f, -v.z / f);\n                }\n                                \n                vec3 lightRayAt(in vec3 v) {\n                    float distance = adapt(lightDistance, 1.0, 9.0);\n                    vec3 lightPosition = rotate(vec3(0.0, 0.0, distance), lightDirection);\n                    return v - lightPosition;\n                }\n                \n                void main() {\n                    position = model(surface(vertex));\n                    normal = model(normalAt(vertex));\n                    lightRay = lightRayAt(position);\n                    position = view(position);\n                    gl_Position = project(position);\n                }\n            "),
-            fragmentShader: fragmentShader("\n                varying vec3 position;\n                varying vec3 normal;\n                varying vec3 lightRay;\n                                \n                uniform vec3 color;\n                uniform float shininess;\n                \n                float adapt(in float x, in float min, in float max) {\n                    return min + (x + 1.0) * (max - min) / 2.0;\n                }\n                                \n                void main() {\n                    float s = adapt(shininess, 0.0, 1.0);\n\n                    vec3 p = normalize(position);\n                    vec3 n = normalize(normal);\n                    vec3 l = normalize(lightRay);\n                \n                    float facing = -dot(p, n);\n                    facing = facing >= 0.0 ? 1.0 : -1.0;\n                    n *= facing;\n                \n                    float cosLN = -dot(l, n);\n                    vec3 r = n * 2.0 * cosLN + l;\n                    float cosRP = -dot(r, p);\n                    float diffuse = (cosLN + 1.0) / 2.0;\n                    diffuse *= diffuse;\n                    float shine = clamp(cosRP, 0.0, 1.0);\n                    shine = pow(shine, 8.0);\n                \n                    float shade = diffuse + shine * s;\n                    gl_FragColor = vec4(shade * (facing * color + vec3(1.0)) / 2.0, 1.0);\n                }\n            ")
+            vertexShader: 'file:sinc-frag-lighting.vert',
+            fragmentShader: 'file:sinc-frag-lighting.frag'
         }
     ];
-    function fragmentShader(shader) {
-        return trimMargin("\n            #ifdef GL_ES\n            #ifdef GL_FRAGMENT_PRECISION_HIGH\n            precision highp float;\n            #else\n            precision mediump float;\n            #endif\n            #endif\n        ") + "\n\n" + trimMargin(shader);
+    function loadShaders(sample, consumer) {
+        fetchShader(sample.vertexShader, function (shader) {
+            sample.vertexShader = shader;
+            if (!isFile(sample.fragmentShader)) {
+                consumer(sample);
+            }
+        });
+        fetchShader(sample.fragmentShader, function (shader) {
+            sample.fragmentShader = shader;
+            if (!isFile(sample.vertexShader)) {
+                consumer(sample);
+            }
+        });
+    }
+    WebGLLab.loadShaders = loadShaders;
+    function vertexWrapper(shader) {
+        var header = trimMargin("\n            precision highp float;\n        ");
+        return header + "\n\n" + trimMargin(shader);
+    }
+    function fragmentWrapper(shader) {
+        var header = trimMargin("\n            #ifdef GL_ES\n            #ifdef GL_FRAGMENT_PRECISION_HIGH\n            precision highp float;\n            #else\n            precision mediump float;\n            #endif\n            #endif\n        ");
+        return header + "\n\n" + trimMargin(shader);
     }
     function trimMargin(code) {
         var lines = code.split("\n");
@@ -1197,6 +1408,26 @@ var WebGLLab;
             .map(function (line) { return line.length > margin ? line.substring(margin) : line; })
             .reduce(function (a, b) { return a + "\n" + b; })
             .trim();
+    }
+    function fetchShader(shader, consumer) {
+        if (isFile(shader)) {
+            fetchFile(locationOf(shader), consumer);
+        }
+        else {
+            consumer(shader);
+        }
+    }
+    function fetchFile(url, consumer) {
+        fetch(url, { method: "get", mode: "no-cors" }).then(function (response) { return response.text().then(consumer); });
+    }
+    function locationOf(str) {
+        return "../shaders/" + str.substring('file:'.length);
+    }
+    function isFile(str) {
+        return startsWith(str, 'file:');
+    }
+    function startsWith(str, s) {
+        return str.substring(0, s.length) == s;
     }
 })(WebGLLab || (WebGLLab = {}));
 var WebGLLab;
@@ -1544,7 +1775,10 @@ var WebGLLab;
         var controller = new WebGLLab.Controller();
         var view = new WebGLLab.View("canvas-gl", WebGLLab.samples);
         controller.levelOfDetails().to(view.levelOfDetail());
-        controller.programSample().map(function (index) { return WebGLLab.samples[index]; }).to(view.editor());
+        controller.programSample()
+            .map(function (index) { return WebGLLab.samples[index]; })
+            .then(function (sample, consumer) { return WebGLLab.loadShaders(sample, consumer); })
+            .to(view.editor());
         controller.program().to(view.compiler());
         controller.mesh().to(view.mesh());
         controller.mouseXBinding().to(view.xBinding());
@@ -1552,194 +1786,4 @@ var WebGLLab;
         controller.mouseXY().to(view.xy());
     }
 })(WebGLLab || (WebGLLab = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var defaultSierpinski = {
-        depth: 5,
-        a: vec(90),
-        b: vec(210),
-        c: vec(330)
-    };
-    function sierpinski(depth, a, b, c) {
-        if (depth === void 0) { depth = new Gear.Value(defaultSierpinski.depth); }
-        if (a === void 0) { a = new Gear.Value(defaultSierpinski.a); }
-        if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
-        if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
-        var sierpinski = __assign({}, defaultSierpinski);
-        return from(from(depth).reduce(function (d, s) { return s = __assign(__assign({}, s), { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign(__assign({}, s), { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign(__assign({}, s), { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign(__assign({}, s), { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
-    }
-    GasketTwist2.sierpinski = sierpinski;
-    function from() {
-        var _a;
-        var sources = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            sources[_i] = arguments[_i];
-        }
-        return (_a = Gear.Flow).from.apply(_a, sources);
-    }
-    function vec(angleInDegrees) {
-        var angle = Math.PI * angleInDegrees / 180;
-        return Space.vec([Math.cos(angle), Math.sin(angle)]);
-    }
-    function tesselatedTriangle(a, b, c, depth) {
-        var result = {
-            corners: [],
-            centers: [],
-            stride: a.coordinates.length
-        };
-        doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
-        return result;
-    }
-    GasketTwist2.tesselatedTriangle = tesselatedTriangle;
-    function doTesselateTriangle(a, b, c, depth, corners, centers) {
-        if (depth < 1) {
-            corners.push.apply(corners, __spreadArrays(a.coordinates, b.coordinates, c.coordinates));
-        }
-        else {
-            var ab = a.mix(b, 0.5);
-            var bc = b.mix(c, 0.5);
-            var ca = c.mix(a, 0.5);
-            var newDepth = depth - 1;
-            doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
-            doTesselateTriangle(ab, b, bc, newDepth, corners, centers);
-            doTesselateTriangle(ca, bc, c, newDepth, corners, centers);
-            doTesselateTriangle(ab, bc, ca, newDepth, centers, centers);
-        }
-    }
-})(GasketTwist2 || (GasketTwist2 = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
-    var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
-    var ST = Djee.ShaderType;
-    function round(value) {
-        return Math.round(1000 * value) / 1000;
-    }
-    var View = /** @class */ (function () {
-        function View(canvasId, depthId, twistId, scaleId) {
-            var _this = this;
-            this.context = new Djee.Context(canvasId);
-            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
-            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
-            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
-            this.program.use();
-            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
-            this.shaderTwist = this.program.locateUniform("twist", 1);
-            this.shaderScale = this.program.locateUniform("scale", 1);
-            this.cornersBuffer = this.context.newBuffer();
-            this.centersBuffer = this.context.newBuffer();
-            this.context.gl.clearColor(1, 1, 1, 1);
-            this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
-            this.depth = Gear.sinkFlow(function (flow) { return flow.defaultsTo(5).map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
-            this.twist = Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
-            this.scale = Gear.sinkFlow(function (flow) { return flow.defaultsTo(1).branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
-            this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
-            this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
-        }
-        View.prototype.source = function (value) {
-            return new Gear.Value(value);
-        };
-        View.prototype.setSierpinski = function (flattenedSierpinski) {
-            this.cornersBuffer.data = flattenedSierpinski.corners;
-            this.centersBuffer.data = flattenedSierpinski.centers;
-            this.stride = flattenedSierpinski.stride;
-            this.draw();
-        };
-        View.prototype.setTwist = function (twist) {
-            this.shaderTwist.data = [twist];
-            this.draw();
-        };
-        View.prototype.setScale = function (scale) {
-            this.shaderScale.data = [scale];
-            this.draw();
-        };
-        View.prototype.setShowCorners = function (showCorners) {
-            this.mustShowCorners = showCorners;
-            this.draw();
-        };
-        View.prototype.setShowCenters = function (showCenters) {
-            this.mustShowCenters = showCenters;
-            this.draw();
-        };
-        View.prototype.draw = function () {
-            var _this = this;
-            setTimeout(function () {
-                var gl = _this.context.gl;
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                if (_this.mustShowCorners) {
-                    _this.shaderPosition.pointTo(_this.cornersBuffer);
-                    gl.drawArrays(gl.TRIANGLES, 0, _this.cornersBuffer.data.length / _this.stride);
-                }
-                if (_this.mustShowCenters) {
-                    _this.shaderPosition.pointTo(_this.centersBuffer);
-                    gl.drawArrays(gl.TRIANGLES, 0, _this.centersBuffer.data.length / _this.stride);
-                }
-            });
-        };
-        return View;
-    }());
-    GasketTwist2.View = View;
-})(GasketTwist2 || (GasketTwist2 = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var Controller = /** @class */ (function () {
-        function Controller(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
-            var canvas = Gear.ElementEvents.create(canvasId).parent().parent();
-            var depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
-            var depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
-            var twistEnabled = Gear.checkbox(twistCheckboxId);
-            var scaleEnabled = Gear.checkbox(scaleCheckboxId);
-            this.showCorners = Gear.checkbox(cornersCheckboxId);
-            this.showCenters = Gear.checkbox(centersCheckboxId);
-            var dragEnabled = canvas.mouseButons.map(function (_a) {
-                var l = _a[0], m = _a[1], r = _a[2];
-                return l || m || r;
-            });
-            var mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
-            this.twist = mousePos
-                .map(function (_a) {
-                var x = _a[0], y = _a[1];
-                return Math.PI * (4 * x / canvas.element.clientWidth - 2);
-            })
-                .then(Gear.flowSwitch(twistEnabled));
-            this.scale = mousePos
-                .map(function (_a) {
-                var x = _a[0], y = _a[1];
-                return 2 - 4 * y / canvas.element.clientHeight;
-            })
-                .then(Gear.flowSwitch(scaleEnabled));
-            ;
-            this.depth = Gear.Flow.from(depthDecButton.click.map(function (e) { return -1; }), depthIncButton.click.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
-        }
-        return Controller;
-    }());
-    GasketTwist2.Controller = Controller;
-})(GasketTwist2 || (GasketTwist2 = {}));
-/// <reference path="../space/_.ts" />
-/// <reference path="../djee/_.ts" />
-/// <reference path="../gear/_.ts" />
-/// <reference path="model.ts" />
-/// <reference path="view.ts" />
-/// <reference path="controller.ts" />
-var GasketTwist2;
-/// <reference path="../space/_.ts" />
-/// <reference path="../djee/_.ts" />
-/// <reference path="../gear/_.ts" />
-/// <reference path="model.ts" />
-/// <reference path="view.ts" />
-/// <reference path="controller.ts" />
-(function (GasketTwist2) {
-    function init() {
-        window.onload = function (e) {
-            var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
-            var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
-            controller.depth.to(view.depth);
-            controller.twist.to(view.twist);
-            controller.scale.to(view.scale);
-            controller.showCorners.to(view.showCorners);
-            controller.showCenters.to(view.showCenters);
-            GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
-        };
-    }
-    GasketTwist2.init = init;
-})(GasketTwist2 || (GasketTwist2 = {}));
+//# sourceMappingURL=ghadeeras.js.map
