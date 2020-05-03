@@ -2,7 +2,7 @@ module Space {
 
     export class Vector {
 
-        constructor(public coordinates: number[]) {
+        constructor(readonly coordinates: number[]) {
         }
         
         combine(v: Vector, op: (c: number, vc: number) => number): Vector {
@@ -98,6 +98,14 @@ module Space {
             const dot = this.dot(v);
             const tan = cross / dot;
             return tan < precision && tan > -precision;
+        }
+
+        prod(matrix: Matrix) {
+            return vec(...matrix.columns.map(column => this.dot(column)));
+        }
+
+        component(i: number) {
+            return new Vector(this.coordinates.map((c, j) => i == j ? c : 0));
         }
         
    }

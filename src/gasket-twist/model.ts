@@ -41,7 +41,7 @@ module GasketTwist2 {
     
     function vec(angleInDegrees: number) {
         const angle = Math.PI * angleInDegrees / 180
-        return Space.vec([Math.cos(angle), Math.sin(angle)]);
+        return Space.vec(Math.cos(angle), Math.sin(angle));
     }
         
     export function tesselatedTriangle(a: Space.Vector, b: Space.Vector, c: Space.Vector, depth: number) {

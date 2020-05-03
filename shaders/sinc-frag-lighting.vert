@@ -47,7 +47,7 @@ vec3 rotate(in vec3 v, in vec2 direction) {
     float cx = cos(altitude);
     return vec3(
         +cy * v.x + sy * sx * v.y + sy * cx * v.z,
-                        cx * v.y -      sx * v.z,
+                         cx * v.y -      sx * v.z,
         -sy * v.x + cy * sx * v.y + cy * cx * v.z
     );
 }

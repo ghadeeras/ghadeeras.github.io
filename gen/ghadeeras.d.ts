@@ -89,10 +89,11 @@ declare module Djee {
         readonly program: Program;
         readonly name: string;
         readonly size: number;
+        readonly matrix: boolean;
         readonly location: WebGLUniformLocation;
         readonly setter: (v: Float32Array) => void;
         private _data;
-        constructor(program: Program, name: string, size: number);
+        constructor(program: Program, name: string, size: number, matrix?: boolean);
         private getSetter;
         get data(): number[];
         set data(data: number[]);
@@ -114,7 +115,7 @@ declare module Djee {
 }
 declare module Space {
     class Vector {
-        coordinates: number[];
+        readonly coordinates: number[];
         constructor(coordinates: number[]);
         combine(v: Vector, op: (c: number, vc: number) => number): Vector;
         affect(f: (c: number) => number): Vector;
@@ -132,10 +133,24 @@ declare module Space {
         c(...indexes: number[]): Vector;
         cross(v: Vector): Vector;
         sameAs(v: Vector, precision?: number): boolean;
+        prod(matrix: Matrix): Vector;
+        component(i: number): Vector;
     }
 }
 declare module Space {
-    function vec(coordinates: number[]): Vector;
+    class Matrix {
+        readonly columns: Vector[];
+        constructor(columns: Vector[]);
+        transposed(): Matrix;
+        prod(vector: Vector): Vector;
+        by(matrix: Matrix): Matrix;
+    }
+}
+declare module Space {
+    function vec(...coordinates: number[]): Vector;
+    function mat(...columns: Vector[]): Matrix;
+    function diagonalMat(diagonalVector: Vector): Matrix;
+    function identityMat(size: number): Matrix;
 }
 declare module Gear {
     function lazy<T>(constructor: Supplier<T>): Supplier<T>;

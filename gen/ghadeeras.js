@@ -418,23 +418,35 @@ var Djee;
 var Djee;
 (function (Djee) {
     var Uniform = /** @class */ (function () {
-        function Uniform(program, name, size) {
+        function Uniform(program, name, size, matrix) {
+            if (matrix === void 0) { matrix = false; }
             this.program = program;
             this.name = name;
             this.size = size;
+            this.matrix = matrix;
             var gl = program.context.gl;
             this.location = gl.getUniformLocation(program.program, name);
-            this.setter = this.getSetter(gl, size);
+            this.setter = this.getSetter(gl, size, matrix);
             this._data = new Array(size);
         }
-        Uniform.prototype.getSetter = function (gl, size) {
-            var l = this.location;
-            switch (size) {
-                case 1: return function (d) { return gl.uniform1fv(l, d); };
-                case 2: return function (d) { return gl.uniform2fv(l, d); };
-                case 3: return function (d) { return gl.uniform3fv(l, d); };
-                case 4: return function (d) { return gl.uniform4fv(l, d); };
-                default: throw "Uniform vectors of length '" + size + "' are not supported.";
+        Uniform.prototype.getSetter = function (gl, size, matrix) {
+            var location = this.location;
+            if (matrix) {
+                switch (size) {
+                    case 2: return function (d) { return gl.uniformMatrix2fv(location, false, d); };
+                    case 3: return function (d) { return gl.uniformMatrix3fv(location, false, d); };
+                    case 4: return function (d) { return gl.uniformMatrix4fv(location, false, d); };
+                    default: throw "Uniform matrices of size '" + size + "' are not supported.";
+                }
+            }
+            else {
+                switch (size) {
+                    case 1: return function (d) { return gl.uniform1fv(location, d); };
+                    case 2: return function (d) { return gl.uniform2fv(location, d); };
+                    case 3: return function (d) { return gl.uniform3fv(location, d); };
+                    case 4: return function (d) { return gl.uniform4fv(location, d); };
+                    default: throw "Uniform vectors of length '" + size + "' are not supported.";
+                }
             }
         };
         Object.defineProperty(Uniform.prototype, "data", {
@@ -611,18 +623,81 @@ var Space;
             var tan = cross / dot;
             return tan < precision && tan > -precision;
         };
+        Vector.prototype.prod = function (matrix) {
+            var _this = this;
+            return Space.vec.apply(void 0, matrix.columns.map(function (column) { return _this.dot(column); }));
+        };
+        Vector.prototype.component = function (i) {
+            return new Vector(this.coordinates.map(function (c, j) { return i == j ? c : 0; }));
+        };
         return Vector;
     }());
     Space.Vector = Vector;
 })(Space || (Space = {}));
+var Space;
+(function (Space) {
+    var Matrix = /** @class */ (function () {
+        function Matrix(columns) {
+            this.columns = columns;
+        }
+        Matrix.prototype.transposed = function () {
+            var rowsCount = this.columns.map(function (column) { return column.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
+            var rows = [];
+            var _loop_1 = function (i) {
+                rows.push(new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i] || 0; })));
+            };
+            var this_1 = this;
+            for (var i = 0; i < rowsCount; i++) {
+                _loop_1(i);
+            }
+            return new Matrix(rows);
+        };
+        Matrix.prototype.prod = function (vector) {
+            var m = this.transposed();
+            return vector.prod(m);
+        };
+        Matrix.prototype.by = function (matrix) {
+            var m = this.transposed();
+            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); }));
+        };
+        return Matrix;
+    }());
+    Space.Matrix = Matrix;
+})(Space || (Space = {}));
 /// <reference path="vector.ts" />
+/// <reference path="matrix.ts" />
 var Space;
 /// <reference path="vector.ts" />
+/// <reference path="matrix.ts" />
 (function (Space) {
-    function vec(coordinates) {
+    function vec() {
+        var coordinates = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            coordinates[_i] = arguments[_i];
+        }
         return new Space.Vector(coordinates);
     }
     Space.vec = vec;
+    function mat() {
+        var columns = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            columns[_i] = arguments[_i];
+        }
+        return new Space.Matrix(columns);
+    }
+    Space.mat = mat;
+    function diagonalMat(diagonalVector) {
+        return new Space.Matrix(diagonalVector.coordinates.map(function (c, i) { return diagonalVector.component(i); }));
+    }
+    Space.diagonalMat = diagonalMat;
+    function identityMat(size) {
+        var diagonals = [];
+        while (diagonals.length < size) {
+            diagonals.push(1);
+        }
+        return diagonalMat(new Space.Vector(diagonals));
+    }
+    Space.identityMat = identityMat;
 })(Space || (Space = {}));
 var Gear;
 (function (Gear) {
@@ -1192,7 +1267,7 @@ var GasketTwist2;
     }
     function vec(angleInDegrees) {
         var angle = Math.PI * angleInDegrees / 180;
-        return Space.vec([Math.cos(angle), Math.sin(angle)]);
+        return Space.vec(Math.cos(angle), Math.sin(angle));
     }
     function tesselatedTriangle(a, b, c, depth) {
         var result = {
