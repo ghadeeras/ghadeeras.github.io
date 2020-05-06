@@ -130,7 +130,8 @@ declare module Space {
         get length(): number;
         get unit(): Vector;
         angle(v: Vector): number;
-        c(...indexes: number[]): Vector;
+        withDims(n: number): Vector;
+        swizzle(...indexes: number[]): Vector;
         cross(v: Vector): Vector;
         sameAs(v: Vector, precision?: number): boolean;
         prod(matrix: Matrix): Vector;
@@ -139,18 +140,35 @@ declare module Space {
 }
 declare module Space {
     class Matrix {
+        readonly columnsCount: number;
+        readonly rowsCount: number;
         readonly columns: Vector[];
         constructor(columns: Vector[]);
-        transposed(): Matrix;
+        get transposed(): Matrix;
         prod(vector: Vector): Vector;
         by(matrix: Matrix): Matrix;
+        get asColumnMajorArray(): number[];
+        get asRowMajorArray(): number[];
+        static identity(): Matrix;
+        static scaling(sx: number, sy: number, sz: number): Matrix;
+        static translation(tx: number, ty: number, tz: number): Matrix;
+        static rotation(angle: number, axis: Vector): Matrix;
+        static view(direction: Vector, up: Vector): Matrix;
+        static globalView(eyePos: Vector, objPos: Vector, up: Vector): Matrix;
+        static project(focalRatio: number, horizon: number, aspectRatio?: number): Matrix;
+    }
+    class MatrixStack {
+        private _matrix;
+        private stack;
+        apply(matrix: Matrix): Matrix;
+        push(): void;
+        pop(): void;
+        get matrix(): Matrix;
     }
 }
 declare module Space {
     function vec(...coordinates: number[]): Vector;
     function mat(...columns: Vector[]): Matrix;
-    function diagonalMat(diagonalVector: Vector): Matrix;
-    function identityMat(size: number): Matrix;
 }
 declare module Gear {
     function lazy<T>(constructor: Supplier<T>): Supplier<T>;

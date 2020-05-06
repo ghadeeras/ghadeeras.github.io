@@ -11,16 +11,4 @@ module Space {
         return new Matrix(columns);
     }
 
-    export function diagonalMat(diagonalVector: Vector) {
-        return new Matrix(diagonalVector.coordinates.map((c, i) => diagonalVector.component(i)));
-    }
-
-    export function identityMat(size: number) {
-        const diagonals: number[] = [];
-        while (diagonals.length < size) {
-            diagonals.push(1);
-        }
-        return diagonalMat(new Vector(diagonals));
-    }
-    
 }

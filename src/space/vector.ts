@@ -74,8 +74,19 @@ module Space {
             const x = Math.acos(cos2x) / 2;
             return x;
         }
+
+        withDims(n: number) {
+            if (this.coordinates.length == n) {
+                return this;
+            }
+            const result = new Array<number>(n);
+            for (let i = 0; i < n; i++) {
+                result[i] = this.coordinates[i] || 0;
+            }
+            return new Vector(result);
+        }
         
-        c(...indexes: number[]) {
+        swizzle(...indexes: number[]) {
             const result = new Array<number>(indexes.length);
             for (let i = 0; i < indexes.length; i++) {
                 result[i] = this.coordinates[indexes[i]] || 0;
@@ -84,8 +95,8 @@ module Space {
         }
         
         cross(v: Vector) {
-            const v1 = this.c(0, 1, 2).coordinates;
-            const v2 = v.c(0, 1, 2).coordinates;
+            const v1 = this.withDims(3).coordinates;
+            const v2 = v.withDims(3).coordinates;
             const result = new Array<number>(3);
             result[0] = v1[1]*v2[2] - v1[2]*v2[1];
             result[1] = v1[2]*v2[0] - v1[0]*v2[2];
@@ -101,7 +112,7 @@ module Space {
         }
 
         prod(matrix: Matrix) {
-            return vec(...matrix.columns.map(column => this.dot(column)));
+            return new Vector(matrix.columns.map(column => this.dot(column)));
         }
 
         component(i: number) {

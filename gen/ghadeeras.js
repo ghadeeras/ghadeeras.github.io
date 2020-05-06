@@ -596,7 +596,17 @@ var Space;
             var x = Math.acos(cos2x) / 2;
             return x;
         };
-        Vector.prototype.c = function () {
+        Vector.prototype.withDims = function (n) {
+            if (this.coordinates.length == n) {
+                return this;
+            }
+            var result = new Array(n);
+            for (var i = 0; i < n; i++) {
+                result[i] = this.coordinates[i] || 0;
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.swizzle = function () {
             var indexes = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 indexes[_i] = arguments[_i];
@@ -608,8 +618,8 @@ var Space;
             return new Vector(result);
         };
         Vector.prototype.cross = function (v) {
-            var v1 = this.c(0, 1, 2).coordinates;
-            var v2 = v.c(0, 1, 2).coordinates;
+            var v1 = this.withDims(3).coordinates;
+            var v2 = v.withDims(3).coordinates;
             var result = new Array(3);
             result[0] = v1[1] * v2[2] - v1[2] * v2[1];
             result[1] = v1[2] * v2[0] - v1[0] * v2[2];
@@ -625,7 +635,7 @@ var Space;
         };
         Vector.prototype.prod = function (matrix) {
             var _this = this;
-            return Space.vec.apply(void 0, matrix.columns.map(function (column) { return _this.dot(column); }));
+            return new Vector(matrix.columns.map(function (column) { return _this.dot(column); }));
         };
         Vector.prototype.component = function (i) {
             return new Vector(this.coordinates.map(function (c, j) { return i == j ? c : 0; }));
@@ -638,31 +648,116 @@ var Space;
 (function (Space) {
     var Matrix = /** @class */ (function () {
         function Matrix(columns) {
-            this.columns = columns;
+            var _this = this;
+            this.columnsCount = columns.length;
+            this.rowsCount = columns.map(function (column) { return column.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
+            this.columns = columns.map(function (column) { return column.withDims(_this.rowsCount); });
         }
-        Matrix.prototype.transposed = function () {
-            var rowsCount = this.columns.map(function (column) { return column.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
-            var rows = [];
-            var _loop_1 = function (i) {
-                rows.push(new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i] || 0; })));
-            };
-            var this_1 = this;
-            for (var i = 0; i < rowsCount; i++) {
-                _loop_1(i);
-            }
-            return new Matrix(rows);
-        };
+        Object.defineProperty(Matrix.prototype, "transposed", {
+            get: function () {
+                var rows = Space.Vector[this.rowsCount];
+                var _loop_1 = function (i) {
+                    rows[i] = new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i]; }));
+                };
+                var this_1 = this;
+                for (var i = 0; i < this.rowsCount; i++) {
+                    _loop_1(i);
+                }
+                return new Matrix(rows);
+            },
+            enumerable: true,
+            configurable: true
+        });
         Matrix.prototype.prod = function (vector) {
-            var m = this.transposed();
+            var m = this.transposed;
             return vector.prod(m);
         };
         Matrix.prototype.by = function (matrix) {
-            var m = this.transposed();
-            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); }));
+            var m = this.transposed;
+            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); })).transposed;
+        };
+        Object.defineProperty(Matrix.prototype, "asColumnMajorArray", {
+            get: function () {
+                var result = Number[this.rowsCount * this.columnsCount];
+                var index = 0;
+                for (var i = 0; i < this.columnsCount; i++) {
+                    for (var j = 0; j < this.rowsCount; j++) {
+                        result[index] = this.columns[i].component[j];
+                        index++;
+                    }
+                }
+                return result;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Matrix.prototype, "asRowMajorArray", {
+            get: function () {
+                return this.transposed.asColumnMajorArray;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Matrix.identity = function () {
+            return this.scaling(1, 1, 1);
+        };
+        Matrix.scaling = function (sx, sy, sz) {
+            return Space.mat(Space.vec(sx, 0, 0, 0), Space.vec(0, sy, 0, 0), Space.vec(0, 0, sz, 0), Space.vec(0, 0, 0, 1));
+        };
+        Matrix.translation = function (tx, ty, tz) {
+            return Space.mat(Space.vec(1, 0, 0, tx), Space.vec(0, 1, 0, ty), Space.vec(0, 0, 1, tz), Space.vec(0, 0, 0, 1));
+        };
+        Matrix.rotation = function (angle, axis) {
+            var a = axis.withDims(3).unit;
+            var cos = Math.cos(angle);
+            var sin = Math.sin(angle);
+            var oneMinusCos = 1 - cos;
+            var _a = a.coordinates, x = _a[0], y = _a[1], z = _a[2];
+            var _b = [x * x, y * y, z * z, x * y, y * z, z * x], xx = _b[0], yy = _b[1], zz = _b[2], xy = _b[3], yz = _b[4], zx = _b[5];
+            return Space.mat(Space.vec(xx * oneMinusCos + cos, xy * oneMinusCos + z * sin, zx * oneMinusCos - y * sin, 0), Space.vec(xy * oneMinusCos - z * sin, yy * oneMinusCos + cos, yz * oneMinusCos + x * sin, 0), Space.vec(zx * oneMinusCos + y * sin, yz * oneMinusCos - x * sin, zz * oneMinusCos + cos, 0), Space.vec(0, 0, 0, 1));
+        };
+        Matrix.view = function (direction, up) {
+            var z = direction.withDims(3).scale(-1).unit;
+            var x = up.withDims(3).cross(z).unit;
+            var y = z.cross(x).unit;
+            return Space.mat(x, y, z, Space.vec(0, 0, 0, 1)).transposed;
+        };
+        Matrix.globalView = function (eyePos, objPos, up) {
+            var direction = objPos.minus(eyePos);
+            return Matrix.translation(0, 0, -direction.length).by(Matrix.view(direction, up));
+        };
+        Matrix.project = function (focalRatio, horizon, aspectRatio) {
+            if (aspectRatio === void 0) { aspectRatio = 1; }
+            var focalLength = 2 * focalRatio;
+            var range = focalLength - horizon;
+            return Space.mat(Space.vec(focalLength / aspectRatio, 0, 0, 0), Space.vec(0, focalLength, 0, 0), Space.vec(0, 0, (focalLength + horizon) / range, 2 * focalLength * horizon / range), Space.vec(0, 0, -1, 0));
         };
         return Matrix;
     }());
     Space.Matrix = Matrix;
+    var MatrixStack = /** @class */ (function () {
+        function MatrixStack() {
+            this._matrix = Matrix.identity();
+        }
+        MatrixStack.prototype.apply = function (matrix) {
+            return this._matrix = this._matrix.by(matrix);
+        };
+        MatrixStack.prototype.push = function () {
+            this.stack.push(this._matrix);
+        };
+        MatrixStack.prototype.pop = function () {
+            this._matrix = this.stack.pop();
+        };
+        Object.defineProperty(MatrixStack.prototype, "matrix", {
+            get: function () {
+                return this._matrix;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return MatrixStack;
+    }());
+    Space.MatrixStack = MatrixStack;
 })(Space || (Space = {}));
 /// <reference path="vector.ts" />
 /// <reference path="matrix.ts" />
@@ -686,18 +781,6 @@ var Space;
         return new Space.Matrix(columns);
     }
     Space.mat = mat;
-    function diagonalMat(diagonalVector) {
-        return new Space.Matrix(diagonalVector.coordinates.map(function (c, i) { return diagonalVector.component(i); }));
-    }
-    Space.diagonalMat = diagonalMat;
-    function identityMat(size) {
-        var diagonals = [];
-        while (diagonals.length < size) {
-            diagonals.push(1);
-        }
-        return diagonalMat(new Space.Vector(diagonals));
-    }
-    Space.identityMat = identityMat;
 })(Space || (Space = {}));
 var Gear;
 (function (Gear) {
