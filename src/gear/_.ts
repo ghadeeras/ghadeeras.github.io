@@ -42,4 +42,21 @@ module Gear {
         return causeProducer(cause => effect(cause, effectConsumer));
     }
 
+    export function load(path: string, onready: Gear.Callable, ...files: [string, Consumer<string>][]) {
+        const remaining: number[] = [files.length];
+        for (let [file, consumer] of files) {
+            fetchFile(path + "/" + file, content => {
+                consumer(content);
+                remaining[0]--;
+                if (remaining[0] <= 0) {
+                    onready();
+                }
+            });
+        }
+    }
+
+    function fetchFile(url: string, consumer: Gear.Consumer<string>) {
+        fetch(url, { method : "get", mode : "no-cors" }).then(response => response.text().then(consumer));
+    }
+
 }

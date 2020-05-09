@@ -13,7 +13,7 @@ module Djee {
             this.location = gl.getUniformLocation(program.program, name);
             this.setter = this.getSetter(gl, size, matrix);
             
-            this._data = new Array(size);
+            this._data = new Array(matrix ? size * size : size);
         }
 
         private getSetter(gl: WebGLRenderingContext, size: number, matrix: boolean): (data: Float32Array) => void {
@@ -41,8 +41,8 @@ module Djee {
         }
 
         set data(data: number[]) {
-            if (data.length < this.size) {
-                throw `Arrays of length '${data.length}' cannot be assigned to uniform vector '${this.name}' which has size '${this.size}'`;
+            if (data.length != this._data.length) {
+                throw `Arrays of length '${data.length}' cannot be assigned to uniform ${this.matrix ? 'matrix' : 'vector'} '${this.name}' which has size '${this.size}'`;
             }
             this.setter(new Float32Array(data));
             this._data = copyOf(data);

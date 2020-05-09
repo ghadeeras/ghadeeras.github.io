@@ -8,12 +8,12 @@ module Space {
 
         constructor(columns: Vector[]) {
             this.columnsCount = columns.length;
-            this.rowsCount = columns.map(column => column.length).reduce((a, b) => a > b ? a : b, 0);
+            this.rowsCount = columns.map(column => column.coordinates.length).reduce((a, b) => a > b ? a : b, 0);
             this.columns = columns.map(column => column.withDims(this.rowsCount));
         }
 
         get transposed() {
-            const rows: Vector[] = Vector[this.rowsCount]; 
+            const rows: Vector[] = new Array<Vector>(this.rowsCount); 
             for (let i = 0; i < this.rowsCount; i++) {
                 rows[i] = new Vector(this.columns.map(column => column.coordinates[i]));
             }
@@ -27,15 +27,15 @@ module Space {
 
         by(matrix: Matrix) {
             const m = this.transposed;
-            return new Matrix(matrix.columns.map(column => column.prod(m))).transposed;
+            return new Matrix(matrix.columns.map(column => column.prod(m)));
         }
 
         get asColumnMajorArray() {
-            const result: number[] = Number[this.rowsCount * this.columnsCount];
+            const result: number[] = new Array<number>(this.rowsCount * this.columnsCount);
             let index = 0;
             for (let i = 0; i < this.columnsCount; i++) {
                 for (let j = 0; j < this.rowsCount; j++) {
-                    result[index] = this.columns[i].component[j];
+                    result[index] = this.columns[i].coordinates[j];
                     index++;
                 }
             }
@@ -61,10 +61,10 @@ module Space {
 
         static translation(tx: number, ty: number, tz: number) {
             return mat(
-                vec(1, 0, 0, tx),
-                vec(0, 1, 0, ty),
-                vec(0, 0, 1, tz),
-                vec(0, 0, 0,  1),
+                vec( 1,  0,  0, 0),
+                vec( 0,  1,  0, 0),
+                vec( 0,  0,  1, 0),
+                vec(tx, ty, tz, 1),
             );
         }
 
@@ -92,17 +92,17 @@ module Space {
 
         static globalView(eyePos: Vector, objPos: Vector, up: Vector) {
             const direction = objPos.minus(eyePos);
-            return Matrix.translation(0, 0, -direction.length).by(Matrix.view(direction, up));
+            return Matrix.view(direction, up).by(Matrix.translation(-eyePos.coordinates[0], -eyePos.coordinates[1], -eyePos.coordinates[2]));
         }
         
         static project(focalRatio: number, horizon: number, aspectRatio = 1) {
             const focalLength = 2 * focalRatio;
             const range = focalLength - horizon;
             return mat(
-                vec(focalLength / aspectRatio,           0,                               0,                                 0),
-                vec(                        0, focalLength,                               0,                                 0),
-                vec(                        0,           0, (focalLength + horizon) / range, 2 * focalLength * horizon / range),
-                vec(                        0,           0,                              -1,                                 0)
+                vec(focalLength / aspectRatio,           0,                                 0,  0),
+                vec(                        0, focalLength,                                 0,  0),
+                vec(                        0,           0,   (focalLength + horizon) / range, -1),
+                vec(                        0,           0, 2 * focalLength * horizon / range,  0)
             );
         }
 

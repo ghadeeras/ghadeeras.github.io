@@ -67,7 +67,7 @@ declare module Djee {
         delete(): void;
         use(): void;
         locateAttribute(name: string, size: number): Attribute;
-        locateUniform(name: string, size: number): Uniform;
+        locateUniform(name: string, size: number, matrix?: boolean): Uniform;
         get uniforms(): Variable[];
         get attributes(): Variable[];
         private activeInfos;
@@ -301,6 +301,7 @@ declare module Gear {
     function intact<T>(): Mapper<T, T>;
     function compositeConsumer<T>(...consumers: Consumer<T>[]): Consumer<T>;
     function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect<C, E>, effectConsumer: Consumer<E>): void;
+    function load(path: string, onready: Gear.Callable, ...files: [string, Consumer<string>][]): void;
 }
 declare module GasketTwist2 {
     interface FlattenedSierpinski {
@@ -352,6 +353,9 @@ declare module GasketTwist2 {
     }
 }
 declare module GasketTwist2 {
+    function init(): void;
+}
+declare module Tree {
     function init(): void;
 }
 declare module WebGLLab {

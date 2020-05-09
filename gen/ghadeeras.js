@@ -342,8 +342,9 @@ var Djee;
         Program.prototype.locateAttribute = function (name, size) {
             return new Djee.Attribute(this, name, size);
         };
-        Program.prototype.locateUniform = function (name, size) {
-            return new Djee.Uniform(this, name, size);
+        Program.prototype.locateUniform = function (name, size, matrix) {
+            if (matrix === void 0) { matrix = false; }
+            return new Djee.Uniform(this, name, size, matrix);
         };
         Object.defineProperty(Program.prototype, "uniforms", {
             get: function () {
@@ -427,7 +428,7 @@ var Djee;
             var gl = program.context.gl;
             this.location = gl.getUniformLocation(program.program, name);
             this.setter = this.getSetter(gl, size, matrix);
-            this._data = new Array(size);
+            this._data = new Array(matrix ? size * size : size);
         }
         Uniform.prototype.getSetter = function (gl, size, matrix) {
             var location = this.location;
@@ -454,8 +455,8 @@ var Djee;
                 return Djee.copyOf(this._data);
             },
             set: function (data) {
-                if (data.length < this.size) {
-                    throw "Arrays of length '" + data.length + "' cannot be assigned to uniform vector '" + this.name + "' which has size '" + this.size + "'";
+                if (data.length != this._data.length) {
+                    throw "Arrays of length '" + data.length + "' cannot be assigned to uniform " + (this.matrix ? 'matrix' : 'vector') + " '" + this.name + "' which has size '" + this.size + "'";
                 }
                 this.setter(new Float32Array(data));
                 this._data = Djee.copyOf(data);
@@ -650,12 +651,12 @@ var Space;
         function Matrix(columns) {
             var _this = this;
             this.columnsCount = columns.length;
-            this.rowsCount = columns.map(function (column) { return column.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
+            this.rowsCount = columns.map(function (column) { return column.coordinates.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
             this.columns = columns.map(function (column) { return column.withDims(_this.rowsCount); });
         }
         Object.defineProperty(Matrix.prototype, "transposed", {
             get: function () {
-                var rows = Space.Vector[this.rowsCount];
+                var rows = new Array(this.rowsCount);
                 var _loop_1 = function (i) {
                     rows[i] = new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i]; }));
                 };
@@ -674,15 +675,15 @@ var Space;
         };
         Matrix.prototype.by = function (matrix) {
             var m = this.transposed;
-            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); })).transposed;
+            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); }));
         };
         Object.defineProperty(Matrix.prototype, "asColumnMajorArray", {
             get: function () {
-                var result = Number[this.rowsCount * this.columnsCount];
+                var result = new Array(this.rowsCount * this.columnsCount);
                 var index = 0;
                 for (var i = 0; i < this.columnsCount; i++) {
                     for (var j = 0; j < this.rowsCount; j++) {
-                        result[index] = this.columns[i].component[j];
+                        result[index] = this.columns[i].coordinates[j];
                         index++;
                     }
                 }
@@ -705,7 +706,7 @@ var Space;
             return Space.mat(Space.vec(sx, 0, 0, 0), Space.vec(0, sy, 0, 0), Space.vec(0, 0, sz, 0), Space.vec(0, 0, 0, 1));
         };
         Matrix.translation = function (tx, ty, tz) {
-            return Space.mat(Space.vec(1, 0, 0, tx), Space.vec(0, 1, 0, ty), Space.vec(0, 0, 1, tz), Space.vec(0, 0, 0, 1));
+            return Space.mat(Space.vec(1, 0, 0, 0), Space.vec(0, 1, 0, 0), Space.vec(0, 0, 1, 0), Space.vec(tx, ty, tz, 1));
         };
         Matrix.rotation = function (angle, axis) {
             var a = axis.withDims(3).unit;
@@ -724,13 +725,13 @@ var Space;
         };
         Matrix.globalView = function (eyePos, objPos, up) {
             var direction = objPos.minus(eyePos);
-            return Matrix.translation(0, 0, -direction.length).by(Matrix.view(direction, up));
+            return Matrix.view(direction, up).by(Matrix.translation(-eyePos.coordinates[0], -eyePos.coordinates[1], -eyePos.coordinates[2]));
         };
         Matrix.project = function (focalRatio, horizon, aspectRatio) {
             if (aspectRatio === void 0) { aspectRatio = 1; }
             var focalLength = 2 * focalRatio;
             var range = focalLength - horizon;
-            return Space.mat(Space.vec(focalLength / aspectRatio, 0, 0, 0), Space.vec(0, focalLength, 0, 0), Space.vec(0, 0, (focalLength + horizon) / range, 2 * focalLength * horizon / range), Space.vec(0, 0, -1, 0));
+            return Space.mat(Space.vec(focalLength / aspectRatio, 0, 0, 0), Space.vec(0, focalLength, 0, 0), Space.vec(0, 0, (focalLength + horizon) / range, -1), Space.vec(0, 0, 2 * focalLength * horizon / range, 0));
         };
         return Matrix;
     }());
@@ -1322,6 +1323,30 @@ var Gear;
         return causeProducer(function (cause) { return effect(cause, effectConsumer); });
     }
     Gear.causeEffectLink = causeEffectLink;
+    function load(path, onready) {
+        var files = [];
+        for (var _i = 2; _i < arguments.length; _i++) {
+            files[_i - 2] = arguments[_i];
+        }
+        var remaining = [files.length];
+        var _loop_2 = function (file, consumer) {
+            fetchFile(path + "/" + file, function (content) {
+                consumer(content);
+                remaining[0]--;
+                if (remaining[0] <= 0) {
+                    onready();
+                }
+            });
+        };
+        for (var _a = 0, files_1 = files; _a < files_1.length; _a++) {
+            var _b = files_1[_a], file = _b[0], consumer = _b[1];
+            _loop_2(file, consumer);
+        }
+    }
+    Gear.load = load;
+    function fetchFile(url, consumer) {
+        fetch(url, { method: "get", mode: "no-cors" }).then(function (response) { return response.text().then(consumer); });
+    }
 })(Gear || (Gear = {}));
 var GasketTwist2;
 (function (GasketTwist2) {
@@ -1514,6 +1539,123 @@ var GasketTwist2;
     }
     GasketTwist2.init = init;
 })(GasketTwist2 || (GasketTwist2 = {}));
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+var Tree;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+(function (Tree) {
+    var vertexShaderCode = null;
+    var fragmentShaderCode = null;
+    function init() {
+        window.onload = function () { return Gear.load("/shaders", function () { return doInit(); }, ["tree.vert", function (shader) { return vertexShaderCode = shader; }], ["tree.frag", function (shader) { return fragmentShaderCode = shader; }]); };
+    }
+    Tree.init = init;
+    function doInit() {
+        var context = new Djee.Context("canvas-gl");
+        var buffer = context.newBuffer();
+        buffer.data = vertexData();
+        var vertexShader = context.shader(Djee.ShaderType.VertexShader, vertexShaderCode);
+        var fragmentShader = context.shader(Djee.ShaderType.FragmentShader, fragmentShaderCode);
+        var program = context.link([vertexShader, fragmentShader]);
+        program.use();
+        var position = program.locateAttribute("position", 3);
+        var normal = program.locateAttribute("normal", 3);
+        position.pointTo(buffer, 6, 0);
+        normal.pointTo(buffer, 6, 3);
+        var matModel = program.locateUniform("matModel", 4, true);
+        var matSubModel = program.locateUniform("matSubModel", 4, true);
+        var matView = program.locateUniform("matView", 4, true);
+        var matProjection = program.locateUniform("matProjection", 4, true);
+        var view = Space.Matrix.globalView(Space.vec(0, 2, 8), Space.vec(0, 2, 0), Space.vec(0, 1, 0));
+        matView.data = view.asColumnMajorArray;
+        var proj = Space.Matrix.project(1, 100, 1);
+        matProjection.data = proj.asColumnMajorArray;
+        var lightPosition = program.locateUniform("lightPosition", 3, false);
+        var color = program.locateUniform("color", 3, false);
+        var shininess = program.locateUniform("shininess", 1, false);
+        lightPosition.data = [4, 4, 8];
+        color.data = [0.3, 0, 0.7];
+        shininess.data = [1];
+        var matricies = generateMatricies(5);
+        var canvas = Gear.elementEvents("canvas-gl");
+        canvas.mousePos
+            .defaultsTo([0, 0])
+            .map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [4 * Math.PI * x / canvas.element.clientWidth, -4 * Math.PI * y / canvas.element.clientHeight];
+        })
+            .producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            matModel.data = Space.Matrix.translation(0, +2, 0)
+                .by(Space.Matrix.rotation(y, Space.vec(1, 0, 0)))
+                .by(Space.Matrix.rotation(x, Space.vec(0, 1, 0)))
+                .by(Space.Matrix.translation(0, -2, 0))
+                .asColumnMajorArray;
+            draw(context, matSubModel, matricies);
+        });
+        draw(context, matSubModel, matricies);
+    }
+    var scale = Math.SQRT1_2;
+    var verticalAngle = Math.PI / 4;
+    var horizontalAngle = 2 * Math.PI / 3;
+    var branch1Matrix = Space.Matrix.translation(0, 2, 0)
+        .by(Space.Matrix.rotation(verticalAngle, Space.vec(1, 0, 0)))
+        .by(Space.Matrix.scaling(scale, scale, scale));
+    var branch2Matrix = Space.Matrix.translation(0, 2, 0)
+        .by(Space.Matrix.rotation(verticalAngle, Space.vec(Math.cos(horizontalAngle), 0, +Math.sin(horizontalAngle))))
+        .by(Space.Matrix.scaling(scale, scale, scale));
+    var branch3Matrix = Space.Matrix.translation(0, 2, 0)
+        .by(Space.Matrix.rotation(verticalAngle, Space.vec(Math.cos(horizontalAngle), 0, -Math.sin(horizontalAngle))))
+        .by(Space.Matrix.scaling(scale, scale, scale));
+    function generateMatricies(depth) {
+        var result = [];
+        doGenerateMatricies(result, depth, Space.Matrix.identity());
+        return result.map(function (matrix) { return matrix.asColumnMajorArray; });
+    }
+    function doGenerateMatricies(result, depth, matrix) {
+        result.push(matrix);
+        if (depth > 0) {
+            doGenerateMatricies(result, depth - 1, matrix.by(branch1Matrix));
+            doGenerateMatricies(result, depth - 1, matrix.by(branch2Matrix));
+            doGenerateMatricies(result, depth - 1, matrix.by(branch3Matrix));
+        }
+    }
+    function draw(context, model, matrices) {
+        var gl = context.gl;
+        gl.enable(gl.DEPTH_TEST);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        for (var _i = 0, matrices_1 = matrices; _i < matrices_1.length; _i++) {
+            var matrix = matrices_1[_i];
+            model.data = matrix;
+            for (var y = 0; y < 32; y++) {
+                gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, y * 66, 66);
+            }
+        }
+        gl.finish();
+        gl.flush();
+    }
+    function vertexData() {
+        var result = [];
+        for (var i = 0; i < 32; i++) {
+            for (var j = 0; j <= 32; j++) {
+                var y1 = i / 32;
+                var y2 = (i + 1) / 32;
+                var z = Math.cos(Math.PI * j / 16);
+                var x = Math.sin(Math.PI * j / 16);
+                var r = 1 / 8;
+                var d = 0.5;
+                var r1 = r * (1 - d * (y1 - 0.5));
+                var r2 = r * (1 - d * (y2 - 0.5));
+                var n = Space.vec(x, r * d, z).unit;
+                result.push.apply(result, __spreadArrays([2 * x * r2, 2 * y2, 2 * z * r2], n.coordinates, [2 * x * r1, 2 * y1, 2 * z * r1], n.coordinates));
+            }
+        }
+        return result;
+    }
+})(Tree || (Tree = {}));
 var WebGLLab;
 (function (WebGLLab) {
     WebGLLab.samples = [

@@ -44,8 +44,8 @@ module Djee {
             return new Attribute(this, name, size);
         }
 
-        locateUniform(name: string, size: number) {
-            return new Uniform(this, name, size);
+        locateUniform(name: string, size: number, matrix: boolean = false) {
+            return new Uniform(this, name, size, matrix);
         }
 
         get uniforms() {
