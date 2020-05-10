@@ -356,6 +356,55 @@ declare module GasketTwist2 {
     function init(): void;
 }
 declare module Tree {
+    class MatriciesGenerator {
+        private _verticalAngle;
+        private _depth;
+        private branch1Matrix;
+        private branch2Matrix;
+        private branch3Matrix;
+        readonly scale: number;
+        readonly branchCount = 3;
+        readonly horizontalAngle: number;
+        readonly axis1: Space.Vector;
+        readonly axis2: Space.Vector;
+        readonly axis3: Space.Vector;
+        readonly scaling: Space.Matrix;
+        readonly translation: Space.Matrix;
+        constructor();
+        private init;
+        get verticalAngle(): number;
+        set verticalAngle(value: number);
+        get depth(): number;
+        set depth(value: number);
+        generateMatricies(): number[][];
+        doGenerateMatricies(result: Space.Matrix[], depth: number, matrix: Space.Matrix): void;
+    }
+}
+declare module Tree {
+    class Renderer {
+        private context;
+        private buffer;
+        private matModel;
+        private matSubModel;
+        private matView;
+        private matProjection;
+        private lightPosition;
+        private color;
+        private shininess;
+        private fogginess;
+        private matrices;
+        constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]);
+        matricesSink(): Gear.Sink<number[][]>;
+        rotationSink(): Gear.Sink<Gear.PointerPosition>;
+        lightPositionSink(): Gear.Sink<Gear.PointerPosition>;
+        colorSink(): Gear.Sink<Gear.PointerPosition>;
+        shininessSink(): Gear.Sink<number>;
+        fogginessSink(): Gear.Sink<number>;
+        private draw;
+        private vertexData;
+    }
+}
+declare module Tree {
     function init(): void;
 }
 declare module WebGLLab {

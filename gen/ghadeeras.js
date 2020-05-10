@@ -1163,7 +1163,7 @@ var Gear;
         };
         ElementEvents.prototype.newMousePos = function () {
             var _this = this;
-            var value = pointerPositionValue([0, 0]);
+            var value = pointerPositionValue([this.element.clientWidth / 2, this.element.clientHeight / 2]);
             this.element.onmousemove = function (e) {
                 value.value = _this.relativePos(e);
                 e.preventDefault();
@@ -1539,13 +1539,227 @@ var GasketTwist2;
     }
     GasketTwist2.init = init;
 })(GasketTwist2 || (GasketTwist2 = {}));
+var Tree;
+(function (Tree) {
+    var MatriciesGenerator = /** @class */ (function () {
+        function MatriciesGenerator() {
+            this._verticalAngle = Math.PI / 4;
+            this._depth = 5;
+            this.scale = Math.SQRT1_2;
+            this.branchCount = 3;
+            this.horizontalAngle = 2 * Math.PI / this.branchCount;
+            this.axis1 = Space.vec(1, 0, 0);
+            this.axis2 = Space.vec(Math.cos(this.horizontalAngle), 0, +Math.sin(this.horizontalAngle));
+            this.axis3 = Space.vec(Math.cos(this.horizontalAngle), 0, -Math.sin(this.horizontalAngle));
+            this.scaling = Space.Matrix.scaling(this.scale, this.scale, this.scale);
+            this.translation = Space.Matrix.translation(0, 2, 0);
+            this.init();
+        }
+        MatriciesGenerator.prototype.init = function () {
+            this.branch1Matrix = this.translation
+                .by(Space.Matrix.rotation(this._verticalAngle, this.axis1))
+                .by(this.scaling);
+            this.branch2Matrix = this.translation
+                .by(Space.Matrix.rotation(this._verticalAngle, this.axis2))
+                .by(this.scaling);
+            this.branch3Matrix = Space.Matrix.translation(0, 2, 0)
+                .by(Space.Matrix.rotation(this._verticalAngle, this.axis3))
+                .by(this.scaling);
+        };
+        Object.defineProperty(MatriciesGenerator.prototype, "verticalAngle", {
+            get: function () {
+                return this._verticalAngle;
+            },
+            set: function (value) {
+                this._verticalAngle = value;
+                this.init();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(MatriciesGenerator.prototype, "depth", {
+            get: function () {
+                return this._depth;
+            },
+            set: function (value) {
+                this._depth = value;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MatriciesGenerator.prototype.generateMatricies = function () {
+            var result = [];
+            this.doGenerateMatricies(result, this._depth, Space.Matrix.identity());
+            return result.map(function (matrix) { return matrix.asColumnMajorArray; });
+        };
+        MatriciesGenerator.prototype.doGenerateMatricies = function (result, depth, matrix) {
+            result.push(matrix);
+            if (depth > 0) {
+                this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch1Matrix));
+                this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch2Matrix));
+                this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch3Matrix));
+            }
+        };
+        return MatriciesGenerator;
+    }());
+    Tree.MatriciesGenerator = MatriciesGenerator;
+})(Tree || (Tree = {}));
+var Tree;
+(function (Tree) {
+    var Renderer = /** @class */ (function () {
+        function Renderer(vertexShaderCode, fragmentShaderCode, matrices) {
+            this.context = new Djee.Context("canvas-gl");
+            this.buffer = this.context.newBuffer();
+            this.buffer.data = this.vertexData();
+            var vertexShader = this.context.vertexShader(vertexShaderCode);
+            var fragmentShader = this.context.fragmentShader(fragmentShaderCode);
+            var program = this.context.link([vertexShader, fragmentShader]);
+            program.use();
+            var position = program.locateAttribute("position", 3);
+            var normal = program.locateAttribute("normal", 3);
+            position.pointTo(this.buffer, 6, 0);
+            normal.pointTo(this.buffer, 6, 3);
+            this.matModel = program.locateUniform("matModel", 4, true);
+            this.matSubModel = program.locateUniform("matSubModel", 4, true);
+            this.matView = program.locateUniform("matView", 4, true);
+            this.matProjection = program.locateUniform("matProjection", 4, true);
+            var model = Space.Matrix.identity();
+            this.matModel.data = model.asColumnMajorArray;
+            var view = Space.Matrix.globalView(Space.vec(0, 3, 9), Space.vec(0, 2, 0), Space.vec(0, 1, 0));
+            this.matView.data = view.asColumnMajorArray;
+            var proj = Space.Matrix.project(1, 100, 1);
+            this.matProjection.data = proj.asColumnMajorArray;
+            this.lightPosition = program.locateUniform("lightPosition", 3, false);
+            this.color = program.locateUniform("color", 3, false);
+            this.shininess = program.locateUniform("shininess", 1, false);
+            this.fogginess = program.locateUniform("fogginess", 1, false);
+            this.lightPosition.data = [8, 8, 8];
+            this.color.data = [0.3, 0.5, 0.7];
+            this.shininess.data = [1];
+            this.fogginess.data = [0.5];
+            this.matrices = matrices;
+            this.draw();
+        }
+        Renderer.prototype.matricesSink = function () {
+            var _this = this;
+            return Gear.sink(function (matricies) {
+                if (matricies) {
+                    _this.matrices = matricies;
+                    _this.draw();
+                }
+            });
+        };
+        Renderer.prototype.rotationSink = function () {
+            var _this = this;
+            var translationUp = Space.Matrix.translation(0, +2, 0);
+            var translationDown = Space.Matrix.translation(0, -2, 0);
+            var axisX = Space.vec(1, 0, 0);
+            var axisY = Space.vec(0, 1, 0);
+            return Gear.sinkFlow(function (flow) { return flow.defaultsTo([0, 0]).producer(function (_a) {
+                var x = _a[0], y = _a[1];
+                _this.matModel.data = translationUp
+                    .by(Space.Matrix.rotation(y * Math.PI, axisX))
+                    .by(Space.Matrix.rotation(x * Math.PI, axisY))
+                    .by(translationDown)
+                    .asColumnMajorArray;
+                _this.draw();
+            }); });
+        };
+        Renderer.prototype.lightPositionSink = function () {
+            var _this = this;
+            return Gear.sinkFlow(function (flow) { return flow
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return [x * Math.PI / 2, y * Math.PI / 2];
+            })
+                .producer(function (_a) {
+                var x = _a[0], y = _a[1];
+                _this.lightPosition.data = [8 * Math.sin(x) * Math.cos(y), 8 * Math.sin(y), 8 * Math.cos(x) * Math.cos(y)];
+                _this.draw();
+            }); });
+        };
+        Renderer.prototype.colorSink = function () {
+            var _this = this;
+            var redVec = Space.vec(1, 0);
+            var greenVec = Space.vec(Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3));
+            var blueVec = Space.vec(Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3));
+            return Gear.sinkFlow(function (flow) { return flow
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return Space.vec(x, y);
+            })
+                .producer(function (vec) {
+                var red = Math.min(2, 1 + vec.dot(redVec)) / 2;
+                var green = Math.min(2, 1 + vec.dot(greenVec)) / 2;
+                var blue = Math.min(2, 1 + vec.dot(blueVec)) / 2;
+                _this.color.data = [red, green, blue];
+                _this.draw();
+            }); });
+        };
+        Renderer.prototype.shininessSink = function () {
+            var _this = this;
+            return Gear.sink(function (shininess) {
+                _this.shininess.data = [shininess];
+                _this.draw();
+            });
+        };
+        Renderer.prototype.fogginessSink = function () {
+            var _this = this;
+            return Gear.sink(function (fogginess) {
+                _this.fogginess.data = [fogginess];
+                _this.draw();
+            });
+        };
+        Renderer.prototype.draw = function () {
+            var gl = this.context.gl;
+            gl.enable(gl.DEPTH_TEST);
+            // gl.enable(gl.CULL_FACE);
+            // gl.frontFace(gl.CCW);
+            // gl.cullFace(gl.BACK);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            for (var _i = 0, _a = this.matrices; _i < _a.length; _i++) {
+                var matrix = _a[_i];
+                this.matSubModel.data = matrix;
+                for (var y = 0; y < 16; y++) {
+                    gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, y * 34, 34);
+                }
+            }
+            gl.finish();
+            gl.flush();
+        };
+        Renderer.prototype.vertexData = function () {
+            var result = [];
+            for (var i = 0; i < 16; i++) {
+                for (var j = 0; j <= 16; j++) {
+                    var y1 = i / 16;
+                    var y2 = (i + 1) / 16;
+                    var z = Math.cos(Math.PI * j / 8);
+                    var x = Math.sin(Math.PI * j / 8);
+                    var r = 1 / 8;
+                    var d = 2 * (1 - Math.SQRT1_2) / (1 + Math.SQRT1_2);
+                    var r1 = r * (1 - d * (y1 - 0.5));
+                    var r2 = r * (1 - d * (y2 - 0.5));
+                    var n = Space.vec(x, r * d, z).unit;
+                    result.push.apply(result, __spreadArrays([2 * x * r2, 2 * y2, 2 * z * r2], n.coordinates, [2 * x * r1, 2 * y1, 2 * z * r1], n.coordinates));
+                }
+            }
+            return result;
+        };
+        return Renderer;
+    }());
+    Tree.Renderer = Renderer;
+})(Tree || (Tree = {}));
 /// <reference path="../space/_.ts" />
 /// <reference path="../djee/_.ts" />
 /// <reference path="../gear/_.ts" />
+/// <reference path="./matgen.ts" />
+/// <reference path="./renderer.ts" />
 var Tree;
 /// <reference path="../space/_.ts" />
 /// <reference path="../djee/_.ts" />
 /// <reference path="../gear/_.ts" />
+/// <reference path="./matgen.ts" />
+/// <reference path="./renderer.ts" />
 (function (Tree) {
     var vertexShaderCode = null;
     var fragmentShaderCode = null;
@@ -1554,106 +1768,44 @@ var Tree;
     }
     Tree.init = init;
     function doInit() {
-        var context = new Djee.Context("canvas-gl");
-        var buffer = context.newBuffer();
-        buffer.data = vertexData();
-        var vertexShader = context.shader(Djee.ShaderType.VertexShader, vertexShaderCode);
-        var fragmentShader = context.shader(Djee.ShaderType.FragmentShader, fragmentShaderCode);
-        var program = context.link([vertexShader, fragmentShader]);
-        program.use();
-        var position = program.locateAttribute("position", 3);
-        var normal = program.locateAttribute("normal", 3);
-        position.pointTo(buffer, 6, 0);
-        normal.pointTo(buffer, 6, 3);
-        var matModel = program.locateUniform("matModel", 4, true);
-        var matSubModel = program.locateUniform("matSubModel", 4, true);
-        var matView = program.locateUniform("matView", 4, true);
-        var matProjection = program.locateUniform("matProjection", 4, true);
-        var view = Space.Matrix.globalView(Space.vec(0, 2, 8), Space.vec(0, 2, 0), Space.vec(0, 1, 0));
-        matView.data = view.asColumnMajorArray;
-        var proj = Space.Matrix.project(1, 100, 1);
-        matProjection.data = proj.asColumnMajorArray;
-        var lightPosition = program.locateUniform("lightPosition", 3, false);
-        var color = program.locateUniform("color", 3, false);
-        var shininess = program.locateUniform("shininess", 1, false);
-        lightPosition.data = [4, 4, 8];
-        color.data = [0.3, 0, 0.7];
-        shininess.data = [1];
-        var matricies = generateMatricies(5);
+        var generator = new Tree.MatriciesGenerator();
+        var matrices = generator.generateMatricies();
+        var renderer = new Tree.Renderer(vertexShaderCode, fragmentShaderCode, matrices);
+        var matricesSink = renderer.matricesSink();
         var canvas = Gear.elementEvents("canvas-gl");
-        canvas.mousePos
-            .defaultsTo([0, 0])
+        var depthInc = Gear.elementEvents("depth-inc");
+        var depthDec = Gear.elementEvents("depth-dec");
+        Gear.Flow.from(depthInc.click.map(function () { return +1; }), depthDec.click.map(function () { return -1; })).reduce(function (inc, depth) { return Math.max(Math.min(8, inc + depth), 1); }, 5).branch(function (flow) { return flow.map(function (depth) { return depth.toString(); }).to(Gear.text("depth")); }, function (flow) { return flow.map(function (depth) {
+            generator.depth = depth;
+            return generator.generateMatricies();
+        }).to(matricesSink); });
+        var mouseButtonPressed = canvas.mouseButons.map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        });
+        Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(function (positions) { return positions[0]; })).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [
+                2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth,
+                2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
+            ];
+        }).branch(function (flow) { return flow.filter(selected("rotation")).to(renderer.rotationSink()); }, function (flow) { return flow.filter(selected("lightPosition")).to(renderer.lightPositionSink()); }, function (flow) { return flow.filter(selected("color")).to(renderer.colorSink()); }, function (flow) { return flow.filter(selected("shininess")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(renderer.shininessSink()); }, function (flow) { return flow.filter(selected("fogginess")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return (1 + y) / 2;
+        }).to(renderer.fogginessSink()); }, function (flow) { return flow.filter(selected("angle"))
             .map(function (_a) {
             var x = _a[0], y = _a[1];
-            return [4 * Math.PI * x / canvas.element.clientWidth, -4 * Math.PI * y / canvas.element.clientHeight];
+            generator.verticalAngle = x * Math.PI;
+            return generator.generateMatricies();
         })
-            .producer(function (_a) {
-            var x = _a[0], y = _a[1];
-            matModel.data = Space.Matrix.translation(0, +2, 0)
-                .by(Space.Matrix.rotation(y, Space.vec(1, 0, 0)))
-                .by(Space.Matrix.rotation(x, Space.vec(0, 1, 0)))
-                .by(Space.Matrix.translation(0, -2, 0))
-                .asColumnMajorArray;
-            draw(context, matSubModel, matricies);
-        });
-        draw(context, matSubModel, matricies);
+            .to(matricesSink); });
     }
-    var scale = Math.SQRT1_2;
-    var verticalAngle = Math.PI / 4;
-    var horizontalAngle = 2 * Math.PI / 3;
-    var branch1Matrix = Space.Matrix.translation(0, 2, 0)
-        .by(Space.Matrix.rotation(verticalAngle, Space.vec(1, 0, 0)))
-        .by(Space.Matrix.scaling(scale, scale, scale));
-    var branch2Matrix = Space.Matrix.translation(0, 2, 0)
-        .by(Space.Matrix.rotation(verticalAngle, Space.vec(Math.cos(horizontalAngle), 0, +Math.sin(horizontalAngle))))
-        .by(Space.Matrix.scaling(scale, scale, scale));
-    var branch3Matrix = Space.Matrix.translation(0, 2, 0)
-        .by(Space.Matrix.rotation(verticalAngle, Space.vec(Math.cos(horizontalAngle), 0, -Math.sin(horizontalAngle))))
-        .by(Space.Matrix.scaling(scale, scale, scale));
-    function generateMatricies(depth) {
-        var result = [];
-        doGenerateMatricies(result, depth, Space.Matrix.identity());
-        return result.map(function (matrix) { return matrix.asColumnMajorArray; });
-    }
-    function doGenerateMatricies(result, depth, matrix) {
-        result.push(matrix);
-        if (depth > 0) {
-            doGenerateMatricies(result, depth - 1, matrix.by(branch1Matrix));
-            doGenerateMatricies(result, depth - 1, matrix.by(branch2Matrix));
-            doGenerateMatricies(result, depth - 1, matrix.by(branch3Matrix));
-        }
-    }
-    function draw(context, model, matrices) {
-        var gl = context.gl;
-        gl.enable(gl.DEPTH_TEST);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        for (var _i = 0, matrices_1 = matrices; _i < matrices_1.length; _i++) {
-            var matrix = matrices_1[_i];
-            model.data = matrix;
-            for (var y = 0; y < 32; y++) {
-                gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, y * 66, 66);
-            }
-        }
-        gl.finish();
-        gl.flush();
-    }
-    function vertexData() {
-        var result = [];
-        for (var i = 0; i < 32; i++) {
-            for (var j = 0; j <= 32; j++) {
-                var y1 = i / 32;
-                var y2 = (i + 1) / 32;
-                var z = Math.cos(Math.PI * j / 16);
-                var x = Math.sin(Math.PI * j / 16);
-                var r = 1 / 8;
-                var d = 0.5;
-                var r1 = r * (1 - d * (y1 - 0.5));
-                var r2 = r * (1 - d * (y2 - 0.5));
-                var n = Space.vec(x, r * d, z).unit;
-                result.push.apply(result, __spreadArrays([2 * x * r2, 2 * y2, 2 * z * r2], n.coordinates, [2 * x * r1, 2 * y1, 2 * z * r1], n.coordinates));
-            }
-        }
-        return result;
+    function selected(value) {
+        var mouseBinding = document.getElementById("mouse-binding");
+        return function () { return mouseBinding.value == value; };
     }
 })(Tree || (Tree = {}));
 var WebGLLab;

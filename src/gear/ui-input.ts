@@ -54,7 +54,7 @@ module Gear {
         }
     
         private newMousePos(): Flow<PointerPosition> {
-            const value = pointerPositionValue([0, 0]);
+            const value = pointerPositionValue([this.element.clientWidth / 2, this.element.clientHeight / 2]);
             this.element.onmousemove = e => {
                 value.value = this.relativePos(e);
                 e.preventDefault();
