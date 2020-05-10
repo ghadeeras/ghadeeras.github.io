@@ -1625,7 +1625,7 @@ var Tree;
             this.matProjection = program.locateUniform("matProjection", 4, true);
             var model = Space.Matrix.identity();
             this.matModel.data = model.asColumnMajorArray;
-            var view = Space.Matrix.globalView(Space.vec(0, 3, 9), Space.vec(0, 2, 0), Space.vec(0, 1, 0));
+            var view = Space.Matrix.globalView(Space.vec(0, 4, 9), Space.vec(0, 3, 0), Space.vec(0, 1, 0));
             this.matView.data = view.asColumnMajorArray;
             var proj = Space.Matrix.project(1, 100, 1);
             this.matProjection.data = proj.asColumnMajorArray;
@@ -1633,10 +1633,12 @@ var Tree;
             this.color = program.locateUniform("color", 3, false);
             this.shininess = program.locateUniform("shininess", 1, false);
             this.fogginess = program.locateUniform("fogginess", 1, false);
+            this.twist = program.locateUniform("twist", 1, false);
             this.lightPosition.data = [8, 8, 8];
             this.color.data = [0.3, 0.5, 0.7];
             this.shininess.data = [1];
             this.fogginess.data = [0.5];
+            this.twist.data = [0.0];
             this.matrices = matrices;
             this.draw();
         }
@@ -1668,6 +1670,7 @@ var Tree;
         Renderer.prototype.lightPositionSink = function () {
             var _this = this;
             return Gear.sinkFlow(function (flow) { return flow
+                .defaultsTo([0.5, 0.5])
                 .map(function (_a) {
                 var x = _a[0], y = _a[1];
                 return [x * Math.PI / 2, y * Math.PI / 2];
@@ -1684,6 +1687,7 @@ var Tree;
             var greenVec = Space.vec(Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3));
             var blueVec = Space.vec(Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3));
             return Gear.sinkFlow(function (flow) { return flow
+                .defaultsTo([-0.4, -0.2])
                 .map(function (_a) {
                 var x = _a[0], y = _a[1];
                 return Space.vec(x, y);
@@ -1707,6 +1711,13 @@ var Tree;
             var _this = this;
             return Gear.sink(function (fogginess) {
                 _this.fogginess.data = [fogginess];
+                _this.draw();
+            });
+        };
+        Renderer.prototype.twistSink = function () {
+            var _this = this;
+            return Gear.sink(function (twist) {
+                _this.twist.data = [twist];
                 _this.draw();
             });
         };
@@ -1795,7 +1806,10 @@ var Tree;
         }).to(renderer.shininessSink()); }, function (flow) { return flow.filter(selected("fogginess")).map(function (_a) {
             var x = _a[0], y = _a[1];
             return (1 + y) / 2;
-        }).to(renderer.fogginessSink()); }, function (flow) { return flow.filter(selected("angle"))
+        }).to(renderer.fogginessSink()); }, function (flow) { return flow.filter(selected("twist")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(renderer.twistSink()); }, function (flow) { return flow.filter(selected("angle"))
             .map(function (_a) {
             var x = _a[0], y = _a[1];
             generator.verticalAngle = x * Math.PI;

@@ -14,6 +14,7 @@ module Tree {
         private color: Djee.Uniform;
         private shininess: Djee.Uniform;
         private fogginess: Djee.Uniform;
+        private twist: Djee.Uniform;
 
         private matrices: number[][];
 
@@ -39,7 +40,7 @@ module Tree {
 
             const model = Space.Matrix.identity();
             this.matModel.data = model.asColumnMajorArray;
-            const view = Space.Matrix.globalView(Space.vec(0, 3, 9), Space.vec(0, 2, 0), Space.vec(0, 1, 0));
+            const view = Space.Matrix.globalView(Space.vec(0, 4, 9), Space.vec(0, 3, 0), Space.vec(0, 1, 0));
             this.matView.data = view.asColumnMajorArray;
             const proj = Space.Matrix.project(1, 100, 1);
             this.matProjection.data = proj.asColumnMajorArray;
@@ -48,11 +49,13 @@ module Tree {
             this.color = program.locateUniform("color", 3, false);
             this.shininess = program.locateUniform("shininess", 1, false);
             this.fogginess = program.locateUniform("fogginess", 1, false);
+            this.twist = program.locateUniform("twist", 1, false);
 
             this.lightPosition.data = [8, 8, 8];
             this.color.data = [0.3, 0.5, 0.7]
             this.shininess.data = [1];
             this.fogginess.data = [0.5];
+            this.twist.data = [0.0];
 
             this.matrices = matrices;
             this.draw();
@@ -74,8 +77,8 @@ module Tree {
             const axisY = Space.vec(0, 1, 0);
             return Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
                 this.matModel.data = translationUp
-                    .by(Space.Matrix.rotation(y * Math.PI, axisX))
-                    .by(Space.Matrix.rotation(x * Math.PI, axisY))
+                .by(Space.Matrix.rotation(y * Math.PI, axisX))
+                .by(Space.Matrix.rotation(x * Math.PI, axisY))
                     .by(translationDown)
                     .asColumnMajorArray;
                 this.draw();
@@ -84,6 +87,7 @@ module Tree {
     
         lightPositionSink(): Gear.Sink<Gear.PointerPosition> {
             return Gear.sinkFlow(flow => flow
+                .defaultsTo([0.5, 0.5])
                 .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
                 .producer(([x, y]) => {
                 this.lightPosition.data = [8 * Math.sin(x) * Math.cos(y), 8 * Math.sin(y), 8 * Math.cos(x) * Math.cos(y)];
@@ -96,6 +100,7 @@ module Tree {
             const greenVec = Space.vec(Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3));
             const blueVec = Space.vec(Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3));
             return Gear.sinkFlow(flow => flow
+                .defaultsTo([-0.4, -0.2])
                 .map(([x, y]) => Space.vec(x, y))
                 .producer(vec => {
                 const red = Math.min(2, 1 + vec.dot(redVec)) / 2;
@@ -116,6 +121,13 @@ module Tree {
         fogginessSink(): Gear.Sink<number> {
             return Gear.sink(fogginess => {
                 this.fogginess.data = [fogginess];
+                this.draw();
+            });
+        }
+        
+        twistSink(): Gear.Sink<number> {
+            return Gear.sink(twist => {
+                this.twist.data = [twist];
                 this.draw();
             });
         }

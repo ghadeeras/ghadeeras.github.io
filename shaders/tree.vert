@@ -12,14 +12,46 @@ uniform mat4 matProjection;
 
 uniform float shininess;
 
+uniform float twist;
+
 varying float shade;
 varying float depth;
+
+const float PI = 3.1415926535897932384626433832795;
+
+void twistMats(in vec4 position, out mat4 twistMat, out mat4 twistMatInvTrans) {
+    float r = length(position.zx);
+    float c = PI * twist / 4.0;
+    float a = c * r; 
+    twistMat = mat4(
+        +cos(a), 0.0, sin(a), 0.0,
+            0.0, 1.0,    0.0, 0.0,
+        -sin(a), 0.0, cos(a), 0.0,
+            0.0, 0.0,    0.0, 1.0
+    );
+    float cxzr = r >= 0.001 ? c * position.x * position.z / r : 0.0;
+    float cx2r = r >= 0.001 ? c * position.x * position.x / r : 0.0;
+    float cz2r = r >= 0.001 ? c * position.z * position.z / r : 0.0;
+    twistMatInvTrans = mat4(
+        1.0 - cxzr, 0.0,       cz2r, 0.0,
+               0.0, 1.0,        0.0, 0.0,
+            - cx2r, 0.0, 1.0 + cxzr, 0.0,
+               0.0, 0.0,        0.0, 1.0
+    );
+} 
                 
 void main() {
-    mat4 matModelView = matView * matModel * matSubModel;
+    vec4 locPos = matSubModel * vec4(position, 1.0);
+    vec4 locNormal = matSubModel * vec4(normal, 0.0);
 
-    vec4 viewedPosition = matModelView * vec4(position, 1.0);
-    vec3 viewedNormal = normalize((matModelView * vec4(normal, 0.0)).xyz);
+    mat4 twistMat;
+    mat4 twistMatInvTrans;
+    twistMats(locPos, twistMat, twistMatInvTrans);
+
+    mat4 matModelView = matView * matModel * twistMat;
+
+    vec4 viewedPosition = matModelView * locPos;
+    vec3 viewedNormal = normalize(matModelView * twistMatInvTrans * locNormal).xyz;
     vec4 viewedLightPosition = matView * vec4(lightPosition, 1);
     vec3 viewedLightDirection = normalize(viewedLightPosition.xyz - viewedPosition.xyz);
     vec3 viewedCameraDirection = -normalize(viewedPosition.xyz);

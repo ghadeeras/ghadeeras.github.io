@@ -51,6 +51,7 @@ module Tree {
                 flow => flow.filter(selected("color")).to(renderer.colorSink()),
                 flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(renderer.shininessSink()),
                 flow => flow.filter(selected("fogginess")).map(([x, y]) => (1 + y) / 2).to(renderer.fogginessSink()),
+                flow => flow.filter(selected("twist")).map(([x, y]) => y).to(renderer.twistSink()),
                 flow => flow.filter(selected("angle"))
                     .map(([x, y]) => {
                         generator.verticalAngle = x * Math.PI;

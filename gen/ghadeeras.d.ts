@@ -392,6 +392,7 @@ declare module Tree {
         private color;
         private shininess;
         private fogginess;
+        private twist;
         private matrices;
         constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]);
         matricesSink(): Gear.Sink<number[][]>;
@@ -400,6 +401,7 @@ declare module Tree {
         colorSink(): Gear.Sink<Gear.PointerPosition>;
         shininessSink(): Gear.Sink<number>;
         fogginessSink(): Gear.Sink<number>;
+        twistSink(): Gear.Sink<number>;
         private draw;
         private vertexData;
     }
