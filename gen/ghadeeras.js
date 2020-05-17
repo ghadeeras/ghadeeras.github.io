@@ -1839,6 +1839,11 @@ var WebGLLab;
             name: "3D Sinc (Fragment Shader Lighting)",
             vertexShader: 'file:sinc-frag-lighting.vert',
             fragmentShader: 'file:sinc-frag-lighting.frag'
+        },
+        {
+            name: "Complex Fractal",
+            vertexShader: 'file:complex-fractal.vert',
+            fragmentShader: 'file:complex-fractal.frag'
         }
     ];
     function loadShaders(sample, consumer) {
@@ -1884,7 +1889,7 @@ var WebGLLab;
         }
     }
     function fetchFile(url, consumer) {
-        fetch(url, { method: "get", mode: "no-cors" }).then(function (response) { return response.text().then(consumer); });
+        fetch(url, { method: "get", mode: "no-cors", cache: "no-cache" }).then(function (response) { return response.text().then(consumer); });
     }
     function locationOf(str) {
         return "../shaders/" + str.substring('file:'.length);

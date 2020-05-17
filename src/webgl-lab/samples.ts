@@ -38,6 +38,11 @@ module WebGLLab {
             name: "3D Sinc (Fragment Shader Lighting)",
             vertexShader: 'file:sinc-frag-lighting.vert',
             fragmentShader: 'file:sinc-frag-lighting.frag'
+        },
+        {
+            name: "Complex Fractal",
+            vertexShader: 'file:complex-fractal.vert',
+            fragmentShader: 'file:complex-fractal.frag'
         }
     ];
 
@@ -98,7 +103,7 @@ module WebGLLab {
     }
 
     function fetchFile(url: string, consumer: Gear.Consumer<string>) {
-        fetch(url, { method : "get", mode : "no-cors" }).then(response => response.text().then(consumer));
+        fetch(url, { method : "get", mode : "no-cors", cache : "no-cache" }).then(response => response.text().then(consumer));
     }
 
     function locationOf(str: string) {
