@@ -11,6 +11,13 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -21,13 +28,6 @@ var __assign = (this && this.__assign) || function () {
         return t;
     };
     return __assign.apply(this, arguments);
-};
-var __spreadArrays = (this && this.__spreadArrays) || function () {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
 };
 var Djee;
 (function (Djee) {
@@ -760,11 +760,47 @@ var Space;
     }());
     Space.MatrixStack = MatrixStack;
 })(Space || (Space = {}));
+var Space;
+(function (Space) {
+    var WA;
+    (function (WA) {
+        function module(sourceFile, caster) {
+            return {
+                sourceFile: sourceFile,
+                caster: caster
+            };
+        }
+        WA.module = module;
+        function load(modules, first) {
+            var rest = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                rest[_i - 2] = arguments[_i];
+            }
+            var firstModule = modules[first];
+            var result = fetch("./wa/" + firstModule.sourceFile, { method: "get", mode: "no-cors" })
+                .then(function (response) { return response.arrayBuffer(); })
+                .then(function (buffer) { return WebAssembly.instantiate(buffer, asImports(modules)); })
+                .then(function (waModule) { return firstModule.exports = firstModule.caster(waModule.instance.exports); })
+                .then(function () { return modules; });
+            return rest.length == 0 ? result : result.then(function (modules) { return load.apply(void 0, __spreadArrays([modules, rest[0]], rest.slice(1))); });
+        }
+        WA.load = load;
+        function asImports(modules) {
+            var imports = {};
+            for (var key in modules) {
+                imports[key] = modules[key].exports || {};
+            }
+            return imports;
+        }
+    })(WA = Space.WA || (Space.WA = {}));
+})(Space || (Space = {}));
 /// <reference path="vector.ts" />
 /// <reference path="matrix.ts" />
+/// <reference path="wa.ts" />
 var Space;
 /// <reference path="vector.ts" />
 /// <reference path="matrix.ts" />
+/// <reference path="wa.ts" />
 (function (Space) {
     function vec() {
         var coordinates = [];
@@ -782,6 +818,14 @@ var Space;
         return new Space.Matrix(columns);
     }
     Space.mat = mat;
+    Space.modules = {
+        stack: Space.WA.module("stack.wasm", function (exports) { return exports; }),
+        space: Space.WA.module("space.wasm", function (exports) { return exports; }),
+    };
+    function initWaModules(onready) {
+        Space.WA.load(Space.modules, "stack", "space").then(function () { return onready(); });
+    }
+    Space.initWaModules = initWaModules;
 })(Space || (Space = {}));
 var Gear;
 (function (Gear) {
