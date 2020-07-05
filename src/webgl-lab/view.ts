@@ -181,7 +181,7 @@ module WebGLLab {
                 }
             }
             this.lod = lod;
-            this.buffer.data = data;
+            this.buffer.untypedData = data;
             this.draw();
         }
     

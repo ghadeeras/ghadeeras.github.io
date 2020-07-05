@@ -23,7 +23,7 @@ module Space {
 
         export function load<M extends Modules>(modules: M, first: ModuleName<M>, ...rest: ModuleName<M>[]): Promise<M> {
             const firstModule = modules[first]
-            const result = fetch("./wa/" + firstModule.sourceFile, { method : "get", mode : "no-cors" })
+            const result = fetch("/wa/" + firstModule.sourceFile, { method : "get", mode : "no-cors" })
                 .then(response => response.arrayBuffer())
                 .then(buffer => WebAssembly.instantiate(buffer, asImports(modules)))
                 .then(waModule => firstModule.exports = firstModule.caster(waModule.instance.exports))

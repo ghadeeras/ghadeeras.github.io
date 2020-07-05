@@ -4,7 +4,7 @@ module Djee {
 
         readonly buffer: WebGLBuffer;
 
-        private _data: number[] = [];
+        private _data: Float32Array;
 
         constructor(readonly context: Context) {
             this.buffer = context.gl.createBuffer();
@@ -18,15 +18,18 @@ module Djee {
         }
 
         get data() {
-            return copyOf(this._data);
+            return this._data;
         }
 
-        set data(data: number[]) {
-            const array = new Float32Array(data);
+        set data(data: Float32Array) {
             this.bind(gl =>
-                gl.bufferData(gl.ARRAY_BUFFER, array, gl.DYNAMIC_DRAW)
+                gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW)
             );
-            this._data = copyOf(data);
+            this._data = data;
+        }
+
+        set untypedData(data: number[]) {
+            this.data = new Float32Array(data);
         }
 
     }

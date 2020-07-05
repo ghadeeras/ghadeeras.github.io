@@ -89,8 +89,8 @@ module GasketTwist2 {
         }
 
         private setSierpinski(flattenedSierpinski: FlattenedSierpinski) {
-            this.cornersBuffer.data = flattenedSierpinski.corners;
-            this.centersBuffer.data = flattenedSierpinski.centers;
+            this.cornersBuffer.untypedData = flattenedSierpinski.corners;
+            this.centersBuffer.untypedData = flattenedSierpinski.centers;
             this.stride = flattenedSierpinski.stride;
             this.draw();
         }
