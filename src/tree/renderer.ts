@@ -21,7 +21,7 @@ module Tree {
         constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]) {
             this.context = new Djee.Context("canvas-gl");
             this.buffer = this.context.newBuffer();
-            this.buffer.data = this.vertexData();
+            this.buffer.untypedData = this.vertexData();
 
             const vertexShader = this.context.vertexShader(vertexShaderCode);
             const fragmentShader = this.context.fragmentShader(fragmentShaderCode);

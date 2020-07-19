@@ -25,6 +25,13 @@
                     (i32.const 0x10000)
                 ))
                 (drop (memory.grow (local.get $neededGrowth)))
+                (global.set $stackLimit (i32.add 
+                    (global.get $stackLimit) 
+                    (i32.mul 
+                        (local.get $neededGrowth) 
+                        (i32.const 0x10000)
+                    )
+                ))
             )
         )
     )

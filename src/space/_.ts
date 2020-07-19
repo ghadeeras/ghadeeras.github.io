@@ -79,13 +79,20 @@ module Space {
 
     }
 
+    export type ScalarFieldExports = {
+        tessellateTetrahedron: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference) => Reference;
+        tessellateCube: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference, point4: Reference, point5: Reference, point6: Reference, point7: Reference) => Reference;
+        tesselateScalarField(fieldRef: Reference, resolution: number, contourValue: number): Reference;
+    }
+
     export const modules = {
         stack: WA.module("stack.wasm", exports => exports as StackExports),
         space: WA.module("space.wasm", exports => exports as SpaceExports),
+        scalarField: WA.module("scalarField.wasm", exports => exports as ScalarFieldExports),
     }
 
     export function initWaModules(onready: () => void) {
-        WA.load(modules, "stack", "space").then(() => onready());
+        WA.load(modules, "stack", "space", "scalarField").then(() => onready());
     }
 
 }

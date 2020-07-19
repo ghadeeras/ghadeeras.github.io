@@ -473,7 +473,6 @@ var Djee;
     var Buffer = /** @class */ (function () {
         function Buffer(context) {
             this.context = context;
-            this._data = [];
             this.buffer = context.gl.createBuffer();
         }
         Buffer.prototype.bind = function (glCode) {
@@ -485,14 +484,20 @@ var Djee;
         };
         Object.defineProperty(Buffer.prototype, "data", {
             get: function () {
-                return Djee.copyOf(this._data);
+                return this._data;
             },
             set: function (data) {
-                var array = new Float32Array(data);
                 this.bind(function (gl) {
-                    return gl.bufferData(gl.ARRAY_BUFFER, array, gl.DYNAMIC_DRAW);
+                    return gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
                 });
-                this._data = Djee.copyOf(data);
+                this._data = data;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Buffer.prototype, "untypedData", {
+            set: function (data) {
+                this.data = new Float32Array(data);
             },
             enumerable: true,
             configurable: true
@@ -518,7 +523,7 @@ var Djee;
 /// <reference path="buffer.ts" />
 (function (Djee) {
     function copyOf(array) {
-        return array.slice(0, array.length);
+        return array.slice();
     }
     Djee.copyOf = copyOf;
 })(Djee || (Djee = {}));
@@ -669,6 +674,50 @@ var Space;
             enumerable: true,
             configurable: true
         });
+        Object.defineProperty(Matrix.prototype, "determinant", {
+            get: function () {
+                var _this = this;
+                if (this.rowsCount != this.columnsCount) {
+                    return 0;
+                }
+                if (this.columnsCount == 1) {
+                    return this.columns[0].coordinates[0];
+                }
+                return this.columns[0].coordinates.map(function (v, i) { return Matrix.sign(i) * v * _this.sub(0, i).determinant; }).reduce(function (v1, v2) { return v1 + v2; });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Matrix.prototype, "inverse", {
+            get: function () {
+                var _this = this;
+                var d = this.determinant;
+                return new Matrix(this.columns.map(function (column, c) { return new Space.Vector(column.coordinates.map(function (coordinate, r) { return Matrix.sign(c + r) * _this.sub(c, r).determinant / d; })); })).transposed;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Matrix.sign = function (i) {
+            return (i % 2 == 0) ? 1 : -1;
+        };
+        Matrix.prototype.sub = function (columnIndex, rowIndex) {
+            var columns = [];
+            for (var c = 0; c < this.columnsCount; c++) {
+                if (c == columnIndex) {
+                    continue;
+                }
+                var coordinates = [];
+                var column = this.columns[c];
+                for (var r = 0; r < this.rowsCount; r++) {
+                    if (r == rowIndex) {
+                        continue;
+                    }
+                    coordinates.push(column.coordinates[r]);
+                }
+                columns.push(new Space.Vector(coordinates));
+            }
+            return new Matrix(columns);
+        };
         Matrix.prototype.prod = function (vector) {
             var m = this.transposed;
             return vector.prod(m);
@@ -777,7 +826,7 @@ var Space;
                 rest[_i - 2] = arguments[_i];
             }
             var firstModule = modules[first];
-            var result = fetch("./wa/" + firstModule.sourceFile, { method: "get", mode: "no-cors" })
+            var result = fetch("/wa/" + firstModule.sourceFile, { method: "get", mode: "no-cors" })
                 .then(function (response) { return response.arrayBuffer(); })
                 .then(function (buffer) { return WebAssembly.instantiate(buffer, asImports(modules)); })
                 .then(function (waModule) { return firstModule.exports = firstModule.caster(waModule.instance.exports); })
@@ -821,9 +870,10 @@ var Space;
     Space.modules = {
         stack: Space.WA.module("stack.wasm", function (exports) { return exports; }),
         space: Space.WA.module("space.wasm", function (exports) { return exports; }),
+        scalarField: Space.WA.module("scalarField.wasm", function (exports) { return exports; }),
     };
     function initWaModules(onready) {
-        Space.WA.load(Space.modules, "stack", "space").then(function () { return onready(); });
+        Space.WA.load(Space.modules, "stack", "space", "scalarField").then(function () { return onready(); });
     }
     Space.initWaModules = initWaModules;
 })(Space || (Space = {}));
@@ -1480,8 +1530,8 @@ var GasketTwist2;
             return new Gear.Value(value);
         };
         View.prototype.setSierpinski = function (flattenedSierpinski) {
-            this.cornersBuffer.data = flattenedSierpinski.corners;
-            this.centersBuffer.data = flattenedSierpinski.centers;
+            this.cornersBuffer.untypedData = flattenedSierpinski.corners;
+            this.centersBuffer.untypedData = flattenedSierpinski.centers;
             this.stride = flattenedSierpinski.stride;
             this.draw();
         };
@@ -1583,6 +1633,812 @@ var GasketTwist2;
     }
     GasketTwist2.init = init;
 })(GasketTwist2 || (GasketTwist2 = {}));
+var ScalarField;
+(function (ScalarField) {
+    var vertexShaderCode;
+    var fragmentShaderCode;
+    var context;
+    var position;
+    var normal;
+    var color;
+    var matModel;
+    var lightPosition;
+    var shininess;
+    var fogginess;
+    var tetrahedronBuffer;
+    var contourSurfaceBuffer;
+    var contourColorBuffer;
+    var tetrahedron = newTetrahedron(1, -1, -1, -1);
+    var contourValue = 0;
+    function initTetrahedronDemo() {
+        window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["vertexColors.vert", function (shader) { return vertexShaderCode = shader; }], ["vertexColors.frag", function (shader) { return fragmentShaderCode = shader; }]); };
+    }
+    ScalarField.initTetrahedronDemo = initTetrahedronDemo;
+    function doInit() {
+        context = new Djee.Context("canvas-gl");
+        var program = context.link([
+            context.vertexShader(vertexShaderCode),
+            context.fragmentShader(fragmentShaderCode)
+        ]);
+        program.use();
+        tetrahedronBuffer = context.newBuffer();
+        contourSurfaceBuffer = context.newBuffer();
+        contourColorBuffer = context.newBuffer();
+        position = program.locateAttribute("position", 3);
+        normal = program.locateAttribute("normal", 3);
+        color = program.locateAttribute("color", 4);
+        matModel = program.locateUniform("matModel", 4, true);
+        var matView = program.locateUniform("matView", 4, true);
+        var matProjection = program.locateUniform("matProjection", 4, true);
+        lightPosition = program.locateUniform("lightPosition", 3);
+        shininess = program.locateUniform("shininess", 1);
+        fogginess = program.locateUniform("fogginess", 1);
+        matModel.data = Space.Matrix.identity().asColumnMajorArray;
+        matView.data = Space.Matrix.globalView(Space.vec(-2, 2, 5), Space.vec(0, 0, 0), Space.vec(0, 1, 0)).asColumnMajorArray;
+        matProjection.data = Space.Matrix.project(2, 100, 1).asColumnMajorArray;
+        lightPosition.data = [2, 2, 2];
+        shininess.data = [1];
+        fogginess.data = [0];
+        var gl = context.gl;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(1, 1, 1, 1);
+        var canvas = Gear.elementEvents("canvas-gl");
+        var mouseButtonPressed = canvas.mouseButons.map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        });
+        Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(function (positions) { return positions[0]; })).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [
+                2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth,
+                2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
+            ];
+        }).branch(function (flow) { return flow.filter(selected("rotation")).to(rotationSink()); }, function (flow) { return flow.filter(selected("lightPosition")).to(lightPositionSink()); }, function (flow) { return flow.filter(selected("contourValue")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(contourValueSink()); }, function (flow) { return Gear.Flow.from(flow.filter(selected("value0")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newTetrahedron(y, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3);
+        }), flow.filter(selected("value1")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newTetrahedron(tetrahedron.value0, y, tetrahedron.value2, tetrahedron.value3);
+        }), flow.filter(selected("value2")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newTetrahedron(tetrahedron.value0, tetrahedron.value1, y, tetrahedron.value3);
+        }), flow.filter(selected("value3")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newTetrahedron(tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, y);
+        })).to(tetrahedronSink()); });
+    }
+    function tetrahedronSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(newTetrahedron(1, -1, -1, -1))
+            .producer(function (newTetrahedron) {
+            tetrahedron = newTetrahedron;
+            tetrahedronBuffer.untypedData = tetrahedronData(tetrahedron);
+            contourSurfaceBuffer.untypedData = contourSurfaceData(tetrahedron, contourValue);
+            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            draw();
+        }); });
+    }
+    function contourValueSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(0)
+            .producer(function (newContourValue) {
+            contourValue = newContourValue;
+            contourSurfaceBuffer.untypedData = contourSurfaceData(tetrahedron, contourValue);
+            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            draw();
+        }); });
+    }
+    function rotationSink() {
+        var axisX = Space.vec(1, 0, 0);
+        var axisY = Space.vec(0, 1, 0);
+        return Gear.sinkFlow(function (flow) { return flow.defaultsTo([0, 0]).producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            matModel.data =
+                Space.Matrix.rotation(y * Math.PI, axisX)
+                    .by(Space.Matrix.rotation(x * Math.PI, axisY))
+                    .asColumnMajorArray;
+            draw();
+        }); });
+    }
+    function lightPositionSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo([0.5, 0.5])
+            .map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [x * Math.PI / 2, y * Math.PI / 2];
+        })
+            .producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
+            draw();
+        }); });
+    }
+    function selected(value) {
+        var mouseBinding = document.getElementById("mouse-binding");
+        return function () { return mouseBinding.value == value; };
+    }
+    function contourColorData(contourValue, vertexCount) {
+        var contourColorData = fieldColor(contourValue, 0.8).coordinates;
+        while (contourColorData.length / 4 < vertexCount) {
+            contourColorData.push.apply(contourColorData, contourColorData);
+        }
+        return contourColorData;
+    }
+    function draw() {
+        var gl = context.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        position.pointTo(tetrahedronBuffer, 10, 0);
+        normal.pointTo(tetrahedronBuffer, 10, 3);
+        color.pointTo(tetrahedronBuffer, 10, 6);
+        gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, tetrahedronBuffer.data.length / 10);
+        position.pointTo(contourSurfaceBuffer, 6, 0);
+        normal.pointTo(contourSurfaceBuffer, 6, 3);
+        color.pointTo(contourColorBuffer, 4, 0);
+        gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
+        gl.finish();
+        gl.flush();
+    }
+    function newTetrahedron(field0, field1, field2, field3) {
+        var angle = 2 * Math.PI / 3;
+        var cos = Math.cos(angle);
+        var sin = Math.sin(angle);
+        var points = {
+            point0: Space.vec(0, 1, 0),
+            point1: Space.vec(sin, cos, 0),
+            point2: Space.vec(cos * sin, cos, -sin * sin),
+            point3: Space.vec(cos * sin, cos, +sin * sin)
+        };
+        var mat = Space.mat(Space.vec.apply(Space, __spreadArrays(points.point0.coordinates, [1])), Space.vec.apply(Space, __spreadArrays(points.point1.coordinates, [1])), Space.vec.apply(Space, __spreadArrays(points.point2.coordinates, [1])), Space.vec.apply(Space, __spreadArrays(points.point3.coordinates, [1])));
+        var matInv = mat.inverse;
+        var gradient = Space.vec(field0, field1, field2, field3).prod(matInv).swizzle(0, 1, 2);
+        var gradients = {
+            gradient0: gradient,
+            gradient1: gradient,
+            gradient2: gradient,
+            gradient3: gradient
+        };
+        var values = {
+            value0: field0,
+            value1: field1,
+            value2: field2,
+            value3: field3
+        };
+        return __assign(__assign(__assign({}, points), gradients), values);
+    }
+    function tetrahedronData(tetrahedron) {
+        var normals = [
+            normalFrom(tetrahedron.point3, tetrahedron.point2, tetrahedron.point1),
+            normalFrom(tetrahedron.point2, tetrahedron.point3, tetrahedron.point0),
+            normalFrom(tetrahedron.point1, tetrahedron.point0, tetrahedron.point3),
+            normalFrom(tetrahedron.point0, tetrahedron.point1, tetrahedron.point2)
+        ];
+        var colors = [
+            fieldColor(tetrahedron.value0),
+            fieldColor(tetrahedron.value1),
+            fieldColor(tetrahedron.value2),
+            fieldColor(tetrahedron.value3)
+        ];
+        var tetrahedronVertexes = [
+            tetrahedron.point3, normals[0], colors[3],
+            tetrahedron.point2, normals[0], colors[2],
+            tetrahedron.point1, normals[0], colors[1],
+            tetrahedron.point2, normals[1], colors[2],
+            tetrahedron.point3, normals[1], colors[3],
+            tetrahedron.point0, normals[1], colors[0],
+            tetrahedron.point1, normals[2], colors[1],
+            tetrahedron.point0, normals[2], colors[0],
+            tetrahedron.point3, normals[2], colors[3],
+            tetrahedron.point0, normals[3], colors[0],
+            tetrahedron.point1, normals[3], colors[1],
+            tetrahedron.point2, normals[3], colors[2]
+        ];
+        return tetrahedronVertexes.reduce(function (array, vector) { return array.concat.apply(array, vector.coordinates); }, []);
+    }
+    function contourSurfaceData(tetrahedron, contourValue) {
+        var stack = Space.modules.stack.exports;
+        var space = Space.modules.space.exports;
+        var scalarField = Space.modules.scalarField.exports;
+        stack.leave();
+        stack.enter();
+        var p0 = space.vec4(tetrahedron.point0.coordinates[0], tetrahedron.point0.coordinates[1], tetrahedron.point0.coordinates[2], 1);
+        var g0 = space.vec4(tetrahedron.gradient0.coordinates[0], tetrahedron.gradient0.coordinates[1], tetrahedron.gradient0.coordinates[2], tetrahedron.value0);
+        var p1 = space.vec4(tetrahedron.point1.coordinates[0], tetrahedron.point1.coordinates[1], tetrahedron.point1.coordinates[2], 1);
+        var g1 = space.vec4(tetrahedron.gradient1.coordinates[0], tetrahedron.gradient1.coordinates[1], tetrahedron.gradient1.coordinates[2], tetrahedron.value1);
+        var p2 = space.vec4(tetrahedron.point2.coordinates[0], tetrahedron.point2.coordinates[1], tetrahedron.point2.coordinates[2], 1);
+        var g2 = space.vec4(tetrahedron.gradient2.coordinates[0], tetrahedron.gradient2.coordinates[1], tetrahedron.gradient2.coordinates[2], tetrahedron.value2);
+        var p3 = space.vec4(tetrahedron.point3.coordinates[0], tetrahedron.point3.coordinates[1], tetrahedron.point3.coordinates[2], 1);
+        var g3 = space.vec4(tetrahedron.gradient3.coordinates[0], tetrahedron.gradient3.coordinates[1], tetrahedron.gradient3.coordinates[2], tetrahedron.value3);
+        var begin = scalarField.tessellateTetrahedron(contourValue, p0, p1, p2, p3);
+        var end = stack.allocate8(0);
+        var result = array(stack, begin, end);
+        return result;
+    }
+    function array(stack, begin, end) {
+        var typedArray = new Float64Array(stack.stack.buffer.slice(begin, end));
+        var result = [];
+        typedArray.forEach(function (value) { return result.push(value); });
+        return result;
+    }
+    function fieldColor(fieldValue, alpha) {
+        if (alpha === void 0) { alpha = 0.4; }
+        return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
+    }
+    function normalFrom(p1, p2, p3) {
+        var v12 = p2.minus(p1);
+        var v23 = p3.minus(p2);
+        return v12.cross(v23).unit;
+    }
+})(ScalarField || (ScalarField = {}));
+var ScalarField;
+(function (ScalarField) {
+    var vertexShaderCode;
+    var fragmentShaderCode;
+    var context;
+    var position;
+    var normal;
+    var color;
+    var matModel;
+    var lightPosition;
+    var shininess;
+    var fogginess;
+    var cubeBuffer;
+    var contourSurfaceBuffer;
+    var contourColorBuffer;
+    var cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
+    var contourValue = 0;
+    function initCubeDemo() {
+        window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["vertexColors.vert", function (shader) { return vertexShaderCode = shader; }], ["vertexColors.frag", function (shader) { return fragmentShaderCode = shader; }]); };
+    }
+    ScalarField.initCubeDemo = initCubeDemo;
+    function doInit() {
+        context = new Djee.Context("canvas-gl");
+        var program = context.link([
+            context.vertexShader(vertexShaderCode),
+            context.fragmentShader(fragmentShaderCode)
+        ]);
+        program.use();
+        cubeBuffer = context.newBuffer();
+        contourSurfaceBuffer = context.newBuffer();
+        contourColorBuffer = context.newBuffer();
+        position = program.locateAttribute("position", 3);
+        normal = program.locateAttribute("normal", 3);
+        color = program.locateAttribute("color", 4);
+        matModel = program.locateUniform("matModel", 4, true);
+        var matView = program.locateUniform("matView", 4, true);
+        var matProjection = program.locateUniform("matProjection", 4, true);
+        lightPosition = program.locateUniform("lightPosition", 3);
+        shininess = program.locateUniform("shininess", 1);
+        fogginess = program.locateUniform("fogginess", 1);
+        matModel.data = Space.Matrix.identity().asColumnMajorArray;
+        matView.data = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 0), Space.vec(0, 1, 0)).asColumnMajorArray;
+        matProjection.data = Space.Matrix.project(2, 100, 1).asColumnMajorArray;
+        lightPosition.data = [2, 2, 2];
+        shininess.data = [1];
+        fogginess.data = [0];
+        var gl = context.gl;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(1, 1, 1, 1);
+        var canvas = Gear.elementEvents("canvas-gl");
+        var mouseButtonPressed = canvas.mouseButons.map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        });
+        Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(function (positions) { return positions[0]; })).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [
+                2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth,
+                2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
+            ];
+        }).branch(function (flow) { return flow.filter(selected("rotation")).to(rotationSink()); }, function (flow) { return flow.filter(selected("lightPosition")).to(lightPositionSink()); }, function (flow) { return flow.filter(selected("contourValue")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(contourValueSink()); }, function (flow) { return Gear.Flow.from(flow.filter(selected("value0")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(y, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7);
+        }), flow.filter(selected("value1")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, y, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7);
+        }), flow.filter(selected("value2")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, y, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7);
+        }), flow.filter(selected("value3")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, cube.value2, y, cube.value4, cube.value5, cube.value6, cube.value7);
+        }), flow.filter(selected("value4")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, cube.value2, cube.value3, y, cube.value5, cube.value6, cube.value7);
+        }), flow.filter(selected("value5")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, y, cube.value6, cube.value7);
+        }), flow.filter(selected("value6")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, y, cube.value7);
+        }), flow.filter(selected("value7")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, y);
+        })).to(cubeSink()); });
+    }
+    function cubeSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(newCube(-1, -1, -1, -1, -1, -1, -1, -1))
+            .producer(function (newCube) {
+            cube = newCube;
+            cubeBuffer.untypedData = cubeData(cube);
+            contourSurfaceBuffer.untypedData = contourSurfaceData(cube, contourValue);
+            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            draw();
+        }); });
+    }
+    function contourValueSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(0)
+            .producer(function (newContourValue) {
+            contourValue = newContourValue;
+            contourSurfaceBuffer.untypedData = contourSurfaceData(cube, contourValue);
+            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            draw();
+        }); });
+    }
+    function rotationSink() {
+        var axisX = Space.vec(1, 0, 0);
+        var axisY = Space.vec(0, 1, 0);
+        return Gear.sinkFlow(function (flow) { return flow.defaultsTo([0, 0]).producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            matModel.data =
+                Space.Matrix.rotation(y * Math.PI, axisX)
+                    .by(Space.Matrix.rotation(x * Math.PI, axisY))
+                    .asColumnMajorArray;
+            draw();
+        }); });
+    }
+    function lightPositionSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo([0.5, 0.5])
+            .map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [x * Math.PI / 2, y * Math.PI / 2];
+        })
+            .producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
+            draw();
+        }); });
+    }
+    function selected(value) {
+        var mouseBinding = document.getElementById("mouse-binding");
+        return function () { return mouseBinding.value == value; };
+    }
+    function contourColorData(contourValue, vertexCount) {
+        var contourColorData = fieldColor(contourValue, 0.8).coordinates;
+        while (contourColorData.length / 4 < vertexCount) {
+            contourColorData.push.apply(contourColorData, contourColorData);
+        }
+        return contourColorData;
+    }
+    function draw() {
+        var gl = context.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        position.pointTo(cubeBuffer, 10, 0);
+        normal.pointTo(cubeBuffer, 10, 3);
+        color.pointTo(cubeBuffer, 10, 6);
+        gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
+        position.pointTo(contourSurfaceBuffer, 6, 0);
+        normal.pointTo(contourSurfaceBuffer, 6, 3);
+        color.pointTo(contourColorBuffer, 4, 0);
+        gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
+        gl.finish();
+        gl.flush();
+    }
+    function newCube(field0, field1, field2, field3, field4, field5, field6, field7) {
+        var points = {
+            point0: Space.vec(-1, -1, -1),
+            point1: Space.vec(-1, -1, +1),
+            point2: Space.vec(-1, +1, -1),
+            point3: Space.vec(-1, +1, +1),
+            point4: Space.vec(+1, -1, -1),
+            point5: Space.vec(+1, -1, +1),
+            point6: Space.vec(+1, +1, -1),
+            point7: Space.vec(+1, +1, +1),
+        };
+        var gradients = {
+            gradient0: gradient(points.point0, field0, points.point4, field4, points.point2, field2, points.point1, field1),
+            gradient1: gradient(points.point1, field1, points.point5, field5, points.point3, field3, points.point0, field0),
+            gradient2: gradient(points.point2, field2, points.point6, field6, points.point0, field0, points.point3, field3),
+            gradient3: gradient(points.point3, field3, points.point7, field7, points.point1, field1, points.point2, field2),
+            gradient4: gradient(points.point4, field4, points.point0, field0, points.point6, field6, points.point5, field5),
+            gradient5: gradient(points.point5, field5, points.point1, field1, points.point7, field7, points.point4, field4),
+            gradient6: gradient(points.point6, field6, points.point2, field2, points.point4, field4, points.point7, field7),
+            gradient7: gradient(points.point7, field7, points.point3, field3, points.point5, field5, points.point6, field6)
+        };
+        var values = {
+            value0: field0,
+            value1: field1,
+            value2: field2,
+            value3: field3,
+            value4: field4,
+            value5: field5,
+            value6: field6,
+            value7: field7,
+        };
+        return __assign(__assign(__assign({}, points), gradients), values);
+    }
+    function gradient(point, value, pointX, valueX, pointY, valueY, pointZ, valueZ) {
+        return point.minus(pointX).scale(value - valueX)
+            .plus(point.minus(pointY).scale(value - valueY))
+            .plus(point.minus(pointZ).scale(value - valueZ));
+    }
+    function cubeData(cube) {
+        var normals = [
+            Space.vec(+0, +0, -1),
+            Space.vec(+0, +0, +1),
+            Space.vec(+0, -1, +0),
+            Space.vec(+0, +1, +0),
+            Space.vec(-1, +0, +0),
+            Space.vec(+1, +0, +0),
+        ];
+        var colors = [
+            fieldColor(cube.value0),
+            fieldColor(cube.value1),
+            fieldColor(cube.value2),
+            fieldColor(cube.value3),
+            fieldColor(cube.value4),
+            fieldColor(cube.value5),
+            fieldColor(cube.value6),
+            fieldColor(cube.value7),
+        ];
+        var vertexes = [
+            cube.point0, normals[0], colors[0],
+            cube.point2, normals[0], colors[2],
+            cube.point4, normals[0], colors[4],
+            cube.point4, normals[0], colors[4],
+            cube.point2, normals[0], colors[2],
+            cube.point6, normals[0], colors[6],
+            cube.point7, normals[1], colors[7],
+            cube.point3, normals[1], colors[3],
+            cube.point5, normals[1], colors[5],
+            cube.point5, normals[1], colors[5],
+            cube.point3, normals[1], colors[3],
+            cube.point1, normals[1], colors[1],
+            cube.point0, normals[2], colors[0],
+            cube.point4, normals[2], colors[4],
+            cube.point1, normals[2], colors[1],
+            cube.point1, normals[2], colors[1],
+            cube.point4, normals[2], colors[4],
+            cube.point5, normals[2], colors[5],
+            cube.point7, normals[3], colors[7],
+            cube.point6, normals[3], colors[6],
+            cube.point3, normals[3], colors[3],
+            cube.point3, normals[3], colors[3],
+            cube.point6, normals[3], colors[6],
+            cube.point2, normals[3], colors[2],
+            cube.point0, normals[4], colors[0],
+            cube.point1, normals[4], colors[1],
+            cube.point2, normals[4], colors[2],
+            cube.point2, normals[4], colors[2],
+            cube.point1, normals[4], colors[1],
+            cube.point3, normals[4], colors[3],
+            cube.point7, normals[5], colors[7],
+            cube.point5, normals[5], colors[5],
+            cube.point6, normals[5], colors[6],
+            cube.point6, normals[5], colors[6],
+            cube.point5, normals[5], colors[5],
+            cube.point4, normals[5], colors[4],
+        ];
+        return vertexes.reduce(function (array, vector) { return array.concat.apply(array, vector.coordinates); }, []);
+    }
+    function contourSurfaceData(cube, contourValue) {
+        var stack = Space.modules.stack.exports;
+        var space = Space.modules.space.exports;
+        var scalarField = Space.modules.scalarField.exports;
+        stack.leave();
+        stack.enter();
+        var p0 = space.vec4(cube.point0.coordinates[0], cube.point0.coordinates[1], cube.point0.coordinates[2], 1);
+        var g0 = space.vec4(cube.gradient0.coordinates[0], cube.gradient0.coordinates[1], cube.gradient0.coordinates[2], cube.value0);
+        var p1 = space.vec4(cube.point1.coordinates[0], cube.point1.coordinates[1], cube.point1.coordinates[2], 1);
+        var g1 = space.vec4(cube.gradient1.coordinates[0], cube.gradient1.coordinates[1], cube.gradient1.coordinates[2], cube.value1);
+        var p2 = space.vec4(cube.point2.coordinates[0], cube.point2.coordinates[1], cube.point2.coordinates[2], 1);
+        var g2 = space.vec4(cube.gradient2.coordinates[0], cube.gradient2.coordinates[1], cube.gradient2.coordinates[2], cube.value2);
+        var p3 = space.vec4(cube.point3.coordinates[0], cube.point3.coordinates[1], cube.point3.coordinates[2], 1);
+        var g3 = space.vec4(cube.gradient3.coordinates[0], cube.gradient3.coordinates[1], cube.gradient3.coordinates[2], cube.value3);
+        var p4 = space.vec4(cube.point4.coordinates[0], cube.point4.coordinates[1], cube.point4.coordinates[2], 1);
+        var g4 = space.vec4(cube.gradient4.coordinates[0], cube.gradient4.coordinates[1], cube.gradient4.coordinates[2], cube.value4);
+        var p5 = space.vec4(cube.point5.coordinates[0], cube.point5.coordinates[1], cube.point5.coordinates[2], 1);
+        var g5 = space.vec4(cube.gradient5.coordinates[0], cube.gradient5.coordinates[1], cube.gradient5.coordinates[2], cube.value5);
+        var p6 = space.vec4(cube.point6.coordinates[0], cube.point6.coordinates[1], cube.point6.coordinates[2], 1);
+        var g6 = space.vec4(cube.gradient6.coordinates[0], cube.gradient6.coordinates[1], cube.gradient6.coordinates[2], cube.value6);
+        var p7 = space.vec4(cube.point7.coordinates[0], cube.point7.coordinates[1], cube.point7.coordinates[2], 1);
+        var g7 = space.vec4(cube.gradient7.coordinates[0], cube.gradient7.coordinates[1], cube.gradient7.coordinates[2], cube.value7);
+        var begin = scalarField.tessellateCube(contourValue, p0, p1, p2, p3, p4, p5, p6, p7);
+        var end = stack.allocate8(0);
+        var result = array(stack, begin, end);
+        return result;
+    }
+    function array(stack, begin, end) {
+        var typedArray = new Float64Array(stack.stack.buffer.slice(begin, end));
+        var result = [];
+        typedArray.forEach(function (value) { return result.push(value); });
+        return result;
+    }
+    function fieldColor(fieldValue, alpha) {
+        if (alpha === void 0) { alpha = 0.4; }
+        return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
+    }
+    function normalFrom(p1, p2, p3) {
+        var v12 = p2.minus(p1);
+        var v23 = p3.minus(p2);
+        return v12.cross(v23).unit;
+    }
+})(ScalarField || (ScalarField = {}));
+/// <reference path="./tetrahedron.ts" />
+/// <reference path="./cube.ts" />
+var ScalarField;
+(function (ScalarField) {
+    var resolution = 64;
+    var fieldSampler = envelopedCosine;
+    var vertexShaderCode;
+    var fragmentShaderCode;
+    var context;
+    var position;
+    var normal;
+    var matModel;
+    var matProjection;
+    var lightPosition;
+    var color;
+    var shininess;
+    var fogginess;
+    var contourSurfaceBuffer;
+    var contourValue = 0;
+    var fieldRef = 0;
+    function init() {
+        window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["uniformColors.vert", function (shader) { return vertexShaderCode = shader; }], ["uniformColors.frag", function (shader) { return fragmentShaderCode = shader; }]); };
+    }
+    ScalarField.init = init;
+    function doInit() {
+        fieldRef = sampleField();
+        context = new Djee.Context("canvas-gl");
+        var program = context.link([
+            context.vertexShader(vertexShaderCode),
+            context.fragmentShader(fragmentShaderCode)
+        ]);
+        program.use();
+        contourSurfaceBuffer = context.newBuffer();
+        position = program.locateAttribute("position", 3);
+        normal = program.locateAttribute("normal", 3);
+        matModel = program.locateUniform("matModel", 4, true);
+        var matView = program.locateUniform("matView", 4, true);
+        matProjection = program.locateUniform("matProjection", 4, true);
+        lightPosition = program.locateUniform("lightPosition", 3);
+        color = program.locateUniform("color", 4);
+        shininess = program.locateUniform("shininess", 1);
+        fogginess = program.locateUniform("fogginess", 1);
+        matModel.data = Space.Matrix.identity().asColumnMajorArray;
+        matView.data = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0)).asColumnMajorArray;
+        matProjection.data = Space.Matrix.project(4, 100, 1).asColumnMajorArray;
+        var gl = context.gl;
+        gl.enable(gl.DEPTH_TEST);
+        gl.clearDepth(1);
+        gl.clearColor(1, 1, 1, 1);
+        var canvas = Gear.elementEvents("canvas-gl");
+        var mouseButtonPressed = canvas.mouseButons.map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        });
+        Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(function (positions) { return positions[0]; })).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [
+                2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth,
+                2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
+            ];
+        }).branch(function (flow) { return flow.filter(selected("rotation")).to(rotationSink()); }, function (flow) { return flow.filter(selected("focalRatio")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(focalRatioSink()); }, function (flow) { return flow.filter(selected("lightPosition")).to(lightPositionSink()); }, function (flow) { return flow.filter(selected("contourValue")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(contourValueSink()); }, function (flow) { return flow.filter(selected("shininess")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(shininessSink()); }, function (flow) { return flow.filter(selected("fogginess")).map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return y;
+        }).to(fogginessSink()); });
+        levelOfDetailsFlow().to(levelOfDetailsSink());
+        Gear.readableValue("function").to(functionSink());
+    }
+    function selected(value) {
+        var mouseBinding = document.getElementById("mouse-binding");
+        return function () { return mouseBinding.value == value; };
+    }
+    function levelOfDetailsFlow() {
+        var inc = Gear.elementEvents("lod-inc").mouseButons
+            .map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        })
+            .map(function (pressed) { return pressed ? +8 : 0; });
+        var dec = Gear.elementEvents("lod-dec").mouseButons
+            .map(function (_a) {
+            var l = _a[0], m = _a[1], r = _a[2];
+            return l;
+        })
+            .map(function (pressed) { return pressed ? -8 : 0; });
+        var flow = Gear.Flow.from(inc, dec)
+            .then(Gear.repeater(128, 0))
+            .reduce(function (i, lod) { return clamp(lod + i, 32, 96); }, 64);
+        flow.map(function (lod) { return lod.toString(); }).to(Gear.text("lod"));
+        return flow;
+    }
+    function clamp(n, min, max) {
+        return n < min ? min : (n > max ? max : n);
+    }
+    function levelOfDetailsSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(64)
+            .producer(function (lod) {
+            resolution = lod;
+            fieldRef = sampleField();
+            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
+            draw();
+        }); });
+    }
+    function contourValueSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(0)
+            .producer(function (newContourValue) {
+            contourValue = newContourValue;
+            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
+            color.data = fieldColor(contourValue, 1).coordinates;
+            draw();
+        }); });
+    }
+    function fieldColor(fieldValue, alpha) {
+        if (alpha === void 0) { alpha = 0.4; }
+        return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
+    }
+    function rotationSink() {
+        var axisX = Space.vec(1, 0, 0);
+        var axisY = Space.vec(0, 1, 0);
+        return Gear.sinkFlow(function (flow) { return flow.defaultsTo([0, 0]).producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            matModel.data =
+                Space.Matrix.rotation(y * Math.PI, axisX)
+                    .by(Space.Matrix.rotation(x * Math.PI, axisY))
+                    .asColumnMajorArray;
+            draw();
+        }); });
+    }
+    function focalRatioSink() {
+        var axisX = Space.vec(1, 0, 0);
+        var axisY = Space.vec(0, 1, 0);
+        return Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).map(function (ratio) { return (ratio + 1.4) * 3; }).producer(function (ratio) {
+            matProjection.data = Space.Matrix.project(ratio, 100, 1).asColumnMajorArray;
+            draw();
+        }); });
+    }
+    function lightPositionSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo([0.5, 0.5])
+            .map(function (_a) {
+            var x = _a[0], y = _a[1];
+            return [x * Math.PI / 2, y * Math.PI / 2];
+        })
+            .producer(function (_a) {
+            var x = _a[0], y = _a[1];
+            lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
+            draw();
+        }); });
+    }
+    function shininessSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(-1)
+            .map(function (value) { return (value + 1) / 2; })
+            .producer(function (value) {
+            shininess.data = [value];
+            draw();
+        }); });
+    }
+    function fogginessSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(-1)
+            .map(function (value) { return (value + 1) / 2; })
+            .producer(function (value) {
+            fogginess.data = [value];
+            draw();
+        }); });
+    }
+    function functionSink() {
+        return Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo("xyz")
+            .producer(function (functionName) {
+            fieldSampler = getFieldFunction(functionName);
+            fieldRef = sampleField();
+            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
+            draw();
+        }); });
+    }
+    function getFieldFunction(functionName) {
+        switch (functionName) {
+            case "xyz": return xyz;
+            case "envelopedCosine": return envelopedCosine;
+            default: return xyz;
+        }
+    }
+    function sampleField() {
+        var stack = Space.modules.stack.exports;
+        var space = Space.modules.space.exports;
+        stack.leave();
+        stack.leave();
+        stack.enter();
+        var ref = stack.allocate8(0);
+        for (var z = 0; z <= resolution; z++) {
+            for (var y = 0; y <= resolution; y++) {
+                for (var x = 0; x <= resolution; x++) {
+                    var px = 2 * x / resolution - 1;
+                    var py = 2 * y / resolution - 1;
+                    var pz = 2 * z / resolution - 1;
+                    var v = fieldSampler(px, py, pz).coordinates;
+                    space.vec4(px, py, pz, 1);
+                    space.vec4(v[0], v[1], v[2], v[3]);
+                }
+            }
+        }
+        stack.enter();
+        return ref;
+    }
+    function contourSurfaceData(fieldRef, contourValue) {
+        var stack = Space.modules.stack.exports;
+        var scalarField = Space.modules.scalarField.exports;
+        stack.leave();
+        stack.enter();
+        var begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue);
+        var end = stack.allocate8(0);
+        var result = new Float32Array(new Float64Array(stack.stack.buffer, begin, (end - begin) / 8));
+        return result;
+    }
+    var twoPi = 2 * Math.PI;
+    function xyz(x, y, z) {
+        return Space.vec(y * z, z * x, x * y, x * y * z);
+    }
+    function envelopedCosine(x, y, z) {
+        var x2 = x * x;
+        var y2 = y * y;
+        var z2 = z * z;
+        if (x2 <= 1 && y2 <= 1 && z2 <= 1) {
+            var piX2 = Math.PI * x2;
+            var piY2 = Math.PI * y2;
+            var piZ2 = Math.PI * z2;
+            var envelope = (Math.cos(piX2) + 1) * (Math.cos(piY2) + 1) * (Math.cos(piZ2) + 1) / 8;
+            var piX = Math.PI * x;
+            var piY = Math.PI * y;
+            var piZ = Math.PI * z;
+            var value = Math.cos(2 * piX) + Math.cos(2 * piY) + Math.cos(2 * piZ);
+            var dEnvelopeDX = -piX * Math.sin(piX2) * (Math.cos(piY2) + 1) * (Math.cos(piZ2) + 1) / 4;
+            var dEnvelopeDY = -piY * Math.sin(piY2) * (Math.cos(piX2) + 1) * (Math.cos(piZ2) + 1) / 4;
+            var dEnvelopeDZ = -piZ * Math.sin(piZ2) * (Math.cos(piX2) + 1) * (Math.cos(piY2) + 1) / 4;
+            var dValueDX = -twoPi * Math.sin(2 * piX);
+            var dValueDY = -twoPi * Math.sin(2 * piY);
+            var dValueDZ = -twoPi * Math.sin(2 * piZ);
+            return Space.vec(dEnvelopeDX * value + envelope * dValueDX, dEnvelopeDY * value + envelope * dValueDY, dEnvelopeDZ * value + envelope * dValueDZ, envelope * value / 3);
+        }
+        else {
+            return Space.vec(0, 0, 0, 0);
+        }
+    }
+    function draw() {
+        var gl = context.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        position.pointTo(contourSurfaceBuffer, 6, 0);
+        normal.pointTo(contourSurfaceBuffer, 6, 3);
+        gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
+        gl.finish();
+        gl.flush();
+    }
+})(ScalarField || (ScalarField = {}));
 var Tree;
 (function (Tree) {
     var MatriciesGenerator = /** @class */ (function () {
@@ -1654,7 +2510,7 @@ var Tree;
         function Renderer(vertexShaderCode, fragmentShaderCode, matrices) {
             this.context = new Djee.Context("canvas-gl");
             this.buffer = this.context.newBuffer();
-            this.buffer.data = this.vertexData();
+            this.buffer.untypedData = this.vertexData();
             var vertexShader = this.context.vertexShader(vertexShaderCode);
             var fragmentShader = this.context.fragmentShader(fragmentShaderCode);
             var program = this.context.link([vertexShader, fragmentShader]);
@@ -2114,7 +2970,7 @@ var WebGLLab;
                 }
             }
             this.lod = lod;
-            this.buffer.data = data;
+            this.buffer.untypedData = data;
             this.draw();
         };
         View.prototype.draw = function () {

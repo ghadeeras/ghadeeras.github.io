@@ -1,11 +1,6 @@
 (module
 
     (import "stack" "stack" (memory $stack 1))
-    (import "stack" "enter" (func $enter))
-    (import "stack" "leave" (func $leve))
-    (import "stack" "allocate8" (func $allocate8 (param i32) (result i32)))
-    (import "stack" "allocate16" (func $allocate16 (param i32) (result i32)))
-    (import "stack" "allocate32" (func $allocate32 (param i32) (result i32)))
     (import "stack" "allocate64" (func $allocate64 (param i32) (result i32)))
 
     (func $vec2Set (param $ref i32) (param $x f64) (param $y f64) (result i32)
@@ -329,6 +324,10 @@
     (export "vec2Clone" (func $vec2Clone))
     (export "vec3Clone" (func $vec3Clone))
     (export "vec4Clone" (func $vec4Clone))
+
+    (export "vec2Copy" (func $vec2Copy))
+    (export "vec3Copy" (func $vec3Copy))
+    (export "vec4Copy" (func $vec4Copy))
 
     (export "vec2Swizzle" (func $vec2Swizzle))
     (export "vec3Swizzle" (func $vec3Swizzle))

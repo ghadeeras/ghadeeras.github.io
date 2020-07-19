@@ -106,8 +106,9 @@ declare module Djee {
         private _data;
         constructor(context: Context);
         bind<T>(glCode: (gl: WebGLRenderingContext) => T): T;
-        get data(): number[];
-        set data(data: number[]);
+        get data(): Float32Array;
+        set data(data: Float32Array);
+        set untypedData(data: number[]);
     }
 }
 declare module Djee {
@@ -145,6 +146,10 @@ declare module Space {
         readonly columns: Vector[];
         constructor(columns: Vector[]);
         get transposed(): Matrix;
+        get determinant(): number;
+        get inverse(): Matrix;
+        private static sign;
+        private sub;
         prod(vector: Vector): Vector;
         by(matrix: Matrix): Matrix;
         get asColumnMajorArray(): number[];
@@ -231,9 +236,15 @@ declare module Space {
         vec3Unit: (v: Reference) => Reference;
         vec4Unit: (v: Reference) => Reference;
     };
+    type ScalarFieldExports = {
+        tessellateTetrahedron: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference) => Reference;
+        tessellateCube: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference, point4: Reference, point5: Reference, point6: Reference, point7: Reference) => Reference;
+        tesselateScalarField(fieldRef: Reference, resolution: number, contourValue: number): Reference;
+    };
     const modules: {
         stack: WA.Module<StackExports>;
         space: WA.Module<SpaceExports>;
+        scalarField: WA.Module<ScalarFieldExports>;
     };
     function initWaModules(onready: () => void): void;
 }
@@ -420,6 +431,17 @@ declare module GasketTwist2 {
     }
 }
 declare module GasketTwist2 {
+    function init(): void;
+}
+declare module ScalarField {
+    function initTetrahedronDemo(): void;
+}
+declare module ScalarField {
+    function initCubeDemo(): void;
+}
+declare module ScalarField {
+}
+declare module ScalarField {
     function init(): void;
 }
 declare module Tree {

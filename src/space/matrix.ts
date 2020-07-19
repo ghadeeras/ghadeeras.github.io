@@ -20,6 +20,48 @@ module Space {
             return new Matrix(rows);
         }
 
+        get determinant() {
+            if (this.rowsCount != this. columnsCount) {
+                return 0;
+            }
+            if (this.columnsCount == 1) {
+                return this.columns[0].coordinates[0];
+            }
+            return this.columns[0].coordinates.map((v, i) => Matrix.sign(i) * v * this.sub(0, i).determinant).reduce((v1, v2) => v1 + v2);
+        }
+
+        get inverse() {
+            const d = this.determinant;
+            return new Matrix(
+                this.columns.map((column, c) => new Vector(
+                    column.coordinates.map((coordinate, r) => Matrix.sign(c + r) * this.sub(c, r).determinant / d)
+                ))
+            ).transposed;
+        }
+
+        private static sign(i: number) {
+            return (i % 2 == 0) ? 1 : -1
+        }
+
+        private sub(columnIndex: number, rowIndex: number) {
+            const columns: Vector[] = []
+            for (let c = 0; c < this.columnsCount; c++) {
+                if (c == columnIndex) {
+                    continue;
+                }
+                const coordinates: number[] = [];
+                const column = this.columns[c];
+                for (let r = 0; r < this.rowsCount; r++) {
+                    if (r == rowIndex) {
+                        continue;
+                    }
+                    coordinates.push(column.coordinates[r])
+                }
+                columns.push(new Vector(coordinates));
+            }
+            return new Matrix(columns);
+        }
+
         prod(vector: Vector) {
             const m = this.transposed;
             return vector.prod(m);

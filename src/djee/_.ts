@@ -9,7 +9,7 @@
 module Djee {
     
     export function copyOf<T>(array: T[]) {
-        return array.slice(0, array.length);
+        return array.slice();
     }
     
 }
