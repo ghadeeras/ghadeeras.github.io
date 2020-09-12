@@ -338,6 +338,15 @@ declare module Gear {
 declare module Gear {
     type PointerPosition = [number, number];
     type MouseButtons = [boolean, boolean, boolean];
+    type Dragging = {
+        startPos: PointerPosition;
+        pos: PointerPosition;
+        start: boolean;
+        end: boolean;
+        shift: boolean;
+        ctrl: boolean;
+        alt: boolean;
+    };
     function checkbox(elementId: string): Flow<boolean>;
     function readableValue(elementId: string): Flow<string>;
     function elementEvents(elementId: string): ElementEvents;
@@ -345,20 +354,37 @@ declare module Gear {
         readonly element: HTMLElement;
         readonly elementPos: PointerPosition;
         private readonly lazyClick;
+        private readonly lazyMouseDown;
+        private readonly lazyMouseUp;
+        private readonly lazyMouseMove;
+        private readonly lazyTouchMove;
+        private readonly lazyClickPos;
         private readonly lazyMousePos;
         private readonly lazyTouchPos;
+        private readonly lazyDragging;
         private readonly lazyMouseButtons;
         constructor(element: HTMLElement);
         parent(): ElementEvents;
         private newClick;
+        private newMouseDown;
+        private newMouseUp;
+        private newMouseMove;
+        private newTouchMove;
+        private newClickPos;
         private newMousePos;
         private newTouchPos;
+        private newDragging;
         private relativePos;
         private newMouseButtons;
-        private setButton;
-        get click(): Flow<PointerPosition>;
+        get click(): Flow<MouseEvent>;
+        get mouseDown(): Flow<MouseEvent>;
+        get mouseUp(): Flow<MouseEvent>;
+        get mouseMove(): Flow<MouseEvent>;
+        get touchMove(): Flow<TouchEvent>;
+        get clickPos(): Flow<PointerPosition>;
         get mousePos(): Flow<PointerPosition>;
         get touchPos(): Flow<PointerPosition[]>;
+        get dragging(): Flow<Dragging>;
         get mouseButons(): Flow<MouseButtons>;
         static create(elementId: string): ElementEvents;
     }

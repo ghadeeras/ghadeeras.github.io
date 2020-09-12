@@ -39,8 +39,8 @@ module GasketTwist2 {
                 .then(Gear.flowSwitch(scaleEnabled));;
             
             this.depth = Gear.Flow.from(
-                depthDecButton.click.map(e => -1),
-                depthIncButton.click.map(e => 1),
+                depthDecButton.clickPos.map(e => -1),
+                depthIncButton.clickPos.map(e => 1),
             ).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);
         }
 

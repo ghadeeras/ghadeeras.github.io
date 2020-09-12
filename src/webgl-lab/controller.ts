@@ -34,7 +34,7 @@ module WebGLLab {
 
     function programFlow() {
         const compileBtn = Gear.ElementEvents.create("compile-button")
-        return compileBtn.click.map(pos => program());
+        return compileBtn.clickPos.map(pos => program());
     }
 
     function program(): ProgramSample {

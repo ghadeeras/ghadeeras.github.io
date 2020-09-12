@@ -1239,67 +1239,163 @@ var Gear;
             this.element = element;
             this.elementPos = pagePos(this.element);
             this.lazyClick = Gear.lazy(function () { return _this.newClick(); });
+            this.lazyMouseDown = Gear.lazy(function () { return _this.newMouseDown(); });
+            this.lazyMouseUp = Gear.lazy(function () { return _this.newMouseUp(); });
+            this.lazyMouseMove = Gear.lazy(function () { return _this.newMouseMove(); });
+            this.lazyTouchMove = Gear.lazy(function () { return _this.newTouchMove(); });
+            this.lazyClickPos = Gear.lazy(function () { return _this.newClickPos(); });
             this.lazyMousePos = Gear.lazy(function () { return _this.newMousePos(); });
             this.lazyTouchPos = Gear.lazy(function () { return _this.newTouchPos(); });
+            this.lazyDragging = Gear.lazy(function () { return _this.newDragging(); });
             this.lazyMouseButtons = Gear.lazy(function () { return _this.newMouseButtons(); });
         }
         ElementEvents.prototype.parent = function () {
             return new ElementEvents(this.element.parentElement);
         };
         ElementEvents.prototype.newClick = function () {
-            var _this = this;
-            var value = pointerPositionValue([0, 0]);
+            var value = new Gear.Value();
             this.element.onclick = function (e) {
-                value.value = _this.relativePos(e);
+                value.value = e;
                 e.preventDefault();
             };
             return value.flow();
+        };
+        ElementEvents.prototype.newMouseDown = function () {
+            var value = new Gear.Value();
+            this.element.onmousedown = function (e) {
+                value.value = e;
+                e.preventDefault();
+            };
+            return value.flow();
+        };
+        ElementEvents.prototype.newMouseUp = function () {
+            var value = new Gear.Value();
+            this.element.onmouseup = function (e) {
+                value.value = e;
+                e.preventDefault();
+            };
+            return value.flow();
+        };
+        ElementEvents.prototype.newMouseMove = function () {
+            var value = new Gear.Value();
+            this.element.onmousemove = function (e) {
+                value.value = e;
+                e.preventDefault();
+            };
+            return value.flow();
+        };
+        ElementEvents.prototype.newTouchMove = function () {
+            var value = new Gear.Value();
+            this.element.ontouchmove = function (e) {
+                value.value = e;
+                e.preventDefault();
+            };
+            return value.flow();
+        };
+        ElementEvents.prototype.newClickPos = function () {
+            var _this = this;
+            return this.click
+                .map(function (e) { return _this.relativePos(e); })
+                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2]);
         };
         ElementEvents.prototype.newMousePos = function () {
             var _this = this;
-            var value = pointerPositionValue([this.element.clientWidth / 2, this.element.clientHeight / 2]);
-            this.element.onmousemove = function (e) {
-                value.value = _this.relativePos(e);
-                e.preventDefault();
-            };
-            return value.flow();
+            return this.mouseMove
+                .map(function (e) { return _this.relativePos(e); })
+                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2]);
         };
         ElementEvents.prototype.newTouchPos = function () {
             var _this = this;
-            var value = new Gear.Value([]);
-            this.element.ontouchmove = this.element.ontouchstart = function (e) {
-                var touches = [];
+            return this.touchMove
+                .map(function (e) {
+                var touches = new Array(e.touches.length);
                 for (var i = 0; i < e.touches.length; i++) {
-                    touches.push(_this.relativePos(e.touches.item(i)));
+                    touches[i] = _this.relativePos(e.touches.item(i));
                 }
-                value.value = touches;
-                e.preventDefault();
+                return touches;
+            })
+                .defaultsTo([]);
+        };
+        ElementEvents.prototype.newDragging = function () {
+            var _this = this;
+            var dragging = {
+                startPos: [0, 0],
+                pos: [0, 0],
+                start: false,
+                end: true,
+                shift: false,
+                ctrl: false,
+                alt: false
             };
-            return value.flow();
+            return Gear.Flow.from(this.mouseDown.map(function (e) {
+                dragging.startPos = dragging.pos = _this.relativePos(e);
+                dragging.start = true;
+                dragging.end = false;
+                dragging.shift = e.shiftKey;
+                dragging.ctrl = e.ctrlKey;
+                dragging.alt = e.altKey;
+                return __assign({}, dragging);
+            }), this.mouseMove.filter(function (e) { return (e.button & 1) != 0; }).map(function (e) {
+                dragging.pos = _this.relativePos(e);
+                dragging.start = false;
+                dragging.end = false;
+                return __assign({}, dragging);
+            }), Gear.Flow.from(this.mouseUp, this.mouseMove.filter(function (e) { return (e.button & 1) == 0; })).map(function (e) {
+                dragging.startPos = dragging.pos;
+                dragging.start = false;
+                dragging.end = true;
+                return __assign({}, dragging);
+            })).defaultsTo(__assign({}, dragging));
         };
         ElementEvents.prototype.relativePos = function (p) {
             var pointerPos = pos(p.pageX, p.pageY);
             return sub(pointerPos, this.elementPos);
         };
         ElementEvents.prototype.newMouseButtons = function () {
-            var _this = this;
-            var value = mouseButtonsValue([false, false, false]);
-            this.element.onmousedown = function (e) {
-                _this.setButton(value, e.button, true);
-                e.preventDefault();
-            };
-            this.element.onmouseup = function (e) {
-                _this.setButton(value, e.button, false);
-                e.preventDefault();
-            };
-            return value.flow();
-        };
-        ElementEvents.prototype.setButton = function (buttons, button, pressed) {
-            buttons.value = updatedButtons(buttons.value, button, pressed);
+            var initialValue = [false, false, false];
+            return Gear.Flow.from(this.mouseDown.map(function (e) { return [e.button, true]; }), this.mouseUp.map(function (e) { return [e.button, false]; })).reduce(function (_a, buttons) {
+                var button = _a[0], down = _a[1];
+                return updatedButtons(buttons, button, down);
+            }, initialValue);
         };
         Object.defineProperty(ElementEvents.prototype, "click", {
             get: function () {
                 return this.lazyClick();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "mouseDown", {
+            get: function () {
+                return this.lazyMouseDown();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "mouseUp", {
+            get: function () {
+                return this.lazyMouseUp();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "mouseMove", {
+            get: function () {
+                return this.lazyMouseMove();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "touchMove", {
+            get: function () {
+                return this.lazyTouchMove();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "clickPos", {
+            get: function () {
+                return this.lazyClickPos();
             },
             enumerable: true,
             configurable: true
@@ -1314,6 +1410,13 @@ var Gear;
         Object.defineProperty(ElementEvents.prototype, "touchPos", {
             get: function () {
                 return this.lazyTouchPos();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "dragging", {
+            get: function () {
+                return this.lazyDragging();
             },
             enumerable: true,
             configurable: true
@@ -1348,12 +1451,6 @@ var Gear;
         var x1 = pos1[0], y1 = pos1[1];
         var x2 = pos2[0], y2 = pos2[1];
         return [x1 - x2, y1 - y2];
-    }
-    function pointerPositionValue(initialPos) {
-        return new Gear.Value(initialPos);
-    }
-    function mouseButtonsValue(initialButtons) {
-        return new Gear.Value(initialButtons);
     }
     function updatedButtons(buttons, button, pressed) {
         var result = buttons;
@@ -1599,7 +1696,7 @@ var GasketTwist2;
             })
                 .then(Gear.flowSwitch(scaleEnabled));
             ;
-            this.depth = Gear.Flow.from(depthDecButton.click.map(function (e) { return -1; }), depthIncButton.click.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
+            this.depth = Gear.Flow.from(depthDecButton.clickPos.map(function (e) { return -1; }), depthIncButton.clickPos.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
         }
         return Controller;
     }());
@@ -2686,7 +2783,7 @@ var Tree;
         var canvas = Gear.elementEvents("canvas-gl");
         var depthInc = Gear.elementEvents("depth-inc");
         var depthDec = Gear.elementEvents("depth-dec");
-        Gear.Flow.from(depthInc.click.map(function () { return +1; }), depthDec.click.map(function () { return -1; })).reduce(function (inc, depth) { return Math.max(Math.min(8, inc + depth), 1); }, 5).branch(function (flow) { return flow.map(function (depth) { return depth.toString(); }).to(Gear.text("depth")); }, function (flow) { return flow.map(function (depth) {
+        Gear.Flow.from(depthInc.clickPos.map(function () { return +1; }), depthDec.clickPos.map(function () { return -1; })).reduce(function (inc, depth) { return Math.max(Math.min(8, inc + depth), 1); }, 5).branch(function (flow) { return flow.map(function (depth) { return depth.toString(); }).to(Gear.text("depth")); }, function (flow) { return flow.map(function (depth) {
             generator.depth = depth;
             return generator.generateMatricies();
         }).to(matricesSink); });
@@ -3069,7 +3166,7 @@ var WebGLLab;
     WebGLLab.Controller = Controller;
     function programFlow() {
         var compileBtn = Gear.ElementEvents.create("compile-button");
-        return compileBtn.click.map(function (pos) { return program(); });
+        return compileBtn.clickPos.map(function (pos) { return program(); });
     }
     function program() {
         var vertexShaderElement = document.getElementById("vertex-shader");

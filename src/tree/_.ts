@@ -28,8 +28,8 @@ module Tree {
         const depthDec = Gear.elementEvents("depth-dec");
 
         Gear.Flow.from(
-            depthInc.click.map(() => +1),
-            depthDec.click.map(() => -1)
+            depthInc.clickPos.map(() => +1),
+            depthDec.clickPos.map(() => -1)
         ).reduce((inc, depth) => Math.max(Math.min(8, inc + depth), 1), 5).branch(
             flow => flow.map(depth => depth.toString()).to(Gear.text("depth")),
             flow => flow.map(depth => {
