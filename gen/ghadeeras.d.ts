@@ -91,7 +91,7 @@ declare module Djee {
         readonly size: number;
         readonly matrix: boolean;
         readonly location: WebGLUniformLocation;
-        readonly setter: (v: Float32Array) => void;
+        readonly setter: (v: Float64Array) => void;
         private _data;
         constructor(program: Program, name: string, size: number, matrix?: boolean);
         private getSetter;
@@ -294,7 +294,7 @@ declare module Gear {
         reduce<R>(reducer: Reducer<T, R>, identity: R): Flow<R>;
         defaultsTo(value: T): Flow<T>;
         then<R>(effect: Effect<T, R>, defaultValue?: T): Flow<R>;
-        through<R>(effect: Effect<T, R>): Flow<R>;
+        through<R>(effect: Effect<T, R>, defaultValue?: R): Flow<R>;
         branch(...flowBuilders: Consumer<Flow<T>>[]): this;
         get producer(): Consumer<Consumer<T>>;
         static from<T>(...sources: Source<T>[]): Flow<T>;
@@ -357,6 +357,8 @@ declare module Gear {
         private readonly lazyMouseDown;
         private readonly lazyMouseUp;
         private readonly lazyMouseMove;
+        private readonly lazyTouchStart;
+        private readonly lazyTouchEnd;
         private readonly lazyTouchMove;
         private readonly lazyClickPos;
         private readonly lazyMousePos;
@@ -365,21 +367,30 @@ declare module Gear {
         private readonly lazyMouseButtons;
         constructor(element: HTMLElement);
         parent(): ElementEvents;
+        get center(): PointerPosition;
         private newClick;
         private newMouseDown;
         private newMouseUp;
         private newMouseMove;
+        private newTouchStart;
+        private newTouchEnd;
         private newTouchMove;
         private newClickPos;
         private newMousePos;
         private newTouchPos;
         private newDragging;
+        private startDragging;
+        private drag;
+        private endDragging;
+        private doEndDragging;
         private relativePos;
         private newMouseButtons;
         get click(): Flow<MouseEvent>;
         get mouseDown(): Flow<MouseEvent>;
         get mouseUp(): Flow<MouseEvent>;
         get mouseMove(): Flow<MouseEvent>;
+        get touchStart(): Flow<TouchEvent>;
+        get touchEnd(): Flow<TouchEvent>;
         get touchMove(): Flow<TouchEvent>;
         get clickPos(): Flow<PointerPosition>;
         get mousePos(): Flow<PointerPosition>;
@@ -457,6 +468,9 @@ declare module GasketTwist2 {
     }
 }
 declare module GasketTwist2 {
+    function init(): void;
+}
+declare module Mandelbrot {
     function init(): void;
 }
 declare module ScalarField {

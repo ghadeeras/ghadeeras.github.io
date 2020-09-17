@@ -79,7 +79,7 @@ module Gear {
         }
 
         defaultsTo(value: T) {
-            return this.through(defaultsTo(value));
+            return this.through(defaultsTo(value), value);
         }
 
         then<R>(effect: Effect<T, R>, defaultValue: T = null) {
@@ -89,8 +89,8 @@ module Gear {
             return this.through(safeEffect);
         }
 
-        through<R>(effect: Effect<T, R>) {
-            const newOutput = new Value<R>();
+        through<R>(effect: Effect<T, R>, defaultValue: R = null) {
+            const newOutput = new Value<R>(defaultValue);
             causeEffectLink(this.output, effect, newOutput.consumer);
             return new Flow(newOutput.producer);
         }

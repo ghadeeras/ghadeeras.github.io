@@ -458,7 +458,7 @@ var Djee;
                 if (data.length != this._data.length) {
                     throw "Arrays of length '" + data.length + "' cannot be assigned to uniform " + (this.matrix ? 'matrix' : 'vector') + " '" + this.name + "' which has size '" + this.size + "'";
                 }
-                this.setter(new Float32Array(data));
+                this.setter(new Float64Array(data));
                 this._data = Djee.copyOf(data);
             },
             enumerable: true,
@@ -999,7 +999,7 @@ var Gear;
             return this.then(Gear.reduce(reducer, identity));
         };
         Flow.prototype.defaultsTo = function (value) {
-            return this.through(Gear.defaultsTo(value));
+            return this.through(Gear.defaultsTo(value), value);
         };
         Flow.prototype.then = function (effect, defaultValue) {
             if (defaultValue === void 0) { defaultValue = null; }
@@ -1008,8 +1008,9 @@ var Gear;
                 function (value, resultConsumer) { return (value != null) ? effect(value, resultConsumer) : {}; };
             return this.through(safeEffect);
         };
-        Flow.prototype.through = function (effect) {
-            var newOutput = new Gear.Value();
+        Flow.prototype.through = function (effect, defaultValue) {
+            if (defaultValue === void 0) { defaultValue = null; }
+            var newOutput = new Gear.Value(defaultValue);
             Gear.causeEffectLink(this.output, effect, newOutput.consumer);
             return new Flow(newOutput.producer);
         };
@@ -1242,6 +1243,8 @@ var Gear;
             this.lazyMouseDown = Gear.lazy(function () { return _this.newMouseDown(); });
             this.lazyMouseUp = Gear.lazy(function () { return _this.newMouseUp(); });
             this.lazyMouseMove = Gear.lazy(function () { return _this.newMouseMove(); });
+            this.lazyTouchStart = Gear.lazy(function () { return _this.newTouchStart(); });
+            this.lazyTouchEnd = Gear.lazy(function () { return _this.newTouchEnd(); });
             this.lazyTouchMove = Gear.lazy(function () { return _this.newTouchMove(); });
             this.lazyClickPos = Gear.lazy(function () { return _this.newClickPos(); });
             this.lazyMousePos = Gear.lazy(function () { return _this.newMousePos(); });
@@ -1252,6 +1255,13 @@ var Gear;
         ElementEvents.prototype.parent = function () {
             return new ElementEvents(this.element.parentElement);
         };
+        Object.defineProperty(ElementEvents.prototype, "center", {
+            get: function () {
+                return [this.element.clientWidth / 2, this.element.clientHeight / 2];
+            },
+            enumerable: true,
+            configurable: true
+        });
         ElementEvents.prototype.newClick = function () {
             var value = new Gear.Value();
             this.element.onclick = function (e) {
@@ -1284,11 +1294,27 @@ var Gear;
             };
             return value.flow();
         };
+        ElementEvents.prototype.newTouchStart = function () {
+            var value = new Gear.Value();
+            this.element.ontouchstart = function (e) {
+                e.preventDefault();
+                value.value = e;
+            };
+            return value.flow();
+        };
+        ElementEvents.prototype.newTouchEnd = function () {
+            var value = new Gear.Value();
+            this.element.ontouchend = this.element.ontouchcancel = function (e) {
+                e.preventDefault();
+                value.value = e;
+            };
+            return value.flow();
+        };
         ElementEvents.prototype.newTouchMove = function () {
             var value = new Gear.Value();
             this.element.ontouchmove = function (e) {
-                value.value = e;
                 e.preventDefault();
+                value.value = e;
             };
             return value.flow();
         };
@@ -1296,13 +1322,13 @@ var Gear;
             var _this = this;
             return this.click
                 .map(function (e) { return _this.relativePos(e); })
-                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2]);
+                .defaultsTo(this.center);
         };
         ElementEvents.prototype.newMousePos = function () {
             var _this = this;
             return this.mouseMove
                 .map(function (e) { return _this.relativePos(e); })
-                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2]);
+                .defaultsTo(this.center);
         };
         ElementEvents.prototype.newTouchPos = function () {
             var _this = this;
@@ -1327,25 +1353,31 @@ var Gear;
                 ctrl: false,
                 alt: false
             };
-            return Gear.Flow.from(this.mouseDown.map(function (e) {
-                dragging.startPos = dragging.pos = _this.relativePos(e);
-                dragging.start = true;
-                dragging.end = false;
-                dragging.shift = e.shiftKey;
-                dragging.ctrl = e.ctrlKey;
-                dragging.alt = e.altKey;
-                return __assign({}, dragging);
-            }), this.mouseMove.filter(function (e) { return (e.button & 1) != 0; }).map(function (e) {
-                dragging.pos = _this.relativePos(e);
-                dragging.start = false;
-                dragging.end = false;
-                return __assign({}, dragging);
-            }), Gear.Flow.from(this.mouseUp, this.mouseMove.filter(function (e) { return (e.button & 1) == 0; })).map(function (e) {
-                dragging.startPos = dragging.pos;
-                dragging.start = false;
-                dragging.end = true;
-                return __assign({}, dragging);
-            })).defaultsTo(__assign({}, dragging));
+            return Gear.Flow.from(this.touchStart.map(function (e) { return _this.startDragging(dragging, e, e.touches[0]); }), this.mouseDown.map(function (e) { return _this.startDragging(dragging, e, e); }), this.touchMove.map(function (e) { return _this.drag(dragging, e.touches[0]); }), this.mouseMove.filter(function (e) { return (e.buttons & 1) != 0; }).map(function (e) { return _this.drag(dragging, e); }), this.touchEnd.map(function (e) { return _this.doEndDragging(dragging, dragging.pos); }), Gear.Flow.from(this.mouseUp, this.mouseMove.filter(function (e) { return (e.buttons & 1) == 0 && !dragging.end; })).map(function (e) { return _this.endDragging(dragging, e); })).defaultsTo(__assign({}, dragging));
+        };
+        ElementEvents.prototype.startDragging = function (dragging, e, p) {
+            dragging.startPos = dragging.pos = this.relativePos(p);
+            dragging.start = true;
+            dragging.end = false;
+            dragging.shift = e.shiftKey;
+            dragging.ctrl = e.ctrlKey;
+            dragging.alt = e.altKey;
+            return __assign({}, dragging);
+        };
+        ElementEvents.prototype.drag = function (dragging, p) {
+            dragging.pos = this.relativePos(p);
+            dragging.start = false;
+            dragging.end = false;
+            return __assign({}, dragging);
+        };
+        ElementEvents.prototype.endDragging = function (dragging, p) {
+            return this.doEndDragging(dragging, this.relativePos(p));
+        };
+        ElementEvents.prototype.doEndDragging = function (dragging, pos) {
+            dragging.pos = pos;
+            dragging.start = false;
+            dragging.end = true;
+            return __assign({}, dragging);
         };
         ElementEvents.prototype.relativePos = function (p) {
             var pointerPos = pos(p.pageX, p.pageY);
@@ -1382,6 +1414,20 @@ var Gear;
         Object.defineProperty(ElementEvents.prototype, "mouseMove", {
             get: function () {
                 return this.lazyMouseMove();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "touchStart", {
+            get: function () {
+                return this.lazyTouchStart();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "touchEnd", {
+            get: function () {
+                return this.lazyTouchEnd();
             },
             enumerable: true,
             configurable: true
@@ -1730,6 +1776,135 @@ var GasketTwist2;
     }
     GasketTwist2.init = init;
 })(GasketTwist2 || (GasketTwist2 = {}));
+var Mandelbrot;
+(function (Mandelbrot) {
+    var mouseBindingElement;
+    var canvas;
+    var vertexShaderCode;
+    var fragmentShaderCode;
+    var context;
+    var uniformCenter;
+    var uniformScale;
+    var uniformColor;
+    var uniformIntensity;
+    var uniformPalette;
+    var center = Space.vec(-0.75, 0);
+    var scale = 2.0;
+    function init() {
+        window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["mandelbrot.vert", function (shader) { return vertexShaderCode = shader; }], ["mandelbrot.frag", function (shader) { return fragmentShaderCode = shader; }]); };
+    }
+    Mandelbrot.init = init;
+    function doInit() {
+        mouseBindingElement = document.getElementById("mouse-binding");
+        mouseBindingElement.onkeypress = function (e) {
+            e.preventDefault();
+        };
+        window.onkeypress = function (e) {
+            var key = e.key.toUpperCase();
+            var act = action(key);
+            if (act != null) {
+                mouseBindingElement.value = act;
+            }
+        };
+        context = new Djee.Context("canvas-gl");
+        var program = context.link([
+            context.vertexShader(vertexShaderCode),
+            context.fragmentShader(fragmentShaderCode)
+        ]);
+        program.use();
+        var buffer = context.newBuffer();
+        buffer.untypedData = [
+            -1, -1,
+            +1, -1,
+            -1, +1,
+            +1, +1,
+        ];
+        var vertex = program.locateAttribute("vertex", 2);
+        vertex.pointTo(buffer);
+        uniformColor = program.locateUniform("color", 2);
+        uniformColor.data = [5 / 4, Math.sqrt(2) / 2];
+        uniformIntensity = program.locateUniform("intensity", 1);
+        uniformIntensity.data = [0.5];
+        uniformPalette = program.locateUniform("palette", 1);
+        uniformPalette.data = [0];
+        uniformCenter = program.locateUniform("center", 2);
+        uniformCenter.data = center.coordinates;
+        uniformScale = program.locateUniform("scale", 1);
+        uniformScale.data = [scale];
+        canvas = Gear.ElementEvents.create("canvas-gl");
+        canvas.dragging.branch(function (flow) { return flow.filter(selected("move")).producer(function (d) { return move(d); }); }, function (flow) { return flow.filter(selected("zoom")).producer(function (d) { return zoom(d); }); }, function (flow) { return flow.filter(selected("color")).producer(function (d) { return colorize(d); }); }, function (flow) { return flow.filter(selected("intensity")).producer(function (d) { return intensity(d); }); }, function (flow) { return flow.filter(selected("palette")).producer(function (d) { return palette(d); }); });
+        draw();
+    }
+    function action(key) {
+        switch (key.toUpperCase()) {
+            case "M": return "move";
+            case "Z": return "zoom";
+            case "C": return "color";
+            case "I": return "intensity";
+            case "P": return "palette";
+            default: return null;
+        }
+    }
+    function selected(value) {
+        return function () { return mouseBindingElement.value == value; };
+    }
+    function zoom(dragging) {
+        var delta = calculateDelta(dragging.startPos, dragging.pos);
+        var power = -delta.coordinates[1];
+        if (power != 0) {
+            var centerToStart = calculateDelta(canvas.center, dragging.startPos, scale);
+            var factor = Math.pow(16, power);
+            var newScale = scale * factor;
+            var newCenter = center.plus(centerToStart.scale(1 - factor));
+            if (dragging.end) {
+                scale = newScale;
+                center = newCenter;
+            }
+            uniformScale.data = [newScale];
+            uniformCenter.data = newCenter.coordinates;
+            draw();
+        }
+    }
+    function move(dragging) {
+        var delta = calculateDelta(dragging.startPos, dragging.pos, scale);
+        if (delta.length > 0) {
+            var newCenter = center.minus(delta)
+                .combine(Space.vec(+4, +4), Math.min)
+                .combine(Space.vec(-4, -4), Math.max);
+            if (dragging.end) {
+                center = newCenter;
+            }
+            uniformCenter.data = newCenter.coordinates;
+            draw();
+        }
+    }
+    function colorize(dragging) {
+        var hue = 2 * dragging.pos[0] / canvas.element.clientWidth;
+        var saturation = 1 - dragging.pos[1] / canvas.element.clientHeight;
+        uniformColor.data = [hue, saturation];
+        draw();
+    }
+    function intensity(dragging) {
+        var intensity = 1 - dragging.pos[1] / canvas.element.clientWidth;
+        uniformIntensity.data = [intensity];
+        draw();
+    }
+    function palette(dragging) {
+        var palette = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth;
+        uniformPalette.data = [palette > 1 ? 1 : palette < 0 ? 0 : palette];
+        draw();
+    }
+    function calculateDelta(pos1, pos2, scale) {
+        if (scale === void 0) { scale = 1; }
+        return Space.vec.apply(Space, pos2).minus(Space.vec.apply(Space, pos1))
+            .scale(2 * scale)
+            .divide(Space.vec(canvas.element.clientWidth, -canvas.element.clientHeight));
+    }
+    function draw() {
+        var gl = context.gl;
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+})(Mandelbrot || (Mandelbrot = {}));
 var ScalarField;
 (function (ScalarField) {
     var vertexShaderCode;

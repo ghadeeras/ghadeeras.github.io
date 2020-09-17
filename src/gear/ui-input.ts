@@ -40,6 +40,8 @@ module Gear {
         private readonly lazyMouseDown: Supplier<Flow<MouseEvent>>;
         private readonly lazyMouseUp: Supplier<Flow<MouseEvent>>;
         private readonly lazyMouseMove: Supplier<Flow<MouseEvent>>;
+        private readonly lazyTouchStart: Supplier<Flow<TouchEvent>>;
+        private readonly lazyTouchEnd: Supplier<Flow<TouchEvent>>;
         private readonly lazyTouchMove: Supplier<Flow<TouchEvent>>;
 
         private readonly lazyClickPos: Supplier<Flow<PointerPosition>>;
@@ -56,6 +58,8 @@ module Gear {
             this.lazyMouseDown = lazy(() => this.newMouseDown());
             this.lazyMouseUp = lazy(() => this.newMouseUp());
             this.lazyMouseMove = lazy(() => this.newMouseMove());
+            this.lazyTouchStart = lazy(() => this.newTouchStart());
+            this.lazyTouchEnd = lazy(() => this.newTouchEnd());
             this.lazyTouchMove = lazy(() => this.newTouchMove());
 
             this.lazyClickPos = lazy(() => this.newClickPos());
@@ -67,6 +71,10 @@ module Gear {
 
         parent() {
             return new ElementEvents(this.element.parentElement);
+        }
+
+        get center(): PointerPosition {
+            return [this.element.clientWidth / 2, this.element.clientHeight / 2];
         }
 
         private newClick(): Flow<MouseEvent> {
@@ -105,11 +113,29 @@ module Gear {
             return value.flow();
         }
     
+        private newTouchStart(): Flow<TouchEvent> {
+            const value: Value<TouchEvent> = new Value();
+            this.element.ontouchstart = e => {
+                e.preventDefault();
+                value.value = e;
+            }
+            return value.flow();
+        }
+
+        private newTouchEnd(): Flow<TouchEvent> {
+            const value: Value<TouchEvent> = new Value();
+            this.element.ontouchend = this.element.ontouchcancel = e => {
+                e.preventDefault();
+                value.value = e;
+            }
+            return value.flow();
+        }
+
         private newTouchMove(): Flow<TouchEvent> {
             const value: Value<TouchEvent> = new Value();
             this.element.ontouchmove = e => {
-                value.value = e;
                 e.preventDefault();
+                value.value = e;
             }
             return value.flow();
         }
@@ -117,13 +143,13 @@ module Gear {
         private newClickPos(): Flow<PointerPosition> {
             return this.click
                 .map(e => this.relativePos(e))
-                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2])
+                .defaultsTo(this.center)
         }
     
         private newMousePos(): Flow<PointerPosition> {
             return this.mouseMove
                 .map(e => this.relativePos(e))
-                .defaultsTo([this.element.clientWidth / 2, this.element.clientHeight / 2])
+                .defaultsTo(this.center)
         }
 
         private newTouchPos(): Flow<PointerPosition[]> {
@@ -149,28 +175,44 @@ module Gear {
                 alt: false
             }
             return Flow.from(
-                this.mouseDown.map(e => {
-                    dragging.startPos = dragging.pos = this.relativePos(e)
-                    dragging.start = true
-                    dragging.end = false
-                    dragging.shift = e.shiftKey
-                    dragging.ctrl = e.ctrlKey
-                    dragging.alt = e.altKey
-                    return { ...dragging }
-                }),
-                this.mouseMove.filter(e => (e.button & 1) != 0).map(e => {
-                    dragging.pos = this.relativePos(e)
-                    dragging.start = false
-                    dragging.end = false
-                    return { ...dragging }
-                }),
-                Flow.from(this.mouseUp, this.mouseMove.filter(e => (e.button & 1) == 0)).map(e => {
-                    dragging.startPos = dragging.pos
-                    dragging.start = false
-                    dragging.end = true
-                    return { ...dragging }
-                })
+                this.touchStart.map(e => this.startDragging(dragging, e, e.touches[0])),
+                this.mouseDown.map(e => this.startDragging(dragging, e, e)),
+                this.touchMove.map(e => this.drag(dragging, e.touches[0])),
+                this.mouseMove.filter(e => (e.buttons & 1) != 0).map(e => this.drag(dragging, e)),
+                this.touchEnd.map(e => this.doEndDragging(dragging, dragging.pos)),
+                Flow.from(
+                    this.mouseUp, 
+                    this.mouseMove.filter(e => (e.buttons & 1) == 0 && !dragging.end)
+                ).map(e => this.endDragging(dragging, e))
             ).defaultsTo({ ...dragging })
+        }
+
+        private startDragging(dragging: Dragging, e: MouseEvent | TouchEvent, p: Pointer) {
+            dragging.startPos = dragging.pos = this.relativePos(p);
+            dragging.start = true;
+            dragging.end = false;
+            dragging.shift = e.shiftKey;
+            dragging.ctrl = e.ctrlKey;
+            dragging.alt = e.altKey;
+            return { ...dragging };
+        }
+
+        private drag(dragging: Dragging, p: Pointer) {
+            dragging.pos = this.relativePos(p);
+            dragging.start = false;
+            dragging.end = false;
+            return { ...dragging };
+        }
+
+        private endDragging(dragging: Dragging, p: Pointer) {
+            return this.doEndDragging(dragging, this.relativePos(p));
+        }
+
+        private doEndDragging(dragging: Dragging, pos: PointerPosition) {
+            dragging.pos = pos;
+            dragging.start = false;
+            dragging.end = true;
+            return { ...dragging };
         }
 
         private relativePos(p: Pointer) {
@@ -201,6 +243,14 @@ module Gear {
 
         get mouseMove() {
             return this.lazyMouseMove();
+        }
+
+        get touchStart() {
+            return this.lazyTouchStart();
+        }
+
+        get touchEnd() {
+            return this.lazyTouchEnd();
         }
 
         get touchMove() {

@@ -3,7 +3,7 @@ module Djee {
     export class Uniform {
 
         readonly location: WebGLUniformLocation;
-        readonly setter: (v: Float32Array) => void;
+        readonly setter: (v: Float64Array) => void;
 
         private _data: number[];
 
@@ -16,7 +16,7 @@ module Djee {
             this._data = new Array(matrix ? size * size : size);
         }
 
-        private getSetter(gl: WebGLRenderingContext, size: number, matrix: boolean): (data: Float32Array) => void {
+        private getSetter(gl: WebGLRenderingContext, size: number, matrix: boolean): (data: Float64Array) => void {
             const location = this.location;
             if (matrix) {
                 switch (size) {
@@ -44,7 +44,7 @@ module Djee {
             if (data.length != this._data.length) {
                 throw `Arrays of length '${data.length}' cannot be assigned to uniform ${this.matrix ? 'matrix' : 'vector'} '${this.name}' which has size '${this.size}'`;
             }
-            this.setter(new Float32Array(data));
+            this.setter(new Float64Array(data));
             this._data = copyOf(data);
         }
 
