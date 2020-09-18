@@ -25,6 +25,10 @@
 
             <div>
                 <p>
+                    This classic WebGL example renders the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot fractal</a> 
+                    by performing its complex number calculations in the fragment shader (i.e. by the GPU).
+                </p>
+                <p>
                     <div>Mouse Binding: 
                         <select id="mouse-binding" name="mouse-binding">
                             <option value="move" selected>[M]ove</option>
@@ -33,6 +37,23 @@
                             <option value="intensity">[I]ntensity (more: up, less: down)</option>
                             <option value="palette">[P]alette (exp: up, cos: down)</option>
                         </select>
+                    </div>
+                </p>
+                <p>
+                    <div>
+                        <span>Center Pos = <span id="center">1.0</span></span>
+                    </div>
+                    <div>
+                        <span>Scale = <span id="scale">1.0</span></span>
+                    </div>
+                    <div>
+                        <span>Color = (Hue: <span id="hue">0.8</span>, Saturation: <span id="saturation">0.7</span>)</span>
+                    </div>
+                    <div>
+                        <span>Intensity = <span id="intensity">0.5</span></span>
+                    </div>
+                    <div>
+                        <span>Palette = <span id="palette">0.0</span></span>
                     </div>
                 </p>
             </div>

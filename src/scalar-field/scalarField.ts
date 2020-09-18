@@ -99,6 +99,7 @@ module ScalarField {
             .map(([l, m, r]) => l)
             .map((pressed) => pressed ? -8 : 0);
         const flow = Gear.Flow.from(inc, dec)
+            .defaultsTo(0)
             .then(Gear.repeater(128, 0))
             .reduce((i, lod) => clamp(lod + i, 32, 96), 64);
         flow.map(lod => lod.toString()).to(Gear.text("lod"))

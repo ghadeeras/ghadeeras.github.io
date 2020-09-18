@@ -1790,6 +1790,12 @@ var Mandelbrot;
     var uniformPalette;
     var center = Space.vec(-0.75, 0);
     var scale = 2.0;
+    var centerSpan;
+    var scaleSpan;
+    var hueSpan;
+    var saturationSpan;
+    var intensitySpan;
+    var paletteSpan;
     function init() {
         window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["mandelbrot.vert", function (shader) { return vertexShaderCode = shader; }], ["mandelbrot.frag", function (shader) { return fragmentShaderCode = shader; }]); };
     }
@@ -1831,6 +1837,31 @@ var Mandelbrot;
         uniformCenter.data = center.coordinates;
         uniformScale = program.locateUniform("scale", 1);
         uniformScale.data = [scale];
+        centerSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(center)
+            .map(function (pos) { return pos.coordinates.map(function (c) { return c.toPrecision(3); }); })
+            .map(function (pos) { return "(x: " + pos[0] + ", y: " + pos[1] + ")"; })
+            .to(Gear.text("center")); });
+        scaleSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(scale)
+            .map(function (s) { return s.toPrecision(3).toString(); })
+            .to(Gear.text("scale")); });
+        hueSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(uniformColor.data[0])
+            .map(function (h) { return h.toPrecision(3).toString(); })
+            .to(Gear.text("hue")); });
+        saturationSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(uniformColor.data[1])
+            .map(function (s) { return s.toPrecision(3).toString(); })
+            .to(Gear.text("saturation")); });
+        intensitySpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(uniformIntensity.data[0])
+            .map(function (i) { return i.toPrecision(3).toString(); })
+            .to(Gear.text("intensity")); });
+        paletteSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(uniformPalette.data[0])
+            .map(function (s) { return s.toPrecision(3).toString(); })
+            .to(Gear.text("palette")); });
         canvas = Gear.ElementEvents.create("canvas-gl");
         canvas.dragging.branch(function (flow) { return flow.filter(selected("move")).producer(function (d) { return move(d); }); }, function (flow) { return flow.filter(selected("zoom")).producer(function (d) { return zoom(d); }); }, function (flow) { return flow.filter(selected("color")).producer(function (d) { return colorize(d); }); }, function (flow) { return flow.filter(selected("intensity")).producer(function (d) { return intensity(d); }); }, function (flow) { return flow.filter(selected("palette")).producer(function (d) { return palette(d); }); });
         draw();
@@ -1862,6 +1893,8 @@ var Mandelbrot;
             }
             uniformScale.data = [newScale];
             uniformCenter.data = newCenter.coordinates;
+            scaleSpan.consumer(newScale);
+            centerSpan.consumer(newCenter);
             draw();
         }
     }
@@ -1875,6 +1908,7 @@ var Mandelbrot;
                 center = newCenter;
             }
             uniformCenter.data = newCenter.coordinates;
+            centerSpan.consumer(newCenter);
             draw();
         }
     }
@@ -1882,16 +1916,20 @@ var Mandelbrot;
         var hue = 2 * dragging.pos[0] / canvas.element.clientWidth;
         var saturation = 1 - dragging.pos[1] / canvas.element.clientHeight;
         uniformColor.data = [hue, saturation];
+        hueSpan.consumer(hue);
+        saturationSpan.consumer(saturation);
         draw();
     }
     function intensity(dragging) {
         var intensity = 1 - dragging.pos[1] / canvas.element.clientWidth;
         uniformIntensity.data = [intensity];
+        intensitySpan.consumer(intensity);
         draw();
     }
     function palette(dragging) {
         var palette = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth;
         uniformPalette.data = [palette > 1 ? 1 : palette < 0 ? 0 : palette];
+        paletteSpan.consumer(palette);
         draw();
     }
     function calculateDelta(pos1, pos2, scale) {
@@ -2540,6 +2578,7 @@ var ScalarField;
         })
             .map(function (pressed) { return pressed ? -8 : 0; });
         var flow = Gear.Flow.from(inc, dec)
+            .defaultsTo(0)
             .then(Gear.repeater(128, 0))
             .reduce(function (i, lod) { return clamp(lod + i, 32, 96); }, 64);
         flow.map(function (lod) { return lod.toString(); }).to(Gear.text("lod"));

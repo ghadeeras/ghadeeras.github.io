@@ -16,6 +16,13 @@ module Mandelbrot {
     let center = Space.vec(-0.75, 0)
     let scale = 2.0
 
+    let centerSpan: Gear.Sink<Space.Vector>
+    let scaleSpan: Gear.Sink<number>
+    let hueSpan: Gear.Sink<number>
+    let saturationSpan: Gear.Sink<number>
+    let intensitySpan: Gear.Sink<number>
+    let paletteSpan: Gear.Sink<number>
+
     export function init() {
         window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
             ["mandelbrot.vert", shader => vertexShaderCode = shader],
@@ -70,6 +77,39 @@ module Mandelbrot {
         uniformScale = program.locateUniform("scale", 1)
         uniformScale.data = [scale]
 
+        centerSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(center)
+            .map(pos => pos.coordinates.map(c => c.toPrecision(3)))
+            .map(pos => "(x: " + pos[0] + ", y: " + pos[1] + ")")
+            .to(Gear.text("center"))
+        )
+        scaleSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(scale)
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("scale"))
+        )
+        hueSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(uniformColor.data[0])
+            .map(h => h.toPrecision(3).toString())
+            .to(Gear.text("hue"))
+        )
+        saturationSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(uniformColor.data[1])
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("saturation"))
+        )
+        intensitySpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(uniformIntensity.data[0])
+            .map(i => i.toPrecision(3).toString())
+            .to(Gear.text("intensity"))
+        )
+        paletteSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(uniformPalette.data[0])
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("palette"))
+        )
+
+
         canvas = Gear.ElementEvents.create("canvas-gl")
         canvas.dragging.branch(
             flow => flow.filter(selected("move")).producer(d => move(d)),
@@ -111,6 +151,8 @@ module Mandelbrot {
             }
             uniformScale.data = [newScale]
             uniformCenter.data = newCenter.coordinates
+            scaleSpan.consumer(newScale)
+            centerSpan.consumer(newCenter)
             draw()
         }
     }
@@ -125,6 +167,7 @@ module Mandelbrot {
                 center = newCenter
             }
             uniformCenter.data = newCenter.coordinates
+            centerSpan.consumer(newCenter)
             draw()
         }
     }
@@ -133,18 +176,22 @@ module Mandelbrot {
         const hue = 2 * dragging.pos[0] / canvas.element.clientWidth
         const saturation = 1 - dragging.pos[1] / canvas.element.clientHeight
         uniformColor.data = [hue, saturation]
+        hueSpan.consumer(hue)
+        saturationSpan.consumer(saturation)
         draw()
     }
     
     function intensity(dragging: Gear.Dragging) {
         const intensity = 1 - dragging.pos[1] / canvas.element.clientWidth
         uniformIntensity.data = [intensity]
+        intensitySpan.consumer(intensity)
         draw()
     }
     
     function palette(dragging: Gear.Dragging) {
         const palette = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth
         uniformPalette.data = [palette > 1 ? 1 : palette < 0 ? 0 : palette]
+        paletteSpan.consumer(palette)
         draw()
     }
     
