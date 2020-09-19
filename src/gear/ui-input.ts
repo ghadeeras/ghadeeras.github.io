@@ -45,6 +45,7 @@ module Gear {
         private readonly lazyTouchMove: Supplier<Flow<TouchEvent>>;
 
         private readonly lazyClickPos: Supplier<Flow<PointerPosition>>;
+        private readonly lazyTouchStartPos: Supplier<Flow<PointerPosition[]>>;
         private readonly lazyMousePos: Supplier<Flow<PointerPosition>>;
         private readonly lazyTouchPos: Supplier<Flow<PointerPosition[]>>;
         private readonly lazyDragging: Supplier<Flow<Dragging>>;
@@ -63,6 +64,7 @@ module Gear {
             this.lazyTouchMove = lazy(() => this.newTouchMove());
 
             this.lazyClickPos = lazy(() => this.newClickPos());
+            this.lazyTouchStartPos = lazy(() => this.newTouchStartPos());
             this.lazyMousePos = lazy(() => this.newMousePos());
             this.lazyTouchPos = lazy(() => this.newTouchPos());
             this.lazyDragging = lazy(() => this.newDragging());
@@ -146,6 +148,12 @@ module Gear {
                 .defaultsTo(this.center)
         }
     
+        private newTouchStartPos(): Flow<PointerPosition[]> {
+            return this.touchStart
+                .map(e => this.touchesToPositions(e))
+                .defaultsTo([])
+        }
+    
         private newMousePos(): Flow<PointerPosition> {
             return this.mouseMove
                 .map(e => this.relativePos(e))
@@ -154,14 +162,16 @@ module Gear {
 
         private newTouchPos(): Flow<PointerPosition[]> {
             return this.touchMove
-                .map(e => {
-                    const touches: PointerPosition[] = new Array<PointerPosition>(e.touches.length);
-                    for (let i = 0; i < e.touches.length; i++) {
-                        touches[i] = this.relativePos(e.touches.item(i));
-                    }
-                    return touches;
-                })
+                .map(e => this.touchesToPositions(e))
                 .defaultsTo([]);
+        }
+
+        private touchesToPositions(e: TouchEvent) {
+            const touches: PointerPosition[] = new Array<PointerPosition>(e.touches.length);
+            for (let i = 0; i < e.touches.length; i++) {
+                touches[i] = this.relativePos(e.touches.item(i));
+            }
+            return touches;
         }
 
         private newDragging(): Flow<Dragging> {
@@ -175,9 +185,9 @@ module Gear {
                 alt: false
             }
             return Flow.from(
-                this.touchStart.map(e => this.startDragging(dragging, e, e.touches[0])),
+                this.touchStart.filter(this.oneTouch()).map(e => this.startDragging(dragging, e, e.touches[0])),
                 this.mouseDown.map(e => this.startDragging(dragging, e, e)),
-                this.touchMove.map(e => this.drag(dragging, e.touches[0])),
+                this.touchMove.filter(this.oneTouch()).map(e => this.drag(dragging, e.touches[0])),
                 this.mouseMove.filter(e => (e.buttons & 1) != 0).map(e => this.drag(dragging, e)),
                 this.touchEnd.map(e => this.doEndDragging(dragging, dragging.pos)),
                 Flow.from(
@@ -185,6 +195,10 @@ module Gear {
                     this.mouseMove.filter(e => (e.buttons & 1) == 0 && !dragging.end)
                 ).map(e => this.endDragging(dragging, e))
             ).defaultsTo({ ...dragging })
+        }
+
+        private oneTouch(): Mapper<TouchEvent, boolean> {
+            return e => e.touches.length == 1;
         }
 
         private startDragging(dragging: Dragging, e: MouseEvent | TouchEvent, p: Pointer) {
@@ -259,6 +273,10 @@ module Gear {
 
         get clickPos() {
             return this.lazyClickPos();
+        }
+
+        get touchStartPos() {
+            return this.lazyTouchStartPos();
         }
 
         get mousePos() {

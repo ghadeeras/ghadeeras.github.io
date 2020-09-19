@@ -361,6 +361,7 @@ declare module Gear {
         private readonly lazyTouchEnd;
         private readonly lazyTouchMove;
         private readonly lazyClickPos;
+        private readonly lazyTouchStartPos;
         private readonly lazyMousePos;
         private readonly lazyTouchPos;
         private readonly lazyDragging;
@@ -376,9 +377,12 @@ declare module Gear {
         private newTouchEnd;
         private newTouchMove;
         private newClickPos;
+        private newTouchStartPos;
         private newMousePos;
         private newTouchPos;
+        private touchesToPositions;
         private newDragging;
+        private oneTouch;
         private startDragging;
         private drag;
         private endDragging;
@@ -393,6 +397,7 @@ declare module Gear {
         get touchEnd(): Flow<TouchEvent>;
         get touchMove(): Flow<TouchEvent>;
         get clickPos(): Flow<PointerPosition>;
+        get touchStartPos(): Flow<PointerPosition[]>;
         get mousePos(): Flow<PointerPosition>;
         get touchPos(): Flow<PointerPosition[]>;
         get dragging(): Flow<Dragging>;

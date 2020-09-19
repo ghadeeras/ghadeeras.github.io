@@ -1247,6 +1247,7 @@ var Gear;
             this.lazyTouchEnd = Gear.lazy(function () { return _this.newTouchEnd(); });
             this.lazyTouchMove = Gear.lazy(function () { return _this.newTouchMove(); });
             this.lazyClickPos = Gear.lazy(function () { return _this.newClickPos(); });
+            this.lazyTouchStartPos = Gear.lazy(function () { return _this.newTouchStartPos(); });
             this.lazyMousePos = Gear.lazy(function () { return _this.newMousePos(); });
             this.lazyTouchPos = Gear.lazy(function () { return _this.newTouchPos(); });
             this.lazyDragging = Gear.lazy(function () { return _this.newDragging(); });
@@ -1324,6 +1325,12 @@ var Gear;
                 .map(function (e) { return _this.relativePos(e); })
                 .defaultsTo(this.center);
         };
+        ElementEvents.prototype.newTouchStartPos = function () {
+            var _this = this;
+            return this.touchStart
+                .map(function (e) { return _this.touchesToPositions(e); })
+                .defaultsTo([]);
+        };
         ElementEvents.prototype.newMousePos = function () {
             var _this = this;
             return this.mouseMove
@@ -1333,14 +1340,15 @@ var Gear;
         ElementEvents.prototype.newTouchPos = function () {
             var _this = this;
             return this.touchMove
-                .map(function (e) {
-                var touches = new Array(e.touches.length);
-                for (var i = 0; i < e.touches.length; i++) {
-                    touches[i] = _this.relativePos(e.touches.item(i));
-                }
-                return touches;
-            })
+                .map(function (e) { return _this.touchesToPositions(e); })
                 .defaultsTo([]);
+        };
+        ElementEvents.prototype.touchesToPositions = function (e) {
+            var touches = new Array(e.touches.length);
+            for (var i = 0; i < e.touches.length; i++) {
+                touches[i] = this.relativePos(e.touches.item(i));
+            }
+            return touches;
         };
         ElementEvents.prototype.newDragging = function () {
             var _this = this;
@@ -1353,7 +1361,10 @@ var Gear;
                 ctrl: false,
                 alt: false
             };
-            return Gear.Flow.from(this.touchStart.map(function (e) { return _this.startDragging(dragging, e, e.touches[0]); }), this.mouseDown.map(function (e) { return _this.startDragging(dragging, e, e); }), this.touchMove.map(function (e) { return _this.drag(dragging, e.touches[0]); }), this.mouseMove.filter(function (e) { return (e.buttons & 1) != 0; }).map(function (e) { return _this.drag(dragging, e); }), this.touchEnd.map(function (e) { return _this.doEndDragging(dragging, dragging.pos); }), Gear.Flow.from(this.mouseUp, this.mouseMove.filter(function (e) { return (e.buttons & 1) == 0 && !dragging.end; })).map(function (e) { return _this.endDragging(dragging, e); })).defaultsTo(__assign({}, dragging));
+            return Gear.Flow.from(this.touchStart.filter(this.oneTouch()).map(function (e) { return _this.startDragging(dragging, e, e.touches[0]); }), this.mouseDown.map(function (e) { return _this.startDragging(dragging, e, e); }), this.touchMove.filter(this.oneTouch()).map(function (e) { return _this.drag(dragging, e.touches[0]); }), this.mouseMove.filter(function (e) { return (e.buttons & 1) != 0; }).map(function (e) { return _this.drag(dragging, e); }), this.touchEnd.map(function (e) { return _this.doEndDragging(dragging, dragging.pos); }), Gear.Flow.from(this.mouseUp, this.mouseMove.filter(function (e) { return (e.buttons & 1) == 0 && !dragging.end; })).map(function (e) { return _this.endDragging(dragging, e); })).defaultsTo(__assign({}, dragging));
+        };
+        ElementEvents.prototype.oneTouch = function () {
+            return function (e) { return e.touches.length == 1; };
         };
         ElementEvents.prototype.startDragging = function (dragging, e, p) {
             dragging.startPos = dragging.pos = this.relativePos(p);
@@ -1442,6 +1453,13 @@ var Gear;
         Object.defineProperty(ElementEvents.prototype, "clickPos", {
             get: function () {
                 return this.lazyClickPos();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ElementEvents.prototype, "touchStartPos", {
+            get: function () {
+                return this.lazyTouchStartPos();
             },
             enumerable: true,
             configurable: true
@@ -1778,6 +1796,8 @@ var GasketTwist2;
 })(GasketTwist2 || (GasketTwist2 = {}));
 var Mandelbrot;
 (function (Mandelbrot) {
+    var audioContext = new window.AudioContext({ sampleRate: 8192 });
+    var audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate);
     var mouseBindingElement;
     var canvas;
     var vertexShaderCode;
@@ -1864,7 +1884,49 @@ var Mandelbrot;
             .to(Gear.text("palette")); });
         canvas = Gear.ElementEvents.create("canvas-gl");
         canvas.dragging.branch(function (flow) { return flow.filter(selected("move")).producer(function (d) { return move(d); }); }, function (flow) { return flow.filter(selected("zoom")).producer(function (d) { return zoom(d); }); }, function (flow) { return flow.filter(selected("color")).producer(function (d) { return colorize(d); }); }, function (flow) { return flow.filter(selected("intensity")).producer(function (d) { return intensity(d); }); }, function (flow) { return flow.filter(selected("palette")).producer(function (d) { return palette(d); }); });
+        Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(function (ps) { return ps[0]; }))
+            .filter(selected("music"))
+            .map(function (pos) { return toComplexNumber(pos); })
+            .producer(function (c) { return play(c); });
         draw();
+    }
+    function play(c) {
+        var channel1 = audioBuffer.getChannelData(0);
+        var channel2 = audioBuffer.getChannelData(1);
+        var sum1 = 0;
+        var sum2 = 0;
+        var z = Space.vec(0, 0);
+        for (var i = 0; i < audioBuffer.length && z.length < 2.0; i++) {
+            var _a = z.coordinates, x = _a[0], y = _a[1];
+            z = Space.vec(x * x - y * y, 2 * x * y).plus(c);
+            channel1[i] = z.coordinates[0] / 2;
+            channel2[i] = z.coordinates[1] / 2;
+            sum1 += channel1[i];
+            sum2 += channel2[i];
+        }
+        if (z.length < 2.0) {
+            var avg1 = sum1 / channel1.length;
+            var avg2 = sum2 / channel2.length;
+            for (var i = 0; i < audioBuffer.length; i++) {
+                var attenuation = Math.pow(1 - i / audioBuffer.length, 2);
+                channel1[i] = attenuation * (channel1[i] - avg1);
+                channel2[i] = attenuation * (channel2[i] - avg2);
+            }
+            playBuffer();
+        }
+    }
+    function playBuffer() {
+        var source = audioContext.createBufferSource();
+        source.channelCount = 2;
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start();
+    }
+    function toComplexNumber(pos) {
+        return Space.vec.apply(Space, pos).divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
+            .plus(Space.vec(-1, 1))
+            .scale(scale)
+            .plus(center);
     }
     function action(key) {
         switch (key.toUpperCase()) {
@@ -1873,6 +1935,7 @@ var Mandelbrot;
             case "C": return "color";
             case "I": return "intensity";
             case "P": return "palette";
+            case "N": return "music";
             default: return null;
         }
     }

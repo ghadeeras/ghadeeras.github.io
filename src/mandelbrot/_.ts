@@ -1,5 +1,8 @@
 module Mandelbrot {
 
+    const audioContext = new window.AudioContext({sampleRate: 8192})
+    const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
+
     let mouseBindingElement: HTMLInputElement
     let canvas: Gear.ElementEvents
 
@@ -119,7 +122,54 @@ module Mandelbrot {
             flow => flow.filter(selected("palette")).producer(d => palette(d)),
         )
 
+        Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(ps => ps[0]))
+            .filter(selected("music"))
+            .map(pos => toComplexNumber(pos))
+            .producer(c => play(c))
+
         draw()
+    }
+
+    function play(c: Space.Vector) {
+        const channel1 = audioBuffer.getChannelData(0)
+        const channel2 = audioBuffer.getChannelData(1)
+        let sum1 = 0
+        let sum2 = 0
+        let z = Space.vec(0, 0)
+        for (let i = 0; i < audioBuffer.length && z.length < 2.0; i++) {
+            const [x, y] = z.coordinates
+            z = Space.vec(x * x - y * y, 2 * x * y).plus(c)
+            channel1[i] = z.coordinates[0] / 2
+            channel2[i] = z.coordinates[1] / 2
+            sum1 += channel1[i]
+            sum2 += channel2[i]
+        }
+        if (z.length < 2.0) {
+            const avg1 = sum1 / channel1.length
+            const avg2 = sum2 / channel2.length
+            for (let i = 0; i < audioBuffer.length; i++) {
+                const attenuation = Math.pow(1 - i / audioBuffer.length, 2)
+                channel1[i] = attenuation * (channel1[i] - avg1)
+                channel2[i] = attenuation * (channel2[i] - avg2)
+            }
+            playBuffer()
+        }
+    }
+
+    function playBuffer() {
+        const source = audioContext.createBufferSource()
+        source.channelCount = 2
+        source.buffer = audioBuffer
+        source.connect(audioContext.destination)
+        source.start()
+    }
+
+    function toComplexNumber(pos: Gear.PointerPosition): Space.Vector {
+        return Space.vec(...pos)
+            .divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
+            .plus(Space.vec(-1, 1))
+            .scale(scale)
+            .plus(center)
     }
 
     function action(key: string) {
@@ -129,11 +179,12 @@ module Mandelbrot {
             case "C": return "color"
             case "I": return "intensity"
             case "P": return "palette"
+            case "N": return "music"
             default: return null
         }
     }
 
-    function selected(value: string): Gear.Predicate<Gear.Dragging> {
+    function selected<T>(value: string): Gear.Predicate<T> {
         return () => mouseBindingElement.value == value;
     }
 
