@@ -114,140 +114,6 @@ declare module Djee {
 declare module Djee {
     function copyOf<T>(array: T[]): T[];
 }
-declare module Space {
-    class Vector {
-        readonly coordinates: number[];
-        constructor(coordinates: number[]);
-        combine(v: Vector, op: (c: number, vc: number) => number): Vector;
-        affect(f: (c: number) => number): Vector;
-        plus(v: Vector): Vector;
-        minus(v: Vector): Vector;
-        multiply(v: Vector): Vector;
-        divide(v: Vector): Vector;
-        scale(factor: number): Vector;
-        dot(v: Vector): number;
-        mix(v: Vector, weight: number): Vector;
-        get lengthSquared(): number;
-        get length(): number;
-        get unit(): Vector;
-        angle(v: Vector): number;
-        withDims(n: number): Vector;
-        swizzle(...indexes: number[]): Vector;
-        cross(v: Vector): Vector;
-        sameAs(v: Vector, precision?: number): boolean;
-        prod(matrix: Matrix): Vector;
-        component(i: number): Vector;
-    }
-}
-declare module Space {
-    class Matrix {
-        readonly columnsCount: number;
-        readonly rowsCount: number;
-        readonly columns: Vector[];
-        constructor(columns: Vector[]);
-        get transposed(): Matrix;
-        get determinant(): number;
-        get inverse(): Matrix;
-        private static sign;
-        private sub;
-        prod(vector: Vector): Vector;
-        by(matrix: Matrix): Matrix;
-        get asColumnMajorArray(): number[];
-        get asRowMajorArray(): number[];
-        static identity(): Matrix;
-        static scaling(sx: number, sy: number, sz: number): Matrix;
-        static translation(tx: number, ty: number, tz: number): Matrix;
-        static rotation(angle: number, axis: Vector): Matrix;
-        static view(direction: Vector, up: Vector): Matrix;
-        static globalView(eyePos: Vector, objPos: Vector, up: Vector): Matrix;
-        static project(focalRatio: number, horizon: number, aspectRatio?: number): Matrix;
-    }
-    class MatrixStack {
-        private _matrix;
-        private stack;
-        apply(matrix: Matrix): Matrix;
-        push(): void;
-        pop(): void;
-        get matrix(): Matrix;
-    }
-}
-declare module Space {
-    module WA {
-        type Caster<E extends WebAssembly.Exports> = (exports: WebAssembly.Exports) => E;
-        type Module<E extends WebAssembly.Exports> = {
-            readonly sourceFile: string;
-            readonly caster: Caster<E>;
-            exports?: E;
-        };
-        type Modules = Readonly<Record<string, Module<WebAssembly.Exports>>>;
-        type ModuleName<M extends Modules> = keyof M;
-        function module<E extends WebAssembly.Exports>(sourceFile: string, caster: Caster<E>): Module<E>;
-        function load<M extends Modules>(modules: M, first: ModuleName<M>, ...rest: ModuleName<M>[]): Promise<M>;
-    }
-}
-declare module Space {
-    function vec(...coordinates: number[]): Vector;
-    function mat(...columns: Vector[]): Matrix;
-    type Reference = number;
-    type StackExports = {
-        stack: WebAssembly.Memory;
-        enter: () => void;
-        leave: () => void;
-        allocate8: (size: number) => Reference;
-        allocate16: (size: number) => Reference;
-        allocate32: (size: number) => Reference;
-        allocate64: (size: number) => Reference;
-    };
-    type SpaceExports = {
-        vec2: (x: number, y: number) => Reference;
-        vec3: (x: number, y: number, z: number) => Reference;
-        vec4: (x: number, y: number, z: number, w: number) => Reference;
-        vec2Clone: (v: Reference) => Reference;
-        vec3Clone: (v: Reference) => Reference;
-        vec4Clone: (v: Reference) => Reference;
-        vec2Swizzle: (v: Reference, x: number, y: number) => Reference;
-        vec3Swizzle: (v: Reference, x: number, y: number, z: number) => Reference;
-        vec4Swizzle: (v: Reference, x: number, y: number, z: number, w: number) => Reference;
-        vecX: (v: Reference) => number;
-        vecY: (v: Reference) => number;
-        vecZ: (v: Reference) => number;
-        vecW: (v: Reference) => number;
-        vec2Add: (v1: Reference, v2: Reference) => Reference;
-        vec3Add: (v1: Reference, v2: Reference) => Reference;
-        vec4Add: (v1: Reference, v2: Reference) => Reference;
-        vec2Sub: (v1: Reference, v2: Reference) => Reference;
-        vec3Sub: (v1: Reference, v2: Reference) => Reference;
-        vec4Sub: (v1: Reference, v2: Reference) => Reference;
-        vec2Scale: (v1: Reference, factor: number) => Reference;
-        vec3Scale: (v1: Reference, factor: number) => Reference;
-        vec4Scale: (v1: Reference, factor: number) => Reference;
-        vec2Dot: (v1: Reference, v2: Reference) => number;
-        vec3Dot: (v1: Reference, v2: Reference) => number;
-        vec4Dot: (v1: Reference, v2: Reference) => number;
-        vec2Cross: (v1: Reference, v2: Reference) => number;
-        vec3Cross: (v1: Reference, v2: Reference) => Reference;
-        vec2LengthSquared: (v: Reference) => number;
-        vec3LengthSquared: (v: Reference) => number;
-        vec4LengthSquared: (v: Reference) => number;
-        vec2Length: (v: Reference) => number;
-        vec3Length: (v: Reference) => number;
-        vec4Length: (v: Reference) => number;
-        vec2Unit: (v: Reference) => Reference;
-        vec3Unit: (v: Reference) => Reference;
-        vec4Unit: (v: Reference) => Reference;
-    };
-    type ScalarFieldExports = {
-        tessellateTetrahedron: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference) => Reference;
-        tessellateCube: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference, point4: Reference, point5: Reference, point6: Reference, point7: Reference) => Reference;
-        tesselateScalarField(fieldRef: Reference, resolution: number, contourValue: number): Reference;
-    };
-    const modules: {
-        stack: WA.Module<StackExports>;
-        space: WA.Module<SpaceExports>;
-        scalarField: WA.Module<ScalarFieldExports>;
-    };
-    function initWaModules(onready: () => void): void;
-}
 declare module Gear {
     function lazy<T>(constructor: Supplier<T>): Supplier<T>;
 }
@@ -423,7 +289,155 @@ declare module Gear {
     function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect<C, E>, effectConsumer: Consumer<E>): void;
     function load(path: string, onready: Gear.Callable, ...files: [string, Consumer<string>][]): void;
 }
-declare module GasketTwist2 {
+declare module Space {
+    class Vector {
+        readonly coordinates: number[];
+        constructor(coordinates: number[]);
+        combine(v: Vector, op: (c: number, vc: number) => number): Vector;
+        affect(f: (c: number) => number): Vector;
+        plus(v: Vector): Vector;
+        minus(v: Vector): Vector;
+        multiply(v: Vector): Vector;
+        divide(v: Vector): Vector;
+        scale(factor: number): Vector;
+        dot(v: Vector): number;
+        mix(v: Vector, weight: number): Vector;
+        get lengthSquared(): number;
+        get length(): number;
+        get unit(): Vector;
+        angle(v: Vector): number;
+        withDims(n: number): Vector;
+        swizzle(...indexes: number[]): Vector;
+        cross(v: Vector): Vector;
+        sameAs(v: Vector, precision?: number): boolean;
+        prod(matrix: Matrix): Vector;
+        component(i: number): Vector;
+    }
+}
+declare module Space {
+    class Matrix {
+        readonly columnsCount: number;
+        readonly rowsCount: number;
+        readonly columns: Vector[];
+        constructor(columns: Vector[]);
+        get transposed(): Matrix;
+        get determinant(): number;
+        get inverse(): Matrix;
+        private static sign;
+        private sub;
+        prod(vector: Vector): Vector;
+        by(matrix: Matrix): Matrix;
+        get asColumnMajorArray(): number[];
+        get asRowMajorArray(): number[];
+        static identity(): Matrix;
+        static scaling(sx: number, sy: number, sz: number): Matrix;
+        static translation(tx: number, ty: number, tz: number): Matrix;
+        static rotation(angle: number, axis: Vector): Matrix;
+        static view(direction: Vector, up: Vector): Matrix;
+        static globalView(eyePos: Vector, objPos: Vector, up: Vector): Matrix;
+        static project(focalRatio: number, horizon: number, aspectRatio?: number): Matrix;
+    }
+    class MatrixStack {
+        private _matrix;
+        private stack;
+        apply(matrix: Matrix): Matrix;
+        push(): void;
+        pop(): void;
+        get matrix(): Matrix;
+    }
+}
+declare module Space {
+    module WA {
+        type Caster<E extends WebAssembly.Exports> = (exports: WebAssembly.Exports) => E;
+        type Module<E extends WebAssembly.Exports> = {
+            readonly sourceFile: string;
+            readonly caster: Caster<E>;
+            exports?: E;
+        };
+        type Modules = Readonly<Record<string, Module<WebAssembly.Exports>>>;
+        type ModuleName<M extends Modules> = keyof M;
+        function module<E extends WebAssembly.Exports>(sourceFile: string, caster: Caster<E>): Module<E>;
+        function load<M extends Modules>(modules: M, first: ModuleName<M>, ...rest: ModuleName<M>[]): Promise<M>;
+    }
+}
+declare module Space {
+    function vec(...coordinates: number[]): Vector;
+    function mat(...columns: Vector[]): Matrix;
+    type Reference = number;
+    type StackExports = {
+        stack: WebAssembly.Memory;
+        enter: () => void;
+        leave: () => void;
+        allocate8: (size: number) => Reference;
+        allocate16: (size: number) => Reference;
+        allocate32: (size: number) => Reference;
+        allocate64: (size: number) => Reference;
+    };
+    type SpaceExports = {
+        vec2: (x: number, y: number) => Reference;
+        vec3: (x: number, y: number, z: number) => Reference;
+        vec4: (x: number, y: number, z: number, w: number) => Reference;
+        vec2Clone: (v: Reference) => Reference;
+        vec3Clone: (v: Reference) => Reference;
+        vec4Clone: (v: Reference) => Reference;
+        vec2Swizzle: (v: Reference, x: number, y: number) => Reference;
+        vec3Swizzle: (v: Reference, x: number, y: number, z: number) => Reference;
+        vec4Swizzle: (v: Reference, x: number, y: number, z: number, w: number) => Reference;
+        vecX: (v: Reference) => number;
+        vecY: (v: Reference) => number;
+        vecZ: (v: Reference) => number;
+        vecW: (v: Reference) => number;
+        vec2Add: (v1: Reference, v2: Reference) => Reference;
+        vec3Add: (v1: Reference, v2: Reference) => Reference;
+        vec4Add: (v1: Reference, v2: Reference) => Reference;
+        vec2Sub: (v1: Reference, v2: Reference) => Reference;
+        vec3Sub: (v1: Reference, v2: Reference) => Reference;
+        vec4Sub: (v1: Reference, v2: Reference) => Reference;
+        vec2Scale: (v1: Reference, factor: number) => Reference;
+        vec3Scale: (v1: Reference, factor: number) => Reference;
+        vec4Scale: (v1: Reference, factor: number) => Reference;
+        vec2Dot: (v1: Reference, v2: Reference) => number;
+        vec3Dot: (v1: Reference, v2: Reference) => number;
+        vec4Dot: (v1: Reference, v2: Reference) => number;
+        vec2Cross: (v1: Reference, v2: Reference) => number;
+        vec3Cross: (v1: Reference, v2: Reference) => Reference;
+        vec2LengthSquared: (v: Reference) => number;
+        vec3LengthSquared: (v: Reference) => number;
+        vec4LengthSquared: (v: Reference) => number;
+        vec2Length: (v: Reference) => number;
+        vec3Length: (v: Reference) => number;
+        vec4Length: (v: Reference) => number;
+        vec2Unit: (v: Reference) => Reference;
+        vec3Unit: (v: Reference) => Reference;
+        vec4Unit: (v: Reference) => Reference;
+    };
+    type ScalarFieldExports = {
+        tessellateTetrahedron: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference) => Reference;
+        tessellateCube: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference, point4: Reference, point5: Reference, point6: Reference, point7: Reference) => Reference;
+        tesselateScalarField(fieldRef: Reference, resolution: number, contourValue: number): Reference;
+    };
+    const modules: {
+        stack: WA.Module<StackExports>;
+        space: WA.Module<SpaceExports>;
+        scalarField: WA.Module<ScalarFieldExports>;
+    };
+    function initWaModules(onready: () => void): void;
+}
+declare module Mandelbrot {
+    function init(): void;
+}
+declare module ScalarField {
+    function initTetrahedronDemo(): void;
+}
+declare module ScalarField {
+    function initCubeDemo(): void;
+}
+declare module ScalarField {
+    function init(): void;
+}
+declare module ScalarField {
+}
+declare module Sierpinski {
     interface FlattenedSierpinski {
         corners: number[];
         centers: number[];
@@ -432,7 +446,7 @@ declare module GasketTwist2 {
     function sierpinski(depth?: Gear.Source<number>, a?: Gear.Source<Space.Vector>, b?: Gear.Source<Space.Vector>, c?: Gear.Source<Space.Vector>): Gear.Source<FlattenedSierpinski>;
     function tesselatedTriangle(a: Space.Vector, b: Space.Vector, c: Space.Vector, depth: number): FlattenedSierpinski;
 }
-declare module GasketTwist2 {
+declare module Sierpinski {
     class View {
         private readonly context;
         private readonly vertexShader;
@@ -462,7 +476,7 @@ declare module GasketTwist2 {
         private draw;
     }
 }
-declare module GasketTwist2 {
+declare module Sierpinski {
     class Controller {
         readonly showCorners: Gear.Source<boolean>;
         readonly showCenters: Gear.Source<boolean>;
@@ -472,21 +486,7 @@ declare module GasketTwist2 {
         constructor(canvasId: string, cornersCheckboxId: string, centersCheckboxId: string, twistCheckboxId: string, scaleCheckboxId: string, depthIncButtonId: string, depthDecButtonId: string);
     }
 }
-declare module GasketTwist2 {
-    function init(): void;
-}
-declare module Mandelbrot {
-    function init(): void;
-}
-declare module ScalarField {
-    function initTetrahedronDemo(): void;
-}
-declare module ScalarField {
-    function initCubeDemo(): void;
-}
-declare module ScalarField {
-}
-declare module ScalarField {
+declare module Sierpinski {
     function init(): void;
 }
 declare module Tree {

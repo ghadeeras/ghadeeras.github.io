@@ -5,7 +5,7 @@
 /// <reference path="view.ts" />
 /// <reference path="controller.ts" />
 
-module GasketTwist2 {
+module Sierpinski {
 
     export function init() {
 

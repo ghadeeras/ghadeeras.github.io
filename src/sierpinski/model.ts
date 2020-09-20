@@ -1,4 +1,4 @@
-module GasketTwist2 {
+module Sierpinski {
     
     export interface FlattenedSierpinski {
         corners: number[];

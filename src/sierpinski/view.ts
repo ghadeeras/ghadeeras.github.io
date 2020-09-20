@@ -1,4 +1,4 @@
-module GasketTwist2 {
+module Sierpinski {
 
     var vertexShader = `
       attribute vec2 vPosition;

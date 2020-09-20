@@ -1,6 +1,10 @@
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+
 module Mandelbrot {
 
-    const audioContext = new window.AudioContext({sampleRate: 8192})
+    const audioContext = new window.AudioContext({sampleRate: 9450})
     const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
 
     let mouseBindingElement: HTMLInputElement

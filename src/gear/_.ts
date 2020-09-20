@@ -2,7 +2,6 @@
 /// <reference path="call.ts" />
 /// <reference path="flow.ts" />
 /// <reference path="value.ts" />
-/// <reference path="value.ts" />
 /// <reference path="effects.ts" />
 /// <reference path="ui-input.ts" />
 /// <reference path="ui-output.ts" />

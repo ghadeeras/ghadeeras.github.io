@@ -11,13 +11,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __spreadArrays = (this && this.__spreadArrays) || function () {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
-};
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -28,6 +21,13 @@ var __assign = (this && this.__assign) || function () {
         return t;
     };
     return __assign.apply(this, arguments);
+};
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
 };
 var Djee;
 (function (Djee) {
@@ -527,356 +527,6 @@ var Djee;
     }
     Djee.copyOf = copyOf;
 })(Djee || (Djee = {}));
-var Space;
-(function (Space) {
-    var Vector = /** @class */ (function () {
-        function Vector(coordinates) {
-            this.coordinates = coordinates;
-        }
-        Vector.prototype.combine = function (v, op) {
-            var max = Math.max(this.coordinates.length, v.coordinates.length);
-            var result = new Array(max);
-            for (var i = 0; i < max; i++) {
-                var c = this.coordinates[i] || 0;
-                var vc = v.coordinates[i] || 0;
-                result[i] = op(c, vc);
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.affect = function (f) {
-            var length = this.coordinates.length;
-            var result = new Array(length);
-            for (var i = 0; i < length; i++) {
-                result[i] = f(this.coordinates[i]);
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.plus = function (v) {
-            return this.combine(v, function (c, cv) { return c + cv; });
-        };
-        Vector.prototype.minus = function (v) {
-            return this.combine(v, function (c, cv) { return c - cv; });
-        };
-        Vector.prototype.multiply = function (v) {
-            return this.combine(v, function (c, cv) { return c * cv; });
-        };
-        Vector.prototype.divide = function (v) {
-            return this.combine(v, function (c, cv) { return c / cv; });
-        };
-        Vector.prototype.scale = function (factor) {
-            return this.affect(function (c) { return factor * c; });
-        };
-        Vector.prototype.dot = function (v) {
-            return this.multiply(v).coordinates.reduce(function (a, b) { return a + b; }, 0);
-        };
-        Vector.prototype.mix = function (v, weight) {
-            return this.scale(1 - weight).plus(v.scale(weight));
-        };
-        Object.defineProperty(Vector.prototype, "lengthSquared", {
-            get: function () {
-                return this.dot(this);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Vector.prototype, "length", {
-            get: function () {
-                return Math.sqrt(this.lengthSquared);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Vector.prototype, "unit", {
-            get: function () {
-                return this.scale(1 / this.length);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Vector.prototype.angle = function (v) {
-            var l2 = this.lengthSquared;
-            var vl2 = v.lengthSquared;
-            var dot = this.dot(v);
-            var cos2 = (dot * dot) / (l2 * vl2);
-            var cos2x = 2 * cos2 - 1;
-            var x = Math.acos(cos2x) / 2;
-            return x;
-        };
-        Vector.prototype.withDims = function (n) {
-            if (this.coordinates.length == n) {
-                return this;
-            }
-            var result = new Array(n);
-            for (var i = 0; i < n; i++) {
-                result[i] = this.coordinates[i] || 0;
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.swizzle = function () {
-            var indexes = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                indexes[_i] = arguments[_i];
-            }
-            var result = new Array(indexes.length);
-            for (var i = 0; i < indexes.length; i++) {
-                result[i] = this.coordinates[indexes[i]] || 0;
-            }
-            return new Vector(result);
-        };
-        Vector.prototype.cross = function (v) {
-            var v1 = this.withDims(3).coordinates;
-            var v2 = v.withDims(3).coordinates;
-            var result = new Array(3);
-            result[0] = v1[1] * v2[2] - v1[2] * v2[1];
-            result[1] = v1[2] * v2[0] - v1[0] * v2[2];
-            result[2] = v1[0] * v2[1] - v1[1] * v2[0];
-            return new Vector(result);
-        };
-        Vector.prototype.sameAs = function (v, precision) {
-            if (precision === void 0) { precision = 0.001; }
-            var cross = this.cross(v).length;
-            var dot = this.dot(v);
-            var tan = cross / dot;
-            return tan < precision && tan > -precision;
-        };
-        Vector.prototype.prod = function (matrix) {
-            var _this = this;
-            return new Vector(matrix.columns.map(function (column) { return _this.dot(column); }));
-        };
-        Vector.prototype.component = function (i) {
-            return new Vector(this.coordinates.map(function (c, j) { return i == j ? c : 0; }));
-        };
-        return Vector;
-    }());
-    Space.Vector = Vector;
-})(Space || (Space = {}));
-var Space;
-(function (Space) {
-    var Matrix = /** @class */ (function () {
-        function Matrix(columns) {
-            var _this = this;
-            this.columnsCount = columns.length;
-            this.rowsCount = columns.map(function (column) { return column.coordinates.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
-            this.columns = columns.map(function (column) { return column.withDims(_this.rowsCount); });
-        }
-        Object.defineProperty(Matrix.prototype, "transposed", {
-            get: function () {
-                var rows = new Array(this.rowsCount);
-                var _loop_1 = function (i) {
-                    rows[i] = new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i]; }));
-                };
-                var this_1 = this;
-                for (var i = 0; i < this.rowsCount; i++) {
-                    _loop_1(i);
-                }
-                return new Matrix(rows);
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Matrix.prototype, "determinant", {
-            get: function () {
-                var _this = this;
-                if (this.rowsCount != this.columnsCount) {
-                    return 0;
-                }
-                if (this.columnsCount == 1) {
-                    return this.columns[0].coordinates[0];
-                }
-                return this.columns[0].coordinates.map(function (v, i) { return Matrix.sign(i) * v * _this.sub(0, i).determinant; }).reduce(function (v1, v2) { return v1 + v2; });
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Matrix.prototype, "inverse", {
-            get: function () {
-                var _this = this;
-                var d = this.determinant;
-                return new Matrix(this.columns.map(function (column, c) { return new Space.Vector(column.coordinates.map(function (coordinate, r) { return Matrix.sign(c + r) * _this.sub(c, r).determinant / d; })); })).transposed;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Matrix.sign = function (i) {
-            return (i % 2 == 0) ? 1 : -1;
-        };
-        Matrix.prototype.sub = function (columnIndex, rowIndex) {
-            var columns = [];
-            for (var c = 0; c < this.columnsCount; c++) {
-                if (c == columnIndex) {
-                    continue;
-                }
-                var coordinates = [];
-                var column = this.columns[c];
-                for (var r = 0; r < this.rowsCount; r++) {
-                    if (r == rowIndex) {
-                        continue;
-                    }
-                    coordinates.push(column.coordinates[r]);
-                }
-                columns.push(new Space.Vector(coordinates));
-            }
-            return new Matrix(columns);
-        };
-        Matrix.prototype.prod = function (vector) {
-            var m = this.transposed;
-            return vector.prod(m);
-        };
-        Matrix.prototype.by = function (matrix) {
-            var m = this.transposed;
-            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); }));
-        };
-        Object.defineProperty(Matrix.prototype, "asColumnMajorArray", {
-            get: function () {
-                var result = new Array(this.rowsCount * this.columnsCount);
-                var index = 0;
-                for (var i = 0; i < this.columnsCount; i++) {
-                    for (var j = 0; j < this.rowsCount; j++) {
-                        result[index] = this.columns[i].coordinates[j];
-                        index++;
-                    }
-                }
-                return result;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Object.defineProperty(Matrix.prototype, "asRowMajorArray", {
-            get: function () {
-                return this.transposed.asColumnMajorArray;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        Matrix.identity = function () {
-            return this.scaling(1, 1, 1);
-        };
-        Matrix.scaling = function (sx, sy, sz) {
-            return Space.mat(Space.vec(sx, 0, 0, 0), Space.vec(0, sy, 0, 0), Space.vec(0, 0, sz, 0), Space.vec(0, 0, 0, 1));
-        };
-        Matrix.translation = function (tx, ty, tz) {
-            return Space.mat(Space.vec(1, 0, 0, 0), Space.vec(0, 1, 0, 0), Space.vec(0, 0, 1, 0), Space.vec(tx, ty, tz, 1));
-        };
-        Matrix.rotation = function (angle, axis) {
-            var a = axis.withDims(3).unit;
-            var cos = Math.cos(angle);
-            var sin = Math.sin(angle);
-            var oneMinusCos = 1 - cos;
-            var _a = a.coordinates, x = _a[0], y = _a[1], z = _a[2];
-            var _b = [x * x, y * y, z * z, x * y, y * z, z * x], xx = _b[0], yy = _b[1], zz = _b[2], xy = _b[3], yz = _b[4], zx = _b[5];
-            return Space.mat(Space.vec(xx * oneMinusCos + cos, xy * oneMinusCos + z * sin, zx * oneMinusCos - y * sin, 0), Space.vec(xy * oneMinusCos - z * sin, yy * oneMinusCos + cos, yz * oneMinusCos + x * sin, 0), Space.vec(zx * oneMinusCos + y * sin, yz * oneMinusCos - x * sin, zz * oneMinusCos + cos, 0), Space.vec(0, 0, 0, 1));
-        };
-        Matrix.view = function (direction, up) {
-            var z = direction.withDims(3).scale(-1).unit;
-            var x = up.withDims(3).cross(z).unit;
-            var y = z.cross(x).unit;
-            return Space.mat(x, y, z, Space.vec(0, 0, 0, 1)).transposed;
-        };
-        Matrix.globalView = function (eyePos, objPos, up) {
-            var direction = objPos.minus(eyePos);
-            return Matrix.view(direction, up).by(Matrix.translation(-eyePos.coordinates[0], -eyePos.coordinates[1], -eyePos.coordinates[2]));
-        };
-        Matrix.project = function (focalRatio, horizon, aspectRatio) {
-            if (aspectRatio === void 0) { aspectRatio = 1; }
-            var focalLength = 2 * focalRatio;
-            var range = focalLength - horizon;
-            return Space.mat(Space.vec(focalLength / aspectRatio, 0, 0, 0), Space.vec(0, focalLength, 0, 0), Space.vec(0, 0, (focalLength + horizon) / range, -1), Space.vec(0, 0, 2 * focalLength * horizon / range, 0));
-        };
-        return Matrix;
-    }());
-    Space.Matrix = Matrix;
-    var MatrixStack = /** @class */ (function () {
-        function MatrixStack() {
-            this._matrix = Matrix.identity();
-        }
-        MatrixStack.prototype.apply = function (matrix) {
-            return this._matrix = this._matrix.by(matrix);
-        };
-        MatrixStack.prototype.push = function () {
-            this.stack.push(this._matrix);
-        };
-        MatrixStack.prototype.pop = function () {
-            this._matrix = this.stack.pop();
-        };
-        Object.defineProperty(MatrixStack.prototype, "matrix", {
-            get: function () {
-                return this._matrix;
-            },
-            enumerable: true,
-            configurable: true
-        });
-        return MatrixStack;
-    }());
-    Space.MatrixStack = MatrixStack;
-})(Space || (Space = {}));
-var Space;
-(function (Space) {
-    var WA;
-    (function (WA) {
-        function module(sourceFile, caster) {
-            return {
-                sourceFile: sourceFile,
-                caster: caster
-            };
-        }
-        WA.module = module;
-        function load(modules, first) {
-            var rest = [];
-            for (var _i = 2; _i < arguments.length; _i++) {
-                rest[_i - 2] = arguments[_i];
-            }
-            var firstModule = modules[first];
-            var result = fetch("/wa/" + firstModule.sourceFile, { method: "get", mode: "no-cors" })
-                .then(function (response) { return response.arrayBuffer(); })
-                .then(function (buffer) { return WebAssembly.instantiate(buffer, asImports(modules)); })
-                .then(function (waModule) { return firstModule.exports = firstModule.caster(waModule.instance.exports); })
-                .then(function () { return modules; });
-            return rest.length == 0 ? result : result.then(function (modules) { return load.apply(void 0, __spreadArrays([modules, rest[0]], rest.slice(1))); });
-        }
-        WA.load = load;
-        function asImports(modules) {
-            var imports = {};
-            for (var key in modules) {
-                imports[key] = modules[key].exports || {};
-            }
-            return imports;
-        }
-    })(WA = Space.WA || (Space.WA = {}));
-})(Space || (Space = {}));
-/// <reference path="vector.ts" />
-/// <reference path="matrix.ts" />
-/// <reference path="wa.ts" />
-var Space;
-/// <reference path="vector.ts" />
-/// <reference path="matrix.ts" />
-/// <reference path="wa.ts" />
-(function (Space) {
-    function vec() {
-        var coordinates = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            coordinates[_i] = arguments[_i];
-        }
-        return new Space.Vector(coordinates);
-    }
-    Space.vec = vec;
-    function mat() {
-        var columns = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            columns[_i] = arguments[_i];
-        }
-        return new Space.Matrix(columns);
-    }
-    Space.mat = mat;
-    Space.modules = {
-        stack: Space.WA.module("stack.wasm", function (exports) { return exports; }),
-        space: Space.WA.module("space.wasm", function (exports) { return exports; }),
-        scalarField: Space.WA.module("scalarField.wasm", function (exports) { return exports; }),
-    };
-    function initWaModules(onready) {
-        Space.WA.load(Space.modules, "stack", "space", "scalarField").then(function () { return onready(); });
-    }
-    Space.initWaModules = initWaModules;
-})(Space || (Space = {}));
 var Gear;
 (function (Gear) {
     var Lazy = /** @class */ (function () {
@@ -1539,7 +1189,6 @@ var Gear;
 /// <reference path="call.ts" />
 /// <reference path="flow.ts" />
 /// <reference path="value.ts" />
-/// <reference path="value.ts" />
 /// <reference path="effects.ts" />
 /// <reference path="ui-input.ts" />
 /// <reference path="ui-output.ts" />
@@ -1547,7 +1196,6 @@ var Gear;
 /// <reference path="lazy.ts" />
 /// <reference path="call.ts" />
 /// <reference path="flow.ts" />
-/// <reference path="value.ts" />
 /// <reference path="value.ts" />
 /// <reference path="effects.ts" />
 /// <reference path="ui-input.ts" />
@@ -1584,7 +1232,7 @@ var Gear;
             files[_i - 2] = arguments[_i];
         }
         var remaining = [files.length];
-        var _loop_2 = function (file, consumer) {
+        var _loop_1 = function (file, consumer) {
             fetchFile(path + "/" + file, function (content) {
                 consumer(content);
                 remaining[0]--;
@@ -1595,7 +1243,7 @@ var Gear;
         };
         for (var _a = 0, files_1 = files; _a < files_1.length; _a++) {
             var _b = files_1[_a], file = _b[0], consumer = _b[1];
-            _loop_2(file, consumer);
+            _loop_1(file, consumer);
         }
     }
     Gear.load = load;
@@ -1603,200 +1251,365 @@ var Gear;
         fetch(url, { method: "get", mode: "no-cors" }).then(function (response) { return response.text().then(consumer); });
     }
 })(Gear || (Gear = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var defaultSierpinski = {
-        depth: 5,
-        a: vec(90),
-        b: vec(210),
-        c: vec(330)
-    };
-    function sierpinski(depth, a, b, c) {
-        if (depth === void 0) { depth = new Gear.Value(defaultSierpinski.depth); }
-        if (a === void 0) { a = new Gear.Value(defaultSierpinski.a); }
-        if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
-        if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
-        var sierpinski = __assign({}, defaultSierpinski);
-        return from(from(depth).reduce(function (d, s) { return s = __assign(__assign({}, s), { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign(__assign({}, s), { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign(__assign({}, s), { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign(__assign({}, s), { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
-    }
-    GasketTwist2.sierpinski = sierpinski;
-    function from() {
-        var _a;
-        var sources = [];
+var Space;
+(function (Space) {
+    var Vector = /** @class */ (function () {
+        function Vector(coordinates) {
+            this.coordinates = coordinates;
+        }
+        Vector.prototype.combine = function (v, op) {
+            var max = Math.max(this.coordinates.length, v.coordinates.length);
+            var result = new Array(max);
+            for (var i = 0; i < max; i++) {
+                var c = this.coordinates[i] || 0;
+                var vc = v.coordinates[i] || 0;
+                result[i] = op(c, vc);
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.affect = function (f) {
+            var length = this.coordinates.length;
+            var result = new Array(length);
+            for (var i = 0; i < length; i++) {
+                result[i] = f(this.coordinates[i]);
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.plus = function (v) {
+            return this.combine(v, function (c, cv) { return c + cv; });
+        };
+        Vector.prototype.minus = function (v) {
+            return this.combine(v, function (c, cv) { return c - cv; });
+        };
+        Vector.prototype.multiply = function (v) {
+            return this.combine(v, function (c, cv) { return c * cv; });
+        };
+        Vector.prototype.divide = function (v) {
+            return this.combine(v, function (c, cv) { return c / cv; });
+        };
+        Vector.prototype.scale = function (factor) {
+            return this.affect(function (c) { return factor * c; });
+        };
+        Vector.prototype.dot = function (v) {
+            return this.multiply(v).coordinates.reduce(function (a, b) { return a + b; }, 0);
+        };
+        Vector.prototype.mix = function (v, weight) {
+            return this.scale(1 - weight).plus(v.scale(weight));
+        };
+        Object.defineProperty(Vector.prototype, "lengthSquared", {
+            get: function () {
+                return this.dot(this);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Vector.prototype, "length", {
+            get: function () {
+                return Math.sqrt(this.lengthSquared);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Vector.prototype, "unit", {
+            get: function () {
+                return this.scale(1 / this.length);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Vector.prototype.angle = function (v) {
+            var l2 = this.lengthSquared;
+            var vl2 = v.lengthSquared;
+            var dot = this.dot(v);
+            var cos2 = (dot * dot) / (l2 * vl2);
+            var cos2x = 2 * cos2 - 1;
+            var x = Math.acos(cos2x) / 2;
+            return x;
+        };
+        Vector.prototype.withDims = function (n) {
+            if (this.coordinates.length == n) {
+                return this;
+            }
+            var result = new Array(n);
+            for (var i = 0; i < n; i++) {
+                result[i] = this.coordinates[i] || 0;
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.swizzle = function () {
+            var indexes = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                indexes[_i] = arguments[_i];
+            }
+            var result = new Array(indexes.length);
+            for (var i = 0; i < indexes.length; i++) {
+                result[i] = this.coordinates[indexes[i]] || 0;
+            }
+            return new Vector(result);
+        };
+        Vector.prototype.cross = function (v) {
+            var v1 = this.withDims(3).coordinates;
+            var v2 = v.withDims(3).coordinates;
+            var result = new Array(3);
+            result[0] = v1[1] * v2[2] - v1[2] * v2[1];
+            result[1] = v1[2] * v2[0] - v1[0] * v2[2];
+            result[2] = v1[0] * v2[1] - v1[1] * v2[0];
+            return new Vector(result);
+        };
+        Vector.prototype.sameAs = function (v, precision) {
+            if (precision === void 0) { precision = 0.001; }
+            var cross = this.cross(v).length;
+            var dot = this.dot(v);
+            var tan = cross / dot;
+            return tan < precision && tan > -precision;
+        };
+        Vector.prototype.prod = function (matrix) {
+            var _this = this;
+            return new Vector(matrix.columns.map(function (column) { return _this.dot(column); }));
+        };
+        Vector.prototype.component = function (i) {
+            return new Vector(this.coordinates.map(function (c, j) { return i == j ? c : 0; }));
+        };
+        return Vector;
+    }());
+    Space.Vector = Vector;
+})(Space || (Space = {}));
+var Space;
+(function (Space) {
+    var Matrix = /** @class */ (function () {
+        function Matrix(columns) {
+            var _this = this;
+            this.columnsCount = columns.length;
+            this.rowsCount = columns.map(function (column) { return column.coordinates.length; }).reduce(function (a, b) { return a > b ? a : b; }, 0);
+            this.columns = columns.map(function (column) { return column.withDims(_this.rowsCount); });
+        }
+        Object.defineProperty(Matrix.prototype, "transposed", {
+            get: function () {
+                var rows = new Array(this.rowsCount);
+                var _loop_2 = function (i) {
+                    rows[i] = new Space.Vector(this_1.columns.map(function (column) { return column.coordinates[i]; }));
+                };
+                var this_1 = this;
+                for (var i = 0; i < this.rowsCount; i++) {
+                    _loop_2(i);
+                }
+                return new Matrix(rows);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Matrix.prototype, "determinant", {
+            get: function () {
+                var _this = this;
+                if (this.rowsCount != this.columnsCount) {
+                    return 0;
+                }
+                if (this.columnsCount == 1) {
+                    return this.columns[0].coordinates[0];
+                }
+                return this.columns[0].coordinates.map(function (v, i) { return Matrix.sign(i) * v * _this.sub(0, i).determinant; }).reduce(function (v1, v2) { return v1 + v2; });
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Matrix.prototype, "inverse", {
+            get: function () {
+                var _this = this;
+                var d = this.determinant;
+                return new Matrix(this.columns.map(function (column, c) { return new Space.Vector(column.coordinates.map(function (coordinate, r) { return Matrix.sign(c + r) * _this.sub(c, r).determinant / d; })); })).transposed;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Matrix.sign = function (i) {
+            return (i % 2 == 0) ? 1 : -1;
+        };
+        Matrix.prototype.sub = function (columnIndex, rowIndex) {
+            var columns = [];
+            for (var c = 0; c < this.columnsCount; c++) {
+                if (c == columnIndex) {
+                    continue;
+                }
+                var coordinates = [];
+                var column = this.columns[c];
+                for (var r = 0; r < this.rowsCount; r++) {
+                    if (r == rowIndex) {
+                        continue;
+                    }
+                    coordinates.push(column.coordinates[r]);
+                }
+                columns.push(new Space.Vector(coordinates));
+            }
+            return new Matrix(columns);
+        };
+        Matrix.prototype.prod = function (vector) {
+            var m = this.transposed;
+            return vector.prod(m);
+        };
+        Matrix.prototype.by = function (matrix) {
+            var m = this.transposed;
+            return new Matrix(matrix.columns.map(function (column) { return column.prod(m); }));
+        };
+        Object.defineProperty(Matrix.prototype, "asColumnMajorArray", {
+            get: function () {
+                var result = new Array(this.rowsCount * this.columnsCount);
+                var index = 0;
+                for (var i = 0; i < this.columnsCount; i++) {
+                    for (var j = 0; j < this.rowsCount; j++) {
+                        result[index] = this.columns[i].coordinates[j];
+                        index++;
+                    }
+                }
+                return result;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(Matrix.prototype, "asRowMajorArray", {
+            get: function () {
+                return this.transposed.asColumnMajorArray;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Matrix.identity = function () {
+            return this.scaling(1, 1, 1);
+        };
+        Matrix.scaling = function (sx, sy, sz) {
+            return Space.mat(Space.vec(sx, 0, 0, 0), Space.vec(0, sy, 0, 0), Space.vec(0, 0, sz, 0), Space.vec(0, 0, 0, 1));
+        };
+        Matrix.translation = function (tx, ty, tz) {
+            return Space.mat(Space.vec(1, 0, 0, 0), Space.vec(0, 1, 0, 0), Space.vec(0, 0, 1, 0), Space.vec(tx, ty, tz, 1));
+        };
+        Matrix.rotation = function (angle, axis) {
+            var a = axis.withDims(3).unit;
+            var cos = Math.cos(angle);
+            var sin = Math.sin(angle);
+            var oneMinusCos = 1 - cos;
+            var _a = a.coordinates, x = _a[0], y = _a[1], z = _a[2];
+            var _b = [x * x, y * y, z * z, x * y, y * z, z * x], xx = _b[0], yy = _b[1], zz = _b[2], xy = _b[3], yz = _b[4], zx = _b[5];
+            return Space.mat(Space.vec(xx * oneMinusCos + cos, xy * oneMinusCos + z * sin, zx * oneMinusCos - y * sin, 0), Space.vec(xy * oneMinusCos - z * sin, yy * oneMinusCos + cos, yz * oneMinusCos + x * sin, 0), Space.vec(zx * oneMinusCos + y * sin, yz * oneMinusCos - x * sin, zz * oneMinusCos + cos, 0), Space.vec(0, 0, 0, 1));
+        };
+        Matrix.view = function (direction, up) {
+            var z = direction.withDims(3).scale(-1).unit;
+            var x = up.withDims(3).cross(z).unit;
+            var y = z.cross(x).unit;
+            return Space.mat(x, y, z, Space.vec(0, 0, 0, 1)).transposed;
+        };
+        Matrix.globalView = function (eyePos, objPos, up) {
+            var direction = objPos.minus(eyePos);
+            return Matrix.view(direction, up).by(Matrix.translation(-eyePos.coordinates[0], -eyePos.coordinates[1], -eyePos.coordinates[2]));
+        };
+        Matrix.project = function (focalRatio, horizon, aspectRatio) {
+            if (aspectRatio === void 0) { aspectRatio = 1; }
+            var focalLength = 2 * focalRatio;
+            var range = focalLength - horizon;
+            return Space.mat(Space.vec(focalLength / aspectRatio, 0, 0, 0), Space.vec(0, focalLength, 0, 0), Space.vec(0, 0, (focalLength + horizon) / range, -1), Space.vec(0, 0, 2 * focalLength * horizon / range, 0));
+        };
+        return Matrix;
+    }());
+    Space.Matrix = Matrix;
+    var MatrixStack = /** @class */ (function () {
+        function MatrixStack() {
+            this._matrix = Matrix.identity();
+        }
+        MatrixStack.prototype.apply = function (matrix) {
+            return this._matrix = this._matrix.by(matrix);
+        };
+        MatrixStack.prototype.push = function () {
+            this.stack.push(this._matrix);
+        };
+        MatrixStack.prototype.pop = function () {
+            this._matrix = this.stack.pop();
+        };
+        Object.defineProperty(MatrixStack.prototype, "matrix", {
+            get: function () {
+                return this._matrix;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return MatrixStack;
+    }());
+    Space.MatrixStack = MatrixStack;
+})(Space || (Space = {}));
+var Space;
+(function (Space) {
+    var WA;
+    (function (WA) {
+        function module(sourceFile, caster) {
+            return {
+                sourceFile: sourceFile,
+                caster: caster
+            };
+        }
+        WA.module = module;
+        function load(modules, first) {
+            var rest = [];
+            for (var _i = 2; _i < arguments.length; _i++) {
+                rest[_i - 2] = arguments[_i];
+            }
+            var firstModule = modules[first];
+            var result = fetch("/wa/" + firstModule.sourceFile, { method: "get", mode: "no-cors" })
+                .then(function (response) { return response.arrayBuffer(); })
+                .then(function (buffer) { return WebAssembly.instantiate(buffer, asImports(modules)); })
+                .then(function (waModule) { return firstModule.exports = firstModule.caster(waModule.instance.exports); })
+                .then(function () { return modules; });
+            return rest.length == 0 ? result : result.then(function (modules) { return load.apply(void 0, __spreadArrays([modules, rest[0]], rest.slice(1))); });
+        }
+        WA.load = load;
+        function asImports(modules) {
+            var imports = {};
+            for (var key in modules) {
+                imports[key] = modules[key].exports || {};
+            }
+            return imports;
+        }
+    })(WA = Space.WA || (Space.WA = {}));
+})(Space || (Space = {}));
+/// <reference path="vector.ts" />
+/// <reference path="matrix.ts" />
+/// <reference path="wa.ts" />
+var Space;
+/// <reference path="vector.ts" />
+/// <reference path="matrix.ts" />
+/// <reference path="wa.ts" />
+(function (Space) {
+    function vec() {
+        var coordinates = [];
         for (var _i = 0; _i < arguments.length; _i++) {
-            sources[_i] = arguments[_i];
+            coordinates[_i] = arguments[_i];
         }
-        return (_a = Gear.Flow).from.apply(_a, sources);
+        return new Space.Vector(coordinates);
     }
-    function vec(angleInDegrees) {
-        var angle = Math.PI * angleInDegrees / 180;
-        return Space.vec(Math.cos(angle), Math.sin(angle));
-    }
-    function tesselatedTriangle(a, b, c, depth) {
-        var result = {
-            corners: [],
-            centers: [],
-            stride: a.coordinates.length
-        };
-        doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
-        return result;
-    }
-    GasketTwist2.tesselatedTriangle = tesselatedTriangle;
-    function doTesselateTriangle(a, b, c, depth, corners, centers) {
-        if (depth < 1) {
-            corners.push.apply(corners, __spreadArrays(a.coordinates, b.coordinates, c.coordinates));
+    Space.vec = vec;
+    function mat() {
+        var columns = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            columns[_i] = arguments[_i];
         }
-        else {
-            var ab = a.mix(b, 0.5);
-            var bc = b.mix(c, 0.5);
-            var ca = c.mix(a, 0.5);
-            var newDepth = depth - 1;
-            doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
-            doTesselateTriangle(ab, b, bc, newDepth, corners, centers);
-            doTesselateTriangle(ca, bc, c, newDepth, corners, centers);
-            doTesselateTriangle(ab, bc, ca, newDepth, centers, centers);
-        }
+        return new Space.Matrix(columns);
     }
-})(GasketTwist2 || (GasketTwist2 = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
-    var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
-    var ST = Djee.ShaderType;
-    function round(value) {
-        return Math.round(1000 * value) / 1000;
+    Space.mat = mat;
+    Space.modules = {
+        stack: Space.WA.module("stack.wasm", function (exports) { return exports; }),
+        space: Space.WA.module("space.wasm", function (exports) { return exports; }),
+        scalarField: Space.WA.module("scalarField.wasm", function (exports) { return exports; }),
+    };
+    function initWaModules(onready) {
+        Space.WA.load(Space.modules, "stack", "space", "scalarField").then(function () { return onready(); });
     }
-    var View = /** @class */ (function () {
-        function View(canvasId, depthId, twistId, scaleId) {
-            var _this = this;
-            this.context = new Djee.Context(canvasId);
-            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
-            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
-            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
-            this.program.use();
-            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
-            this.shaderTwist = this.program.locateUniform("twist", 1);
-            this.shaderScale = this.program.locateUniform("scale", 1);
-            this.cornersBuffer = this.context.newBuffer();
-            this.centersBuffer = this.context.newBuffer();
-            this.context.gl.clearColor(1, 1, 1, 1);
-            this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
-            this.depth = Gear.sinkFlow(function (flow) { return flow.defaultsTo(5).map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
-            this.twist = Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
-            this.scale = Gear.sinkFlow(function (flow) { return flow.defaultsTo(1).branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
-            this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
-            this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
-        }
-        View.prototype.source = function (value) {
-            return new Gear.Value(value);
-        };
-        View.prototype.setSierpinski = function (flattenedSierpinski) {
-            this.cornersBuffer.untypedData = flattenedSierpinski.corners;
-            this.centersBuffer.untypedData = flattenedSierpinski.centers;
-            this.stride = flattenedSierpinski.stride;
-            this.draw();
-        };
-        View.prototype.setTwist = function (twist) {
-            this.shaderTwist.data = [twist];
-            this.draw();
-        };
-        View.prototype.setScale = function (scale) {
-            this.shaderScale.data = [scale];
-            this.draw();
-        };
-        View.prototype.setShowCorners = function (showCorners) {
-            this.mustShowCorners = showCorners;
-            this.draw();
-        };
-        View.prototype.setShowCenters = function (showCenters) {
-            this.mustShowCenters = showCenters;
-            this.draw();
-        };
-        View.prototype.draw = function () {
-            var _this = this;
-            setTimeout(function () {
-                var gl = _this.context.gl;
-                gl.clear(gl.COLOR_BUFFER_BIT);
-                if (_this.mustShowCorners) {
-                    _this.shaderPosition.pointTo(_this.cornersBuffer);
-                    gl.drawArrays(gl.TRIANGLES, 0, _this.cornersBuffer.data.length / _this.stride);
-                }
-                if (_this.mustShowCenters) {
-                    _this.shaderPosition.pointTo(_this.centersBuffer);
-                    gl.drawArrays(gl.TRIANGLES, 0, _this.centersBuffer.data.length / _this.stride);
-                }
-            });
-        };
-        return View;
-    }());
-    GasketTwist2.View = View;
-})(GasketTwist2 || (GasketTwist2 = {}));
-var GasketTwist2;
-(function (GasketTwist2) {
-    var Controller = /** @class */ (function () {
-        function Controller(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
-            var canvas = Gear.ElementEvents.create(canvasId).parent().parent();
-            var depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
-            var depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
-            var twistEnabled = Gear.checkbox(twistCheckboxId);
-            var scaleEnabled = Gear.checkbox(scaleCheckboxId);
-            this.showCorners = Gear.checkbox(cornersCheckboxId);
-            this.showCenters = Gear.checkbox(centersCheckboxId);
-            var dragEnabled = canvas.mouseButons.map(function (_a) {
-                var l = _a[0], m = _a[1], r = _a[2];
-                return l || m || r;
-            });
-            var mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
-            this.twist = mousePos
-                .map(function (_a) {
-                var x = _a[0], y = _a[1];
-                return Math.PI * (4 * x / canvas.element.clientWidth - 2);
-            })
-                .then(Gear.flowSwitch(twistEnabled));
-            this.scale = mousePos
-                .map(function (_a) {
-                var x = _a[0], y = _a[1];
-                return 2 - 4 * y / canvas.element.clientHeight;
-            })
-                .then(Gear.flowSwitch(scaleEnabled));
-            ;
-            this.depth = Gear.Flow.from(depthDecButton.clickPos.map(function (e) { return -1; }), depthIncButton.clickPos.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
-        }
-        return Controller;
-    }());
-    GasketTwist2.Controller = Controller;
-})(GasketTwist2 || (GasketTwist2 = {}));
+    Space.initWaModules = initWaModules;
+})(Space || (Space = {}));
 /// <reference path="../space/_.ts" />
 /// <reference path="../djee/_.ts" />
 /// <reference path="../gear/_.ts" />
-/// <reference path="model.ts" />
-/// <reference path="view.ts" />
-/// <reference path="controller.ts" />
-var GasketTwist2;
-/// <reference path="../space/_.ts" />
-/// <reference path="../djee/_.ts" />
-/// <reference path="../gear/_.ts" />
-/// <reference path="model.ts" />
-/// <reference path="view.ts" />
-/// <reference path="controller.ts" />
-(function (GasketTwist2) {
-    function init() {
-        window.onload = function (e) {
-            var view = new GasketTwist2.View("canvas-gl", "division-depth", "twist", "scale");
-            var controller = new GasketTwist2.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
-            controller.depth.to(view.depth);
-            controller.twist.to(view.twist);
-            controller.scale.to(view.scale);
-            controller.showCorners.to(view.showCorners);
-            controller.showCenters.to(view.showCenters);
-            GasketTwist2.sierpinski(controller.depth).to(view.sierpinsky);
-        };
-    }
-    GasketTwist2.init = init;
-})(GasketTwist2 || (GasketTwist2 = {}));
 var Mandelbrot;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
 (function (Mandelbrot) {
-    var audioContext = new window.AudioContext({ sampleRate: 8192 });
+    var audioContext = new window.AudioContext({ sampleRate: 9450 });
     var audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate);
     var mouseBindingElement;
     var canvas;
@@ -2547,8 +2360,6 @@ var ScalarField;
         return v12.cross(v23).unit;
     }
 })(ScalarField || (ScalarField = {}));
-/// <reference path="./tetrahedron.ts" />
-/// <reference path="./cube.ts" />
 var ScalarField;
 (function (ScalarField) {
     var resolution = 64;
@@ -2813,6 +2624,203 @@ var ScalarField;
         gl.flush();
     }
 })(ScalarField || (ScalarField = {}));
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="./tetrahedron.ts" />
+/// <reference path="./cube.ts" />
+/// <reference path="./scalarField.ts" />
+var Sierpinski;
+(function (Sierpinski) {
+    var defaultSierpinski = {
+        depth: 5,
+        a: vec(90),
+        b: vec(210),
+        c: vec(330)
+    };
+    function sierpinski(depth, a, b, c) {
+        if (depth === void 0) { depth = new Gear.Value(defaultSierpinski.depth); }
+        if (a === void 0) { a = new Gear.Value(defaultSierpinski.a); }
+        if (b === void 0) { b = new Gear.Value(defaultSierpinski.b); }
+        if (c === void 0) { c = new Gear.Value(defaultSierpinski.c); }
+        var sierpinski = __assign({}, defaultSierpinski);
+        return from(from(depth).reduce(function (d, s) { return s = __assign(__assign({}, s), { depth: d }); }, sierpinski), from(a).reduce(function (a, s) { return s = __assign(__assign({}, s), { a: a }); }, sierpinski), from(b).reduce(function (b, s) { return s = __assign(__assign({}, s), { b: b }); }, sierpinski), from(c).reduce(function (c, s) { return s = __assign(__assign({}, s), { c: c }); }, sierpinski)).map(function (s) { return tesselatedTriangle(s.a, s.b, s.c, s.depth); });
+    }
+    Sierpinski.sierpinski = sierpinski;
+    function from() {
+        var _a;
+        var sources = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            sources[_i] = arguments[_i];
+        }
+        return (_a = Gear.Flow).from.apply(_a, sources);
+    }
+    function vec(angleInDegrees) {
+        var angle = Math.PI * angleInDegrees / 180;
+        return Space.vec(Math.cos(angle), Math.sin(angle));
+    }
+    function tesselatedTriangle(a, b, c, depth) {
+        var result = {
+            corners: [],
+            centers: [],
+            stride: a.coordinates.length
+        };
+        doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
+        return result;
+    }
+    Sierpinski.tesselatedTriangle = tesselatedTriangle;
+    function doTesselateTriangle(a, b, c, depth, corners, centers) {
+        if (depth < 1) {
+            corners.push.apply(corners, __spreadArrays(a.coordinates, b.coordinates, c.coordinates));
+        }
+        else {
+            var ab = a.mix(b, 0.5);
+            var bc = b.mix(c, 0.5);
+            var ca = c.mix(a, 0.5);
+            var newDepth = depth - 1;
+            doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
+            doTesselateTriangle(ab, b, bc, newDepth, corners, centers);
+            doTesselateTriangle(ca, bc, c, newDepth, corners, centers);
+            doTesselateTriangle(ab, bc, ca, newDepth, centers, centers);
+        }
+    }
+})(Sierpinski || (Sierpinski = {}));
+var Sierpinski;
+(function (Sierpinski) {
+    var vertexShader = "\n      attribute vec2 vPosition;\n      \n      uniform float twist;\n      uniform float scale;\n      \n      void main() {\n        vec2 p = scale * vPosition;\n        float angle = twist * length(p);\n        float s = sin(angle);\n        float c = cos(angle);\n        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));\n        gl_Position = vec4(rotation * p, 0.0, 1.0);\n      }\n    ";
+    var fragmentShader = "\n      precision mediump float;\n      \n      void main() {\n        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);\n      }\n    ";
+    var ST = Djee.ShaderType;
+    function round(value) {
+        return Math.round(1000 * value) / 1000;
+    }
+    var View = /** @class */ (function () {
+        function View(canvasId, depthId, twistId, scaleId) {
+            var _this = this;
+            this.context = new Djee.Context(canvasId);
+            this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
+            this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
+            this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+            this.program.use();
+            this.shaderPosition = this.program.locateAttribute("vPosition", 2);
+            this.shaderTwist = this.program.locateUniform("twist", 1);
+            this.shaderScale = this.program.locateUniform("scale", 1);
+            this.cornersBuffer = this.context.newBuffer();
+            this.centersBuffer = this.context.newBuffer();
+            this.context.gl.clearColor(1, 1, 1, 1);
+            this.sierpinsky = Gear.sink(function (s) { return _this.setSierpinski(s); });
+            this.depth = Gear.sinkFlow(function (flow) { return flow.defaultsTo(5).map(function (v) { return v + ""; }).to(Gear.text(depthId)); });
+            this.twist = Gear.sinkFlow(function (flow) { return flow.defaultsTo(0).branch(function (flow) { return flow.to(Gear.sink(function (t) { return _this.setTwist(t); })); }).map(function (v) { return v + ""; }).to(Gear.text(twistId)); });
+            this.scale = Gear.sinkFlow(function (flow) { return flow.defaultsTo(1).branch(function (flow) { return flow.to(Gear.sink(function (s) { return _this.setScale(s); })); }).map(function (v) { return v + ""; }).to(Gear.text(scaleId)); });
+            this.showCorners = Gear.sink(function (show) { return _this.setShowCorners(show); });
+            this.showCenters = Gear.sink(function (show) { return _this.setShowCenters(show); });
+        }
+        View.prototype.source = function (value) {
+            return new Gear.Value(value);
+        };
+        View.prototype.setSierpinski = function (flattenedSierpinski) {
+            this.cornersBuffer.untypedData = flattenedSierpinski.corners;
+            this.centersBuffer.untypedData = flattenedSierpinski.centers;
+            this.stride = flattenedSierpinski.stride;
+            this.draw();
+        };
+        View.prototype.setTwist = function (twist) {
+            this.shaderTwist.data = [twist];
+            this.draw();
+        };
+        View.prototype.setScale = function (scale) {
+            this.shaderScale.data = [scale];
+            this.draw();
+        };
+        View.prototype.setShowCorners = function (showCorners) {
+            this.mustShowCorners = showCorners;
+            this.draw();
+        };
+        View.prototype.setShowCenters = function (showCenters) {
+            this.mustShowCenters = showCenters;
+            this.draw();
+        };
+        View.prototype.draw = function () {
+            var _this = this;
+            setTimeout(function () {
+                var gl = _this.context.gl;
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (_this.mustShowCorners) {
+                    _this.shaderPosition.pointTo(_this.cornersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.cornersBuffer.data.length / _this.stride);
+                }
+                if (_this.mustShowCenters) {
+                    _this.shaderPosition.pointTo(_this.centersBuffer);
+                    gl.drawArrays(gl.TRIANGLES, 0, _this.centersBuffer.data.length / _this.stride);
+                }
+            });
+        };
+        return View;
+    }());
+    Sierpinski.View = View;
+})(Sierpinski || (Sierpinski = {}));
+var Sierpinski;
+(function (Sierpinski) {
+    var Controller = /** @class */ (function () {
+        function Controller(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
+            var canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+            var depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
+            var depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
+            var twistEnabled = Gear.checkbox(twistCheckboxId);
+            var scaleEnabled = Gear.checkbox(scaleCheckboxId);
+            this.showCorners = Gear.checkbox(cornersCheckboxId);
+            this.showCenters = Gear.checkbox(centersCheckboxId);
+            var dragEnabled = canvas.mouseButons.map(function (_a) {
+                var l = _a[0], m = _a[1], r = _a[2];
+                return l || m || r;
+            });
+            var mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(function (ps) { return ps[0]; })).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+            this.twist = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return Math.PI * (4 * x / canvas.element.clientWidth - 2);
+            })
+                .then(Gear.flowSwitch(twistEnabled));
+            this.scale = mousePos
+                .map(function (_a) {
+                var x = _a[0], y = _a[1];
+                return 2 - 4 * y / canvas.element.clientHeight;
+            })
+                .then(Gear.flowSwitch(scaleEnabled));
+            ;
+            this.depth = Gear.Flow.from(depthDecButton.clickPos.map(function (e) { return -1; }), depthIncButton.clickPos.map(function (e) { return 1; })).reduce(function (delta, depth) { return Math.min(Math.max(depth + delta, 1), 8); }, 5);
+        }
+        return Controller;
+    }());
+    Sierpinski.Controller = Controller;
+})(Sierpinski || (Sierpinski = {}));
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="model.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+var Sierpinski;
+/// <reference path="../space/_.ts" />
+/// <reference path="../djee/_.ts" />
+/// <reference path="../gear/_.ts" />
+/// <reference path="model.ts" />
+/// <reference path="view.ts" />
+/// <reference path="controller.ts" />
+(function (Sierpinski) {
+    function init() {
+        window.onload = function (e) {
+            var view = new Sierpinski.View("canvas-gl", "division-depth", "twist", "scale");
+            var controller = new Sierpinski.Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
+            controller.depth.to(view.depth);
+            controller.twist.to(view.twist);
+            controller.scale.to(view.scale);
+            controller.showCorners.to(view.showCorners);
+            controller.showCenters.to(view.showCenters);
+            Sierpinski.sierpinski(controller.depth).to(view.sierpinsky);
+        };
+    }
+    Sierpinski.init = init;
+})(Sierpinski || (Sierpinski = {}));
 var Tree;
 (function (Tree) {
     var MatriciesGenerator = /** @class */ (function () {
