@@ -7,21 +7,17 @@ module Mandelbrot {
     const audioContext = new window.AudioContext({sampleRate: 9450})
     const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
 
-    let mouseBindingElement: HTMLInputElement
-    let canvas: Gear.ElementEvents
+    let center = Space.vec(-0.75, 0)
+    let scale = 2
 
     let vertexShaderCode: string
     let fragmentShaderCode: string
 
-    let context: Djee.Context
-    let uniformCenter: Djee.Uniform
-    let uniformScale: Djee.Uniform
-    let uniformColor: Djee.Uniform
-    let uniformIntensity: Djee.Uniform
-    let uniformPalette: Djee.Uniform
+    let mouseBindingElement: HTMLInputElement
+    let canvas: Gear.ElementEvents
 
-    let center = Space.vec(-0.75, 0)
-    let scale = 2.0
+    let mandelbrotView: View
+    let juliaView: View
 
     let centerSpan: Gear.Sink<Space.Vector>
     let scaleSpan: Gear.Sink<number>
@@ -29,6 +25,7 @@ module Mandelbrot {
     let saturationSpan: Gear.Sink<number>
     let intensitySpan: Gear.Sink<number>
     let paletteSpan: Gear.Sink<number>
+    let clickPosSpan: Gear.Sink<Space.Vector>
 
     export function init() {
         window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
@@ -50,44 +47,13 @@ module Mandelbrot {
             }
         }
 
-        context = new Djee.Context("canvas-gl")
-
-        const program = context.link([
-            context.vertexShader(vertexShaderCode),
-            context.fragmentShader(fragmentShaderCode)
-        ])
-        program.use()
-
-        const buffer = context.newBuffer()
-        buffer.untypedData = [
-            -1, -1, 
-            +1, -1, 
-            -1, +1,
-            +1, +1, 
-        ]
-
-        const vertex = program.locateAttribute("vertex", 2)
-        vertex.pointTo(buffer)
-
-        uniformColor = program.locateUniform("color", 2)
-        uniformColor.data = [5 / 4, Math.sqrt(2) / 2]
-
-        uniformIntensity = program.locateUniform("intensity", 1)
-        uniformIntensity.data = [0.5]
-
-        uniformPalette = program.locateUniform("palette", 1)
-        uniformPalette.data = [0]
-
-        uniformCenter = program.locateUniform("center", 2)
-        uniformCenter.data = center.coordinates
-
-        uniformScale = program.locateUniform("scale", 1)
-        uniformScale.data = [scale]
+        mandelbrotView = new View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale)
+        juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, Space.vec(0, 0), 4)
 
         centerSpan = Gear.sinkFlow(flow => flow
             .defaultsTo(center)
             .map(pos => pos.coordinates.map(c => c.toPrecision(3)))
-            .map(pos => "(x: " + pos[0] + ", y: " + pos[1] + ")")
+            .map(pos => "( " + pos[0] + ", " + pos[1] + ")")
             .to(Gear.text("center"))
         )
         scaleSpan = Gear.sinkFlow(flow => flow
@@ -96,26 +62,31 @@ module Mandelbrot {
             .to(Gear.text("scale"))
         )
         hueSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(uniformColor.data[0])
+            .defaultsTo(mandelbrotView.hue)
             .map(h => h.toPrecision(3).toString())
             .to(Gear.text("hue"))
         )
         saturationSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(uniformColor.data[1])
+            .defaultsTo(mandelbrotView.saturation)
             .map(s => s.toPrecision(3).toString())
             .to(Gear.text("saturation"))
         )
         intensitySpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(uniformIntensity.data[0])
+            .defaultsTo(mandelbrotView.intensity)
             .map(i => i.toPrecision(3).toString())
             .to(Gear.text("intensity"))
         )
         paletteSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(uniformPalette.data[0])
+            .defaultsTo(mandelbrotView.palette)
             .map(s => s.toPrecision(3).toString())
             .to(Gear.text("palette"))
         )
-
+        clickPosSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(center)
+            .map(pos => pos.coordinates.map(c => c.toPrecision(9)))
+            .map(pos => "(" + pos[0] + ", " + pos[1] + ")")
+            .to(Gear.text("clickPos"))
+        )
 
         canvas = Gear.ElementEvents.create("canvas-gl")
         canvas.dragging.branch(
@@ -124,14 +95,14 @@ module Mandelbrot {
             flow => flow.filter(selected("color")).producer(d => colorize(d)),
             flow => flow.filter(selected("intensity")).producer(d => intensity(d)),
             flow => flow.filter(selected("palette")).producer(d => palette(d)),
+            flow => flow.filter(selected("julia")).producer(d => julia(d)),
         )
 
         Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(ps => ps[0]))
-            .filter(selected("music"))
             .map(pos => toComplexNumber(pos))
+            .branch(flow => flow.to(clickPosSpan))
+            .filter(selected("music"))
             .producer(c => play(c))
-
-        draw()
     }
 
     function play(c: Space.Vector) {
@@ -169,11 +140,15 @@ module Mandelbrot {
     }
 
     function toComplexNumber(pos: Gear.PointerPosition): Space.Vector {
+        return toVector(pos)
+            .scale(scale)
+            .plus(center)
+    }
+
+    function toVector(pos: Gear.PointerPosition): Space.Vector {
         return Space.vec(...pos)
             .divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
             .plus(Space.vec(-1, 1))
-            .scale(scale)
-            .plus(center)
     }
 
     function action(key: string) {
@@ -183,6 +158,7 @@ module Mandelbrot {
             case "C": return "color"
             case "I": return "intensity"
             case "P": return "palette"
+            case "J": return "julia"
             case "N": return "music"
             default: return null
         }
@@ -204,11 +180,10 @@ module Mandelbrot {
                 scale = newScale
                 center = newCenter
             }
-            uniformScale.data = [newScale]
-            uniformCenter.data = newCenter.coordinates
+            mandelbrotView.scale = newScale
+            mandelbrotView.center = newCenter
             scaleSpan.consumer(newScale)
             centerSpan.consumer(newCenter)
-            draw()
         }
     }
 
@@ -221,33 +196,38 @@ module Mandelbrot {
             if (dragging.end) {
                 center = newCenter
             }
-            uniformCenter.data = newCenter.coordinates
+            mandelbrotView.center = newCenter
             centerSpan.consumer(newCenter)
-            draw()
         }
     }
 
     function colorize(dragging: Gear.Dragging) {
         const hue = 2 * dragging.pos[0] / canvas.element.clientWidth
         const saturation = 1 - dragging.pos[1] / canvas.element.clientHeight
-        uniformColor.data = [hue, saturation]
+        mandelbrotView.setColor(hue, saturation)
+        juliaView.setColor(hue, saturation)
         hueSpan.consumer(hue)
         saturationSpan.consumer(saturation)
-        draw()
     }
     
     function intensity(dragging: Gear.Dragging) {
         const intensity = 1 - dragging.pos[1] / canvas.element.clientWidth
-        uniformIntensity.data = [intensity]
+        mandelbrotView.intensity = intensity
+        juliaView.intensity = intensity
         intensitySpan.consumer(intensity)
-        draw()
     }
     
     function palette(dragging: Gear.Dragging) {
-        const palette = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth
-        uniformPalette.data = [palette > 1 ? 1 : palette < 0 ? 0 : palette]
+        const p = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth
+        const palette = p > 1 ? 1 : p < 0 ? 0 : p
+        mandelbrotView.palette = palette
+        juliaView.palette = palette
         paletteSpan.consumer(palette)
-        draw()
+    }
+    
+    function julia(dragging: Gear.Dragging) {
+        const complexNumber = toComplexNumber(dragging.pos)
+        juliaView.juliaNumber = complexNumber
     }
     
     function calculateDelta(pos1: Gear.PointerPosition, pos2: Gear.PointerPosition, scale: number = 1) {
@@ -255,11 +235,6 @@ module Mandelbrot {
             .minus(Space.vec(...pos1))
             .scale(2 * scale)
             .divide(Space.vec(canvas.element.clientWidth, -canvas.element.clientHeight))
-    }
-
-    function draw() {
-        const gl = context.gl
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     }
 
 }

@@ -13,6 +13,7 @@ uniform float scale;
 uniform vec2 color;
 uniform float intensity;
 uniform float palette;
+uniform vec3 juliaNumber;
 
 const float PI = atan(0.0, -1.0);
 
@@ -50,8 +51,7 @@ vec2 mul(in vec2 c1, in vec2 c2) {
     );
 }
 
-float mandelbrot(in vec2 c) {
-    vec2 z = vec2(0.0);
+float mandelbrot(in vec2 c, in vec2 z) {
     for (int i = 0; i < 1024; i++) {
         z = mul(z, z) + c;
         float l = length(z);
@@ -63,6 +63,13 @@ float mandelbrot(in vec2 c) {
     return 0.0;
 }
 
+float mandelbrotOrJulia(in vec2 p) {
+    return juliaNumber.z != 0.0 ?
+        mandelbrot(juliaNumber.xy, 2.0 * p) :
+        mandelbrot(scale * p + center, vec2(0.0));
+}
+
 void main() {
-    gl_FragColor = vec4(mandelbrot(scale * pos.xy + center) * rgbColor(), 1.0);
+    vec3 color = rgbColor();
+    gl_FragColor = vec4(mandelbrotOrJulia(pos.xy) * color, 1.0);
 }

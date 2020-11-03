@@ -33,6 +33,7 @@
                         <select id="mouse-binding" name="mouse-binding">
                             <option value="move" selected>[M]ove</option>
                             <option value="zoom">[Z]oom (in: up, out: down)</option>
+                            <option value="julia">[J]uia Sets</option>
                             <option value="color">[C]olor (hue: horizontal, saturation: vertical)</option>
                             <option value="intensity">[I]ntensity (more: up, less: down)</option>
                             <option value="palette">[P]alette (exp: up, cos: down)</option>
@@ -56,14 +57,26 @@
                     <div>
                         <span>Palette = <span id="palette">0.0</span></span>
                     </div>
+                    <div>
+                        <span>Click Pos = <span id="clickPos">0.0, 0.0</span></span>
+                    </div>
                 </p>
+            </div>
+            <div>
+                <div class="view">
+                    <canvas id="julia-gl" width="320" height="320">
+                        Your browser seems not to support HTML 5 Canvas!
+                    </canvas>
+                </div>
+            </div><div>
                 <p>
                     Some actions can be performed on the canvas to the right. This is done by dragging the mouse 
                     (or the finger for touch screens) across the canvas. Only one action can be bound to the mouse at a time.
-                    You could select that action from the drop down in this side section.
+                    You could select that action from the drop-down above. Each of these actions is also mapped to a key for 
+                    more convenient use of the keyboard. The key is emphasized in the drop-down between two brackets.
                 </p>
             </div>
-
+            
         </div>
 
         <div id="main">
@@ -72,6 +85,44 @@
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
             </div>
+        </div>
+
+        <div id="other-side">
+
+            <div class="section">
+                <strong>As a Muscial Instrument!</strong>
+            </div>
+
+            <div>
+                <p>
+                    One of the mouse-bindings could turn the Mandelbrot set into a (unusable) musical instrument :-). 
+                    By clicking on a point that belongs to the set, the complex sequence that defines the Mandelbrot set
+                    will be treated as an audio signal, with the real and imaginary parts fed into the two stereo channels 
+                    of the dedault output audio device. 
+                </p><p>
+                    That idea came to me as I contemplated this thought: if this fractal exhibits such countless beautiful patterns, 
+                    does it "sound" as good? We often visualize mathematical concepts, but in many cases we could also "audialize" them. 
+                    So, how do I go about doing that for Mandelbrot?
+                </p><p>    
+                    The answer was in its mathematical definition. This fractal represents the set of complex numbers such that 
+                    each number C in it produces a "bounded" sequence: 
+                </p><p style="font-style: italic;">    
+                    Z<sub>n</sub> = <br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;0, if n = 0<br/>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Z<sub>n-1</sub><sup>2</sup> + C, otherwise
+                </p><p>    
+                    The bound for these sequences is the circle |Z|&nbsp;=&nbsp;2. If the absolute value of the elements in these sequences cannot 
+                    explode beyond 2, then they could represent causal, stable, and discrete signals (steady state signals, or 
+                    attenuating). So, I could just play these sequences as audio signals. It is also known that these sequences have 
+                    periodic properties given their intimate relation with Julia sets.
+                </p><p>    
+                    It worked! Even though I did not get beautiful sounds in terms of timber, I was pleasantly surprised to find some 
+                    "order" in these sounds. I think some of the adjacent patterns in this fractal produce minor chords, and the other 
+                    distances/ratios known in music. Maybe I should not be surprised. After all, tuning methods are rooted in 
+                    mathematics.
+                </p>
+            </div>
+
         </div>
 
     </div>

@@ -1611,24 +1611,21 @@ var Mandelbrot;
 (function (Mandelbrot) {
     var audioContext = new window.AudioContext({ sampleRate: 9450 });
     var audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate);
-    var mouseBindingElement;
-    var canvas;
+    var center = Space.vec(-0.75, 0);
+    var scale = 2;
     var vertexShaderCode;
     var fragmentShaderCode;
-    var context;
-    var uniformCenter;
-    var uniformScale;
-    var uniformColor;
-    var uniformIntensity;
-    var uniformPalette;
-    var center = Space.vec(-0.75, 0);
-    var scale = 2.0;
+    var mouseBindingElement;
+    var canvas;
+    var mandelbrotView;
+    var juliaView;
     var centerSpan;
     var scaleSpan;
     var hueSpan;
     var saturationSpan;
     var intensitySpan;
     var paletteSpan;
+    var clickPosSpan;
     function init() {
         window.onload = function () { return Gear.load("/shaders", function () { return Space.initWaModules(function () { return doInit(); }); }, ["mandelbrot.vert", function (shader) { return vertexShaderCode = shader; }], ["mandelbrot.frag", function (shader) { return fragmentShaderCode = shader; }]); };
     }
@@ -1645,63 +1642,45 @@ var Mandelbrot;
                 mouseBindingElement.value = act;
             }
         };
-        context = new Djee.Context("canvas-gl");
-        var program = context.link([
-            context.vertexShader(vertexShaderCode),
-            context.fragmentShader(fragmentShaderCode)
-        ]);
-        program.use();
-        var buffer = context.newBuffer();
-        buffer.untypedData = [
-            -1, -1,
-            +1, -1,
-            -1, +1,
-            +1, +1,
-        ];
-        var vertex = program.locateAttribute("vertex", 2);
-        vertex.pointTo(buffer);
-        uniformColor = program.locateUniform("color", 2);
-        uniformColor.data = [5 / 4, Math.sqrt(2) / 2];
-        uniformIntensity = program.locateUniform("intensity", 1);
-        uniformIntensity.data = [0.5];
-        uniformPalette = program.locateUniform("palette", 1);
-        uniformPalette.data = [0];
-        uniformCenter = program.locateUniform("center", 2);
-        uniformCenter.data = center.coordinates;
-        uniformScale = program.locateUniform("scale", 1);
-        uniformScale.data = [scale];
+        mandelbrotView = new Mandelbrot.View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale);
+        juliaView = new Mandelbrot.View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, Space.vec(0, 0), 4);
         centerSpan = Gear.sinkFlow(function (flow) { return flow
             .defaultsTo(center)
             .map(function (pos) { return pos.coordinates.map(function (c) { return c.toPrecision(3); }); })
-            .map(function (pos) { return "(x: " + pos[0] + ", y: " + pos[1] + ")"; })
+            .map(function (pos) { return "( " + pos[0] + ", " + pos[1] + ")"; })
             .to(Gear.text("center")); });
         scaleSpan = Gear.sinkFlow(function (flow) { return flow
             .defaultsTo(scale)
             .map(function (s) { return s.toPrecision(3).toString(); })
             .to(Gear.text("scale")); });
         hueSpan = Gear.sinkFlow(function (flow) { return flow
-            .defaultsTo(uniformColor.data[0])
+            .defaultsTo(mandelbrotView.hue)
             .map(function (h) { return h.toPrecision(3).toString(); })
             .to(Gear.text("hue")); });
         saturationSpan = Gear.sinkFlow(function (flow) { return flow
-            .defaultsTo(uniformColor.data[1])
+            .defaultsTo(mandelbrotView.saturation)
             .map(function (s) { return s.toPrecision(3).toString(); })
             .to(Gear.text("saturation")); });
         intensitySpan = Gear.sinkFlow(function (flow) { return flow
-            .defaultsTo(uniformIntensity.data[0])
+            .defaultsTo(mandelbrotView.intensity)
             .map(function (i) { return i.toPrecision(3).toString(); })
             .to(Gear.text("intensity")); });
         paletteSpan = Gear.sinkFlow(function (flow) { return flow
-            .defaultsTo(uniformPalette.data[0])
+            .defaultsTo(mandelbrotView.palette)
             .map(function (s) { return s.toPrecision(3).toString(); })
             .to(Gear.text("palette")); });
+        clickPosSpan = Gear.sinkFlow(function (flow) { return flow
+            .defaultsTo(center)
+            .map(function (pos) { return pos.coordinates.map(function (c) { return c.toPrecision(9); }); })
+            .map(function (pos) { return "(" + pos[0] + ", " + pos[1] + ")"; })
+            .to(Gear.text("clickPos")); });
         canvas = Gear.ElementEvents.create("canvas-gl");
-        canvas.dragging.branch(function (flow) { return flow.filter(selected("move")).producer(function (d) { return move(d); }); }, function (flow) { return flow.filter(selected("zoom")).producer(function (d) { return zoom(d); }); }, function (flow) { return flow.filter(selected("color")).producer(function (d) { return colorize(d); }); }, function (flow) { return flow.filter(selected("intensity")).producer(function (d) { return intensity(d); }); }, function (flow) { return flow.filter(selected("palette")).producer(function (d) { return palette(d); }); });
+        canvas.dragging.branch(function (flow) { return flow.filter(selected("move")).producer(function (d) { return move(d); }); }, function (flow) { return flow.filter(selected("zoom")).producer(function (d) { return zoom(d); }); }, function (flow) { return flow.filter(selected("color")).producer(function (d) { return colorize(d); }); }, function (flow) { return flow.filter(selected("intensity")).producer(function (d) { return intensity(d); }); }, function (flow) { return flow.filter(selected("palette")).producer(function (d) { return palette(d); }); }, function (flow) { return flow.filter(selected("julia")).producer(function (d) { return julia(d); }); });
         Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(function (ps) { return ps[0]; }))
-            .filter(selected("music"))
             .map(function (pos) { return toComplexNumber(pos); })
+            .branch(function (flow) { return flow.to(clickPosSpan); })
+            .filter(selected("music"))
             .producer(function (c) { return play(c); });
-        draw();
     }
     function play(c) {
         var channel1 = audioBuffer.getChannelData(0);
@@ -1736,10 +1715,13 @@ var Mandelbrot;
         source.start();
     }
     function toComplexNumber(pos) {
-        return Space.vec.apply(Space, pos).divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
-            .plus(Space.vec(-1, 1))
+        return toVector(pos)
             .scale(scale)
             .plus(center);
+    }
+    function toVector(pos) {
+        return Space.vec.apply(Space, pos).divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
+            .plus(Space.vec(-1, 1));
     }
     function action(key) {
         switch (key.toUpperCase()) {
@@ -1748,6 +1730,7 @@ var Mandelbrot;
             case "C": return "color";
             case "I": return "intensity";
             case "P": return "palette";
+            case "J": return "julia";
             case "N": return "music";
             default: return null;
         }
@@ -1767,11 +1750,10 @@ var Mandelbrot;
                 scale = newScale;
                 center = newCenter;
             }
-            uniformScale.data = [newScale];
-            uniformCenter.data = newCenter.coordinates;
+            mandelbrotView.scale = newScale;
+            mandelbrotView.center = newCenter;
             scaleSpan.consumer(newScale);
             centerSpan.consumer(newCenter);
-            draw();
         }
     }
     function move(dragging) {
@@ -1783,30 +1765,34 @@ var Mandelbrot;
             if (dragging.end) {
                 center = newCenter;
             }
-            uniformCenter.data = newCenter.coordinates;
+            mandelbrotView.center = newCenter;
             centerSpan.consumer(newCenter);
-            draw();
         }
     }
     function colorize(dragging) {
         var hue = 2 * dragging.pos[0] / canvas.element.clientWidth;
         var saturation = 1 - dragging.pos[1] / canvas.element.clientHeight;
-        uniformColor.data = [hue, saturation];
+        mandelbrotView.setColor(hue, saturation);
+        juliaView.setColor(hue, saturation);
         hueSpan.consumer(hue);
         saturationSpan.consumer(saturation);
-        draw();
     }
     function intensity(dragging) {
         var intensity = 1 - dragging.pos[1] / canvas.element.clientWidth;
-        uniformIntensity.data = [intensity];
+        mandelbrotView.intensity = intensity;
+        juliaView.intensity = intensity;
         intensitySpan.consumer(intensity);
-        draw();
     }
     function palette(dragging) {
-        var palette = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth;
-        uniformPalette.data = [palette > 1 ? 1 : palette < 0 ? 0 : palette];
+        var p = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth;
+        var palette = p > 1 ? 1 : p < 0 ? 0 : p;
+        mandelbrotView.palette = palette;
+        juliaView.palette = palette;
         paletteSpan.consumer(palette);
-        draw();
+    }
+    function julia(dragging) {
+        var complexNumber = toComplexNumber(dragging.pos);
+        juliaView.juliaNumber = complexNumber;
     }
     function calculateDelta(pos1, pos2, scale) {
         if (scale === void 0) { scale = 1; }
@@ -1814,10 +1800,134 @@ var Mandelbrot;
             .scale(2 * scale)
             .divide(Space.vec(canvas.element.clientWidth, -canvas.element.clientHeight));
     }
-    function draw() {
-        var gl = context.gl;
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
+})(Mandelbrot || (Mandelbrot = {}));
+var Mandelbrot;
+(function (Mandelbrot) {
+    var View = /** @class */ (function () {
+        function View(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center, _scale) {
+            var _this = this;
+            if (_center === void 0) { _center = Space.vec(-0.75, 0); }
+            if (_scale === void 0) { _scale = 2.0; }
+            this.julia = julia;
+            this.drawCall = new Gear.Call(function () { return _this.doDraw(); });
+            this.context = new Djee.Context(_canvasId);
+            var program = this.context.link([
+                this.context.vertexShader(_vertexShaderCode),
+                this.context.fragmentShader(_fragmentShaderCode)
+            ]);
+            program.use();
+            var buffer = this.context.newBuffer();
+            buffer.untypedData = [
+                -1, -1,
+                +1, -1,
+                -1, +1,
+                +1, +1,
+            ];
+            var vertex = program.locateAttribute("vertex", 2);
+            vertex.pointTo(buffer);
+            this.uniformColor = program.locateUniform("color", 2);
+            this.uniformIntensity = program.locateUniform("intensity", 1);
+            this.uniformPalette = program.locateUniform("palette", 1);
+            this.uniformCenter = program.locateUniform("center", 2);
+            this.uniformScale = program.locateUniform("scale", 1);
+            this.uniformJuliaNumber = program.locateUniform("juliaNumber", 3);
+            this.hue = 5 / 4;
+            this.saturation = Math.sqrt(2) / 2;
+            this.intensity = 0.5;
+            this.palette = 0;
+            this.center = _center;
+            this.scale = _scale;
+            this.juliaNumber = Space.vec(0, 0, 0);
+        }
+        Object.defineProperty(View.prototype, "center", {
+            get: function () {
+                return Space.vec.apply(Space, this.uniformCenter.data);
+            },
+            set: function (c) {
+                this.uniformCenter.data = c.coordinates;
+                this.draw();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "scale", {
+            get: function () {
+                return this.uniformScale.data[0];
+            },
+            set: function (s) {
+                this.uniformScale.data = [s];
+                this.draw();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "hue", {
+            get: function () {
+                return this.uniformColor.data[0];
+            },
+            set: function (h) {
+                this.setColor(h, this.saturation);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "saturation", {
+            get: function () {
+                return this.uniformColor.data[1];
+            },
+            set: function (s) {
+                this.setColor(this.hue, s);
+            },
+            enumerable: true,
+            configurable: true
+        });
+        View.prototype.setColor = function (h, s) {
+            this.uniformColor.data = [h, s];
+            this.draw();
+        };
+        Object.defineProperty(View.prototype, "intensity", {
+            get: function () {
+                return this.uniformIntensity.data[0];
+            },
+            set: function (i) {
+                this.uniformIntensity.data = [i];
+                this.draw();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "palette", {
+            get: function () {
+                return this.uniformPalette.data[0];
+            },
+            set: function (p) {
+                this.uniformPalette.data = [p];
+                this.draw();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(View.prototype, "juliaNumber", {
+            get: function () {
+                return Space.vec.apply(Space, this.uniformJuliaNumber.data);
+            },
+            set: function (j) {
+                this.uniformJuliaNumber.data = __spreadArrays(j.swizzle(0, 1).coordinates, [this.julia ? 1 : 0]);
+                this.draw();
+            },
+            enumerable: true,
+            configurable: true
+        });
+        View.prototype.draw = function () {
+            this.drawCall.later();
+        };
+        View.prototype.doDraw = function () {
+            var gl = this.context.gl;
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        };
+        return View;
+    }());
+    Mandelbrot.View = View;
 })(Mandelbrot || (Mandelbrot = {}));
 var ScalarField;
 (function (ScalarField) {
