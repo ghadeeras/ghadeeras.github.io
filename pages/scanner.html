@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Scanner</title>
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
+    <style>
+        #main .view {
+            max-height: none;
+        }
+        #main .view div {
+          padding: 16px;
+        }
+    </style>
+    <script type="module">
+        import * as Scanner from "../gen/scanner/toy.js"
+        Scanner.init();
+    </script>
+</head>
+
+    <div id="head">
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
+    </div>
+
+    <div id="content">
+
+        <div id="side">
+
+            <div class="section">
+                <strong>Scanner</strong>
+            </div>
+
+            <div>
+                <p>
+                    This toy allows testing my <a href="https://github.com/ghadeeras/languasaurus" target="_blank">Languasaurus</a> scanner.
+                    That is, its lexical analyzer.
+                </p>
+            </div>
+
+            <div class="section">
+                <strong>Input Stream</strong>
+            </div>
+
+            <div>
+                <p>
+                    Text to tokenize:
+                    <textarea id="input" name="input" cols="40" rows="16"></textarea>
+                </p>
+            </div>
+            
+        </div>
+
+        <div id="main">
+            <div class="view"><div>
+                <p>
+                    <strong>Scannr token definitions:</strong>
+                    <textarea id="token-defs" name="input" cols="80" rows="32" disabled>
+This area is currently disabled :(
+
+One day though, you will be able to define the scanner tokens and their regular expressions here :-)
+                    </textarea>
+                </p>
+                <p><button id="tokenize">Tokenize</button></p>
+            </div></div>
+        </div>
+
+        <div id="other-side">
+            <div class="section"><strong>Output Tokens</strong></div>
+            <div id="output"></div>
+        </div>
+
+    </div>
+</body>
+
+</html>

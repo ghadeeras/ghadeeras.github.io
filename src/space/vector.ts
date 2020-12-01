@@ -1,4 +1,4 @@
-import { Matrix } from "matrix.js"
+import { Matrix } from "./matrix.js"
 
 export class Vector {
 

@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"type": "typescript",
-			"tsconfig": "src/tsconfig.json",
+			"tsconfig": "./tsconfig.json",
 			"problemMatcher": [
 				"$tsc"
 			],
@@ -11,7 +11,7 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"label": "tsc: build - src/tsconfig.json"
+			"label": "tsc: build"
 		}
 	]
 }

@@ -1,1 +1,1 @@
-http-server
+http-server --proxy https://ghadeeras.github.io

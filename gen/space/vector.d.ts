@@ -1,4 +1,4 @@
-import { Matrix } from "matrix.js";
+import { Matrix } from "./matrix.js";
 export declare class Vector {
     readonly coordinates: number[];
     constructor(coordinates: number[]);
