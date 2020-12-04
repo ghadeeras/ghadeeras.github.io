@@ -1,1 +1,0 @@
-{"version":3,"file":"call.d.ts","sourceRoot":"","sources":["../../src/gear/call.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,MAAM,YAAY,CAAA;AAErC,qBAAa,IAAI;IAEb,OAAO,CAAC,SAAS,CAAW;IAC5B,OAAO,CAAC,MAAM,CAAgB;gBAElB,QAAQ,EAAE,QAAQ;IAI9B,GAAG;IAKH,KAAK;IASL,MAAM;CAOT"}

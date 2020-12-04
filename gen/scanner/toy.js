@@ -3,41 +3,43 @@ class MyScanner extends scanner.Scanner {
     constructor() {
         super();
         const s = scanner;
-        const lowerCaseChar = s.inRange("a-z");
-        const upperCaseChar = s.inRange("A-Z");
+        const lowerCaseChar = s.charIn("a-z");
+        const upperCaseChar = s.charIn("A-Z");
         const alphaChar = s.choice(lowerCaseChar, upperCaseChar);
-        const numericChar = s.inRange("0-9");
-        this.whiteSpace = this.string(s.oneOrMore(s.oneOf(" \t\r\n")));
-        this.comment = this.string(s.concat(s.oneOf("#"), s.zeroOrMore(s.noneOf("\n")), s.oneOf("\n")));
+        const numericChar = s.charIn("0-9");
+        const alphaNumericChar = s.choice(alphaChar, numericChar);
+        this.whiteSpace = this.string(s.oneOrMore(s.charFrom(" \t\r\n")));
+        this.comment = this.string(s.concat(s.char("#"), s.zeroOrMore(s.charOtherThan("\n")), s.char("\n")));
         this.keywordIf = this.boolean(s.word("if"));
         this.keywordOtherwise = this.boolean(s.word("otherwise"));
         this.keywordWhere = this.boolean(s.word("where"));
-        this.identifier = this.string(s.concat(alphaChar, s.zeroOrMore(s.choice(alphaChar, numericChar))));
+        this.identifier = this.string(s.concat(alphaChar, s.zeroOrMore(alphaNumericChar)));
         this.literalInt = this.integer(s.oneOrMore(numericChar));
-        this.literalFloat = this.float(s.concat(s.zeroOrMore(numericChar), s.oneOf("."), s.oneOrMore(numericChar)));
-        this.literalString = this.string(s.choice(s.concat(s.oneOf('"'), s.zeroOrMore(s.noneOf('"')), s.oneOf('"')), s.concat(s.oneOf("'"), s.zeroOrMore(s.noneOf("'")), s.oneOf("'"))));
+        this.literalFloat = this.float(s.concat(s.zeroOrMore(numericChar), s.char("."), s.oneOrMore(numericChar)));
+        this.literalString = this.string(s.choice(s.concat(s.char('"'), s.zeroOrMore(s.charOtherThan('"')), s.char('"')), s.concat(s.char("'"), s.zeroOrMore(s.charOtherThan("'")), s.char("'"))));
         this.literalBoolean = this.boolean(s.choice(s.word("true"), s.word("false"))).parsedAs(lexeme => lexeme == "true");
-        this.opPlus = this.boolean(s.word("+"));
-        this.opMinus = this.boolean(s.word("-"));
-        this.opMul = this.boolean(s.word("*"));
-        this.opDiv = this.boolean(s.word("/"));
-        this.opPow = this.boolean(s.word("^"));
-        this.opNot = this.boolean(s.word("!"));
-        this.opAnd = this.boolean(s.word("&"));
-        this.opOr = this.boolean(s.word("|"));
+        this.opPlus = this.boolean(s.char("+"));
+        this.opMinus = this.boolean(s.char("-"));
+        this.opMul = this.boolean(s.char("*"));
+        this.opDiv = this.boolean(s.char("/"));
+        this.opPow = this.boolean(s.char("^"));
+        this.opNot = this.boolean(s.char("!"));
+        this.opAnd = this.boolean(s.char("&"));
+        this.opOr = this.boolean(s.char("|"));
         this.opEqual = this.boolean(s.word("=="));
         this.opNotEqual = this.boolean(s.word("!="));
-        this.opGreaterThan = this.boolean(s.word(">"));
-        this.opLessThan = this.boolean(s.word("<"));
+        this.opGreaterThan = this.boolean(s.char(">"));
+        this.opLessThan = this.boolean(s.char("<"));
         this.opGreaterThanOrEqual = this.boolean(s.word(">="));
         this.opLessThanOrEqual = this.boolean(s.word("<="));
-        this.opDeclare = this.boolean(s.word("="));
-        this.delOpenParen = this.boolean(s.word("("));
-        this.delCloseParen = this.boolean(s.word(")"));
-        this.delOpenSquare = this.boolean(s.word("["));
-        this.delCloseSquare = this.boolean(s.word("]"));
-        this.delOpenCurly = this.boolean(s.word("{"));
-        this.delCloseCurly = this.boolean(s.word("}"));
+        this.opDeclare = this.boolean(s.char("="));
+        this.delCommaParen = this.boolean(s.char(","));
+        this.delOpenParen = this.boolean(s.char("("));
+        this.delCloseParen = this.boolean(s.char(")"));
+        this.delOpenSquare = this.boolean(s.char("["));
+        this.delCloseSquare = this.boolean(s.char("]"));
+        this.delOpenCurly = this.boolean(s.char("{"));
+        this.delCloseCurly = this.boolean(s.char("}"));
     }
 }
 export function init() {
@@ -49,8 +51,8 @@ export function init() {
             tokenNames.set(value, key);
         }
     }
-    tokenNames.set(myScanner.errorType, "ERROR");
-    tokenNames.set(myScanner.eofType, "EOF");
+    tokenNames.set(myScanner.errorTokenType, "ERROR");
+    tokenNames.set(myScanner.eofTokenType, "EOF");
     const inputElement = document.getElementById("input");
     const outputElement = document.getElementById("output");
     document.getElementById("tokenize").onclick = () => {

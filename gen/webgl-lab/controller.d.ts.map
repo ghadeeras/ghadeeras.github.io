@@ -1,1 +1,0 @@
-{"version":3,"file":"controller.d.ts","sourceRoot":"","sources":["../../src/webgl-lab/controller.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,IAAI,MAAO,gBAAgB,CAAC;AACxC,OAAO,EAAE,aAAa,EAAE,MAAM,cAAc,CAAC;AAE7C,qBAAa,UAAU;IAEnB,IAAI,OAAO,4CAEV;IAED,IAAI,IAAI,sCAEP;IAED,IAAI,cAAc,qCAEjB;IAED,IAAI,aAAa,qCAEhB;IAED,IAAI,aAAa,qCAEhB;IAED,IAAI,aAAa,qCAEhB;IAED,IAAI,OAAO,uCAEV;CAEJ"}
