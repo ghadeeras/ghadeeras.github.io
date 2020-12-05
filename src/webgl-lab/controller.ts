@@ -81,7 +81,7 @@ function mouseXYFlow() {
     return Gear.Flow.from(
         canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), 
         canvas.touchPos.map(pos => pos[0])
-    ).map(([x, y]) => [2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight])
+    ).map(([x, y]) => Gear.pos(2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight))
 }
 
 function clamp(n: number, min: number, max: number) {

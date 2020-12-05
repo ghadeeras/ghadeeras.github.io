@@ -2,7 +2,7 @@ import { Controller } from "./controller.js";
 import { loadShaders, samples } from "./samples.js";
 import { View } from "./view.js";
 export function init() {
-    window.onload = e => doInit();
+    window.onload = () => doInit();
 }
 function doInit() {
     const controller = new Controller();
@@ -10,7 +10,7 @@ function doInit() {
     controller.levelOfDetails().to(view.levelOfDetail());
     controller.programSample()
         .map(index => samples[index])
-        .then((sample, consumer) => loadShaders(sample, consumer))
+        .then(loadShaders)
         .to(view.editor());
     controller.program().to(view.compiler());
     controller.mesh().to(view.mesh());

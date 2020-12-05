@@ -47,10 +47,7 @@ function doInit() {
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
     const mouseButtonPressed = canvas.mouseButons.map(([l, m, r]) => l);
-    Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(positions => positions[0])).map(([x, y]) => [
-        2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth,
-        2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-    ]).branch(flow => flow.filter(selected("rotation")).to(rotationSink()), flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink()));
+    Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(positions => positions[0])).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("rotation")).to(rotationSink()), flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink()));
     levelOfDetailsFlow().to(levelOfDetailsSink());
     Gear.readableValue("function").to(functionSink());
 }

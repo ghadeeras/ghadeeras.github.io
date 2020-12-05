@@ -91,10 +91,10 @@ function doInit() {
     Gear.Flow.from(
         canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)),
         canvas.touchPos.map(positions => positions[0])
-    ).map(([x, y]) => [
+    ).map(([x, y]) => Gear.pos(
         2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
         2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-    ]).branch(
+    )).branch(
         flow => flow.filter(selected("rotation")).to(rotationSink()),
         flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
         flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),

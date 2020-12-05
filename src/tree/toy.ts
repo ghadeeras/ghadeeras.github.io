@@ -2,8 +2,8 @@ import * as Gear from "../gear/all.js"
 import { MatriciesGenerator } from "./matgen.js";
 import { Renderer } from "./renderer.js";
 
-let vertexShaderCode = null;
-let fragmentShaderCode = null;
+let vertexShaderCode: string = null;
+let fragmentShaderCode: string = null;
 
 export function init() {
     window.onload = () => Gear.load("/shaders", () => doInit(),
@@ -38,10 +38,10 @@ function doInit() {
     Gear.Flow.from(
         canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)),
         canvas.touchPos.map(positions => positions[0])
-    ).map(([x, y]) => [
+    ).map(([x, y]) => Gear.pos(
         2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
         2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-    ]).branch(
+    )).branch(
             flow => flow.filter(selected("rotation")).to(renderer.rotationSink()),
             flow => flow.filter(selected("lightPosition")).to(renderer.lightPositionSink()),
             flow => flow.filter(selected("color")).to(renderer.colorSink()),

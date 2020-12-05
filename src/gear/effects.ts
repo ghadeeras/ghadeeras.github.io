@@ -34,7 +34,7 @@ export function flowSwitch<T>(on: Source<boolean>, initialState: boolean = false
     return filter(value => onRef[0]);
 }
 
-export function repeater<T>(interval: number, restValue: T): Effect<T, T> {
+export function repeater<T, R extends T>(interval: number, restValue: R): Effect<T, T> {
     const valueRef: T[] = [restValue];
     const timerRef: number[] = [];
     return (newValue, consumer) => {
@@ -49,7 +49,7 @@ export function repeater<T>(interval: number, restValue: T): Effect<T, T> {
     };
 }
 
-export function defaultsTo<T>(value: T): Effect<T, T> {
+export function defaultsTo<T, V extends T>(value: V): Effect<T, T> {
     return map(v => v != null ? v : value);
 }
 

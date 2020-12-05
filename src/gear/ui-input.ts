@@ -15,6 +15,10 @@ export type Dragging = {
     alt: boolean
 }
 
+export function pos(x: number, y: number): PointerPosition {
+    return [x, y]
+}
+
 export function checkbox(elementId: string): Flow<boolean> {
     const element = document.getElementById(elementId) as HTMLInputElement;
     const value = new Value(element.checked);
@@ -312,10 +316,6 @@ function pagePos(element: HTMLElement): PointerPosition {
     const result = pos(element.offsetLeft, element.offsetTop);
     const parent = element.parentElement;
     return parent ? add(pagePos(parent), result) : result;
-}
-
-function pos(x: number, y: number): PointerPosition {
-    return [x, y]
 }
 
 function add(pos1: PointerPosition, pos2: PointerPosition): PointerPosition {

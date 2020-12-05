@@ -107,10 +107,10 @@ function doInit() {
     Gear.Flow.from(
         canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)),
         canvas.touchPos.map(positions => positions[0])
-    ).map(([x, y]) => [
+    ).map(([x, y]) => Gear.pos(
         2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
         2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-    ]).branch(
+    )).branch(
         flow => flow.filter(selected("rotation")).to(rotationSink()),
         flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
         flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),
@@ -420,10 +420,4 @@ function array(stack: Space.StackExports, begin: number, end: number) {
 
 function fieldColor(fieldValue: number, alpha: number = 0.4): Space.Vector {
     return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
-}
-
-function normalFrom(p1: Space.Vector, p2: Space.Vector, p3: Space.Vector) {
-    const v12 = p2.minus(p1);
-    const v23 = p3.minus(p2);
-    return v12.cross(v23).unit;
 }

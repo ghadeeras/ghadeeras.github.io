@@ -1,5 +1,8 @@
 import { Flow, Value } from "./flow.js";
 import { lazy } from "./lazy.js";
+export function pos(x, y) {
+    return [x, y];
+}
 export function checkbox(elementId) {
     const element = document.getElementById(elementId);
     const value = new Value(element.checked);
@@ -216,9 +219,6 @@ function pagePos(element) {
     const result = pos(element.offsetLeft, element.offsetTop);
     const parent = element.parentElement;
     return parent ? add(pagePos(parent), result) : result;
-}
-function pos(x, y) {
-    return [x, y];
 }
 function add(pos1, pos2) {
     const [x1, y1] = pos1;
