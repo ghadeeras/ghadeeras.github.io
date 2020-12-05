@@ -14,11 +14,11 @@ export class Context {
         return canvas;
     }
     getContext(canvas) {
-        const gl = this.doGetContext(canvas);
-        if (!gl) {
-            throw "Your browser seems not to support WebGL!";
-        }
-        return gl;
+        var _a;
+        return (_a = this.doGetContext(canvas)) !== null && _a !== void 0 ? _a : this.failure(canvas);
+    }
+    failure(canvas) {
+        throw new Error("Failed to get GL context from element: " + canvas.id);
     }
     doGetContext(canvas) {
         try {

@@ -29,15 +29,15 @@ export function flowSwitch(on, initialState = false) {
 }
 export function repeater(interval, restValue) {
     const valueRef = [restValue];
-    const timerRef = [null];
+    const timerRef = [];
     return (newValue, consumer) => {
         if (newValue != null && newValue != restValue) {
             valueRef[0] = newValue;
-            timerRef[0] = setInterval(() => consumer(valueRef[0]), interval);
+            timerRef.push(setInterval(() => consumer(valueRef[0]), interval));
         }
         else {
             valueRef[0] = restValue;
-            clearInterval(timerRef[0]);
+            clearInterval(timerRef.pop());
         }
         consumer(newValue);
     };

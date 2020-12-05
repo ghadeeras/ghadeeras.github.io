@@ -1,13 +1,17 @@
 export class Uniform {
     constructor(program, name, size, matrix = false) {
+        var _a;
         this.program = program;
         this.name = name;
         this.size = size;
         this.matrix = matrix;
         const gl = program.context.gl;
-        this.location = gl.getUniformLocation(program.program, name);
+        this.location = (_a = gl.getUniformLocation(program.program, name)) !== null && _a !== void 0 ? _a : this.failure(name);
         this.setter = this.getSetter(gl, size, matrix);
         this._data = new Array(matrix ? size * size : size);
+    }
+    failure(name) {
+        throw new Error("Failed to get GL uniform: " + name);
     }
     getSetter(gl, size, matrix) {
         const location = this.location;

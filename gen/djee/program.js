@@ -7,7 +7,8 @@ export class Program {
         this.program = this.makeProgram(context.gl, shaders);
     }
     makeProgram(gl, shaders) {
-        const program = gl.createProgram();
+        var _a;
+        const program = (_a = gl.createProgram()) !== null && _a !== void 0 ? _a : this.failure();
         shaders.forEach(s => {
             gl.attachShader(program, s.shader);
         });
@@ -16,6 +17,9 @@ export class Program {
             throw `Unable to initialize the shader program: ${gl.getProgramInfoLog(program)}`;
         }
         return program;
+    }
+    failure() {
+        throw new Error("Failed to create GL program in context: " + this.context.canvas.id);
     }
     delete() {
         const gl = this.context.gl;
@@ -48,6 +52,9 @@ export class Program {
         const result = [];
         for (let i = 0; i < count; i++) {
             const info = getter(i);
+            if (!info) {
+                continue;
+            }
             result.push({
                 name: info.name,
                 type: info.type,

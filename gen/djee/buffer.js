@@ -1,7 +1,12 @@
 export class Buffer {
     constructor(context) {
+        var _a;
         this.context = context;
-        this.buffer = context.gl.createBuffer();
+        this._data = new Float32Array([]);
+        this.buffer = (_a = context.gl.createBuffer()) !== null && _a !== void 0 ? _a : this.failure();
+    }
+    failure() {
+        throw new Error("Failed to create GL buffer in context: " + this.context.canvas.id);
     }
     bind(glCode) {
         return this.context.with(gl => {

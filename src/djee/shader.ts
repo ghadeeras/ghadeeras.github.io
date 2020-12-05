@@ -13,7 +13,7 @@ export class Shader {
     
     static fromElement(context: Context, scriptId: string) {
         const script = this.getScript(scriptId);
-        const type = this.getShaderType(script.getAttribute('type'));
+        const type = this.getShaderType(script.getAttribute('type') || "x-shader/x-vertex");
         const code = script.innerHTML;
         return new Shader(context, type, code);
     }
@@ -37,13 +37,17 @@ export class Shader {
     }
 
     private makeShader(gl: WebGLRenderingContext, type: ShaderType, code: string) {
-        const shader = gl.createShader(type);
+        const shader = gl.createShader(type) ?? this.failure();
         gl.shaderSource(shader, code);
         gl.compileShader(shader);
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
             throw `Error compiling shader: ${gl.getShaderInfoLog(shader)}`;
         }
         return shader;
+    }
+
+    private failure(): WebGLShader {
+        throw new Error("Failed to create GL shader in context: " + this.context.canvas.id)
     }
 
     delete() {

@@ -4,10 +4,14 @@ export class Buffer {
 
     readonly buffer: WebGLBuffer;
 
-    private _data: Float32Array;
+    private _data: Float32Array = new Float32Array([]);
 
     constructor(readonly context: Context) {
-        this.buffer = context.gl.createBuffer();
+        this.buffer = context.gl.createBuffer() ?? this.failure();
+    }
+
+    private failure(): WebGLBuffer {
+        throw new Error("Failed to create GL buffer in context: " + this.context.canvas.id)
     }
 
     bind<T>(glCode: (gl: WebGLRenderingContext) => T) {

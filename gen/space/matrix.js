@@ -106,6 +106,7 @@ export class Matrix {
 export class MatrixStack {
     constructor() {
         this._matrix = Matrix.identity();
+        this.stack = [];
     }
     apply(matrix) {
         return this._matrix = this._matrix.by(matrix);
@@ -114,7 +115,8 @@ export class MatrixStack {
         this.stack.push(this._matrix);
     }
     pop() {
-        this._matrix = this.stack.pop();
+        var _a;
+        this._matrix = (_a = this.stack.pop()) !== null && _a !== void 0 ? _a : Matrix.identity();
     }
     get matrix() {
         return this._matrix;

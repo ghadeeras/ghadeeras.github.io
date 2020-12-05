@@ -10,10 +10,14 @@ export class Uniform {
     constructor(readonly program: Program, readonly name: string, readonly size: number, readonly matrix: boolean = false) {
         const gl = program.context.gl;
 
-        this.location = gl.getUniformLocation(program.program, name);
+        this.location = gl.getUniformLocation(program.program, name) ?? this.failure(name);
         this.setter = this.getSetter(gl, size, matrix);
         
         this._data = new Array(matrix ? size * size : size);
+    }
+
+    private failure(name: string): WebGLUniformLocation {
+        throw new Error("Failed to get GL uniform: " + name)
     }
 
     private getSetter(gl: WebGLRenderingContext, size: number, matrix: boolean): (data: Float64Array) => void {

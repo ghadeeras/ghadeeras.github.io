@@ -36,14 +36,14 @@ export function flowSwitch<T>(on: Source<boolean>, initialState: boolean = false
 
 export function repeater<T>(interval: number, restValue: T): Effect<T, T> {
     const valueRef: T[] = [restValue];
-    const timerRef: number[] = [null];
+    const timerRef: number[] = [];
     return (newValue, consumer) => {
         if (newValue != null && newValue != restValue) {
             valueRef[0] = newValue;
-            timerRef[0] = setInterval(() => consumer(valueRef[0]), interval);
+            timerRef.push(setInterval(() => consumer(valueRef[0]), interval));
         } else {
             valueRef[0] = restValue;
-            clearInterval(timerRef[0])
+            clearInterval(timerRef.pop())
         }
         consumer(newValue);
     };

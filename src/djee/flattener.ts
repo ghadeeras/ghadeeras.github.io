@@ -18,7 +18,7 @@ export interface Flattener<S, P> {
 
     flattenAll(structures: S[], array?: P[], index?: number): P[];
 
-    unflatten(structure: S, array: P[], index?: number);
+    unflatten(structure: S, array: P[], index?: number): void;
     
 }
 
@@ -29,9 +29,9 @@ abstract class AbstractFlattener<S, P> implements Flattener<S, P> {
     
     protected abstract subFlatteners(): Flattener<any, P>[];
 
-    protected abstract doFlatten(structure: S, array: P[], index: number);
+    protected abstract doFlatten(structure: S, array: P[], index: number): void;
 
-    protected abstract doUnflatten(structure: S, array: P[], index: number);
+    protected abstract doUnflatten(structure: S, array: P[], index: number): void;
     
     offsetOf(child: Flattener<any, P>): number {
         if (this == child) {

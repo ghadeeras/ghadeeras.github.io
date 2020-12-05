@@ -3,7 +3,7 @@ import { Callable } from "./utils.js"
 export class Call {
     
     private _callable: Callable;
-    private _timer: number = null;
+    private _timer: number | null = null;
     
     constructor(callable: Callable) {
         this._callable = callable;

@@ -19,7 +19,7 @@ export class Program {
     }
 
     private makeProgram(gl: WebGLRenderingContext, shaders: Shader[]) {
-        const program = gl.createProgram();
+        const program = gl.createProgram() ?? this.failure();
         shaders.forEach(s => {
             gl.attachShader(program, s.shader);
         });
@@ -30,6 +30,10 @@ export class Program {
         return program;
     }
     
+    private failure(): WebGLProgram {
+        throw new Error("Failed to create GL program in context: " + this.context.canvas.id)
+    }
+
     delete() {
         const gl = this.context.gl;
         this.shaders.forEach(shader => {
@@ -61,12 +65,15 @@ export class Program {
         return this.activeInfos(gl.ACTIVE_ATTRIBUTES, i => gl.getActiveAttrib(this.program, i));
     }
 
-    private activeInfos(type: number, getter: (index: number) => WebGLActiveInfo) {
+    private activeInfos(type: number, getter: (index: number) => WebGLActiveInfo | null) {
         const gl = this.context.gl;
         const count: number = gl.getProgramParameter(this.program, type);
         const result: Variable[] = [];
         for (let i = 0; i < count; i++) {
             const info = getter(i);
+            if (!info) {
+                continue
+            }
             result.push({
                 name: info.name,
                 type: info.type, 

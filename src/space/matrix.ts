@@ -13,7 +13,7 @@ export class Matrix {
         this.columns = columns.map(column => column.withDims(this.rowsCount));
     }
 
-    get transposed() {
+    get transposed(): Matrix {
         const rows: Vector[] = new Array<Vector>(this.rowsCount); 
         for (let i = 0; i < this.rowsCount; i++) {
             rows[i] = new Vector(this.columns.map(column => column.coordinates[i]));
@@ -21,7 +21,7 @@ export class Matrix {
         return new Matrix(rows);
     }
 
-    get determinant() {
+    get determinant(): number {
         if (this.rowsCount != this. columnsCount) {
             return 0;
         }
@@ -31,7 +31,7 @@ export class Matrix {
         return this.columns[0].coordinates.map((v, i) => Matrix.sign(i) * v * this.sub(0, i).determinant).reduce((v1, v2) => v1 + v2);
     }
 
-    get inverse() {
+    get inverse(): Matrix {
         const d = this.determinant;
         return new Matrix(
             this.columns.map((column, c) => new Vector(
@@ -155,7 +155,7 @@ export class MatrixStack {
 
     private _matrix = Matrix.identity();
 
-    private stack: Matrix[];
+    private stack: Matrix[] = [];
 
     apply(matrix: Matrix) {
         return this._matrix = this._matrix.by(matrix);
@@ -166,7 +166,7 @@ export class MatrixStack {
     }
 
     pop() {
-        this._matrix = this.stack.pop();
+        this._matrix = this.stack.pop() ?? Matrix.identity();
     }
 
     get matrix() {
