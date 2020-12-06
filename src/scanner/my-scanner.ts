@@ -1,4 +1,4 @@
-import * as scanner from "../../languasaurus/latest/index.js"
+import * as scanner from "../../languasaurus/js/index.js"
 
 export class MyScanner extends scanner.Scanner {
 
