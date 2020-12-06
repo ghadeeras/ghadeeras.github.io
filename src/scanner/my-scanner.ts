@@ -2,48 +2,46 @@ import * as scanner from "../../languasaurus/latest/index.js"
 
 export class MyScanner extends scanner.Scanner {
 
-    readonly whiteSpace: scanner.TextualTokenType
-    readonly comment: scanner.TextualTokenType
+    readonly whiteSpace: scanner.TokenType<string>
+    readonly comment: scanner.TokenType<string>
     
-    readonly identifier: scanner.TextualTokenType
+    readonly identifier: scanner.TokenType<string>
 
-    readonly literalInt: scanner.IntegerTokenType
-    readonly literalFloat: scanner.FloatTokenType
-    readonly literalString: scanner.TextualTokenType
-    readonly literalBoolean: scanner.BooleanTokenType
+    readonly literalInt: scanner.TokenType<number>
+    readonly literalFloat: scanner.TokenType<number>
+    readonly literalString: scanner.TokenType<string>
+    readonly literalBoolean: scanner.TokenType<boolean>
 
-    readonly keywordIf: scanner.BooleanTokenType
-    readonly keywordOtherwise: scanner.BooleanTokenType
-    readonly keywordWhere: scanner.BooleanTokenType
+    readonly keywordIf: scanner.TokenType<boolean>
+    readonly keywordOtherwise: scanner.TokenType<boolean>
+    readonly keywordWhere: scanner.TokenType<boolean>
     
-    readonly opPlus: scanner.BooleanTokenType
-    readonly opMinus: scanner.BooleanTokenType
-    readonly opMul: scanner.BooleanTokenType
-    readonly opDiv: scanner.BooleanTokenType
-    readonly opPow: scanner.BooleanTokenType
+    readonly opPlus: scanner.TokenType<boolean>
+    readonly opMinus: scanner.TokenType<boolean>
+    readonly opMul: scanner.TokenType<boolean>
+    readonly opDiv: scanner.TokenType<boolean>
+    readonly opPow: scanner.TokenType<boolean>
 
-    readonly opNot: scanner.BooleanTokenType
-    readonly opAnd: scanner.BooleanTokenType
-    readonly opOr: scanner.BooleanTokenType
+    readonly opNot: scanner.TokenType<boolean>
+    readonly opAnd: scanner.TokenType<boolean>
+    readonly opOr: scanner.TokenType<boolean>
 
-    readonly opEqual: scanner.BooleanTokenType
-    readonly opNotEqual: scanner.BooleanTokenType
-    readonly opGreaterThan: scanner.BooleanTokenType
-    readonly opLessThan: scanner.BooleanTokenType
-    readonly opGreaterThanOrEqual: scanner.BooleanTokenType
-    readonly opLessThanOrEqual: scanner.BooleanTokenType
+    readonly opEqual: scanner.TokenType<boolean>
+    readonly opNotEqual: scanner.TokenType<boolean>
+    readonly opGreaterThan: scanner.TokenType<boolean>
+    readonly opLessThan: scanner.TokenType<boolean>
+    readonly opGreaterThanOrEqual: scanner.TokenType<boolean>
+    readonly opLessThanOrEqual: scanner.TokenType<boolean>
 
-    readonly opDeclare: scanner.BooleanTokenType
+    readonly opDeclare: scanner.TokenType<boolean>
 
-    readonly delCommaParen: scanner.BooleanTokenType
-    readonly delOpenParen: scanner.BooleanTokenType
-    readonly delCloseParen: scanner.BooleanTokenType
-    readonly delOpenSquare: scanner.BooleanTokenType
-    readonly delCloseSquare: scanner.BooleanTokenType
-    readonly delOpenCurly: scanner.BooleanTokenType
-    readonly delCloseCurly: scanner.BooleanTokenType
-
-    readonly tokenNames: Map<scanner.TokenType<any>, string> = new Map()
+    readonly delCommaParen: scanner.TokenType<boolean>
+    readonly delOpenParen: scanner.TokenType<boolean>
+    readonly delCloseParen: scanner.TokenType<boolean>
+    readonly delOpenSquare: scanner.TokenType<boolean>
+    readonly delCloseSquare: scanner.TokenType<boolean>
+    readonly delOpenCurly: scanner.TokenType<boolean>
+    readonly delCloseCurly: scanner.TokenType<boolean>
 
     constructor() {
         super()
@@ -104,12 +102,12 @@ export class MyScanner extends scanner.Scanner {
         this.opAnd = this.boolean(s.char("&"))
         this.opOr = this.boolean(s.char("|"))
     
-        this.opEqual = this.boolean(s.word("=="))
-        this.opNotEqual = this.boolean(s.word("!="))
+        this.opEqual = this.boolean(s.chars("=="))
+        this.opNotEqual = this.boolean(s.chars("!="))
         this.opGreaterThan = this.boolean(s.char(">"))
         this.opLessThan = this.boolean(s.char("<"))
-        this.opGreaterThanOrEqual = this.boolean(s.word(">="))
-        this.opLessThanOrEqual = this.boolean(s.word("<="))
+        this.opGreaterThanOrEqual = this.boolean(s.chars(">="))
+        this.opLessThanOrEqual = this.boolean(s.chars("<="))
     
         this.opDeclare = this.boolean(s.char("="))
     
@@ -120,15 +118,6 @@ export class MyScanner extends scanner.Scanner {
         this.delCloseSquare = this.boolean(s.char("]"))
         this.delOpenCurly = this.boolean(s.char("{"))
         this.delCloseCurly = this.boolean(s.char("}"))
-
-        for (let key in this) {
-            const value = this[key]
-            if (value instanceof scanner.TokenType) {
-                this.tokenNames.set(value, key)
-            }
-        }
-        this.tokenNames.set(this.errorTokenType, "ERROR")
-        this.tokenNames.set(this.eofTokenType, "EOF")
     }
 
     tokenize(text: string): string {
@@ -137,7 +126,7 @@ export class MyScanner extends scanner.Scanner {
             if (token.tokenType == this.whiteSpace) {
                 continue
             }
-            output += this.tokenNames.get(token.tokenType) + 
+            output += this.tokenName(token) + 
                 " at [Line: " + token.position.line + ", Column: " + token.position.column + "]:\n" +
                 token.lexeme + "\n" +
                 "----------\n"
@@ -145,4 +134,11 @@ export class MyScanner extends scanner.Scanner {
         return output
     }
     
+    private tokenName(token: scanner.Token<any>) {
+        switch (token.tokenType) {
+            case this.errorTokenType: return "ERROR"
+            case this.eofTokenType: return "EOF"
+            default: return this.tokenTypeName(token.tokenType)
+        }
+    }
 }

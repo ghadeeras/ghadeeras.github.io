@@ -2,7 +2,6 @@ import * as scanner from "../../languasaurus/latest/index.js";
 export class MyScanner extends scanner.Scanner {
     constructor() {
         super();
-        this.tokenNames = new Map();
         const s = scanner;
         const lowerCaseChar = s.charIn("a-z");
         const upperCaseChar = s.charIn("A-Z");
@@ -27,12 +26,12 @@ export class MyScanner extends scanner.Scanner {
         this.opNot = this.boolean(s.char("!"));
         this.opAnd = this.boolean(s.char("&"));
         this.opOr = this.boolean(s.char("|"));
-        this.opEqual = this.boolean(s.word("=="));
-        this.opNotEqual = this.boolean(s.word("!="));
+        this.opEqual = this.boolean(s.chars("=="));
+        this.opNotEqual = this.boolean(s.chars("!="));
         this.opGreaterThan = this.boolean(s.char(">"));
         this.opLessThan = this.boolean(s.char("<"));
-        this.opGreaterThanOrEqual = this.boolean(s.word(">="));
-        this.opLessThanOrEqual = this.boolean(s.word("<="));
+        this.opGreaterThanOrEqual = this.boolean(s.chars(">="));
+        this.opLessThanOrEqual = this.boolean(s.chars("<="));
         this.opDeclare = this.boolean(s.char("="));
         this.delCommaParen = this.boolean(s.char(","));
         this.delOpenParen = this.boolean(s.char("("));
@@ -41,14 +40,6 @@ export class MyScanner extends scanner.Scanner {
         this.delCloseSquare = this.boolean(s.char("]"));
         this.delOpenCurly = this.boolean(s.char("{"));
         this.delCloseCurly = this.boolean(s.char("}"));
-        for (let key in this) {
-            const value = this[key];
-            if (value instanceof scanner.TokenType) {
-                this.tokenNames.set(value, key);
-            }
-        }
-        this.tokenNames.set(this.errorTokenType, "ERROR");
-        this.tokenNames.set(this.eofTokenType, "EOF");
     }
     tokenize(text) {
         let output = "";
@@ -56,12 +47,19 @@ export class MyScanner extends scanner.Scanner {
             if (token.tokenType == this.whiteSpace) {
                 continue;
             }
-            output += this.tokenNames.get(token.tokenType) +
+            output += this.tokenName(token) +
                 " at [Line: " + token.position.line + ", Column: " + token.position.column + "]:\n" +
                 token.lexeme + "\n" +
                 "----------\n";
         }
         return output;
+    }
+    tokenName(token) {
+        switch (token.tokenType) {
+            case this.errorTokenType: return "ERROR";
+            case this.eofTokenType: return "EOF";
+            default: return this.tokenTypeName(token.tokenType);
+        }
     }
 }
 //# sourceMappingURL=my-scanner.js.map
