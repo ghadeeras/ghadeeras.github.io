@@ -3,6 +3,9 @@ export class MatriciesGenerator {
     constructor() {
         this._verticalAngle = Math.PI / 4;
         this._depth = 5;
+        this.branch1Matrix = null;
+        this.branch2Matrix = null;
+        this.branch3Matrix = null;
         this.scale = Math.SQRT1_2;
         this.branchCount = 3;
         this.horizontalAngle = 2 * Math.PI / this.branchCount;
@@ -44,7 +47,7 @@ export class MatriciesGenerator {
     }
     doGenerateMatricies(result, depth, matrix) {
         result.push(matrix);
-        if (depth > 0) {
+        if (depth > 0 && this.branch1Matrix && this.branch2Matrix && this.branch3Matrix) {
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch1Matrix));
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch2Matrix));
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch3Matrix));

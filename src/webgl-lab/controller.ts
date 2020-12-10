@@ -77,7 +77,7 @@ function mouseYBindingFlow() {
 
 function mouseXYFlow() {
     const canvas = Gear.ElementEvents.create("canvas-gl");
-    const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l).then(Gear.defaultsTo(false));
+    const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l).defaultsTo(false);
     return Gear.Flow.from(
         canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), 
         canvas.touchPos.map(pos => pos[0])

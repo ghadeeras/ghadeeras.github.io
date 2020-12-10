@@ -42,9 +42,6 @@ export function repeater(interval, restValue) {
         consumer(newValue);
     };
 }
-export function defaultsTo(value) {
-    return map(v => v != null ? v : value);
-}
 export function choice(truwValue, falseValue) {
     return map(v => v ? truwValue : falseValue);
 }

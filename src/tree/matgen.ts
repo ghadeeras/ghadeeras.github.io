@@ -5,9 +5,9 @@ export class MatriciesGenerator {
     private _verticalAngle = Math.PI / 4;
     private _depth = 5;
 
-    private branch1Matrix: Space.Matrix;
-    private branch2Matrix: Space.Matrix;
-    private branch3Matrix: Space.Matrix;
+    private branch1Matrix: Space.Matrix | null = null;
+    private branch2Matrix: Space.Matrix | null = null;
+    private branch3Matrix: Space.Matrix | null = null;
     
     readonly scale = Math.SQRT1_2;
     readonly branchCount = 3;
@@ -20,7 +20,7 @@ export class MatriciesGenerator {
     readonly translation = Space.Matrix.translation(0, 2, 0);
     
     constructor() {
-        this.init();           
+        this.init();
     }
 
     private init() {
@@ -60,7 +60,7 @@ export class MatriciesGenerator {
 
     doGenerateMatricies(result: Space.Matrix[], depth: number, matrix: Space.Matrix) {
         result.push(matrix);
-        if (depth > 0) {
+        if (depth > 0 && this.branch1Matrix && this.branch2Matrix && this.branch3Matrix) {
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch1Matrix));
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch2Matrix));
             this.doGenerateMatricies(result, depth - 1, matrix.by(this.branch3Matrix));

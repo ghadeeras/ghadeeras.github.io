@@ -2,8 +2,8 @@ import * as Gear from "../gear/all.js"
 import { MatriciesGenerator } from "./matgen.js";
 import { Renderer } from "./renderer.js";
 
-let vertexShaderCode: string = null;
-let fragmentShaderCode: string = null;
+let vertexShaderCode: string | null = null;
+let fragmentShaderCode: string | null = null;
 
 export function init() {
     window.onload = () => Gear.load("/shaders", () => doInit(),
@@ -13,6 +13,9 @@ export function init() {
 }
 
 function doInit() {
+    if (!vertexShaderCode || !fragmentShaderCode) {
+        throw new Error("Failed to load shaders!")
+    }
     const generator = new MatriciesGenerator();
     const matrices = generator.generateMatricies();
 

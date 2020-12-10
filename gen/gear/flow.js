@@ -1,5 +1,5 @@
-import { compositeConsumer, causeEffectLink } from "./utils.js";
-import { map, filter, reduce, defaultsTo } from "./effects.js";
+import { compositeConsumer, causeEffectLink, intact } from "./utils.js";
+import { map, filter, reduce } from "./effects.js";
 export class BaseSource {
     flow() {
         return Flow.from(this);
@@ -31,34 +31,26 @@ export class CompositeSink {
     }
 }
 export class Value extends BaseSource {
-    constructor(_value = null) {
+    constructor(initialValue = null) {
         super();
-        this._value = _value;
+        this.initialValue = initialValue;
         this.consumers = [];
     }
-    get value() {
-        return this._value;
-    }
-    set value(newValue) {
-        this.setValue(newValue);
-    }
-    setValue(newValue) {
-        this._value = newValue;
-        this.notify(this.consumers);
+    setValue(value) {
+        if (this.initialValue == null) {
+            this.initialValue = value;
+        }
+        this.notify(this.consumers, value);
     }
     supply(...consumers) {
         this.consumers.push(...consumers);
-        try {
-            this.notify(consumers);
+        if (this.initialValue != null) {
+            this.notify(consumers, this.initialValue);
         }
-        catch (e) {
-            console.log(e);
-        }
-        return this;
     }
-    notify(consumers) {
+    notify(consumers, value) {
         for (const consumer of consumers) {
-            consumer(this._value);
+            consumer(value);
         }
     }
     get consumer() {
@@ -66,22 +58,6 @@ export class Value extends BaseSource {
     }
     get producer() {
         return consumer => this.supply(consumer);
-    }
-    static setOf(...values) {
-        return new ValueSet(values);
-    }
-}
-export class ValueSet extends BaseSource {
-    constructor(values) {
-        super();
-        this.source = new CompositeSource(values);
-        this.sink = new CompositeSink(values);
-    }
-    get producer() {
-        return this.source.producer;
-    }
-    get consumer() {
-        return this.sink.consumer;
     }
 }
 export class Flow extends BaseSource {
@@ -96,19 +72,16 @@ export class Flow extends BaseSource {
         return this.then(map(mapper));
     }
     reduce(reducer, identity) {
-        return this.then(reduce(reducer, identity));
+        return this.through(reduce(reducer, identity), identity);
     }
     defaultsTo(value) {
-        return this.through(defaultsTo(value), value);
+        return this.through(map(intact()), value);
     }
-    then(effect, defaultValue = null) {
-        const safeEffect = defaultValue != null ?
-            (value, resultConsumer) => effect(value != null ? value : defaultValue, resultConsumer) :
-            (value, resultConsumer) => (value != null) ? effect(value, resultConsumer) : {};
-        return this.through(safeEffect);
+    then(effect) {
+        return this.through(effect);
     }
-    through(effect, defaultValue = null) {
-        const newOutput = new Value(defaultValue);
+    through(effect, defaulValue = null) {
+        const newOutput = new Value(defaulValue);
         causeEffectLink(this.output, effect, newOutput.consumer);
         return new Flow(newOutput.producer);
     }
@@ -123,9 +96,6 @@ export class Flow extends BaseSource {
         const source = new CompositeSource(sources);
         return new Flow(source.producer);
     }
-}
-export function consumerFlow(flowBuilder) {
-    return sinkFlow(flowBuilder).consumer;
 }
 export function sinkFlow(flowBuilder) {
     const value = new Value();

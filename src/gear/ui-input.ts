@@ -21,16 +21,16 @@ export function pos(x: number, y: number): PointerPosition {
 
 export function checkbox(elementId: string): Flow<boolean> {
     const element = document.getElementById(elementId) as HTMLInputElement;
-    const value = new Value(element.checked);
-    element.onchange = e => value.value = element.checked;
+    const value = new Value<boolean>(element.checked);
+    element.onchange = () => value.consumer(element.checked);
     return value.flow();
 }
 
 export function readableValue(elementId: string): Flow<string> {
     const element = document.getElementById(elementId) as HTMLInputElement;
-    const value = new Value(element.value);
-    element.onchange = e => value.value = element.value;
-    return Flow.from(value);
+    const value = new Value<string>(element.value);
+    element.onchange = () => value.consumer(element.value);
+    return value.flow();
 }
 
 export function elementEvents(elementId: string) {
@@ -78,7 +78,7 @@ export class ElementEvents {
     }
 
     parent() {
-        return new ElementEvents(this.element.parentElement);
+        return this.element.parentElement != null ? new ElementEvents(this.element.parentElement) : null;
     }
 
     get center(): PointerPosition {
@@ -86,64 +86,64 @@ export class ElementEvents {
     }
 
     private newClick(): Flow<MouseEvent> {
-        const value: Value<MouseEvent> = new Value();
+        const value = new Value<MouseEvent>();
         this.element.onclick = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         }
         return value.flow();
     }
 
     private newMouseDown(): Flow<MouseEvent> {
-        const value: Value<MouseEvent> = new Value();
+        const value = new Value<MouseEvent>();
         this.element.onmousedown = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         }
         return value.flow();
     }
 
     private newMouseUp(): Flow<MouseEvent> {
-        const value: Value<MouseEvent> = new Value();
+        const value = new Value<MouseEvent>();
         this.element.onmouseup = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         }
         return value.flow();
     }
 
     private newMouseMove(): Flow<MouseEvent> {
-        const value: Value<MouseEvent> = new Value();
+        const value = new Value<MouseEvent>();
         this.element.onmousemove = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         }
         return value.flow();
     }
 
     private newTouchStart(): Flow<TouchEvent> {
-        const value: Value<TouchEvent> = new Value();
+        const value = new Value<TouchEvent>();
         this.element.ontouchstart = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         }
         return value.flow();
     }
 
     private newTouchEnd(): Flow<TouchEvent> {
-        const value: Value<TouchEvent> = new Value();
+        const value = new Value<TouchEvent>();
         this.element.ontouchend = this.element.ontouchcancel = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         }
         return value.flow();
     }
 
     private newTouchMove(): Flow<TouchEvent> {
-        const value: Value<TouchEvent> = new Value();
+        const value = new Value<TouchEvent>();
         this.element.ontouchmove = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         }
         return value.flow();
     }
@@ -175,7 +175,8 @@ export class ElementEvents {
     private touchesToPositions(e: TouchEvent) {
         const touches: PointerPosition[] = new Array<PointerPosition>(e.touches.length);
         for (let i = 0; i < e.touches.length; i++) {
-            touches[i] = this.relativePos(e.touches.item(i));
+            const touchItem = e.touches.item(i);
+            touches[i] = touchItem != null ? this.relativePos(touchItem) : [-1, -1];
         }
         return touches;
     }
@@ -302,7 +303,11 @@ export class ElementEvents {
     }
 
     static create(elementId: string) {
-        return new ElementEvents(document.getElementById(elementId));
+        const element = document.getElementById(elementId);
+        if (element == null) {
+            throw new Error(`Element '${elementId}' is not found!`)
+        }
+        return new ElementEvents(element);
     }
 
 }

@@ -6,14 +6,14 @@ export function pos(x, y) {
 export function checkbox(elementId) {
     const element = document.getElementById(elementId);
     const value = new Value(element.checked);
-    element.onchange = e => value.value = element.checked;
+    element.onchange = () => value.consumer(element.checked);
     return value.flow();
 }
 export function readableValue(elementId) {
     const element = document.getElementById(elementId);
     const value = new Value(element.value);
-    element.onchange = e => value.value = element.value;
-    return Flow.from(value);
+    element.onchange = () => value.consumer(element.value);
+    return value.flow();
 }
 export function elementEvents(elementId) {
     return ElementEvents.create(elementId);
@@ -37,7 +37,7 @@ export class ElementEvents {
         this.lazyMouseButtons = lazy(() => this.newMouseButtons());
     }
     parent() {
-        return new ElementEvents(this.element.parentElement);
+        return this.element.parentElement != null ? new ElementEvents(this.element.parentElement) : null;
     }
     get center() {
         return [this.element.clientWidth / 2, this.element.clientHeight / 2];
@@ -45,7 +45,7 @@ export class ElementEvents {
     newClick() {
         const value = new Value();
         this.element.onclick = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         };
         return value.flow();
@@ -53,7 +53,7 @@ export class ElementEvents {
     newMouseDown() {
         const value = new Value();
         this.element.onmousedown = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         };
         return value.flow();
@@ -61,7 +61,7 @@ export class ElementEvents {
     newMouseUp() {
         const value = new Value();
         this.element.onmouseup = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         };
         return value.flow();
@@ -69,7 +69,7 @@ export class ElementEvents {
     newMouseMove() {
         const value = new Value();
         this.element.onmousemove = e => {
-            value.value = e;
+            value.consumer(e);
             e.preventDefault();
         };
         return value.flow();
@@ -78,7 +78,7 @@ export class ElementEvents {
         const value = new Value();
         this.element.ontouchstart = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         };
         return value.flow();
     }
@@ -86,7 +86,7 @@ export class ElementEvents {
         const value = new Value();
         this.element.ontouchend = this.element.ontouchcancel = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         };
         return value.flow();
     }
@@ -94,7 +94,7 @@ export class ElementEvents {
         const value = new Value();
         this.element.ontouchmove = e => {
             e.preventDefault();
-            value.value = e;
+            value.consumer(e);
         };
         return value.flow();
     }
@@ -121,7 +121,8 @@ export class ElementEvents {
     touchesToPositions(e) {
         const touches = new Array(e.touches.length);
         for (let i = 0; i < e.touches.length; i++) {
-            touches[i] = this.relativePos(e.touches.item(i));
+            const touchItem = e.touches.item(i);
+            touches[i] = touchItem != null ? this.relativePos(touchItem) : [-1, -1];
         }
         return touches;
     }
@@ -212,7 +213,11 @@ export class ElementEvents {
         return this.lazyMouseButtons();
     }
     static create(elementId) {
-        return new ElementEvents(document.getElementById(elementId));
+        const element = document.getElementById(elementId);
+        if (element == null) {
+            throw new Error(`Element '${elementId}' is not found!`);
+        }
+        return new ElementEvents(element);
     }
 }
 function pagePos(element) {

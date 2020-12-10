@@ -265,13 +265,16 @@ function tetrahedronData(tetrahedron: Tetrahedron): number[] {
         tetrahedron.point1, normals[3], colors[1],
         tetrahedron.point2, normals[3], colors[2]
     ];
-    return tetrahedronVertexes.reduce((array, vector) => array.concat(...vector.coordinates), []);
+    return tetrahedronVertexes.reduce<number[]>((a, v) => a.concat(...v.coordinates), []);
 }
 
 function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): number[] {
     const stack = Space.modules.stack.exports;
     const space = Space.modules.space.exports;
     const scalarField = Space.modules.scalarField.exports;
+    if (!stack || !space || !scalarField) {
+        throw new Error("Failed to initialize Web Assembly Space modules!")
+    }
     stack.leave();
     stack.enter();
     const p0 = space.vec4(tetrahedron.point0.coordinates[0], tetrahedron.point0.coordinates[1], tetrahedron.point0.coordinates[2], 1)

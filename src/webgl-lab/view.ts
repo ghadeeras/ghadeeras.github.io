@@ -22,15 +22,15 @@ export class View {
 
     private context: Djee.Context;
     private buffer: Djee.Buffer;
-    private program: Djee.Program;
+    private program: Djee.Program | null = null;
     private defaultSample: ProgramSample;
     
     private lod = 50;
     private mode = WebGLRenderingContext.TRIANGLE_STRIP;
     private cullingEnabled = false;
-    private programScalars: Scalar[];
-    private xScalar: Scalar;
-    private yScalar: Scalar;
+    private programScalars: Scalar[] = [];
+    private xScalar: Scalar | null = null;
+    private yScalar: Scalar | null = null;
     
     constructor(convasId: string, samples: ProgramSample[]) {
         setOptions("shader-sample", options(samples));
@@ -112,22 +112,18 @@ export class View {
     }
         
     private recompile(shaders: ProgramSample): Djee.Program {
-        try {
-            if (this.program != null) {
-                this.program.delete();
-            }
-            this.program = this.context.link([
-                this.context.vertexShader(shaders.vertexShader),
-                this.context.fragmentShader(shaders.fragmentShader),
-            ]);
-            this.program.use();
-            return this.program;
-        } catch (e) {
-            alert(e)
+        if (this.program != null) {
+            this.program.delete();
         }
+        this.program = this.context.link([
+            this.context.vertexShader(shaders.vertexShader),
+            this.context.fragmentShader(shaders.fragmentShader),
+        ]);
+        this.program.use();
+        return this.program;
     }
 
-    private setValue(boundElement: string, scalar: Scalar, value: number) {
+    private setValue(boundElement: string, scalar: Scalar | null, value: number) {
         if (scalar != null) {
             const data = scalar.uniform.data;
             data[scalar.index] = value;

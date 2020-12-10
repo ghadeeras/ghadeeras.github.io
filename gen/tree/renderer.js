@@ -34,8 +34,8 @@ export class Renderer {
         this.twist = program.locateUniform("twist", 1, false);
         this.lightPosition.data = [8, 8, 8];
         this.color.data = [0.3, 0.5, 0.7];
-        this.shininess.data = [1];
-        this.fogginess.data = [0.5];
+        this.shininess.data = [0.0];
+        this.fogginess.data = [0.0];
         this.twist.data = [0.0];
         this.matrices = matrices;
         this.draw();

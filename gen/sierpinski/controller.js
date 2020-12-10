@@ -1,7 +1,7 @@
 import * as Gear from "../gear/all.js";
 export class Controller {
     constructor(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {
-        const canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+        const canvas = Gear.ElementEvents.create(canvasId);
         const depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
         const depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
         const twistEnabled = Gear.checkbox(twistCheckboxId);
@@ -9,7 +9,7 @@ export class Controller {
         this.showCorners = Gear.checkbox(cornersCheckboxId);
         this.showCenters = Gear.checkbox(centersCheckboxId);
         const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l || m || r);
-        const mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(ps => ps[0])).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+        const mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(ps => ps[0])).defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]);
         this.twist = mousePos
             .map(([x, y]) => Math.PI * (4 * x / canvas.element.clientWidth - 2))
             .then(Gear.flowSwitch(twistEnabled));

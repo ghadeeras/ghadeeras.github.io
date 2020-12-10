@@ -7,6 +7,9 @@ export function init() {
     window.onload = () => Gear.load("/shaders", () => doInit(), ["tree.vert", shader => vertexShaderCode = shader], ["tree.frag", shader => fragmentShaderCode = shader]);
 }
 function doInit() {
+    if (!vertexShaderCode || !fragmentShaderCode) {
+        throw new Error("Failed to load shaders!");
+    }
     const generator = new MatriciesGenerator();
     const matrices = generator.generateMatricies();
     const renderer = new Renderer(vertexShaderCode, fragmentShaderCode, matrices);

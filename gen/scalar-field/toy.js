@@ -48,7 +48,7 @@ function doInit() {
     gl.clearDepth(1);
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
-    canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
+    canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
         .filter(selected("rotation"))
         .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
         .to(rotationSink()));
@@ -158,6 +158,9 @@ function getFieldFunction(functionName) {
 function sampleField() {
     const stack = Space.modules.stack.exports;
     const space = Space.modules.space.exports;
+    if (!stack || !space) {
+        throw new Error("Failed to initialize Web Assembly Space modules!");
+    }
     stack.leave();
     stack.leave();
     stack.enter();
@@ -180,6 +183,9 @@ function sampleField() {
 function contourSurfaceData(fieldRef, contourValue) {
     const stack = Space.modules.stack.exports;
     const scalarField = Space.modules.scalarField.exports;
+    if (!stack || !scalarField) {
+        throw new Error("Failed to initialize Web Assembly Space modules!");
+    }
     stack.leave();
     stack.enter();
     const begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue);

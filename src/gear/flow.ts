@@ -1,5 +1,5 @@
-import { Reducer, Effect, Mapper, Predicate, Producer, Consumer, compositeConsumer, causeEffectLink } from "./utils.js"
-import { map, filter, reduce, defaultsTo } from "./effects.js"
+import { Reducer, Effect, Mapper, Predicate, Producer, Consumer, compositeConsumer, causeEffectLink, intact } from "./utils.js"
+import { map, filter, reduce } from "./effects.js"
 
 export interface Source<T> {
 
@@ -65,36 +65,27 @@ export class Value<T> extends BaseSource<T> implements Sink<T> {
 
     private readonly consumers: Consumer<T>[] = [];
     
-    constructor(private _value: T = null) {
+    constructor(private initialValue: T | null = null) {
         super();
     }
 
-    get value() {
-        return this._value;
-    }
-
-    set value(newValue: T) {
-        this.setValue(newValue);
-    }
-
-    private setValue(newValue: T) {
-        this._value = newValue;
-        this.notify(this.consumers);
-    }
-
-    supply(...consumers: Consumer<T>[]) {
-        this.consumers.push(...consumers);
-        try {
-            this.notify(consumers);
-        } catch (e) {
-            console.log(e);
+    private setValue(value: T) {
+        if (this.initialValue == null) {
+            this.initialValue = value
         }
-        return this;
+        this.notify(this.consumers, value);
     }
 
-    private notify(consumers: Consumer<T>[]) {
+    private supply(...consumers: Consumer<T>[]) {
+        this.consumers.push(...consumers);
+        if (this.initialValue != null) {
+            this.notify(consumers, this.initialValue)
+        }
+    }
+
+    private notify(consumers: Consumer<T>[], value: T) {
         for (const consumer of consumers) {
-            consumer(this._value);
+            consumer(value);
         }
     }
 
@@ -104,31 +95,6 @@ export class Value<T> extends BaseSource<T> implements Sink<T> {
 
     get producer(): Producer<T> {
         return consumer => this.supply(consumer);
-    }
-
-    static setOf<C>(...values: Value<C>[]): ValueSet<C> {
-        return new ValueSet(values);
-    }
-
-}
-
-export class ValueSet<T> extends BaseSource<T> implements Sink<T> {
-
-    private readonly source: Source<T>
-    private readonly sink: Sink<T>
-
-    constructor(values: Value<T>[]) {
-        super();
-        this.source = new CompositeSource(values);
-        this.sink = new CompositeSink(values);
-    }
-
-    get producer(): Producer<T> {
-        return this.source.producer;
-    }
-
-    get consumer(): Consumer<T> {
-        return this.sink.consumer;
     }
 
 }
@@ -148,22 +114,19 @@ export class Flow<T> extends BaseSource<T> {
     }
 
     reduce<R>(reducer: Reducer<T, R>, identity: R) {
-        return this.then(reduce(reducer, identity));
+        return this.through(reduce(reducer, identity), identity);
     }
 
     defaultsTo(value: T) {
-        return this.through(defaultsTo(value), value);
+        return this.through(map(intact()), value);
     }
 
-    then<R>(effect: Effect<T, R>, defaultValue: T = null) {
-        const safeEffect: Effect<T, R> = defaultValue != null ? 
-            (value, resultConsumer) => effect(value != null ? value : defaultValue, resultConsumer) :
-            (value, resultConsumer) => (value != null) ? effect(value, resultConsumer) : {}; 
-        return this.through(safeEffect);
+    then<R>(effect: Effect<T, R>) {
+        return this.through(effect);
     }
 
-    through<R>(effect: Effect<T, R>, defaultValue: R = null) {
-        const newOutput = new Value<R>(defaultValue);
+    through<R>(effect: Effect<T, R>, defaulValue: R | null = null) {
+        const newOutput = new Value<R>(defaulValue);
         causeEffectLink(this.output, effect, newOutput.consumer);
         return new Flow(newOutput.producer);
     }
@@ -182,10 +145,6 @@ export class Flow<T> extends BaseSource<T> {
         return new Flow(source.producer);
     }
 
-}
-
-export function consumerFlow<T>(flowBuilder: Consumer<Flow<T>>): Consumer<T> {
-    return sinkFlow(flowBuilder).consumer;
 }
 
 export function sinkFlow<T>(flowBuilder: Consumer<Flow<T>>): Sink<T> {

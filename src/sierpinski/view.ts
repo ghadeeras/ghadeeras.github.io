@@ -45,9 +45,9 @@ export class View {
     private readonly cornersBuffer: Djee.Buffer;
     private readonly centersBuffer: Djee.Buffer;
 
-    private mustShowCorners: boolean;
-    private mustShowCenters: boolean;
-    private stride: number;
+    private mustShowCorners: boolean = true;
+    private mustShowCenters: boolean = true;
+    private stride: number = 0;
 
     readonly sierpinsky: Gear.Sink<FlattenedSierpinski>;
     readonly showCorners: Gear.Sink<boolean>;
@@ -84,10 +84,6 @@ export class View {
         this.scale = Gear.sinkFlow(flow => flow.defaultsTo(1).branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
         this.showCorners = Gear.sink(show => this.setShowCorners(show));
         this.showCenters = Gear.sink(show => this.setShowCenters(show));
-    }
-
-    private source<T>(value: T): Gear.Value<T> {
-        return new Gear.Value(value);
     }
 
     private setSierpinski(flattenedSierpinski: FlattenedSierpinski) {

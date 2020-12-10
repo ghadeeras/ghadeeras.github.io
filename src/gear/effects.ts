@@ -49,10 +49,6 @@ export function repeater<T, R extends T>(interval: number, restValue: R): Effect
     };
 }
 
-export function defaultsTo<T, V extends T>(value: V): Effect<T, T> {
-    return map(v => v != null ? v : value);
-}
-
 export function choice<T>(truwValue: T, falseValue: T): Effect<boolean, T> {
     return map(v => v ? truwValue : falseValue);
 }

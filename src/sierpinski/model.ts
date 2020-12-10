@@ -22,10 +22,10 @@ const defaultSierpinski: Sierpinski = {
 }
 
 export function sierpinski(
-    depth: Gear.Source<number> = new Gear.Value(defaultSierpinski.depth),
-    a: Gear.Source<Space.Vector> = new Gear.Value(defaultSierpinski.a), 
-    b: Gear.Source<Space.Vector> = new Gear.Value(defaultSierpinski.b), 
-    c: Gear.Source<Space.Vector> = new Gear.Value(defaultSierpinski.c),
+    depth: Gear.Source<number> = new Gear.Value(),
+    a: Gear.Source<Space.Vector> = new Gear.Value(), 
+    b: Gear.Source<Space.Vector> = new Gear.Value(), 
+    c: Gear.Source<Space.Vector> = new Gear.Value(),
 ): Gear.Source<FlattenedSierpinski> {
     const sierpinski: Sierpinski = { ...defaultSierpinski }
     return from<Sierpinski>(

@@ -379,13 +379,16 @@ function cubeData(cube: Cube): number[] {
         cube.point5, normals[5], colors[5],
         cube.point4, normals[5], colors[4],
     ];
-    return vertexes.reduce((array, vector) => array.concat(...vector.coordinates), []);
+    return vertexes.reduce<number[]>((a, v) => a.concat(...v.coordinates), []);
 }
 
 function contourSurfaceData(cube: Cube, contourValue: number): number[] {
     const stack = Space.modules.stack.exports;
     const space = Space.modules.space.exports;
     const scalarField = Space.modules.scalarField.exports;
+    if (!stack || !space || !scalarField) {
+        throw new Error("Failed to initialize Web Assembly Space modules!")
+    }
     stack.leave();
     stack.enter();
     const p0 = space.vec4(cube.point0.coordinates[0], cube.point0.coordinates[1], cube.point0.coordinates[2], 1)

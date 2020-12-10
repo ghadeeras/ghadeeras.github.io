@@ -28,6 +28,9 @@ function round(value) {
 }
 export class View {
     constructor(canvasId, depthId, twistId, scaleId) {
+        this.mustShowCorners = true;
+        this.mustShowCenters = true;
+        this.stride = 0;
         this.context = new Djee.Context(canvasId);
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
@@ -45,9 +48,6 @@ export class View {
         this.scale = Gear.sinkFlow(flow => flow.defaultsTo(1).branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
         this.showCorners = Gear.sink(show => this.setShowCorners(show));
         this.showCenters = Gear.sink(show => this.setShowCenters(show));
-    }
-    source(value) {
-        return new Gear.Value(value);
     }
     setSierpinski(flattenedSierpinski) {
         this.cornersBuffer.untypedData = flattenedSierpinski.corners;

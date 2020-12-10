@@ -17,7 +17,7 @@ export class Controller {
         depthIncButtonId: string,
         depthDecButtonId: string
     ) {
-        const canvas = Gear.ElementEvents.create(canvasId).parent().parent();
+        const canvas = Gear.ElementEvents.create(canvasId);
         const depthIncButton = Gear.ElementEvents.create(depthIncButtonId);
         const depthDecButton = Gear.ElementEvents.create(depthDecButtonId);
         const twistEnabled = Gear.checkbox(twistCheckboxId);
@@ -30,7 +30,7 @@ export class Controller {
         const mousePos = Gear.Flow.from(
             canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), 
             canvas.touchPos.map(ps => ps[0])
-        ).then(Gear.defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]));
+        ).defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]);
         this.twist = mousePos
             .map(([x, y]) => Math.PI * (4 * x / canvas.element.clientWidth - 2))
             .then(Gear.flowSwitch(twistEnabled));

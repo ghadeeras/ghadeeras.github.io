@@ -6,7 +6,7 @@ const defaultSierpinski = {
     b: vec(210),
     c: vec(330)
 };
-export function sierpinski(depth = new Gear.Value(defaultSierpinski.depth), a = new Gear.Value(defaultSierpinski.a), b = new Gear.Value(defaultSierpinski.b), c = new Gear.Value(defaultSierpinski.c)) {
+export function sierpinski(depth = new Gear.Value(), a = new Gear.Value(), b = new Gear.Value(), c = new Gear.Value()) {
     const sierpinski = Object.assign({}, defaultSierpinski);
     return from(from(depth).reduce((d, s) => s = Object.assign(Object.assign({}, s), { depth: d }), sierpinski), from(a).reduce((a, s) => s = Object.assign(Object.assign({}, s), { a: a }), sierpinski), from(b).reduce((b, s) => s = Object.assign(Object.assign({}, s), { b: b }), sierpinski), from(c).reduce((c, s) => s = Object.assign(Object.assign({}, s), { c: c }), sierpinski)).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
 }

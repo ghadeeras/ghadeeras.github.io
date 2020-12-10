@@ -2,9 +2,13 @@ import * as Djee from "../djee/all.js";
 import * as Gear from "../gear/all.js";
 export class View {
     constructor(convasId, samples) {
+        this.program = null;
         this.lod = 50;
         this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
         this.cullingEnabled = false;
+        this.programScalars = [];
+        this.xScalar = null;
+        this.yScalar = null;
         setOptions("shader-sample", options(samples));
         this.context = new Djee.Context(convasId);
         this.buffer = this.context.newBuffer();
@@ -60,20 +64,15 @@ export class View {
         })));
     }
     recompile(shaders) {
-        try {
-            if (this.program != null) {
-                this.program.delete();
-            }
-            this.program = this.context.link([
-                this.context.vertexShader(shaders.vertexShader),
-                this.context.fragmentShader(shaders.fragmentShader),
-            ]);
-            this.program.use();
-            return this.program;
+        if (this.program != null) {
+            this.program.delete();
         }
-        catch (e) {
-            alert(e);
-        }
+        this.program = this.context.link([
+            this.context.vertexShader(shaders.vertexShader),
+            this.context.fragmentShader(shaders.fragmentShader),
+        ]);
+        this.program.use();
+        return this.program;
     }
     setValue(boundElement, scalar, value) {
         if (scalar != null) {

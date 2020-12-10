@@ -2,7 +2,7 @@ import { Supplier } from "./utils.js"
 
 class Lazy<T> {
 
-    private _value: T = null;
+    private _value: T | null = null;
 
     constructor(private readonly supplier: Supplier<T>) {
     }

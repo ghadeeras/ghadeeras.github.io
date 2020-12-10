@@ -79,7 +79,7 @@ function doInit() {
         )).branch(
             flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()),
             flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
-            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),
+            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()),
             flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()),
             flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink()),
         ),
@@ -214,6 +214,9 @@ function getFieldFunction(functionName: string) {
 function sampleField(): number {
     const stack = Space.modules.stack.exports;
     const space = Space.modules.space.exports;
+    if (!stack || !space) {
+        throw new Error("Failed to initialize Web Assembly Space modules!")
+    }
     stack.leave();
 
     stack.leave();
@@ -238,6 +241,9 @@ function sampleField(): number {
 function contourSurfaceData(fieldRef: number, contourValue: number): Float32Array {
     const stack = Space.modules.stack.exports;
     const scalarField = Space.modules.scalarField.exports;
+    if (!stack || !scalarField) {
+        throw new Error("Failed to initialize Web Assembly Space modules!")
+    }
     stack.leave();
     stack.enter();
     const begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue);
