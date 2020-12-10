@@ -87,6 +87,15 @@ export class Matrix {
         const [xx, yy, zz, xy, yz, zx] = [x * x, y * y, z * z, x * y, y * z, z * x];
         return mat(vec(xx * oneMinusCos + cos, xy * oneMinusCos + z * sin, zx * oneMinusCos - y * sin, 0), vec(xy * oneMinusCos - z * sin, yy * oneMinusCos + cos, yz * oneMinusCos + x * sin, 0), vec(zx * oneMinusCos + y * sin, yz * oneMinusCos - x * sin, zz * oneMinusCos + cos, 0), vec(0, 0, 0, 1));
     }
+    static crossProdRotation(v1, v2, minAngle, power) {
+        const u1 = v1.unit;
+        const u2 = v2.unit;
+        const axis = u1.cross(v2);
+        const sin = axis.length;
+        const cos = u1.dot(u2);
+        const angle = Math.atan2(sin, cos);
+        return Math.abs(angle) > minAngle ? Matrix.rotation(power * angle, axis) : Matrix.identity();
+    }
     static view(direction, up) {
         const z = direction.withDims(3).scale(-1).unit;
         const x = up.withDims(3).cross(z).unit;

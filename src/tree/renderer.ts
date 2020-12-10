@@ -1,6 +1,7 @@
 import * as Space from "../space/all.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
+import { View } from "../mandelbrot/view.js";
 
 export class Renderer {
 
@@ -19,6 +20,12 @@ export class Renderer {
     private twist: Djee.Uniform;
 
     private matrices: number[][];
+
+    private translationUp = Space.Matrix.translation(0, +2, 0);
+    private translationDown = Space.Matrix.translation(0, -2, 0);
+    readonly view = Space.Matrix.globalView(Space.vec(0, 4, 9), Space.vec(0, 3, 0), Space.vec(0, 1, 0));
+    readonly treeView = this.view.by(this.translationUp);
+    readonly proj = Space.Matrix.project(1, 100, 1);
 
     constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]) {
         this.context = new Djee.Context("canvas-gl");
@@ -42,10 +49,8 @@ export class Renderer {
 
         const model = Space.Matrix.identity();
         this.matModel.data = model.asColumnMajorArray;
-        const view = Space.Matrix.globalView(Space.vec(0, 4, 9), Space.vec(0, 3, 0), Space.vec(0, 1, 0));
-        this.matView.data = view.asColumnMajorArray;
-        const proj = Space.Matrix.project(1, 100, 1);
-        this.matProjection.data = proj.asColumnMajorArray;
+        this.matView.data = this.view.asColumnMajorArray;
+        this.matProjection.data = this.proj.asColumnMajorArray;
 
         this.lightPosition = program.locateUniform("lightPosition", 3, false);
         this.color = program.locateUniform("color", 3, false);
@@ -72,16 +77,11 @@ export class Renderer {
         });
     }
 
-    rotationSink(): Gear.Sink<Gear.PointerPosition> {
-        const translationUp = Space.Matrix.translation(0, +2, 0);
-        const translationDown = Space.Matrix.translation(0, -2, 0);
-        const axisX = Space.vec(1, 0, 0);
-        const axisY = Space.vec(0, 1, 0);
-        return Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
-            this.matModel.data = translationUp
-            .by(Space.Matrix.rotation(y * Math.PI, axisX))
-            .by(Space.Matrix.rotation(x * Math.PI, axisY))
-                .by(translationDown)
+    rotationSink(): Gear.Sink<Space.Matrix> {
+        return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
+            this.matModel.data = this.translationUp
+                .by(matrix)
+                .by(this.translationDown)
                 .asColumnMajorArray;
             this.draw();
         }));

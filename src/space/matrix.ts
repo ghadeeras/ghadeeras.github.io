@@ -126,6 +126,16 @@ export class Matrix {
         );
     }
 
+    static crossProdRotation(v1: Vector, v2: Vector, minAngle: number, power: number) {
+        const u1 = v1.unit
+        const u2 = v2.unit
+        const axis = u1.cross(v2)
+        const sin = axis.length
+        const cos = u1.dot(u2)
+        const angle = Math.atan2(sin, cos)
+        return Math.abs(angle) > minAngle ? Matrix.rotation(power * angle, axis) : Matrix.identity()
+    }
+
     static view(direction: Vector, up: Vector) {
         const z = direction.withDims(3).scale(-1).unit;
         const x = up.withDims(3).cross(z).unit;

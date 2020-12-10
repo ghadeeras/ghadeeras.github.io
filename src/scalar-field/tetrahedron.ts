@@ -41,6 +41,9 @@ type Tetrahedron = {
     value3: number;
 }
 
+const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 5), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
+const projectionMatrix = Space.Matrix.project(2, 100, 1);
+
 export function initTetrahedronDemo() {
     window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
         ["vertexColors.vert", shader => vertexShaderCode = shader],
@@ -74,8 +77,8 @@ function doInit() {
     fogginess = program.locateUniform("fogginess", 1);
 
     matModel.data = Space.Matrix.identity().asColumnMajorArray
-    matView.data = Space.Matrix.globalView(Space.vec(-2, 2, 5), Space.vec(0, 0, 0), Space.vec(0, 1, 0)).asColumnMajorArray;
-    matProjection.data = Space.Matrix.project(2, 100, 1).asColumnMajorArray;
+    matView.data = viewMatrix.asColumnMajorArray;
+    matProjection.data = projectionMatrix.asColumnMajorArray;
 
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
@@ -87,44 +90,45 @@ function doInit() {
     gl.clearColor(1, 1, 1, 1);
 
     const canvas = Gear.elementEvents("canvas-gl");
-    const mouseButtonPressed = canvas.mouseButons.map(([l, m, r]) => l);
-    Gear.Flow.from(
-        canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)),
-        canvas.touchPos.map(positions => positions[0])
-    ).map(([x, y]) => Gear.pos(
-        2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
-        2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-    )).branch(
-        flow => flow.filter(selected("rotation")).to(rotationSink()),
-        flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
-        flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),
-        flow => Gear.Flow.from(
-            flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(
-                y, 
-                tetrahedron.value1,
-                tetrahedron.value2,
-                tetrahedron.value3
-            )),
-            flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(
-                tetrahedron.value0, 
-                y,
-                tetrahedron.value2,
-                tetrahedron.value3
-            )),
-            flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(
-                tetrahedron.value0, 
-                tetrahedron.value1,
-                y,
-                tetrahedron.value3
-            )),
-            flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(
-                tetrahedron.value0, 
-                tetrahedron.value1,
-                tetrahedron.value2,
-                y
-            ))
-        ).to(tetrahedronSink())
-    );
+    canvas.dragging.branch(
+        flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
+            2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
+            2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
+        )).branch(
+            flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
+            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),
+            flow => Gear.Flow.from(
+                flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(
+                    y, 
+                    tetrahedron.value1,
+                    tetrahedron.value2,
+                    tetrahedron.value3
+                )),
+                flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(
+                    tetrahedron.value0, 
+                    y,
+                    tetrahedron.value2,
+                    tetrahedron.value3
+                )),
+                flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(
+                    tetrahedron.value0, 
+                    tetrahedron.value1,
+                    y,
+                    tetrahedron.value3
+                )),
+                flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(
+                    tetrahedron.value0, 
+                    tetrahedron.value1,
+                    tetrahedron.value2,
+                    y
+                ))
+            ).to(tetrahedronSink())
+        ),
+        flow => flow
+            .filter(selected("rotation"))
+            .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+            .to(rotationSink())
+    )
 }
 
 function tetrahedronSink(): Gear.Sink<Tetrahedron> {
@@ -152,14 +156,9 @@ function contourValueSink(): Gear.Sink<number> {
     )
 }
 
-function rotationSink(): Gear.Sink<Gear.PointerPosition> {
-    const axisX = Space.vec(1, 0, 0);
-    const axisY = Space.vec(0, 1, 0);
-    return Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
-        matModel.data = 
-            Space.Matrix.rotation(y * Math.PI, axisX)
-            .by(Space.Matrix.rotation(x * Math.PI, axisY))
-            .asColumnMajorArray;
+function rotationSink(): Gear.Sink<Space.Matrix> {
+    return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
+        matModel.data = matrix.asColumnMajorArray;
         draw();
     }));
 }
@@ -175,7 +174,7 @@ function lightPositionSink(): Gear.Sink<Gear.PointerPosition> {
     );
 }
 
-function selected(value: string): Gear.Predicate<Gear.PointerPosition> {
+function selected<T>(value: string): Gear.Predicate<T> {
     const mouseBinding = document.getElementById("mouse-binding") as HTMLInputElement;
     return () => mouseBinding.value == value;
 }

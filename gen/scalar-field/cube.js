@@ -16,6 +16,8 @@ let contourSurfaceBuffer;
 let contourColorBuffer;
 let cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue = 0;
+const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
+const projectionMatrix = Space.Matrix.project(2, 100, 1);
 export function initCubeDemo() {
     window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()), ["vertexColors.vert", shader => vertexShaderCode = shader], ["vertexColors.frag", shader => fragmentShaderCode = shader]);
 }
@@ -39,8 +41,8 @@ function doInit() {
     shininess = program.locateUniform("shininess", 1);
     fogginess = program.locateUniform("fogginess", 1);
     matModel.data = Space.Matrix.identity().asColumnMajorArray;
-    matView.data = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 0), Space.vec(0, 1, 0)).asColumnMajorArray;
-    matProjection.data = Space.Matrix.project(2, 100, 1).asColumnMajorArray;
+    matView.data = viewMatrix.asColumnMajorArray;
+    matProjection.data = projectionMatrix.asColumnMajorArray;
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
     fogginess.data = [0];
@@ -49,8 +51,10 @@ function doInit() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
-    const mouseButtonPressed = canvas.mouseButons.map(([l, m, r]) => l);
-    Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(mouseButtonPressed)), canvas.touchPos.map(positions => positions[0])).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("rotation")).to(rotationSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newCube(y, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value1")).map(([x, y]) => newCube(cube.value0, y, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value2")).map(([x, y]) => newCube(cube.value0, cube.value1, y, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value3")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, y, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value4")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, y, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value5")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, y, cube.value6, cube.value7)), flow.filter(selected("value6")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, y, cube.value7)), flow.filter(selected("value7")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, y))).to(cubeSink()));
+    canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newCube(y, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value1")).map(([x, y]) => newCube(cube.value0, y, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value2")).map(([x, y]) => newCube(cube.value0, cube.value1, y, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value3")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, y, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value4")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, y, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value5")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, y, cube.value6, cube.value7)), flow.filter(selected("value6")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, y, cube.value7)), flow.filter(selected("value7")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, y))).to(cubeSink())), flow => flow
+        .filter(selected("rotation"))
+        .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+        .to(rotationSink()));
 }
 function cubeSink() {
     return Gear.sinkFlow(flow => flow
@@ -74,13 +78,8 @@ function contourValueSink() {
     }));
 }
 function rotationSink() {
-    const axisX = Space.vec(1, 0, 0);
-    const axisY = Space.vec(0, 1, 0);
-    return Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
-        matModel.data =
-            Space.Matrix.rotation(y * Math.PI, axisX)
-                .by(Space.Matrix.rotation(x * Math.PI, axisY))
-                .asColumnMajorArray;
+    return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
+        matModel.data = matrix.asColumnMajorArray;
         draw();
     }));
 }
