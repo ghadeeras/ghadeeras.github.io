@@ -1,140 +1,94 @@
-import * as scanner from "../../languasaurus/js/index.js"
+import * as L from "../../languasaurus/js/index.js"
 
-export class MyScanner extends scanner.Scanner {
+export class MyScanner extends L.Scanner {
 
-    readonly whiteSpace: scanner.TokenType<string>
-    readonly comment: scanner.TokenType<string>
-    
-    readonly identifier: scanner.TokenType<string>
+    private lowerCaseChar = L.charIn("a-z")
+    private upperCaseChar = L.charIn("A-Z")
+    private alphaChar = L.choice(this.lowerCaseChar, this.upperCaseChar)
+    private numericChar = L.charIn("0-9")
+    private alphaNumericChar = L.choice(this.alphaChar, this.numericChar)
 
-    readonly literalInt: scanner.TokenType<number>
-    readonly literalFloat: scanner.TokenType<number>
-    readonly literalString: scanner.TokenType<string>
-    readonly literalBoolean: scanner.TokenType<boolean>
+    readonly whiteSpace = this.string(L.oneOrMore(L.charFrom(" \t\r\n")))
+    readonly comment = this.string(L.concat(
+        L.char("#"), 
+        L.zeroOrMore(L.charOtherThan("\n")), 
+        L.char("\n")
+    ))
 
-    readonly keywordIf: scanner.TokenType<boolean>
-    readonly keywordOtherwise: scanner.TokenType<boolean>
-    readonly keywordWhere: scanner.TokenType<boolean>
-    
-    readonly opPlus: scanner.TokenType<boolean>
-    readonly opMinus: scanner.TokenType<boolean>
-    readonly opMul: scanner.TokenType<boolean>
-    readonly opDiv: scanner.TokenType<boolean>
-    readonly opPow: scanner.TokenType<boolean>
+    readonly keywordIf = this.boolean(L.word("if"))
+    readonly keywordOtherwise = this.boolean(L.word("otherwise"))
+    readonly keywordWhere = this.boolean(L.word("where"))
 
-    readonly opNot: scanner.TokenType<boolean>
-    readonly opAnd: scanner.TokenType<boolean>
-    readonly opOr: scanner.TokenType<boolean>
+    readonly identifier = this.string(L.concat(
+        this.alphaChar,
+        L.zeroOrMore(this.alphaNumericChar)
+    ))
 
-    readonly opEqual: scanner.TokenType<boolean>
-    readonly opNotEqual: scanner.TokenType<boolean>
-    readonly opGreaterThan: scanner.TokenType<boolean>
-    readonly opLessThan: scanner.TokenType<boolean>
-    readonly opGreaterThanOrEqual: scanner.TokenType<boolean>
-    readonly opLessThanOrEqual: scanner.TokenType<boolean>
+    readonly literalInt = this.integer(L.oneOrMore(this.numericChar))
+    readonly literalFloat = this.float(L.concat(
+        L.zeroOrMore(this.numericChar),
+        L.char("."),
+        L.oneOrMore(this.numericChar)
+    ))
+    readonly literalString = this.string(L.choice(
+        L.concat(
+            L.char('"'),
+            L.zeroOrMore(L.charOtherThan('"')),
+            L.char('"')
+        ),
+        L.concat(
+            L.char("'"),
+            L.zeroOrMore(L.charOtherThan("'")),
+            L.char("'")
+        )
+    ))
+    readonly literalBoolean = this.boolean(L.choice(
+        L.word("true"),
+        L.word("false"),
+    )).parsedAs(lexeme => lexeme == "true")
 
-    readonly opDeclare: scanner.TokenType<boolean>
+    readonly opPlus = this.boolean(L.char("+"))
+    readonly opMinus = this.boolean(L.char("-"))
+    readonly opMul = this.boolean(L.char("*"))
+    readonly opDiv = this.boolean(L.char("/"))
+    readonly opPow = this.boolean(L.char("^"))
 
-    readonly delCommaParen: scanner.TokenType<boolean>
-    readonly delOpenParen: scanner.TokenType<boolean>
-    readonly delCloseParen: scanner.TokenType<boolean>
-    readonly delOpenSquare: scanner.TokenType<boolean>
-    readonly delCloseSquare: scanner.TokenType<boolean>
-    readonly delOpenCurly: scanner.TokenType<boolean>
-    readonly delCloseCurly: scanner.TokenType<boolean>
+    readonly opNot = this.boolean(L.char("!"))
+    readonly opAnd = this.boolean(L.char("&"))
+    readonly opOr = this.boolean(L.char("|"))
 
-    constructor() {
-        super()
+    readonly opEqual = this.boolean(L.chars("=="))
+    readonly opNotEqual = this.boolean(L.chars("!="))
+    readonly opGreaterThan = this.boolean(L.char(">"))
+    readonly opLessThan = this.boolean(L.char("<"))
+    readonly opGreaterThanOrEqual = this.boolean(L.chars(">="))
+    readonly opLessThanOrEqual = this.boolean(L.chars("<="))
 
-        const s = scanner
-        const lowerCaseChar = s.charIn("a-z")
-        const upperCaseChar = s.charIn("A-Z")
-        const alphaChar = s.choice(lowerCaseChar, upperCaseChar)
-        const numericChar = s.charIn("0-9")
-        const alphaNumericChar = s.choice(alphaChar, numericChar)
+    readonly opDeclare = this.boolean(L.char("="))
 
-        this.whiteSpace = this.string(s.oneOrMore(s.charFrom(" \t\r\n")))
-        this.comment = this.string(s.concat(
-            s.char("#"), 
-            s.zeroOrMore(s.charOtherThan("\n")), 
-            s.char("\n")
-        ))
-
-        this.keywordIf = this.boolean(s.word("if"))
-        this.keywordOtherwise = this.boolean(s.word("otherwise"))
-        this.keywordWhere = this.boolean(s.word("where"))
-
-        this.identifier = this.string(s.concat(
-            alphaChar,
-            s.zeroOrMore(alphaNumericChar)
-        ))
-    
-        this.literalInt = this.integer(s.oneOrMore(numericChar))
-        this.literalFloat = this.float(s.concat(
-            s.zeroOrMore(numericChar),
-            s.char("."),
-            s.oneOrMore(numericChar)
-        ))
-        this.literalString = this.string(s.choice(
-            s.concat(
-                s.char('"'),
-                s.zeroOrMore(s.charOtherThan('"')),
-                s.char('"')
-            ),
-            s.concat(
-                s.char("'"),
-                s.zeroOrMore(s.charOtherThan("'")),
-                s.char("'")
-            )
-        ))
-        this.literalBoolean = this.boolean(s.choice(
-            s.word("true"),
-            s.word("false"),
-        )).parsedAs(lexeme => lexeme == "true")
-    
-        this.opPlus = this.boolean(s.char("+"))
-        this.opMinus = this.boolean(s.char("-"))
-        this.opMul = this.boolean(s.char("*"))
-        this.opDiv = this.boolean(s.char("/"))
-        this.opPow = this.boolean(s.char("^"))
-    
-        this.opNot = this.boolean(s.char("!"))
-        this.opAnd = this.boolean(s.char("&"))
-        this.opOr = this.boolean(s.char("|"))
-    
-        this.opEqual = this.boolean(s.chars("=="))
-        this.opNotEqual = this.boolean(s.chars("!="))
-        this.opGreaterThan = this.boolean(s.char(">"))
-        this.opLessThan = this.boolean(s.char("<"))
-        this.opGreaterThanOrEqual = this.boolean(s.chars(">="))
-        this.opLessThanOrEqual = this.boolean(s.chars("<="))
-    
-        this.opDeclare = this.boolean(s.char("="))
-    
-        this.delCommaParen = this.boolean(s.char(","))
-        this.delOpenParen = this.boolean(s.char("("))
-        this.delCloseParen = this.boolean(s.char(")"))
-        this.delOpenSquare = this.boolean(s.char("["))
-        this.delCloseSquare = this.boolean(s.char("]"))
-        this.delOpenCurly = this.boolean(s.char("{"))
-        this.delCloseCurly = this.boolean(s.char("}"))
-    }
+    readonly delCommaParen = this.boolean(L.char(","))
+    readonly delOpenParen = this.boolean(L.char("("))
+    readonly delCloseParen = this.boolean(L.char(")"))
+    readonly delOpenSquare = this.boolean(L.char("["))
+    readonly delCloseSquare = this.boolean(L.char("]"))
+    readonly delOpenCurly = this.boolean(L.char("{"))
+    readonly delCloseCurly = this.boolean(L.char("}"))
 
     tokenize(text: string): string {
         let output = ""
-        for (let token of this.iterator(new scanner.TextInputStream(text))) {
+        for (let token of this.iterator(new L.TextInputStream(text))) {
             if (token.tokenType == this.whiteSpace) {
                 continue
             }
-            output += this.tokenName(token) + 
-                " at [Line: " + token.position.line + ", Column: " + token.position.column + "]:\n" +
-                token.lexeme + "\n" +
+            output += 
+                `${this.tokenName(token)} at [Line: ${token.position.line}, Column: ${token.position.column}]:\n` +
+                `${token.lexeme}\n` +
                 "----------\n"
         }
         return output
     }
     
-    private tokenName(token: scanner.Token<any>) {
+    private tokenName(token: L.Token<any>) {
         switch (token.tokenType) {
             case this.errorTokenType: return "ERROR"
             case this.eofTokenType: return "EOF"
