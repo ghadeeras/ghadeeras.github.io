@@ -1,42 +1,34 @@
 #!sh
 
 LIBRARY=$1
-LANG=$2
 [[ $LIBRARY == "" ]] && 
-    echo "Missing required argument! Usage: ./download <library> [<lang=js>]" && 
+    echo "Missing required argument! Usage: ./download <library>" && 
     exit 1
-[[ $LANG == "" ]] && 
-    LANG="js"
 
 LIBRARY_PATH="./dependencies/$LIBRARY"
-LANG_PATH="$LIBRARY_PATH/$LANG"
-LANG_URL="https://ghadeeras.github.io/$LIBRARY/$LANG"
+LIBRARY_URL="https://ghadeeras.github.io/$LIBRARY"
 echo
 echo "Download request details:"
 echo " - Library directory: $LIBRARY_PATH"
-echo " - LANG directory: $LANG_PATH"
-echo " - LANG URL: $LANG_URL"
+echo " - Library URL: $LIBRARY_URL"
 echo
 
 echo "Checking/setting up workspace ..."
 mkdir "./dependencies" 2>/dev/null &&
     echo " - Created 'dependencies' directory."
+rm -R "$LIBRARY_PATH" 2>/dev/null
 mkdir "$LIBRARY_PATH" 2>/dev/null &&
-    echo " - Created '$LIBRARY' directory."
-rm -R "$LANG_PATH" 2>/dev/null
-mkdir "$LANG_PATH" 2>/dev/null &&
-    echo " - Created lang '$LANG' directory."
+    echo " - Created library '$LIBRARY' directory."
 echo "Workspace is ready."
 echo
 
 echo "Downloading $LIBRARY ..."
-curl --no-buffer --location --fail "$LANG_URL/manifest" |
-    grep -E "\\.[jt]s$" |
+curl --no-buffer --location --fail "$LIBRARY_URL/manifest" |
     xargs -I {} \
-    curl --location --fail --output "$LANG_PATH/{}" "$LANG_URL/{}"
+    curl --location --fail --create-dirs --output "$LIBRARY_PATH/{}" "$LIBRARY_URL/{}"
 echo
 
-echo "Downloaded files in '$LANG_PATH':"
-ls "$LANG_PATH" |
+echo "Downloaded files in '$LIBRARY_PATH':"
+find "$LIBRARY_PATH" -type f |
     xargs -I {} \
     echo " - {}" 
