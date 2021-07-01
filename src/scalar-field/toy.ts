@@ -40,27 +40,27 @@ const projectionMatrix = Space.Matrix.project(4, 100, 1);
 function doInit() {
     fieldRef = sampleField();
 
-    context = new Djee.Context("canvas-gl");
+    context = Djee.Context.of("canvas-gl");
 
-    const program = context.link([
+    const program = context.link(
         context.vertexShader(vertexShaderCode),
         context.fragmentShader(fragmentShaderCode)
-    ])
+    )
     program.use();
 
     contourSurfaceBuffer = context.newBuffer();
 
-    position = program.locateAttribute("position", 3);
-    normal = program.locateAttribute("normal", 3);
+    position = program.attribute("position");
+    normal = program.attribute("normal");
 
-    matModel = program.locateUniform("matModel", 4, true);
-    const matView = program.locateUniform("matView", 4, true);
-    matProjection = program.locateUniform("matProjection", 4, true);
+    matModel = program.uniform("matModel");
+    const matView = program.uniform("matView");
+    matProjection = program.uniform("matProjection");
 
-    lightPosition = program.locateUniform("lightPosition", 3);
-    color = program.locateUniform("color", 4);
-    shininess = program.locateUniform("shininess", 1);
-    fogginess = program.locateUniform("fogginess", 1);
+    lightPosition = program.uniform("lightPosition");
+    color = program.uniform("color");
+    shininess = program.uniform("shininess");
+    fogginess = program.uniform("fogginess");
 
     matModel.data = Space.Matrix.identity().asColumnMajorArray
     matView.data = viewMatrix.asColumnMajorArray;

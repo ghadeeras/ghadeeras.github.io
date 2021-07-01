@@ -62,16 +62,16 @@ export class View {
         twistId: string, 
         scaleId: string,
     ) {
-        this.context = new Djee.Context(canvasId);
+        this.context = Djee.Context.of(canvasId);
 
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
-        this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+        this.program = this.context.link(this.vertexShader, this.fragmentShader);
         this.program.use();
 
-        this.shaderPosition = this.program.locateAttribute("vPosition", 2);
-        this.shaderTwist = this.program.locateUniform("twist", 1);
-        this.shaderScale = this.program.locateUniform("scale", 1);
+        this.shaderPosition = this.program.attribute("vPosition");
+        this.shaderTwist = this.program.uniform("twist");
+        this.shaderScale = this.program.uniform("scale");
 
         this.cornersBuffer = this.context.newBuffer();
         this.centersBuffer = this.context.newBuffer();
@@ -87,8 +87,8 @@ export class View {
     }
 
     private setSierpinski(flattenedSierpinski: FlattenedSierpinski) {
-        this.cornersBuffer.untypedData = flattenedSierpinski.corners;
-        this.centersBuffer.untypedData = flattenedSierpinski.centers;
+        this.cornersBuffer.float32Data = flattenedSierpinski.corners;
+        this.centersBuffer.float32Data = flattenedSierpinski.centers;
         this.stride = flattenedSierpinski.stride;
         this.draw();
     }

@@ -31,14 +31,14 @@ export class View {
         this.mustShowCorners = true;
         this.mustShowCenters = true;
         this.stride = 0;
-        this.context = new Djee.Context(canvasId);
+        this.context = Djee.Context.of(canvasId);
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
-        this.program = this.context.link([this.vertexShader, this.fragmentShader]);
+        this.program = this.context.link(this.vertexShader, this.fragmentShader);
         this.program.use();
-        this.shaderPosition = this.program.locateAttribute("vPosition", 2);
-        this.shaderTwist = this.program.locateUniform("twist", 1);
-        this.shaderScale = this.program.locateUniform("scale", 1);
+        this.shaderPosition = this.program.attribute("vPosition");
+        this.shaderTwist = this.program.uniform("twist");
+        this.shaderScale = this.program.uniform("scale");
         this.cornersBuffer = this.context.newBuffer();
         this.centersBuffer = this.context.newBuffer();
         this.context.gl.clearColor(1, 1, 1, 1);
@@ -50,8 +50,8 @@ export class View {
         this.showCenters = Gear.sink(show => this.setShowCenters(show));
     }
     setSierpinski(flattenedSierpinski) {
-        this.cornersBuffer.untypedData = flattenedSierpinski.corners;
-        this.centersBuffer.untypedData = flattenedSierpinski.centers;
+        this.cornersBuffer.float32Data = flattenedSierpinski.corners;
+        this.centersBuffer.float32Data = flattenedSierpinski.centers;
         this.stride = flattenedSierpinski.stride;
         this.draw();
     }

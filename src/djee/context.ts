@@ -1,73 +1,59 @@
 import { Shader, ShaderType } from "./shader.js"
 import { Program } from "./program.js"
 import { Buffer } from "./buffer.js"
+import { failure } from "./utils.js"
 
 export class Context {
 
-    readonly canvas: HTMLCanvasElement;
-    readonly gl: WebGLRenderingContext;
+    readonly canvas: HTMLCanvasElement
+    readonly gl: WebGLRenderingContext
 
-    constructor(canvasId: string) {
-        this.canvas = this.getCanvas(canvasId);
-        this.gl = this.getContext(this.canvas);
+    private constructor(canvasElementId: string) {
+        this.canvas = getCanvas(canvasElementId)
+        this.gl = getContext(this.canvas)
     }
 
-    private getCanvas(canvasId: string) {
-        const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-        if (!canvas) {
-            throw `No canvas found with ID: ${canvasId}`;
-        }
-        return canvas;
-    }
-
-    private getContext(canvas: HTMLCanvasElement) {
-        return this.doGetContext(canvas) ?? this.failure(canvas)
-    }
-
-    private failure(canvas: HTMLCanvasElement): WebGLRenderingContext {
-        throw new Error("Failed to get GL context from element: " + canvas.id)
-    }
-
-    private doGetContext(canvas: HTMLCanvasElement) {
-        try {
-            return canvas.getContext("webgl") || canvas.getContext("experimental-webgl") as WebGLRenderingContext;
-        } catch (e) {
-            console.error(e);
-            return null;
-        }
-    }
-
-    with<T>(glCode: (gl: WebGLRenderingContext) => T) {
-        return glCode(this.gl);
+    static of(canvasElementId: string) {
+        return new Context(canvasElementId)
     }
 
     shaderFromElement(scriptId: string) {
-        return Shader.fromElement(this, scriptId);
+        return Shader.fromElement(this, scriptId)
     }
 
     vertexShader(code: string) {
-        return this.shader(ShaderType.VertexShader, code);
+        return this.shader(ShaderType.VertexShader, code)
     }
 
     fragmentShader(code: string) {
-        return this.shader(ShaderType.FragmentShader, code);
+        return this.shader(ShaderType.FragmentShader, code)
     }
 
     shader(type: ShaderType, code: string) {
-        return new Shader(this, type, code);
+        return new Shader(this, type, code)
     }
 
-    linkFromElements(scriptIds: string[]) {
-        const shaders = scriptIds.map(id => this.shaderFromElement(id));
-        return this.link(shaders);
+    linkFromElements(...scriptIds: string[]) {
+        const shaders = scriptIds.map(id => this.shaderFromElement(id))
+        return this.link(...shaders)
     }
     
-    link(shaders: Shader[]) {
-        return new Program(this, shaders);
+    link(...shaders: Shader[]) {
+        return new Program(this, shaders)
     }
 
     newBuffer() {
-        return new Buffer(this);
+        return new Buffer(this)
     }
 
+}
+
+function getCanvas(canvasId: string): HTMLCanvasElement {
+    const canvas = document.getElementById(canvasId)
+    return canvas ? canvas as HTMLCanvasElement : failure(`No canvas found with ID: ${canvasId}`)
+}
+
+function getContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
+    const context = canvas.getContext("webgl")
+    return context ?? failure(`Failed to get GL context from element: ${canvas.id}`)
 }

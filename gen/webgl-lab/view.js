@@ -1,7 +1,8 @@
 import * as Djee from "../djee/all.js";
+import { values } from "../djee/utils.js";
 import * as Gear from "../gear/all.js";
 export class View {
-    constructor(convasId, samples) {
+    constructor(canvasId, samples) {
         this.program = null;
         this.lod = 50;
         this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
@@ -10,7 +11,7 @@ export class View {
         this.xScalar = null;
         this.yScalar = null;
         setOptions("shader-sample", options(samples));
-        this.context = new Djee.Context(convasId);
+        this.context = Djee.Context.of(canvasId);
         this.buffer = this.context.newBuffer();
         this.defaultSample = samples[0];
     }
@@ -67,10 +68,7 @@ export class View {
         if (this.program != null) {
             this.program.delete();
         }
-        this.program = this.context.link([
-            this.context.vertexShader(shaders.vertexShader),
-            this.context.fragmentShader(shaders.fragmentShader),
-        ]);
+        this.program = this.context.link(this.context.vertexShader(shaders.vertexShader), this.context.fragmentShader(shaders.fragmentShader));
         this.program.use();
         return this.program;
     }
@@ -88,20 +86,19 @@ export class View {
     reflectOn(program) {
         return {
             program: program,
-            attributes: program.attributes.filter(attribute => attribute.size == 1),
-            uniforms: program.uniforms.filter(uniform => uniform.size == 1)
+            attributes: values(program.attributeInfos).filter(attribute => attribute.itemCount == 1),
+            uniforms: values(program.uniformInfos).filter(uniform => uniform.itemCount == 1)
         };
     }
     toScalars(reflection) {
         const result = [];
         for (let attribute of reflection.attributes) {
-            const size = attribute.dimensions;
-            const glAttribute = reflection.program.locateAttribute(attribute.name, size);
+            const glAttribute = reflection.program.attribute(attribute.name);
             glAttribute.pointTo(this.buffer, 4);
         }
         for (let uniform of reflection.uniforms) {
-            const dimensions = uniform.dimensions;
-            const glUniform = reflection.program.locateUniform(uniform.name, dimensions);
+            const dimensions = uniform.itemDimensions;
+            const glUniform = reflection.program.uniform(uniform.name);
             const data = [];
             for (let j = 0; j < dimensions; j++) {
                 const scalar = {
@@ -115,7 +112,7 @@ export class View {
             glUniform.data = data;
         }
         return result.sort((s1, s2) => {
-            const sizeComparison = s1.uniform.size - s2.uniform.size;
+            const sizeComparison = s1.uniform.info.itemSize - s2.uniform.info.itemSize;
             return sizeComparison != 0 ? sizeComparison : s1.name.localeCompare(s2.name);
         });
     }
@@ -128,7 +125,7 @@ export class View {
             }
         }
         this.lod = lod;
-        this.buffer.untypedData = data;
+        this.buffer.float32Data = data;
         this.draw();
     }
     draw() {

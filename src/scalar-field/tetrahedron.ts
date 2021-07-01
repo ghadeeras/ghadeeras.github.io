@@ -52,29 +52,29 @@ export function initTetrahedronDemo() {
 }
 
 function doInit() {
-    context = new Djee.Context("canvas-gl");
+    context = Djee.Context.of("canvas-gl");
 
-    const program = context.link([
+    const program = context.link(
         context.vertexShader(vertexShaderCode),
         context.fragmentShader(fragmentShaderCode)
-    ])
+    )
     program.use();
 
     tetrahedronBuffer = context.newBuffer();
     contourSurfaceBuffer = context.newBuffer();
     contourColorBuffer = context.newBuffer();
 
-    position = program.locateAttribute("position", 3);
-    normal = program.locateAttribute("normal", 3);
-    color = program.locateAttribute("color", 4);
+    position = program.attribute("position");
+    normal = program.attribute("normal");
+    color = program.attribute("color");
 
-    matModel = program.locateUniform("matModel", 4, true);
-    const matView = program.locateUniform("matView", 4, true);
-    const matProjection = program.locateUniform("matProjection", 4, true);
+    matModel = program.uniform("matModel");
+    const matView = program.uniform("matView");
+    const matProjection = program.uniform("matProjection");
 
-    lightPosition = program.locateUniform("lightPosition", 3);
-    shininess = program.locateUniform("shininess", 1);
-    fogginess = program.locateUniform("fogginess", 1);
+    lightPosition = program.uniform("lightPosition");
+    shininess = program.uniform("shininess");
+    fogginess = program.uniform("fogginess");
 
     matModel.data = Space.Matrix.identity().asColumnMajorArray
     matView.data = viewMatrix.asColumnMajorArray;
@@ -136,9 +136,9 @@ function tetrahedronSink(): Gear.Sink<Tetrahedron> {
         .defaultsTo(newTetrahedron(1, -1, -1, -1))
         .producer(newTetrahedron => {
             tetrahedron = newTetrahedron;
-            tetrahedronBuffer.untypedData = tetrahedronData(tetrahedron);
-            contourSurfaceBuffer.untypedData = contourSurfaceData(tetrahedron, contourValue);
-            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            tetrahedronBuffer.float32Data = tetrahedronData(tetrahedron);
+            contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
+            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )
@@ -149,8 +149,8 @@ function contourValueSink(): Gear.Sink<number> {
         .defaultsTo(0)
         .producer(newContourValue => {
             contourValue = newContourValue;
-            contourSurfaceBuffer.untypedData = contourSurfaceData(tetrahedron, contourValue);
-            contourColorBuffer.untypedData = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
+            contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
+            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )

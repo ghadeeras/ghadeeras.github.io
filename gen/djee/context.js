@@ -1,36 +1,14 @@
 import { Shader, ShaderType } from "./shader.js";
 import { Program } from "./program.js";
 import { Buffer } from "./buffer.js";
+import { failure } from "./utils.js";
 export class Context {
-    constructor(canvasId) {
-        this.canvas = this.getCanvas(canvasId);
-        this.gl = this.getContext(this.canvas);
+    constructor(canvasElementId) {
+        this.canvas = getCanvas(canvasElementId);
+        this.gl = getContext(this.canvas);
     }
-    getCanvas(canvasId) {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) {
-            throw `No canvas found with ID: ${canvasId}`;
-        }
-        return canvas;
-    }
-    getContext(canvas) {
-        var _a;
-        return (_a = this.doGetContext(canvas)) !== null && _a !== void 0 ? _a : this.failure(canvas);
-    }
-    failure(canvas) {
-        throw new Error("Failed to get GL context from element: " + canvas.id);
-    }
-    doGetContext(canvas) {
-        try {
-            return canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-        }
-        catch (e) {
-            console.error(e);
-            return null;
-        }
-    }
-    with(glCode) {
-        return glCode(this.gl);
+    static of(canvasElementId) {
+        return new Context(canvasElementId);
     }
     shaderFromElement(scriptId) {
         return Shader.fromElement(this, scriptId);
@@ -44,15 +22,23 @@ export class Context {
     shader(type, code) {
         return new Shader(this, type, code);
     }
-    linkFromElements(scriptIds) {
+    linkFromElements(...scriptIds) {
         const shaders = scriptIds.map(id => this.shaderFromElement(id));
-        return this.link(shaders);
+        return this.link(...shaders);
     }
-    link(shaders) {
+    link(...shaders) {
         return new Program(this, shaders);
     }
     newBuffer() {
         return new Buffer(this);
     }
+}
+function getCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    return canvas ? canvas : failure(`No canvas found with ID: ${canvasId}`);
+}
+function getContext(canvas) {
+    const context = canvas.getContext("webgl");
+    return context !== null && context !== void 0 ? context : failure(`Failed to get GL context from element: ${canvas.id}`);
 }
 //# sourceMappingURL=context.js.map

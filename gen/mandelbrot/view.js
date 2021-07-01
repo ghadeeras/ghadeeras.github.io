@@ -5,27 +5,24 @@ export class View {
     constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = Space.vec(-0.75, 0), _scale = 2.0) {
         this.julia = julia;
         this.drawCall = new Gear.Call(() => this.doDraw());
-        this.context = new Djee.Context(_canvasId);
-        const program = this.context.link([
-            this.context.vertexShader(_vertexShaderCode),
-            this.context.fragmentShader(_fragmentShaderCode)
-        ]);
+        this.context = Djee.Context.of(_canvasId);
+        const program = this.context.link(this.context.vertexShader(_vertexShaderCode), this.context.fragmentShader(_fragmentShaderCode));
         program.use();
         const buffer = this.context.newBuffer();
-        buffer.untypedData = [
+        buffer.float32Data = [
             -1, -1,
             +1, -1,
             -1, +1,
             +1, +1,
         ];
-        const vertex = program.locateAttribute("vertex", 2);
+        const vertex = program.attribute("vertex");
         vertex.pointTo(buffer);
-        this.uniformColor = program.locateUniform("color", 2);
-        this.uniformIntensity = program.locateUniform("intensity", 1);
-        this.uniformPalette = program.locateUniform("palette", 1);
-        this.uniformCenter = program.locateUniform("center", 2);
-        this.uniformScale = program.locateUniform("scale", 1);
-        this.uniformJuliaNumber = program.locateUniform("juliaNumber", 3);
+        this.uniformColor = program.uniform("color");
+        this.uniformIntensity = program.uniform("intensity");
+        this.uniformPalette = program.uniform("palette");
+        this.uniformCenter = program.uniform("center");
+        this.uniformScale = program.uniform("scale");
+        this.uniformJuliaNumber = program.uniform("juliaNumber");
         this.hue = 5 / 4;
         this.saturation = Math.sqrt(2) / 2;
         this.intensity = 0.5;

@@ -1,79 +1,74 @@
 import { Attribute } from "./attribute.js";
 import { Uniform } from "./uniform.js";
+import { failure, lazily } from "./utils.js";
+import { asVariableInfo } from "./reflection.js";
 export class Program {
     constructor(context, shaders) {
         this.context = context;
-        this.shaders = shaders;
-        this.program = this.makeProgram(context.gl, shaders);
-    }
-    makeProgram(gl, shaders) {
-        var _a;
-        const program = (_a = gl.createProgram()) !== null && _a !== void 0 ? _a : this.failure();
-        shaders.forEach(s => {
-            gl.attachShader(program, s.shader);
+        this._uniformInfos = lazily(() => {
+            const gl = this.context.gl;
+            return this.activeInfos(gl.ACTIVE_UNIFORMS, i => gl.getActiveUniform(this.program, i));
         });
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            throw `Unable to initialize the shader program: ${gl.getProgramInfoLog(program)}`;
-        }
-        return program;
-    }
-    failure() {
-        throw new Error("Failed to create GL program in context: " + this.context.canvas.id);
+        this._attributeInfos = lazily(() => {
+            const gl = this.context.gl;
+            return this.activeInfos(gl.ACTIVE_ATTRIBUTES, i => gl.getActiveAttrib(this.program, i));
+        });
+        this.program = makeProgram(context, shaders);
     }
     delete() {
-        const gl = this.context.gl;
-        this.shaders.forEach(shader => {
-            gl.detachShader(this.program, shader.shader);
-            gl.deleteShader(shader.shader);
-        });
-        gl.deleteProgram(this.program);
+        this.context.gl.deleteProgram(this.program);
     }
     use() {
         this.context.gl.useProgram(this.program);
     }
-    locateAttribute(name, size) {
-        return new Attribute(this, name, size);
+    attribute(name) {
+        return new Attribute(this, name);
     }
-    locateUniform(name, size, matrix = false) {
-        return new Uniform(this, name, size, matrix);
+    uniform(name) {
+        return new Uniform(this, name);
     }
-    get uniforms() {
-        const gl = this.context.gl;
-        return this.activeInfos(gl.ACTIVE_UNIFORMS, i => gl.getActiveUniform(this.program, i));
+    get attributeInfos() {
+        return this._attributeInfos();
     }
-    get attributes() {
-        const gl = this.context.gl;
-        return this.activeInfos(gl.ACTIVE_ATTRIBUTES, i => gl.getActiveAttrib(this.program, i));
+    get uniformInfos() {
+        return this._uniformInfos();
     }
     activeInfos(type, getter) {
         const gl = this.context.gl;
         const count = gl.getProgramParameter(this.program, type);
-        const result = [];
+        const result = {};
         for (let i = 0; i < count; i++) {
             const info = getter(i);
             if (!info) {
                 continue;
             }
-            result.push({
-                name: info.name,
-                type: info.type,
-                dimensions: this.dimensions(info),
-                size: info.size
-            });
+            const varInfo = asVariableInfo(info);
+            result[varInfo.name] = varInfo;
         }
         return result;
     }
-    dimensions(info) {
-        const gl = this.context.gl;
-        switch (info.type) {
-            case gl.FLOAT: return 1;
-            case gl.FLOAT_VEC2: return 2;
-            case gl.FLOAT_VEC3: return 3;
-            case gl.FLOAT_VEC4: return 4;
-            default: throw "Unsupported type: " + info.type;
-        }
-        ;
+}
+function makeProgram(context, shaders) {
+    const gl = context.gl;
+    const program = gl.createProgram();
+    if (!program) {
+        return failure(`Failed to create GL program in context:  ${context.canvas.id}`);
     }
+    for (let shader of shaders) {
+        gl.attachShader(program, shader.glShader);
+    }
+    gl.linkProgram(program);
+    for (let shader of shaders) {
+        gl.detachShader(program, shader.glShader);
+        if (!shader.reusable) {
+            shader.delete();
+        }
+    }
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        const logs = gl.getProgramInfoLog(program);
+        gl.deleteProgram(program);
+        return failure(`Unable to initialize the shader program: ${logs}`);
+    }
+    return program;
 }
 //# sourceMappingURL=program.js.map
