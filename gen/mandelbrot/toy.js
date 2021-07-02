@@ -19,7 +19,7 @@ let intensitySpan;
 let paletteSpan;
 let clickPosSpan;
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()), ["mandelbrot.vert", shader => vertexShaderCode = shader], ["mandelbrot.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => Gear.load("/shaders", doInit, ["mandelbrot.vert", shader => vertexShaderCode = shader], ["mandelbrot.frag", shader => fragmentShaderCode = shader]);
 }
 function doInit() {
     mouseBindingElement = document.getElementById("mouse-binding");

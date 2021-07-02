@@ -13,7 +13,7 @@ export class Attribute {
         const gl = program.context.gl;
         this.location = gl.getAttribLocation(program.program, name);
         this.info = program.attributeInfos[name] ?? failure(`Could not introspect attribute '${name}'`)
-        this.setter = getSetter(gl, this.location, this.info.itemSize)
+        this.setter = getSetter(gl, this.location, this.info)
     }
 
     pointTo(buffer: Buffer, stride: number = 0, offset: number = 0, size?: number) {
@@ -39,12 +39,12 @@ export class Attribute {
 
 }
 
-function getSetter(gl: WebGLRenderingContext, location: number, size: number): (data: number[]) => void {
-    switch (size) {
+function getSetter(gl: WebGLRenderingContext, location: number, info: VariableInfo): (data: number[]) => void {
+    switch (info.itemDimensions) {
         case 1: return (d) => gl.vertexAttrib1fv(location, d);
-        case 2: return (d) => gl.vertexAttrib1fv(location, d);
-        case 3: return (d) => gl.vertexAttrib1fv(location, d);
-        case 4: return (d) => gl.vertexAttrib1fv(location, d);
-        default: throw `Uniform vectors of length '${size}' are not supported.`;
+        case 2: return (d) => gl.vertexAttrib2fv(location, d);
+        case 3: return (d) => gl.vertexAttrib3fv(location, d);
+        case 4: return (d) => gl.vertexAttrib4fv(location, d);
+        default: return failure(`Attribute vectors of length '${info.itemDimensions}' are not supported.`);
     }
 }

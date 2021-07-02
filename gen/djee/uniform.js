@@ -33,12 +33,21 @@ function getSetter(gl, location, info) {
             default: throw `Uniform matrices of size '${info.itemDimensions}' are not supported.`;
         }
     }
-    else {
+    else if (info.primitiveType == WebGLRenderingContext.FLOAT) {
         switch (info.itemDimensions) {
             case 1: return (d) => gl.uniform1fv(location, d);
             case 2: return (d) => gl.uniform2fv(location, d);
             case 3: return (d) => gl.uniform3fv(location, d);
             case 4: return (d) => gl.uniform4fv(location, d);
+            default: throw `Uniform vectors of length '${info.itemDimensions}' are not supported.`;
+        }
+    }
+    else {
+        switch (info.itemDimensions) {
+            case 1: return (d) => gl.uniform1iv(location, d);
+            case 2: return (d) => gl.uniform2iv(location, d);
+            case 3: return (d) => gl.uniform3iv(location, d);
+            case 4: return (d) => gl.uniform4iv(location, d);
             default: throw `Uniform vectors of length '${info.itemDimensions}' are not supported.`;
         }
     }

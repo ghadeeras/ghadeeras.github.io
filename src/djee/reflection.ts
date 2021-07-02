@@ -3,6 +3,8 @@ import { failure } from "./utils.js"
 export type PrimitiveType = 
     typeof WebGLRenderingContext.BOOL | 
     typeof WebGLRenderingContext.INT | 
+    typeof WebGLRenderingContext.SAMPLER_2D | 
+    typeof WebGLRenderingContext.SAMPLER_CUBE | 
     typeof WebGLRenderingContext.FLOAT
 
 export type VariableInfo = {
@@ -72,6 +74,8 @@ function dimensions(info: WebGLActiveInfo): 1 | 2 | 3 | 4 {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.SAMPLER_2D:
+        case C.SAMPLER_CUBE:
         case C.FLOAT: 
             return 1
         case C.BOOL_VEC2:
@@ -99,6 +103,8 @@ function order(info: WebGLActiveInfo): 0 | 1 | 2 {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.SAMPLER_2D:
+        case C.SAMPLER_CUBE:
         case C.FLOAT: 
             return 0
         case C.BOOL_VEC2:
@@ -133,6 +139,10 @@ function primitiveType(info: WebGLActiveInfo): PrimitiveType {
         case C.INT_VEC3:
         case C.INT_VEC4: 
             return WebGLRenderingContext.INT
+        case C.SAMPLER_2D:
+            return WebGLRenderingContext.SAMPLER_2D
+        case C.SAMPLER_CUBE:
+            return WebGLRenderingContext.SAMPLER_CUBE
         case C.FLOAT:
         case C.FLOAT_VEC2:
         case C.FLOAT_VEC3:

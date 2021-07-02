@@ -26,7 +26,7 @@ let paletteSpan: Gear.Sink<number>
 let clickPosSpan: Gear.Sink<Space.Vector>
 
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
+    window.onload = () => Gear.load("/shaders", doInit,
         ["mandelbrot.vert", shader => vertexShaderCode = shader],
         ["mandelbrot.frag", shader => fragmentShaderCode = shader]
     )

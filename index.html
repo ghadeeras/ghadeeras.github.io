@@ -2,16 +2,22 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <title>Ghadeer's Playcloud</title>
-    <link type="text/css" rel="stylesheet" href="./css/ghadeeras.css" />
-    <style>
-      #main .view div {
-        padding: 16px;
-      }
-    </style>
+  <meta charset="utf-8">
+  <title>Ghadeer's Playcloud</title>
+  <link type="text/css" rel="stylesheet" href="./css/ghadeeras.css" />
+  <style>
+    #main .view div {
+      padding: 16px;
+    }
+  </style>
+  <script type="module">
+    import * as Home from "../gen/home/toy.js"
+    Home.init();
+  </script>
 </head>
 
+<body>
+  
     <div id="head">
         <div><a href="./index.html">Ghadeer's Playcloud</a></div>
     </div>
@@ -40,7 +46,13 @@
 
         <div id="main">
           <div class="view"><div>
-            <img src="./MySketch.jpg" style="display: flex; float: right; width: 320px; height: 320px; margin-left: 32px;"/>
+            <canvas 
+              id="canvas" 
+              style="display: flex; float: right; width: 320px; height: 320px; margin-left: 32px;" 
+              width="512" height="512"
+            > <!-- width and height are set to match the texture dimensions in order to avoid blurring. -->
+              Please use a web browser that supports WebGL!
+            </canvas>
             <strong>Welcome to Ghadeer's Playcloud!</strong>
             <p>Hello! :-)</p>
             <p>

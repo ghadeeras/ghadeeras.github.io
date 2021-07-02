@@ -40,6 +40,8 @@ function dimensions(info) {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.SAMPLER_2D:
+        case C.SAMPLER_CUBE:
         case C.FLOAT:
             return 1;
         case C.BOOL_VEC2:
@@ -66,6 +68,8 @@ function order(info) {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.SAMPLER_2D:
+        case C.SAMPLER_CUBE:
         case C.FLOAT:
             return 0;
         case C.BOOL_VEC2:
@@ -99,6 +103,10 @@ function primitiveType(info) {
         case C.INT_VEC3:
         case C.INT_VEC4:
             return WebGLRenderingContext.INT;
+        case C.SAMPLER_2D:
+            return WebGLRenderingContext.SAMPLER_2D;
+        case C.SAMPLER_CUBE:
+            return WebGLRenderingContext.SAMPLER_CUBE;
         case C.FLOAT:
         case C.FLOAT_VEC2:
         case C.FLOAT_VEC3:

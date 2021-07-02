@@ -2,6 +2,7 @@ import { Shader, ShaderType } from "./shader.js";
 import { Program } from "./program.js";
 import { Buffer } from "./buffer.js";
 import { failure } from "./utils.js";
+import { Texture } from "./texture.js";
 export class Context {
     constructor(canvasElementId) {
         this.canvas = getCanvas(canvasElementId);
@@ -29,8 +30,11 @@ export class Context {
     link(...shaders) {
         return new Program(this, shaders);
     }
-    newBuffer() {
-        return new Buffer(this);
+    newBuffer(isDynamic = false) {
+        return new Buffer(this, isDynamic);
+    }
+    newTexture(unit = 0) {
+        return new Texture(this, unit);
     }
 }
 function getCanvas(canvasId) {

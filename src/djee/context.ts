@@ -2,6 +2,7 @@ import { Shader, ShaderType } from "./shader.js"
 import { Program } from "./program.js"
 import { Buffer } from "./buffer.js"
 import { failure } from "./utils.js"
+import { Texture } from "./texture.js"
 
 export class Context {
 
@@ -42,8 +43,12 @@ export class Context {
         return new Program(this, shaders)
     }
 
-    newBuffer() {
-        return new Buffer(this)
+    newBuffer(isDynamic: boolean = false) {
+        return new Buffer(this, isDynamic)
+    }
+
+    newTexture(unit: number = 0) {
+        return new Texture(this, unit)
     }
 
 }
