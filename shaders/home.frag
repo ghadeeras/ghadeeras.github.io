@@ -59,9 +59,16 @@ void main() {
 
     if (inVisibleArea(mousePos)) {
         vec2 relPos = pos - mousePos;
-        float force = PI * exp(-PI2 * dot(relPos, relPos));
-        mat2 distortion = distort(force);
-        newPos = distortion * relPos + mousePos;
+        float distanceSquared = dot(relPos, relPos);
+        if (effect < 3) {
+            float force = PI * exp(-PI2 * distanceSquared);
+            mat2 distortion = distort(force);
+            newPos = distortion * relPos + mousePos;
+        } else {
+            float force = exp(PI2 * PI * (0.1 - distanceSquared));
+            float distortion = force <= 1.0 ? (1.0 - force) : PI2 / distanceSquared;
+            newPos = distortion * relPos + mousePos;
+        }
     }
 
     if (inVisibleArea(newPos)) {

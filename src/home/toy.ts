@@ -4,7 +4,9 @@ import * as Gear from "../gear/all.js"
 
 let vertexShaderCode: string
 let fragmentShaderCode: string
-let mySketch: HTMLImageElement
+
+const mySketch = new Image()
+const fileReader = new FileReader()
 
 const square = [
     -1, +1,
@@ -15,14 +17,10 @@ const square = [
 
 export function init() {
     window.onload = () => {
-        mySketch = new Image()
-        mySketch.src = "/MySketch.png"
-        mySketch.onload = () => {
-            Gear.load("/shaders", doInit,
-                ["mandelbrot.vert", shader => vertexShaderCode = shader],
-                ["home.frag", shader => fragmentShaderCode = shader]
-            )
-        }
+        Gear.load("/shaders", doInit,
+            ["mandelbrot.vert", shader => vertexShaderCode = shader],
+            ["home.frag", shader => fragmentShaderCode = shader]
+        )
     }
 }
 
@@ -35,7 +33,15 @@ function doInit() {
     program.use()
 
     const texture = context.newTexture()
-    TextureTarget.texture2D.setRGBAImage(texture, mySketch)
+    TextureTarget.texture2D.setImage(texture, {
+        format: WebGLRenderingContext.RGBA,
+        width: 2,
+        height: 2,
+        pixels: new Uint8Array([
+            0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF,
+            0x00, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF
+        ])
+    })
 
     const buffer = context.newBuffer()
     buffer.float32Data = square
@@ -54,20 +60,77 @@ function doInit() {
     const vertex = program.attribute("vertex")
     vertex.pointTo(buffer)
 
-    draw(context)
+    mySketch.onload = () => updateTexture(texture)
+    mySketch.src = "/MySketch.png"
 
-    context.canvas.onmousemove = e => {
-        mousePos.data = [
-            (2 * e.offsetX - context.canvas.clientWidth) / context.canvas.clientWidth,
-            (context.canvas.clientHeight - 2 * e.offsetY) / context.canvas.clientHeight
-        ]
-        draw(context)
+    context.canvas.onmousemove = event => distortImage(event, mousePos)
+    context.canvas.onmouseleave = () => restoreImage(mousePos, effect)
+    context.canvas.ondragover = event => tearImage(event, mousePos, effect)
+    context.canvas.ondrop = event => loadImage(event, effect)
+}
+
+async function updateTexture(texture: Djee.Texture) {
+    const context = texture.context
+    const canvas = context.canvas
+    const image = await createImageBitmap(mySketch, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight, {
+        resizeWidth: canvas.width,
+        resizeHeight: canvas.height
+    })
+    TextureTarget.texture2D.setRGBAImage(texture, image)
+    draw(context)
+}
+
+function distortImage(e: MouseEvent, mousePos: Djee.Uniform) {
+    mousePos.data = normalizeMousePosition(e)
+    draw(mousePos.program.context)
+}
+
+function restoreImage(mousePos: Djee.Uniform, effect: Djee.Uniform) {
+    mousePos.data = [0x10000, 0x10000]
+    effect.data = [(effect.data[0] + 1) % 3]
+    draw(mousePos.program.context)
+}
+
+function tearImage(e: DragEvent, mousePos: Djee.Uniform, effect: Djee.Uniform) {
+    e.preventDefault()
+    mousePos.data = normalizeMousePosition(e)
+    if (effect.data[0] < 3) {
+        effect.data = [effect.data[0] + 3]
     }
-    context.canvas.onmouseleave = () => {
-        mousePos.data = [0x10000, 0x10000]
-        effect.data = [(effect.data[0] + 1) % 3]
-        draw(context)
+    draw(mousePos.program.context)
+}
+
+async function loadImage(e: DragEvent, effect: Djee.Uniform) {
+    e.preventDefault()
+    effect.data = [effect.data[0] - 3]
+    if (e.dataTransfer) {
+        const file = e.dataTransfer.files[0]
+        mySketch.src = await readAsDataURL(file)
     }
+}
+
+function readAsDataURL(file: File) {
+    const promise = new Promise<string>((resolve, reject) => {
+        fileReader.onloadend = () => {
+            if (fileReader.result != null && typeof fileReader.result == 'string') {
+                resolve(fileReader.result)
+            } else {
+                reject(new Error(`Expected file reading to return a URL string, instead got: ${fileReader.result}`))
+            }
+        }
+        fileReader.onabort = () => reject(new Error("File reading aborted!"))
+        fileReader.onerror = () => reject(fileReader.error)
+    })
+    fileReader.readAsDataURL(file)
+    return promise
+}
+
+function normalizeMousePosition(e: MouseEvent): number[] {
+    const canvas = e.target as HTMLElement
+    return [
+        (2 * e.offsetX - canvas.clientWidth) / canvas.clientWidth,
+        (canvas.clientHeight - 2 * e.offsetY) / canvas.clientHeight
+    ]
 }
 
 function draw(context: Context) {
