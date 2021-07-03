@@ -63,8 +63,9 @@ function doInit() {
     mySketch.onload = () => updateTexture(texture)
     mySketch.src = "/MySketch.png"
 
-    context.canvas.onmousemove = event => distortImage(event, mousePos)
-    context.canvas.onmouseleave = () => restoreImage(mousePos, effect)
+    context.canvas.onpointermove = event => distortImage(event, mousePos)
+    context.canvas.ontouchmove = event => event.preventDefault()
+    context.canvas.onpointerleave = () => restoreImage(mousePos, effect)
     context.canvas.ondragover = event => tearImage(event, mousePos, effect)
     context.canvas.ondrop = event => loadImage(event, effect)
 }
@@ -80,8 +81,9 @@ async function updateTexture(texture: Djee.Texture) {
     draw(context)
 }
 
-function distortImage(e: MouseEvent, mousePos: Djee.Uniform) {
-    mousePos.data = normalizeMousePosition(e)
+function distortImage(e: PointerEvent, mousePos: Djee.Uniform) {
+    e.preventDefault()
+    mousePos.data = normalizePosition(e)
     draw(mousePos.program.context)
 }
 
@@ -93,7 +95,7 @@ function restoreImage(mousePos: Djee.Uniform, effect: Djee.Uniform) {
 
 function tearImage(e: DragEvent, mousePos: Djee.Uniform, effect: Djee.Uniform) {
     e.preventDefault()
-    mousePos.data = normalizeMousePosition(e)
+    mousePos.data = normalizePosition(e)
     if (effect.data[0] < 3) {
         effect.data = [effect.data[0] + 3]
     }
@@ -125,7 +127,7 @@ function readAsDataURL(file: File) {
     return promise
 }
 
-function normalizeMousePosition(e: MouseEvent): number[] {
+function normalizePosition(e: PointerEvent | DragEvent): number[] {
     const canvas = e.target as HTMLElement
     return [
         (2 * e.offsetX - canvas.clientWidth) / canvas.clientWidth,

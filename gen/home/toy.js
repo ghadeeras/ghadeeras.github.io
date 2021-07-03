@@ -54,8 +54,9 @@ function doInit() {
     vertex.pointTo(buffer);
     mySketch.onload = () => updateTexture(texture);
     mySketch.src = "/MySketch.png";
-    context.canvas.onmousemove = event => distortImage(event, mousePos);
-    context.canvas.onmouseleave = () => restoreImage(mousePos, effect);
+    context.canvas.onpointermove = event => distortImage(event, mousePos);
+    context.canvas.ontouchmove = event => event.preventDefault();
+    context.canvas.onpointerleave = () => restoreImage(mousePos, effect);
     context.canvas.ondragover = event => tearImage(event, mousePos, effect);
     context.canvas.ondrop = event => loadImage(event, effect);
 }
@@ -72,7 +73,8 @@ function updateTexture(texture) {
     });
 }
 function distortImage(e, mousePos) {
-    mousePos.data = normalizeMousePosition(e);
+    e.preventDefault();
+    mousePos.data = normalizePosition(e);
     draw(mousePos.program.context);
 }
 function restoreImage(mousePos, effect) {
@@ -82,7 +84,7 @@ function restoreImage(mousePos, effect) {
 }
 function tearImage(e, mousePos, effect) {
     e.preventDefault();
-    mousePos.data = normalizeMousePosition(e);
+    mousePos.data = normalizePosition(e);
     if (effect.data[0] < 3) {
         effect.data = [effect.data[0] + 3];
     }
@@ -114,7 +116,7 @@ function readAsDataURL(file) {
     fileReader.readAsDataURL(file);
     return promise;
 }
-function normalizeMousePosition(e) {
+function normalizePosition(e) {
     const canvas = e.target;
     return [
         (2 * e.offsetX - canvas.clientWidth) / canvas.clientWidth,
