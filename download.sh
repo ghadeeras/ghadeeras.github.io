@@ -1,4 +1,4 @@
-#!sh
+#!/usr/bin/bash
 
 LIBRARY=$1
 [[ $LIBRARY == "" ]] && 
