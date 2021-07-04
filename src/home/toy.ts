@@ -55,19 +55,28 @@ function doInit() {
     const sampler = program.uniform("sampler")
     sampler.data = [texture.unit]
 
-    context.gl.uniform1i(sampler.location, 0)
-
     const vertex = program.attribute("vertex")
     vertex.pointTo(buffer)
+
+    draw(context)
 
     mySketch.onload = () => updateTexture(texture)
     mySketch.src = "/MySketch.png"
 
-    context.canvas.onpointermove = event => distortImage(event, mousePos)
     context.canvas.ontouchmove = event => event.preventDefault()
+    context.canvas.onpointermove = event => distortImage(event, mousePos)
     context.canvas.onpointerleave = () => restoreImage(mousePos, effect)
+    context.canvas.onclick = event => useCurrentImage(event, mousePos, texture)
+    context.canvas.ondblclick = event => restoreOriginalImage(event, texture)
     context.canvas.ondragover = event => tearImage(event, mousePos, effect)
     context.canvas.ondrop = event => loadImage(event, effect)
+}
+
+function draw(context: Context) {
+    const gl = context.gl
+    gl.viewport(0, 0, context.canvas.width, context.canvas.height)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    gl.flush()
 }
 
 async function updateTexture(texture: Djee.Texture) {
@@ -81,7 +90,13 @@ async function updateTexture(texture: Djee.Texture) {
     draw(context)
 }
 
-function distortImage(e: PointerEvent, mousePos: Djee.Uniform) {
+async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform, texture: Djee.Texture) {
+    distortImage(e, mousePos)
+    const image = await createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight)
+    TextureTarget.texture2D.setRGBAImage(texture, image)
+}
+
+function distortImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform) {
     e.preventDefault()
     mousePos.data = normalizePosition(e)
     draw(mousePos.program.context)
@@ -91,6 +106,11 @@ function restoreImage(mousePos: Djee.Uniform, effect: Djee.Uniform) {
     mousePos.data = [0x10000, 0x10000]
     effect.data = [(effect.data[0] + 1) % 3]
     draw(mousePos.program.context)
+}
+
+function restoreOriginalImage(e: MouseEvent,  texture: Djee.Texture) {
+    e.preventDefault()
+    updateTexture(texture)
 }
 
 function tearImage(e: DragEvent, mousePos: Djee.Uniform, effect: Djee.Uniform) {
@@ -106,37 +126,29 @@ async function loadImage(e: DragEvent, effect: Djee.Uniform) {
     e.preventDefault()
     effect.data = [effect.data[0] - 3]
     if (e.dataTransfer) {
-        const file = e.dataTransfer.files[0]
-        mySketch.src = await readAsDataURL(file)
+        const item = e.dataTransfer.items[0]
+        if (item.kind == 'file') {
+            const url = URL.createObjectURL(item.getAsFile())
+            mySketch.src = url
+        } else {
+            item.getAsString(url => {
+                mySketch.crossOrigin = isCrossOrigin(url) ? "anonymous" : null
+                mySketch.src = url
+            })   
+        }
     }
 }
 
-function readAsDataURL(file: File) {
-    const promise = new Promise<string>((resolve, reject) => {
-        fileReader.onloadend = () => {
-            if (fileReader.result != null && typeof fileReader.result == 'string') {
-                resolve(fileReader.result)
-            } else {
-                reject(new Error(`Expected file reading to return a URL string, instead got: ${fileReader.result}`))
-            }
-        }
-        fileReader.onabort = () => reject(new Error("File reading aborted!"))
-        fileReader.onerror = () => reject(fileReader.error)
-    })
-    fileReader.readAsDataURL(file)
-    return promise
+function isCrossOrigin(url: string) {
+    const urlObj = new URL(url, window.location.href)
+    const isCrossOrigin = urlObj.origin != window.location.origin
+    return isCrossOrigin
 }
 
-function normalizePosition(e: PointerEvent | DragEvent): number[] {
+function normalizePosition(e: PointerEvent | MouseEvent | DragEvent): number[] {
     const canvas = e.target as HTMLElement
     return [
         (2 * e.offsetX - canvas.clientWidth) / canvas.clientWidth,
         (canvas.clientHeight - 2 * e.offsetY) / canvas.clientHeight
     ]
-}
-
-function draw(context: Context) {
-    const gl = context.gl
-    gl.viewport(0, 0, context.canvas.width, context.canvas.height)
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
