@@ -298,7 +298,7 @@ export class ElementEvents {
         return this.lazyDragging();
     }
 
-    get mouseButons() {
+    get mouseButtons() {
         return this.lazyMouseButtons();
     }
 

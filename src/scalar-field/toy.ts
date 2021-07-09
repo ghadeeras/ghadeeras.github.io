@@ -48,7 +48,7 @@ function doInit() {
     )
     program.use();
 
-    contourSurfaceBuffer = context.newBuffer();
+    contourSurfaceBuffer = context.newBuffer(6 * 4);
 
     position = program.attribute("position");
     normal = program.attribute("normal");
@@ -98,10 +98,10 @@ function selected<T>(value: string): Gear.Predicate<T> {
 }
 
 function levelOfDetailsFlow() {
-    const inc = Gear.elementEvents("lod-inc").mouseButons
+    const inc = Gear.elementEvents("lod-inc").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? +8 : 0);
-    const dec = Gear.elementEvents("lod-dec").mouseButons
+    const dec = Gear.elementEvents("lod-dec").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? -8 : 0);
     const flow = Gear.Flow.from(inc, dec)
@@ -301,8 +301,8 @@ function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    position.pointTo(contourSurfaceBuffer, 6, 0);
-    normal.pointTo(contourSurfaceBuffer, 6, 3);
+    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
+    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
     gl.finish();

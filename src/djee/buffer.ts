@@ -1,7 +1,7 @@
 import { Context } from "./context.js"
 import { failure } from "./utils.js"
 
-export type NumberArray = Float32Array | Int16Array | Int8Array | Uint16Array | Uint8Array
+export type NumberArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array
 
 export class BufferTarget {
 
@@ -11,18 +11,13 @@ export class BufferTarget {
     private constructor(readonly id: GLenum) {
     }
 
-    with<T>(buffer: Buffer, glCode: (gl: WebGLRenderingContext) => T): T {
-        const gl = buffer.context.gl
-        gl.bindBuffer(this.id, buffer.glBuffer)
-        try {
-            return glCode(gl)
-        } finally {
-            gl.bindBuffer(this.id, null)
-        }
+    bind<T>(buffer: Buffer): void {
+        buffer.context.gl.bindBuffer(this.id, buffer.glBuffer)
     }
 
     fill(buffer: Buffer, data: NumberArray) {
-        this.with(buffer, gl => gl.bufferData(this.id, data, buffer.usageHint))
+        this.bind(buffer)
+        buffer.context.gl.bufferData(this.id, data, buffer.usageHint)
     }
 
 }
@@ -34,7 +29,7 @@ export class Buffer {
 
     private _data: NumberArray = new Float32Array([])
 
-    constructor(readonly context: Context, isDynamic: boolean = false) {
+    constructor(readonly context: Context, readonly byteStride: number = 0, isDynamic: boolean = false) {
         const gl = context.gl
         this.glBuffer = gl.createBuffer() ?? failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`)
         this.usageHint = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW
@@ -42,6 +37,10 @@ export class Buffer {
 
     delete() {
         this.context.gl.deleteBuffer(this.glBuffer)
+    }
+
+    get word() {
+        return this.data.BYTES_PER_ELEMENT
     }
 
     get data() {

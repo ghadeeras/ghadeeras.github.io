@@ -27,7 +27,7 @@ export type VariableInfo = {
 
 export type VariableInfos = Record<string, VariableInfo>
 
-export function asVariableInfo(info: WebGLActiveInfo): VariableInfo {
+export function asVariableInfo(info: WebGLActiveInfo, specificPrimitiveType: GLenum | null = null): VariableInfo {
     const result: VariableInfo = {
         name: info.name,
         itemType: info.type,
@@ -39,7 +39,7 @@ export function asVariableInfo(info: WebGLActiveInfo): VariableInfo {
         itemSize: 0,
         itemSizeInBytes: 0,
 
-        primitiveType: primitiveType(info),
+        primitiveType: specificPrimitiveType ?? primitiveType(info),
         primitiveTypeName: "truth",
         primitiveSize: 4,
 

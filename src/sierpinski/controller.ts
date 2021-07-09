@@ -26,7 +26,7 @@ export class Controller {
         this.showCorners = Gear.checkbox(cornersCheckboxId);
         this.showCenters = Gear.checkbox(centersCheckboxId);
 
-        const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l || m || r);
+        const dragEnabled = canvas.mouseButtons.map(([l, m, r]) => l || m || r);
         const mousePos = Gear.Flow.from(
             canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), 
             canvas.touchPos.map(ps => ps[0])

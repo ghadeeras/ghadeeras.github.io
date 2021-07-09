@@ -27,12 +27,13 @@ export class Uniform {
         return [...this._data];
     }
 
-    set data(data: number[]) {
+    set data(data: number[] | Float32Array | Float64Array) {
         if (data.length != this.info.itemSize) {
             failure(`Arrays of length '${data.length}' cannot be assigned to ${this.info.itemOrderName} uniform '${this.name}' which has size '${this.info.itemSize}'`);
         }
-        this.setter(data);
-        this._data = [...data];
+        const copy = [...data];
+        this.setter(copy);
+        this._data = copy;
     }
 
 }

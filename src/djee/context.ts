@@ -43,8 +43,8 @@ export class Context {
         return new Program(this, shaders)
     }
 
-    newBuffer(isDynamic: boolean = false) {
-        return new Buffer(this, isDynamic)
+    newBuffer(byteStride: number = 0, isDynamic: boolean = false) {
+        return new Buffer(this, byteStride, isDynamic)
     }
 
     newTexture(unit: number = 0) {

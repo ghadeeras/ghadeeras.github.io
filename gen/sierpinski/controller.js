@@ -8,7 +8,7 @@ export class Controller {
         const scaleEnabled = Gear.checkbox(scaleCheckboxId);
         this.showCorners = Gear.checkbox(cornersCheckboxId);
         this.showCenters = Gear.checkbox(centersCheckboxId);
-        const dragEnabled = canvas.mouseButons.map(([l, m, r]) => l || m || r);
+        const dragEnabled = canvas.mouseButtons.map(([l, m, r]) => l || m || r);
         const mousePos = Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(ps => ps[0])).defaultsTo([canvas.element.clientWidth / 2, canvas.element.clientHeight / 4]);
         this.twist = mousePos
             .map(([x, y]) => Math.PI * (4 * x / canvas.element.clientWidth - 2))

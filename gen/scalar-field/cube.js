@@ -13,7 +13,6 @@ let shininess;
 let fogginess;
 let cubeBuffer;
 let contourSurfaceBuffer;
-let contourColorBuffer;
 let cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue = 0;
 const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
@@ -25,9 +24,8 @@ function doInit() {
     context = Djee.Context.of("canvas-gl");
     const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
     program.use();
-    cubeBuffer = context.newBuffer();
-    contourSurfaceBuffer = context.newBuffer();
-    contourColorBuffer = context.newBuffer();
+    cubeBuffer = context.newBuffer(10 * 4);
+    contourSurfaceBuffer = context.newBuffer(6 * 4);
     position = program.attribute("position");
     normal = program.attribute("normal");
     color = program.attribute("color");
@@ -60,7 +58,6 @@ function cubeSink() {
         cube = newCube;
         cubeBuffer.float32Data = cubeData(cube);
         contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-        contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
         draw();
     }));
 }
@@ -70,7 +67,6 @@ function contourValueSink() {
         .producer(newContourValue => {
         contourValue = newContourValue;
         contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-        contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
         draw();
     }));
 }
@@ -93,23 +89,20 @@ function selected(value) {
     const mouseBinding = document.getElementById("mouse-binding");
     return () => mouseBinding.value == value;
 }
-function contourColorData(contourValue, vertexCount) {
-    const contourColorData = fieldColor(contourValue, 0.8).coordinates;
-    while (contourColorData.length / 4 < vertexCount) {
-        contourColorData.push(...contourColorData);
-    }
-    return contourColorData;
+function contourColorData(contourValue) {
+    return fieldColor(contourValue, 0.8).coordinates;
 }
 function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT);
-    position.pointTo(cubeBuffer, 10, 0);
-    normal.pointTo(cubeBuffer, 10, 3);
-    color.pointTo(cubeBuffer, 10, 6);
+    const unit = contourSurfaceBuffer.word;
+    position.pointTo(cubeBuffer, 0 * cubeBuffer.word);
+    normal.pointTo(cubeBuffer, 3 * cubeBuffer.word);
+    color.pointTo(cubeBuffer, 6 * cubeBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
-    position.pointTo(contourSurfaceBuffer, 6, 0);
-    normal.pointTo(contourSurfaceBuffer, 6, 3);
-    color.pointTo(contourColorBuffer, 4, 0);
+    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
+    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
+    color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
     gl.finish();
     gl.flush();

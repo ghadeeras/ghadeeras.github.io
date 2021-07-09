@@ -9,7 +9,7 @@ export class Renderer {
         this.treeView = this.view.by(this.translationUp);
         this.proj = Space.Matrix.project(1, 100, 1);
         this.context = Djee.Context.of("canvas-gl");
-        this.buffer = this.context.newBuffer();
+        this.buffer = this.context.newBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();
         const vertexShader = this.context.vertexShader(vertexShaderCode);
         const fragmentShader = this.context.fragmentShader(fragmentShaderCode);
@@ -17,8 +17,8 @@ export class Renderer {
         program.use();
         const position = program.attribute("position");
         const normal = program.attribute("normal");
-        position.pointTo(this.buffer, 6, 0);
-        normal.pointTo(this.buffer, 6, 3);
+        position.pointTo(this.buffer, 0 * this.buffer.word);
+        normal.pointTo(this.buffer, 3 * this.buffer.word);
         this.matModel = program.uniform("matModel");
         this.matSubModel = program.uniform("matSubModel");
         this.matView = program.uniform("matView");

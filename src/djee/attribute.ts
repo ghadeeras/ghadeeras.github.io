@@ -16,24 +16,25 @@ export class Attribute {
         this.setter = getSetter(gl, this.location, this.info)
     }
 
-    pointTo(buffer: Buffer, stride: number = 0, offset: number = 0, size?: number) {
-        BufferTarget.arrayBuffer.with(buffer, gl => {
-            gl.enableVertexAttribArray(this.location);
-            gl.vertexAttribPointer(
-                this.location,
-                this.info.itemDimensions,
-                this.info.primitiveType,
-                false,
-                stride * this.info.primitiveSize,
-                offset * this.info.primitiveSize
-            );
-        })
+    pointTo(buffer: Buffer, byteOffset: number = 0, normalized: boolean = false, info: VariableInfo = this.info) {
+        BufferTarget.arrayBuffer.bind(buffer)
+        const gl = buffer.context.gl
+        gl.enableVertexAttribArray(this.location);
+        gl.vertexAttribPointer(
+            this.location,
+            info.itemDimensions,
+            info.primitiveType,
+            normalized,
+            buffer.byteStride,
+            byteOffset
+        );
     }
 
     setTo(...components: number[]) {
         if (components.length != this.info.itemSize) {
             failure(`Arrays of length '${components.length}' cannot be assigned to ${this.info.itemOrderName} attribute '${this.name}' of size '${this.info.itemSize}'`);
         }
+        this.program.context.gl.disableVertexAttribArray(this.location);
         this.setter(components);
     }
 

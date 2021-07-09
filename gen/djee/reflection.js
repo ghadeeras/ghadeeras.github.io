@@ -1,5 +1,5 @@
 import { failure } from "./utils.js";
-export function asVariableInfo(info) {
+export function asVariableInfo(info, specificPrimitiveType = null) {
     const result = {
         name: info.name,
         itemType: info.type,
@@ -9,7 +9,7 @@ export function asVariableInfo(info) {
         itemDimensions: dimensions(info),
         itemSize: 0,
         itemSizeInBytes: 0,
-        primitiveType: primitiveType(info),
+        primitiveType: specificPrimitiveType !== null && specificPrimitiveType !== void 0 ? specificPrimitiveType : primitiveType(info),
         primitiveTypeName: "truth",
         primitiveSize: 4,
         sizeInBytes: 0

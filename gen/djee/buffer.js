@@ -3,26 +3,21 @@ export class BufferTarget {
     constructor(id) {
         this.id = id;
     }
-    with(buffer, glCode) {
-        const gl = buffer.context.gl;
-        gl.bindBuffer(this.id, buffer.glBuffer);
-        try {
-            return glCode(gl);
-        }
-        finally {
-            gl.bindBuffer(this.id, null);
-        }
+    bind(buffer) {
+        buffer.context.gl.bindBuffer(this.id, buffer.glBuffer);
     }
     fill(buffer, data) {
-        this.with(buffer, gl => gl.bufferData(this.id, data, buffer.usageHint));
+        this.bind(buffer);
+        buffer.context.gl.bufferData(this.id, data, buffer.usageHint);
     }
 }
 BufferTarget.arrayBuffer = new BufferTarget(WebGLRenderingContext.ARRAY_BUFFER);
 BufferTarget.elementArrayBuffer = new BufferTarget(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER);
 export class Buffer {
-    constructor(context, isDynamic = false) {
+    constructor(context, byteStride = 0, isDynamic = false) {
         var _a;
         this.context = context;
+        this.byteStride = byteStride;
         this._data = new Float32Array([]);
         const gl = context.gl;
         this.glBuffer = (_a = gl.createBuffer()) !== null && _a !== void 0 ? _a : failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`);
@@ -30,6 +25,9 @@ export class Buffer {
     }
     delete() {
         this.context.gl.deleteBuffer(this.glBuffer);
+    }
+    get word() {
+        return this.data.BYTES_PER_ELEMENT;
     }
     get data() {
         return this._data;

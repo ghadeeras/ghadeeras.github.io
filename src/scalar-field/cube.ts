@@ -18,7 +18,6 @@ let fogginess: Djee.Uniform;
 
 let cubeBuffer: Djee.Buffer;
 let contourSurfaceBuffer: Djee.Buffer;
-let contourColorBuffer: Djee.Buffer;
 
 let cube: Cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue: number = 0;
@@ -76,9 +75,8 @@ function doInit() {
     )
     program.use();
 
-    cubeBuffer = context.newBuffer();
-    contourSurfaceBuffer = context.newBuffer();
-    contourColorBuffer = context.newBuffer();
+    cubeBuffer = context.newBuffer(10 * 4);
+    contourSurfaceBuffer = context.newBuffer(6 * 4);
 
     position = program.attribute("position");
     normal = program.attribute("normal");
@@ -210,7 +208,6 @@ function cubeSink(): Gear.Sink<Cube> {
             cube = newCube;
             cubeBuffer.float32Data = cubeData(cube);
             contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )
@@ -222,7 +219,6 @@ function contourValueSink(): Gear.Sink<number> {
         .producer(newContourValue => {
             contourValue = newContourValue;
             contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )
@@ -251,26 +247,24 @@ function selected<T>(value: string): Gear.Predicate<T> {
     return () => mouseBinding.value == value;
 }
 
-function contourColorData(contourValue: number, vertexCount: number) {
-    const contourColorData = fieldColor(contourValue, 0.8).coordinates;
-    while (contourColorData.length / 4 < vertexCount) {
-        contourColorData.push(...contourColorData);
-    }
-    return contourColorData;
+function contourColorData(contourValue: number) {
+    return fieldColor(contourValue, 0.8).coordinates;
 }
 
 function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    position.pointTo(cubeBuffer, 10, 0);
-    normal.pointTo(cubeBuffer, 10, 3);
-    color.pointTo(cubeBuffer, 10, 6);
+    const unit = contourSurfaceBuffer.word
+
+    position.pointTo(cubeBuffer, 0 * cubeBuffer.word);
+    normal.pointTo(cubeBuffer, 3 * cubeBuffer.word);
+    color.pointTo(cubeBuffer, 6 * cubeBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
 
-    position.pointTo(contourSurfaceBuffer, 6, 0);
-    normal.pointTo(contourSurfaceBuffer, 6, 3);
-    color.pointTo(contourColorBuffer, 4, 0);
+    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
+    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
+    color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
     gl.finish();

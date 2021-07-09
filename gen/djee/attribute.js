@@ -10,16 +10,17 @@ export class Attribute {
         this.info = (_a = program.attributeInfos[name]) !== null && _a !== void 0 ? _a : failure(`Could not introspect attribute '${name}'`);
         this.setter = getSetter(gl, this.location, this.info);
     }
-    pointTo(buffer, stride = 0, offset = 0, size) {
-        BufferTarget.arrayBuffer.with(buffer, gl => {
-            gl.enableVertexAttribArray(this.location);
-            gl.vertexAttribPointer(this.location, this.info.itemDimensions, this.info.primitiveType, false, stride * this.info.primitiveSize, offset * this.info.primitiveSize);
-        });
+    pointTo(buffer, byteOffset = 0, normalized = false, info = this.info) {
+        BufferTarget.arrayBuffer.bind(buffer);
+        const gl = buffer.context.gl;
+        gl.enableVertexAttribArray(this.location);
+        gl.vertexAttribPointer(this.location, info.itemDimensions, info.primitiveType, normalized, buffer.byteStride, byteOffset);
     }
     setTo(...components) {
         if (components.length != this.info.itemSize) {
             failure(`Arrays of length '${components.length}' cannot be assigned to ${this.info.itemOrderName} attribute '${this.name}' of size '${this.info.itemSize}'`);
         }
+        this.program.context.gl.disableVertexAttribArray(this.location);
         this.setter(components);
     }
 }

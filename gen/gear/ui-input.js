@@ -209,7 +209,7 @@ export class ElementEvents {
     get dragging() {
         return this.lazyDragging();
     }
-    get mouseButons() {
+    get mouseButtons() {
         return this.lazyMouseButtons();
     }
     static create(elementId) {

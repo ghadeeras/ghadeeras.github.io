@@ -18,7 +18,6 @@ let fogginess: Djee.Uniform;
 
 let tetrahedronBuffer: Djee.Buffer;
 let contourSurfaceBuffer: Djee.Buffer;
-let contourColorBuffer: Djee.Buffer;
 
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue: number = 0;
@@ -60,9 +59,8 @@ function doInit() {
     )
     program.use();
 
-    tetrahedronBuffer = context.newBuffer();
-    contourSurfaceBuffer = context.newBuffer();
-    contourColorBuffer = context.newBuffer();
+    tetrahedronBuffer = context.newBuffer(10 * 4);
+    contourSurfaceBuffer = context.newBuffer(6 * 4);
 
     position = program.attribute("position");
     normal = program.attribute("normal");
@@ -138,7 +136,6 @@ function tetrahedronSink(): Gear.Sink<Tetrahedron> {
             tetrahedron = newTetrahedron;
             tetrahedronBuffer.float32Data = tetrahedronData(tetrahedron);
             contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
-            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )
@@ -150,7 +147,6 @@ function contourValueSink(): Gear.Sink<number> {
         .producer(newContourValue => {
             contourValue = newContourValue;
             contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
-            contourColorBuffer.float32Data = contourColorData(contourValue, contourSurfaceBuffer.data.length / 6);
             draw();
         })
     )
@@ -179,26 +175,22 @@ function selected<T>(value: string): Gear.Predicate<T> {
     return () => mouseBinding.value == value;
 }
 
-function contourColorData(contourValue: number, vertexCount: number) {
-    const contourColorData = fieldColor(contourValue, 0.8).coordinates;
-    while (contourColorData.length / 4 < vertexCount) {
-        contourColorData.push(...contourColorData);
-    }
-    return contourColorData;
+function contourColorData(contourValue: number) {
+    return fieldColor(contourValue, 0.8).coordinates;
 }
 
 function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    position.pointTo(tetrahedronBuffer, 10, 0);
-    normal.pointTo(tetrahedronBuffer, 10, 3);
-    color.pointTo(tetrahedronBuffer, 10, 6);
+    position.pointTo(tetrahedronBuffer, 0 * tetrahedronBuffer.word);
+    normal.pointTo(tetrahedronBuffer, 3 * tetrahedronBuffer.word);
+    color.pointTo(tetrahedronBuffer, 6 * tetrahedronBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, tetrahedronBuffer.data.length / 10);
 
-    position.pointTo(contourSurfaceBuffer, 6, 0);
-    normal.pointTo(contourSurfaceBuffer, 6, 3);
-    color.pointTo(contourColorBuffer, 4, 0);
+    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
+    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
+    color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
     gl.finish();

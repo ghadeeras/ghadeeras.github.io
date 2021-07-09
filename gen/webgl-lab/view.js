@@ -94,7 +94,7 @@ export class View {
         const result = [];
         for (let attribute of reflection.attributes) {
             const glAttribute = reflection.program.attribute(attribute.name);
-            glAttribute.pointTo(this.buffer, 4);
+            glAttribute.pointTo(this.buffer);
         }
         for (let uniform of reflection.uniforms) {
             const dimensions = uniform.itemDimensions;
@@ -120,8 +120,8 @@ export class View {
         const data = [];
         for (let y = 0; y < lod; y++) {
             for (let x = 0; x <= lod; x++) {
-                data.push(2 * x / lod - 1.0, 2 * (y + 1) / lod - 1.0, 0, 1);
-                data.push(2 * x / lod - 1.0, 2 * y / lod - 1.0, 0, 1);
+                data.push(2 * x / lod - 1.0, 2 * (y + 1) / lod - 1.0);
+                data.push(2 * x / lod - 1.0, 2 * y / lod - 1.0);
             }
         }
         this.lod = lod;

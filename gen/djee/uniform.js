@@ -20,8 +20,9 @@ export class Uniform {
         if (data.length != this.info.itemSize) {
             failure(`Arrays of length '${data.length}' cannot be assigned to ${this.info.itemOrderName} uniform '${this.name}' which has size '${this.info.itemSize}'`);
         }
-        this.setter(data);
-        this._data = [...data];
+        const copy = [...data];
+        this.setter(copy);
+        this._data = copy;
     }
 }
 function getSetter(gl, location, info) {
