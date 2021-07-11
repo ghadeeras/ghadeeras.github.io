@@ -46,9 +46,10 @@ function doInit() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
+    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
     canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newCube(y, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value1")).map(([x, y]) => newCube(cube.value0, y, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value2")).map(([x, y]) => newCube(cube.value0, cube.value1, y, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value3")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, y, cube.value4, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value4")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, y, cube.value5, cube.value6, cube.value7)), flow.filter(selected("value5")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, y, cube.value6, cube.value7)), flow.filter(selected("value6")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, y, cube.value7)), flow.filter(selected("value7")).map(([x, y]) => newCube(cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, y))).to(cubeSink())), flow => flow
         .filter(selected("rotation"))
-        .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+        .map(transformer.rotation)
         .to(rotationSink()));
 }
 function cubeSink() {
@@ -104,7 +105,6 @@ function draw() {
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-    gl.finish();
     gl.flush();
 }
 function newCube(field0, field1, field2, field3, field4, field5, field6, field7) {

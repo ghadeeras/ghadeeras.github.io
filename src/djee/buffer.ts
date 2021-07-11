@@ -29,7 +29,7 @@ export class Buffer {
 
     private _data: NumberArray = new Float32Array([])
 
-    constructor(readonly context: Context, readonly byteStride: number = 0, isDynamic: boolean = false) {
+    constructor(readonly context: Context, readonly byteStride: number = 0, isDynamic: boolean = false, readonly target: BufferTarget = BufferTarget.arrayBuffer) {
         const gl = context.gl
         this.glBuffer = gl.createBuffer() ?? failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`)
         this.usageHint = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW
@@ -49,7 +49,7 @@ export class Buffer {
 
     set data(data: NumberArray) {
         const gl = this.context.gl
-        BufferTarget.arrayBuffer.fill(this, data)
+        this.target.fill(this, data)
         this._data = data
     }
 

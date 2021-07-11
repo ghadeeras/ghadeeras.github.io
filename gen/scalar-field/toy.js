@@ -45,9 +45,10 @@ function doInit() {
     gl.clearDepth(1);
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
+    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
     canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
         .filter(selected("rotation"))
-        .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+        .map(transformer.rotation)
         .to(rotationSink()));
     levelOfDetailsFlow().to(levelOfDetailsSink());
     Gear.readableValue("function").to(functionSink());
@@ -225,7 +226,6 @@ function draw() {
     position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-    gl.finish();
     gl.flush();
 }
 //# sourceMappingURL=toy.js.map

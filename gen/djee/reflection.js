@@ -40,6 +40,11 @@ function dimensions(info) {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.UNSIGNED_INT:
+        case C.SHORT:
+        case C.UNSIGNED_SHORT:
+        case C.BYTE:
+        case C.UNSIGNED_BYTE:
         case C.SAMPLER_2D:
         case C.SAMPLER_CUBE:
         case C.FLOAT:
@@ -68,6 +73,11 @@ function order(info) {
     switch (info.type) {
         case C.BOOL:
         case C.INT:
+        case C.UNSIGNED_INT:
+        case C.SHORT:
+        case C.UNSIGNED_SHORT:
+        case C.BYTE:
+        case C.UNSIGNED_BYTE:
         case C.SAMPLER_2D:
         case C.SAMPLER_CUBE:
         case C.FLOAT:
@@ -94,27 +104,31 @@ function primitiveType(info) {
     const C = WebGLRenderingContext;
     switch (info.type) {
         case C.BOOL:
+        case C.INT:
+        case C.UNSIGNED_INT:
+        case C.SHORT:
+        case C.UNSIGNED_SHORT:
+        case C.BYTE:
+        case C.UNSIGNED_BYTE:
+        case C.FLOAT:
+        case C.SAMPLER_2D:
+        case C.SAMPLER_CUBE:
+            return info.type;
         case C.BOOL_VEC2:
         case C.BOOL_VEC3:
         case C.BOOL_VEC4:
-            return WebGLRenderingContext.BOOL;
-        case C.INT:
+            return C.BOOL;
         case C.INT_VEC2:
         case C.INT_VEC3:
         case C.INT_VEC4:
-            return WebGLRenderingContext.INT;
-        case C.SAMPLER_2D:
-            return WebGLRenderingContext.SAMPLER_2D;
-        case C.SAMPLER_CUBE:
-            return WebGLRenderingContext.SAMPLER_CUBE;
-        case C.FLOAT:
+            return C.INT;
         case C.FLOAT_VEC2:
         case C.FLOAT_VEC3:
         case C.FLOAT_VEC4:
         case C.FLOAT_MAT2:
         case C.FLOAT_MAT3:
         case C.FLOAT_MAT4:
-            return WebGLRenderingContext.FLOAT;
+            return C.FLOAT;
         default:
             return failure(`Unsupported type:  ${info.type}`);
     }

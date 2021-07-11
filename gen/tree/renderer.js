@@ -41,9 +41,9 @@ export class Renderer {
         this.draw();
     }
     matricesSink() {
-        return Gear.sink(matricies => {
-            if (matricies) {
-                this.matrices = matricies;
+        return Gear.sink(matrices => {
+            if (matrices) {
+                this.matrices = matrices;
                 this.draw();
             }
         });
@@ -112,7 +112,6 @@ export class Renderer {
                 gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, y * 34, 34);
             }
         }
-        gl.finish();
         gl.flush();
     }
     vertexData() {

@@ -7,10 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BufferTarget } from "./buffer";
-import { asVariableInfo } from "./reflection";
-import { failure, lazily } from "./utils";
-class Matrix extends Float64Array {
+import { BufferTarget } from "./buffer.js";
+import { asVariableInfo } from "./reflection.js";
+import { failure, lazily } from "./utils.js";
+export class Matrix extends Float64Array {
     constructor() {
         super(16);
     }
@@ -30,10 +30,41 @@ class Matrix extends Float64Array {
     }
     static create(components) {
         const matrix = new Matrix();
-        for (let i = 0; i < matrix.length; i++) {
-            matrix[i] = components[i];
-        }
+        matrix.set(components);
         return matrix;
+    }
+    static rotate(q) {
+        const xx = q[0] * q[0];
+        const yy = q[1] * q[1];
+        const zz = q[2] * q[2];
+        const xy = q[0] * q[1];
+        const yz = q[1] * q[2];
+        const zx = q[2] * q[0];
+        const wx = q[3] * q[0];
+        const wy = q[3] * q[1];
+        const wz = q[3] * q[2];
+        return Matrix.create([
+            1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (zx + wy), 0,
+            2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx), 0,
+            2 * (zx - wy), 2 * (yz + wx), 1 - 2 * (xx + yy), 0,
+            0, 0, 0, 1
+        ]);
+    }
+    static scale(s) {
+        return Matrix.create([
+            s[0], 0, 0, 0,
+            0, s[1], 0, 0,
+            0, 0, s[2], 0,
+            0, 0, 0, 1,
+        ]);
+    }
+    static translate(t) {
+        return Matrix.create([
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            t[0], t[1], t[2], 1
+        ]);
     }
 }
 Matrix.identity = Matrix.create([
@@ -53,18 +84,22 @@ function fetchBuffer(bufferRef, baseUri) {
     });
 }
 class ActiveBufferView {
-    constructor(bufferView, buffers, context) {
+    constructor(bufferView, buffers, indices, context) {
         var _a, _b;
-        this.buffer = context.newBuffer((_a = bufferView.byteStride) !== null && _a !== void 0 ? _a : 0);
+        this.buffer = indices ?
+            context.newIndicesBuffer() :
+            context.newBuffer((_a = bufferView.byteStride) !== null && _a !== void 0 ? _a : 0);
         this.buffer.data = new Uint8Array(buffers[bufferView.buffer], (_b = bufferView.byteOffset) !== null && _b !== void 0 ? _b : 0, bufferView.byteLength);
-        this.target = bufferView.target == BufferTarget.elementArrayBuffer.id ? BufferTarget.elementArrayBuffer : BufferTarget.arrayBuffer;
+    }
+    delete() {
+        this.buffer.delete();
     }
 }
 class ActiveAccessor {
     constructor(accessor, bufferViews) {
         var _a, _b;
         this.accessor = accessor;
-        if (accessor.bufferView) {
+        if (accessor.bufferView !== undefined) {
             const buffer = bufferViews[accessor.bufferView].buffer;
             const variableInfo = toVariableInfo(accessor);
             const byteOffset = (_a = accessor.byteOffset) !== null && _a !== void 0 ? _a : 0;
@@ -80,22 +115,37 @@ class ActiveAccessor {
 }
 export class ActiveModel {
     constructor(model, buffers, matrixUniform, attributesMap, context) {
-        const bufferViews = model.bufferViews.map(bufferView => new ActiveBufferView(bufferView, buffers, context));
-        const accessors = model.accessors.map(accessor => new ActiveAccessor(accessor, bufferViews));
+        var _a;
+        const indices = new Set();
+        model.meshes
+            .forEach(mesh => mesh.primitives
+            .filter(p => p.indices !== undefined)
+            .map(p => { var _a; return model.accessors[(_a = p.indices) !== null && _a !== void 0 ? _a : -1]; })
+            .forEach(accessor => { var _a; return indices.add((_a = accessor.bufferView) !== null && _a !== void 0 ? _a : -1); }));
+        this.bufferViews = model.bufferViews.map((bufferView, i) => new ActiveBufferView(bufferView, buffers, indices.has(i), context));
+        const accessors = model.accessors.map(accessor => new ActiveAccessor(accessor, this.bufferViews));
         const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context));
         const nodes = [];
         model.nodes.forEach(node => new ActiveNode(node, meshes, nodes, matrixUniform));
         this.scenes = model.scenes.map(scene => new ActiveScene(scene, nodes));
-        this.defaultScene = this.scenes[model.scene];
+        this.defaultScene = this.scenes[(_a = model.scene) !== null && _a !== void 0 ? _a : 0];
     }
-    static create(baseUri, model, matrixUniform, attributesMap, context) {
+    static create(modelUri, matrixUniform, attributesMap, context) {
         return __awaiter(this, void 0, void 0, function* () {
+            const response = yield fetch(modelUri, { mode: "cors" });
+            const model = yield response.json();
             const buffers = new Array(model.buffers.length);
             for (let i = 0; i < buffers.length; i++) {
-                buffers[i] = yield fetchBuffer(model.buffers[i], baseUri);
+                buffers[i] = yield fetchBuffer(model.buffers[i], modelUri);
             }
             return new ActiveModel(model, buffers, matrixUniform, attributesMap, context);
         });
+    }
+    render(matrix) {
+        this.defaultScene.render(matrix);
+    }
+    delete() {
+        this.bufferViews.forEach(bufferView => bufferView.delete());
     }
 }
 export class ActiveScene {
@@ -111,18 +161,34 @@ export class ActiveScene {
 class ActiveNode {
     constructor(node, meshes, nodes, matrixUniform) {
         this.matrixUniform = matrixUniform;
-        this.mesh = meshes[node.mesh];
-        this.children = lazily(() => node.children ? node.children.map(child => nodes[child]) : []);
-        this.matrix = node.matrix ? Matrix.create(node.matrix) : Matrix.identity;
+        this.children = lazily(() => {
+            const children = node.children !== undefined ? node.children.map(child => nodes[child]) : [];
+            if (node.mesh !== undefined) {
+                children.push(meshes[node.mesh]);
+            }
+            return children;
+        });
+        this.matrix = node.matrix !== undefined ?
+            Matrix.create(node.matrix) :
+            Matrix.identity;
+        this.matrix = node.translation !== undefined ?
+            this.matrix.prod(Matrix.translate(node.translation)) :
+            this.matrix;
+        this.matrix = node.rotation !== undefined ?
+            this.matrix.prod(Matrix.rotate(node.rotation)) :
+            this.matrix;
+        this.matrix = node.scale !== undefined ?
+            this.matrix.prod(Matrix.scale(node.scale)) :
+            this.matrix;
         nodes.push(this);
     }
     render(parentMatrix) {
         const matrix = parentMatrix.prod(this.matrix);
         this.matrixUniform.data = matrix;
-        this.mesh.render();
         for (let child of this.children()) {
             child.render(matrix);
         }
+        this.matrixUniform.data = parentMatrix;
     }
 }
 class ActiveMesh {
@@ -137,9 +203,8 @@ class ActiveMesh {
 }
 class ActiveMeshPrimitive {
     constructor(meshPrimitive, accessors, attributeMap, context) {
-        var _a;
         this.sideEffects = [];
-        const indicesAccessor = meshPrimitive.indices ? accessors[meshPrimitive.indices] : null;
+        const indicesAccessor = meshPrimitive.indices !== undefined ? accessors[meshPrimitive.indices] : null;
         let count = indicesAccessor ? indicesAccessor.accessor.count : Number.MAX_SAFE_INTEGER;
         for (let attributeName in meshPrimitive.attributes) {
             const attribute = attributeMap[attributeName];
@@ -156,9 +221,15 @@ class ActiveMeshPrimitive {
         if (indicesAccessor) {
             this.sideEffects.push(indicesAccessor.bindToIndex);
         }
-        const mode = (_a = meshPrimitive.mode) !== null && _a !== void 0 ? _a : WebGLRenderingContext.TRIANGLES;
+        if ((indicesAccessor === null || indicesAccessor === void 0 ? void 0 : indicesAccessor.accessor.componentType) === WebGLRenderingContext.UNSIGNED_INT) {
+            const ext = context.gl.getExtension('OES_element_index_uint');
+            if (!ext) {
+                failure("OES_element_index_uint extension is not supported");
+            }
+        }
+        const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES;
         this.sideEffects.push(indicesAccessor ?
-            () => context.gl.drawElements(mode, count, indicesAccessor.accessor.componentType, 0) :
+            () => { var _a; return context.gl.drawElements(mode, count, indicesAccessor.accessor.componentType, (_a = indicesAccessor.accessor.byteOffset) !== null && _a !== void 0 ? _a : 0); } :
             () => context.gl.drawArrays(mode, 0, count));
     }
     render() {

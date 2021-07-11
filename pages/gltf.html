@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>glTF Renderer</title>
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
+    <script type="module">
+        import * as GLTF from "../gen/gltf/toy.js"
+        GLTF.init();
+    </script>
+</head>
+
+<body>
+
+    <div id="head">
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
+    </div>
+
+    <div id="content">
+
+        <div id="side">
+
+            <div class="section">
+                <strong>glTF Renderer</strong>
+            </div>
+
+            <div>
+                <p>
+                    <div>Mouse/Touch Binding: <br/>
+                        <select id="mouse-binding" name="mouse-binding">
+                            <option value="modelScale">Scale (Mouse Y)</option>
+                            <option value="modelMove">Move</option>
+                            <option value="modelRotation" selected>Rotation</option>
+                            <option value="viewRotation">Camera Rotation</option>
+                            <option value="color">Color</option>
+                            <option value="shininess">Shininess (Mouse Y)</option>
+                            <option value="fogginess">Fogginess (Mouse Y)</option>
+                            <option value="lightPosition">Light Position</option>
+                        </select>
+                    </div>
+                </p>
+                <p>
+                    <div>Model: <br/>
+                        <select id="model" name="model"></select>
+                    </div>
+                </p>
+                <p>
+                    This is a basic model renderer that implements a small subset of glTF 2.0 (a data format used to 
+                    transmit and store models).  You could select one of the models from the Model drop-down above. 
+                    These models are fetched from this <a href="https://github.com/KhronosGroup/glTF-Sample-Models" target="_blank">
+                    Khronos repository</a>. Then you could do basic manipulation to the model by selecting an effect 
+                    from the Mouse/Touch Binding drop-down, and by dragging the pointer across the canvas on the right side
+                    in order to apply the selected effect.   
+                </p>
+                <p>
+                    Please bear in mind that this only implements a subset of the aforementioned data format. 
+                    Currently, it only renders the basic geometrical aspects of the model, and it is not fully tested.
+                    Therefore, some models might not render correctly, or they might need to be manipulated 
+                    (rotated, scaled, moved ... etc.) in order to fit nicely in the canvas.
+                </p>
+            </div>
+
+        </div>
+
+        <div id="main">
+            <div class="view">
+                <canvas id="canvas-gl" width="640" height="640">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>

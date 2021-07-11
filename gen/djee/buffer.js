@@ -14,10 +14,11 @@ export class BufferTarget {
 BufferTarget.arrayBuffer = new BufferTarget(WebGLRenderingContext.ARRAY_BUFFER);
 BufferTarget.elementArrayBuffer = new BufferTarget(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER);
 export class Buffer {
-    constructor(context, byteStride = 0, isDynamic = false) {
+    constructor(context, byteStride = 0, isDynamic = false, target = BufferTarget.arrayBuffer) {
         var _a;
         this.context = context;
         this.byteStride = byteStride;
+        this.target = target;
         this._data = new Float32Array([]);
         const gl = context.gl;
         this.glBuffer = (_a = gl.createBuffer()) !== null && _a !== void 0 ? _a : failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`);
@@ -34,7 +35,7 @@ export class Buffer {
     }
     set data(data) {
         const gl = this.context.gl;
-        BufferTarget.arrayBuffer.fill(this, data);
+        this.target.fill(this, data);
         this._data = data;
     }
     set float32Data(data) {

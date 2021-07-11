@@ -46,9 +46,10 @@ function doInit() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(1, 1, 1, 1);
     const canvas = Gear.elementEvents("canvas-gl");
+    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
     canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(y, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(tetrahedron.value0, y, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, y, tetrahedron.value3)), flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, y))).to(tetrahedronSink())), flow => flow
         .filter(selected("rotation"))
-        .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+        .map(transformer.rotation)
         .to(rotationSink()));
 }
 function tetrahedronSink() {
@@ -103,7 +104,6 @@ function draw() {
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-    gl.finish();
     gl.flush();
 }
 function newTetrahedron(field0, field1, field2, field3) {

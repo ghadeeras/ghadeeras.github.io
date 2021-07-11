@@ -1,7 +1,6 @@
 import * as Space from "../space/all.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
-import { View } from "../mandelbrot/view.js";
 
 export class Renderer {
 
@@ -69,9 +68,9 @@ export class Renderer {
     }
     
     matricesSink(): Gear.Sink<number[][]> {
-        return Gear.sink(matricies => {
-            if (matricies) {
-                this.matrices = matricies;
+        return Gear.sink(matrices => {
+            if (matrices) {
+                this.matrices = matrices;
                 this.draw();
             }
         });
@@ -151,7 +150,6 @@ export class Renderer {
             }
         }
         
-        gl.finish()
         gl.flush();
     }
 

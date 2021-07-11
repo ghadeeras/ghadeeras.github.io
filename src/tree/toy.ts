@@ -37,6 +37,7 @@ function doInit() {
         }).to(matricesSink)
     );
 
+    const transformer = new Gear.Transformer(canvas.element, renderer.proj.by(renderer.treeView))
     canvas.dragging.branch(
         flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
             2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
@@ -56,7 +57,7 @@ function doInit() {
         ),
         flow => flow
             .filter(selected("rotation"))
-            .map(Gear.rotation(canvas.element, renderer.proj.by(renderer.treeView)))
+            .map(transformer.rotation)
             .to(renderer.rotationSink())
     );
 }

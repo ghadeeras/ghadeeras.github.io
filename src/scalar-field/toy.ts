@@ -72,6 +72,7 @@ function doInit() {
     gl.clearColor(1, 1, 1, 1);
 
     const canvas = Gear.elementEvents("canvas-gl");
+    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix))
     canvas.dragging.branch(
         flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
             2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
@@ -85,7 +86,7 @@ function doInit() {
         ),
         flow => flow
             .filter(selected("rotation"))
-            .map(Gear.rotation(canvas.element, projectionMatrix.by(viewMatrix)))
+            .map(transformer.rotation)
             .to(rotationSink())
     );
     levelOfDetailsFlow().to(levelOfDetailsSink());
@@ -305,6 +306,5 @@ function draw() {
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
-    gl.finish();
     gl.flush();
 }

@@ -8,11 +8,11 @@ export type MouseButtons = [boolean, boolean, boolean];
 export type Dragging = {
     startPos: PointerPosition
     pos: PointerPosition
-    start: boolean
-    end: boolean
-    shift: boolean
-    ctrl: boolean
-    alt: boolean
+    start?: boolean
+    end?: boolean
+    shift?: boolean
+    ctrl?: boolean
+    alt?: boolean
 }
 
 export function pos(x: number, y: number): PointerPosition {

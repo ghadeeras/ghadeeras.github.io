@@ -1,6 +1,6 @@
 import { Shader, ShaderType } from "./shader.js"
 import { Program } from "./program.js"
-import { Buffer } from "./buffer.js"
+import { Buffer, BufferTarget } from "./buffer.js"
 import { failure } from "./utils.js"
 import { Texture } from "./texture.js"
 
@@ -45,6 +45,10 @@ export class Context {
 
     newBuffer(byteStride: number = 0, isDynamic: boolean = false) {
         return new Buffer(this, byteStride, isDynamic)
+    }
+
+    newIndicesBuffer(isDynamic: boolean = false) {
+        return new Buffer(this, 0, isDynamic, BufferTarget.elementArrayBuffer)
     }
 
     newTexture(unit: number = 0) {
