@@ -33,8 +33,10 @@ void main() {
     float shine = clamp(cosRP, 0.0, 1.0);
     shine = pow(shine, 8.0);
                 
-    float shade = diffuse + shine * shininess;
+    float shade = (diffuse + shine * shininess);
+
+    vec3 c = (color.a >= 0.0 || facing >= 0.0) ? color.rgb : (vec3(1.0) - color.rgb);
 
     float fogFactor = exp2(-fogDepth * fogginess / 8.0);
-    gl_FragColor = vec4(mix(white, shade * color.rgb, fogFactor), color.a);
+    gl_FragColor = vec4(mix(white, shade * c, fogFactor), 1.0);
 }

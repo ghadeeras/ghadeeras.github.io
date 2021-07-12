@@ -52,9 +52,8 @@ async function doInit() {
 
     const modelElement = document.getElementById("model") as HTMLSelectElement
     for (let entry of modelIndex) {
-        modelElement.appendChild(new Option(entry.name, entry.name, entry.name == 'DamagedHelmet', entry.name == 'DamagedHelmet'))
+        modelElement.appendChild(new Option(entry.name, entry.name))
     }
-    modelElement.value = 'DamagedHelmet'
 
     context = Djee.Context.of("canvas-gl");
 
@@ -80,7 +79,7 @@ async function doInit() {
 
     matView.data = viewMatrix.asColumnMajorArray;
     matProjection.data = projectionMatrix.asColumnMajorArray;
-    color.data = [0.5, 0, 0.5, 1]
+    color.data = [0.5, 0, 0.5, -1]
 
     const gl = context.gl;
     gl.enable(gl.DEPTH_TEST);
@@ -133,18 +132,28 @@ function selected<T>(value: string): Gear.Predicate<T> {
 }
 
 function modelLoader(): Gear.Sink<string> {
-    return Gear.sinkFlow(flow => flow.defaultsTo('DamagedHelmet').producer(async (modelId) => {
-        const modelIndexEntry = modelIndex.find(entry => entry.name === modelId)
-        const modelUri = `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry?.variants.glTF}`
+    return Gear.sinkFlow(flow => flow.defaultsTo('ScalarField').producer(async (modelId) => {
+        const modelUri = getModelUri(modelId)
         model = await gltf.ActiveModel.create(modelUri, matModel, {
             "POSITION" : position,
             "NORMAL" : normal,
         }, context)
         modelTransformer.translationMatrix = Space.Matrix.identity()
-        modelTransformer.rotationMatrix = Space.Matrix.identity()
+        // modelTransformer.rotationMatrix = Space.Matrix.identity()
         modelTransformer.scaleMatrix = Space.Matrix.identity()
         draw()
     }))
+}
+
+function getModelUri(modelId: string) {
+    switch (modelId) {
+        case "ScalarFieldIn": return new URL('/models/ScalarFieldIn.gltf', window.location.href).href;
+        case "ScalarField": return new URL('/models/ScalarField.gltf', window.location.href).href;
+        case "ScalarFieldOut": return new URL('/models/ScalarFieldOut.gltf', window.location.href).href;
+        default:
+            const modelIndexEntry = modelIndex.find(entry => entry.name === modelId);
+            return `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry?.variants.glTF}`;
+    }
 }
 
 function lightPositionSink(): Gear.Sink<Gear.PointerPosition> {
@@ -181,7 +190,7 @@ function colorSink(): Gear.Sink<Gear.PointerPosition> {
         const red = Math.min(2, 1 + vec.dot(redVec)) / 2;
         const green = Math.min(2, 1 + vec.dot(greenVec)) / 2;
         const blue = Math.min(2, 1 + vec.dot(blueVec)) / 2;
-        color.data = [red, green, blue, 1];
+        color.data = [red, green, blue, -1];
         draw();
     }));
 }

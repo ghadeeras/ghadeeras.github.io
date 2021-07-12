@@ -52,6 +52,7 @@ function doInit() {
         .to(rotationSink()));
     levelOfDetailsFlow().to(levelOfDetailsSink());
     Gear.readableValue("function").to(functionSink());
+    Gear.elementEvents("save").click.producer(saveModel);
 }
 function selected(value) {
     const mouseBinding = document.getElementById("mouse-binding");
@@ -227,5 +228,150 @@ function draw() {
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
     gl.flush();
+}
+function saveModel() {
+    const model = createModel("ScalarField");
+    const anchor1 = document.createElement("a");
+    anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]));
+    anchor1.type = 'text/json';
+    anchor1.target = '_blank';
+    anchor1.download = 'ScalarField.gltf';
+    anchor1.click();
+    const anchor2 = document.createElement("a");
+    anchor2.href = URL.createObjectURL(new Blob([model.binary]));
+    anchor2.type = 'application/gltf-buffer';
+    anchor2.target = '_blank';
+    anchor2.download = 'ScalarField.bin';
+    anchor2.click();
+}
+function createModel(name) {
+    const indexedVertices = indexVertices(contourSurfaceBuffer);
+    return {
+        model: createModelJson(name, indexedVertices),
+        binary: createBinaryBuffer(indexedVertices)
+    };
+}
+function createModelJson(name, indexedVertices) {
+    const verticesCount = indexedVertices.indices.length;
+    const uniqueVerticesCount = indexedVertices.vertices.length / 6;
+    const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
+    const totalIndicesSize = verticesCount * intScalarSize;
+    const totalVerticesSize = uniqueVerticesCount * contourSurfaceBuffer.byteStride;
+    return {
+        asset: {
+            version: "2.0"
+        },
+        scenes: [{
+                nodes: [0]
+            }],
+        nodes: [{
+                mesh: 0
+            }],
+        meshes: [{
+                primitives: [{
+                        indices: 0,
+                        attributes: {
+                            "POSITION": 1,
+                            "NORMAL": 2
+                        }
+                    }]
+            }],
+        accessors: [{
+                type: "SCALAR",
+                componentType: intScalarSize == 2 ?
+                    WebGLRenderingContext.UNSIGNED_SHORT :
+                    WebGLRenderingContext.UNSIGNED_INT,
+                bufferView: 0,
+                count: verticesCount
+            }, {
+                type: "VEC3",
+                componentType: WebGLRenderingContext.FLOAT,
+                bufferView: 1,
+                count: uniqueVerticesCount,
+                byteOffset: 0,
+                min: indexedVertices.minPos,
+                max: indexedVertices.maxPos
+            }, {
+                type: "VEC3",
+                componentType: WebGLRenderingContext.FLOAT,
+                bufferView: 1,
+                count: uniqueVerticesCount,
+                byteOffset: contourSurfaceBuffer.byteStride / 2
+            }],
+        bufferViews: [{
+                buffer: 0,
+                byteOffset: 0,
+                byteLength: totalIndicesSize
+            }, {
+                buffer: 0,
+                byteOffset: totalIndicesSize,
+                byteLength: totalVerticesSize,
+                byteStride: contourSurfaceBuffer.byteStride
+            }],
+        buffers: [{
+                uri: `./${name}.bin`,
+                byteLength: totalIndicesSize + totalVerticesSize
+            }]
+    };
+}
+function createBinaryBuffer(indexedVertices) {
+    const intScalarSize = indexedVertices.vertices.length > 0xFFFF ? 4 : 2;
+    const totalIndicesSize = indexedVertices.indices.length * intScalarSize;
+    const totalVerticesSize = indexedVertices.vertices.length * contourSurfaceBuffer.byteStride;
+    const binaryBuffer = new ArrayBuffer(indexedVertices.indices.length * intScalarSize + indexedVertices.vertices.length * 4);
+    const arrayConstructor = intScalarSize == 2 ? Uint16Array : Uint32Array;
+    const indicesView = new arrayConstructor(binaryBuffer, 0, indexedVertices.indices.length);
+    const verticesView = new Float32Array(binaryBuffer, indicesView.byteLength);
+    indicesView.set(indexedVertices.indices);
+    verticesView.set(indexedVertices.vertices);
+    return binaryBuffer;
+}
+function indexVertices(buffer) {
+    const indexedVertices = {
+        indices: [],
+        vertices: [],
+        minPos: [2, 2, 2],
+        maxPos: [-2, -2, -2]
+    };
+    const map = {};
+    const stride = buffer.byteStride / buffer.data.BYTES_PER_ELEMENT;
+    for (let i = 0; i < buffer.data.length; i += stride) {
+        const vertex = buffer.data.slice(i, i + stride);
+        const position = vertex.slice(0, 3);
+        const normal = vertex.slice(3, 6);
+        const nextIndex = indexedVertices.vertices.length / stride;
+        let index = lookUp(map, position, nextIndex);
+        if (index == nextIndex) {
+            const unitNormal = Space.vec(...normal).unit.coordinates;
+            indexedVertices.vertices.push(...position, ...unitNormal);
+            indexedVertices.minPos = [
+                Math.min(position[0], indexedVertices.minPos[0]),
+                Math.min(position[1], indexedVertices.minPos[1]),
+                Math.min(position[2], indexedVertices.minPos[2])
+            ];
+            indexedVertices.maxPos = [
+                Math.max(position[0], indexedVertices.maxPos[0]),
+                Math.max(position[1], indexedVertices.maxPos[1]),
+                Math.max(position[2], indexedVertices.maxPos[2])
+            ];
+        }
+        indexedVertices.indices.push(index);
+    }
+    return indexedVertices;
+}
+function lookUp(map, position, defaultIndex) {
+    let subMap = map;
+    for (const component of position) {
+        let subSubMap = subMap[component];
+        if (subSubMap === undefined) {
+            subSubMap = {};
+            subMap[component] = subSubMap;
+        }
+        subMap = subSubMap;
+    }
+    if (subMap.index === undefined) {
+        subMap.index = defaultIndex;
+    }
+    return subMap.index;
 }
 //# sourceMappingURL=toy.js.map

@@ -7,6 +7,10 @@ import { failure, lazily, Supplier } from "./utils.js"
 
 export type Model = {
 
+    asset: {
+        version: "2.0"
+    }
+
     scene?: number
 
     scenes: Scene[]
@@ -86,7 +90,11 @@ export type Accessor = {
 
     count: number
 
-    type: "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4"
+    type: "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4",
+
+    min?: number[],
+
+    max?: number[]
 
 }
 
