@@ -315,9 +315,8 @@ function createModelJson(name, indexedVertices) {
     };
 }
 function createBinaryBuffer(indexedVertices) {
-    const intScalarSize = indexedVertices.vertices.length > 0xFFFF ? 4 : 2;
-    const totalIndicesSize = indexedVertices.indices.length * intScalarSize;
-    const totalVerticesSize = indexedVertices.vertices.length * contourSurfaceBuffer.byteStride;
+    const uniqueVerticesCount = indexedVertices.vertices.length / 6;
+    const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
     const binaryBuffer = new ArrayBuffer(indexedVertices.indices.length * intScalarSize + indexedVertices.vertices.length * 4);
     const arrayConstructor = intScalarSize == 2 ? Uint16Array : Uint32Array;
     const indicesView = new arrayConstructor(binaryBuffer, 0, indexedVertices.indices.length);
