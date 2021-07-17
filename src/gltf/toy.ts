@@ -37,7 +37,7 @@ let modelTransformer: Gear.Transformer
 let viewTransformer: Gear.Transformer
 
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
+    window.onload = () => Gear.load("/shaders", () => doInit(),
         ["uniformColors.vert", shader => vertexShaderCode = shader],
         ["uniformColors.frag", shader => fragmentShaderCode = shader]
     );

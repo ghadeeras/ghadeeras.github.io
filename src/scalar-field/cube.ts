@@ -60,13 +60,14 @@ const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 
 const projectionMatrix = Space.Matrix.project(2, 100, 1);
 
 export function initCubeDemo() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
+    window.onload = () => Gear.load("/shaders", () => doInit(),
         ["vertexColors.vert", shader => vertexShaderCode = shader],
         ["vertexColors.frag", shader => fragmentShaderCode = shader]
     );
 }
 
-function doInit() {
+async function doInit() {
+    await Space.initWaModules()
     context = Djee.Context.of("canvas-gl");
 
     const program = context.link(
@@ -377,7 +378,7 @@ function cubeData(cube: Cube): number[] {
 }
 
 function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
-    const stack = Space.modules.stack.exports;
+    const stack = Space.modules.mem.exports;
     const space = Space.modules.space.exports;
     const scalarField = Space.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {

@@ -29,7 +29,7 @@ let contourValue: number = 0
 let fieldRef: number = 0
 
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()),
+    window.onload = () => Gear.load("/shaders", () => doInit(),
         ["uniformColors.vert", shader => vertexShaderCode = shader],
         ["uniformColors.frag", shader => fragmentShaderCode = shader]
     )
@@ -38,7 +38,8 @@ export function init() {
 const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0))
 const projectionMatrix = Space.Matrix.project(4, 100, 1)
 
-function doInit() {
+async function doInit() {
+    await Space.initWaModules()
     fieldRef = sampleField()
 
     context = Djee.Context.of("canvas-gl")
@@ -216,7 +217,7 @@ function getFieldFunction(functionName: string) {
 }
 
 function sampleField(): number {
-    const stack = Space.modules.stack.exports
+    const stack = Space.modules.mem.exports
     const space = Space.modules.space.exports
     if (!stack || !space) {
         throw new Error("Failed to initialize Web Assembly Space modules!")
@@ -252,7 +253,7 @@ function sampleField(): number {
 }
 
 function contourSurfaceData(fieldRef: number, contourValue: number): Float32Array {
-    const stack = Space.modules.stack.exports
+    const stack = Space.modules.mem.exports
     const scalarField = Space.modules.scalarField.exports
     if (!stack || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Space modules!")

@@ -1,9 +1,9 @@
 (module
     
-    (import "stack" "stack" (memory $stack 1))
-    (import "stack" "enter" (func $enter))
-    (import "stack" "leave" (func $leave))
-    (import "stack" "allocate32" (func $allocate32 (param i32) (result i32)))
+    (import "mem" "stack" (memory $stack 1))
+    (import "mem" "enter" (func $enter))
+    (import "mem" "leave" (func $leave))
+    (import "mem" "allocate32" (func $allocate32 (param i32) (result i32)))
 
     (import "space" "f64_vec3_add" (func $vec3Add (param $v1 i32) (param $v2 i32) (result i32)))
     (import "space" "f64_vec3_scalar_mul" (func $vec3Scale (param $v i32) (param $factor f64) (result i32)))

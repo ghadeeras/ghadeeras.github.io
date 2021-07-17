@@ -1,3 +1,12 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import * as Djee from "../djee/all.js";
 import * as Space from "../space/all.js";
 import * as Gear from "../gear/all.js";
@@ -18,41 +27,44 @@ let contourSurfaceBuffer;
 let contourValue = 0;
 let fieldRef = 0;
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => Gear.load("/shaders", () => doInit(), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
 }
 const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
 const projectionMatrix = Space.Matrix.project(4, 100, 1);
 function doInit() {
-    fieldRef = sampleField();
-    context = Djee.Context.of("canvas-gl");
-    const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
-    program.use();
-    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true);
-    position = program.attribute("position");
-    normal = program.attribute("normal");
-    matModel = program.uniform("matModel");
-    const matView = program.uniform("matView");
-    matProjection = program.uniform("matProjection");
-    lightPosition = program.uniform("lightPosition");
-    color = program.uniform("color");
-    shininess = program.uniform("shininess");
-    fogginess = program.uniform("fogginess");
-    matModel.data = Space.Matrix.identity().asColumnMajorArray;
-    matView.data = viewMatrix.asColumnMajorArray;
-    matProjection.data = projectionMatrix.asColumnMajorArray;
-    const gl = context.gl;
-    gl.enable(gl.DEPTH_TEST);
-    gl.clearDepth(1);
-    gl.clearColor(1, 1, 1, 1);
-    const canvas = Gear.elementEvents("canvas-gl");
-    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
-    canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
-        .filter(selected("rotation"))
-        .map(transformer.rotation)
-        .to(rotationSink()));
-    levelOfDetailsFlow().to(levelOfDetailsSink());
-    Gear.readableValue("function").to(functionSink());
-    Gear.elementEvents("save").click.producer(saveModel);
+    return __awaiter(this, void 0, void 0, function* () {
+        yield Space.initWaModules();
+        fieldRef = sampleField();
+        context = Djee.Context.of("canvas-gl");
+        const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
+        program.use();
+        contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true);
+        position = program.attribute("position");
+        normal = program.attribute("normal");
+        matModel = program.uniform("matModel");
+        const matView = program.uniform("matView");
+        matProjection = program.uniform("matProjection");
+        lightPosition = program.uniform("lightPosition");
+        color = program.uniform("color");
+        shininess = program.uniform("shininess");
+        fogginess = program.uniform("fogginess");
+        matModel.data = Space.Matrix.identity().asColumnMajorArray;
+        matView.data = viewMatrix.asColumnMajorArray;
+        matProjection.data = projectionMatrix.asColumnMajorArray;
+        const gl = context.gl;
+        gl.enable(gl.DEPTH_TEST);
+        gl.clearDepth(1);
+        gl.clearColor(1, 1, 1, 1);
+        const canvas = Gear.elementEvents("canvas-gl");
+        const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
+        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
+            .filter(selected("rotation"))
+            .map(transformer.rotation)
+            .to(rotationSink()));
+        levelOfDetailsFlow().to(levelOfDetailsSink());
+        Gear.readableValue("function").to(functionSink());
+        Gear.elementEvents("save").click.producer(saveModel);
+    });
 }
 function selected(value) {
     const mouseBinding = document.getElementById("mouse-binding");
@@ -155,7 +167,7 @@ function getFieldFunction(functionName) {
     }
 }
 function sampleField() {
-    const stack = Space.modules.stack.exports;
+    const stack = Space.modules.mem.exports;
     const space = Space.modules.space.exports;
     if (!stack || !space) {
         throw new Error("Failed to initialize Web Assembly Space modules!");
@@ -189,7 +201,7 @@ function sampleField() {
     return ref;
 }
 function contourSurfaceData(fieldRef, contourValue) {
-    const stack = Space.modules.stack.exports;
+    const stack = Space.modules.mem.exports;
     const scalarField = Space.modules.scalarField.exports;
     if (!stack || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Space modules!");

@@ -1,7 +1,8 @@
 
 import { Vector } from "./vector.js"
 import { Matrix } from "./matrix.js"
-import * as WA from "./wa.js"
+import * as WA from "../../vibrato.js/js/wa.js"
+import * as RT from "../../vibrato.js/js/rt.js"
 
 export function vec(...coordinates: number[]) {
     return new Vector(coordinates);
@@ -11,42 +12,18 @@ export function mat(...columns: Vector[]) {
     return new Matrix(columns);
 }
 
-export type Reference = number;
-
-export type StackExports = {
-    
-    stack: WebAssembly.Memory;
-
-    enter: () => void;
-    leave: () => void;
-    
-    allocate8: (size: number) => Reference;
-    allocate16: (size: number) => Reference;
-    allocate32: (size: number) => Reference;
-    allocate64: (size: number) => Reference;
-
-}
-
-export type SpaceExports = {
-
-    f64_vec2: (x: number, y: number) => Reference;
-    f64_vec3: (x: number, y: number, z: number) => Reference;
-    f64_vec4: (x: number, y: number, z: number, w: number) => Reference;
-
-}
-
 export type ScalarFieldExports = {
-    tessellateTetrahedron: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference) => Reference;
-    tessellateCube: (contourValue: number, point0: Reference, point1: Reference, point2: Reference, point3: Reference, point4: Reference, point5: Reference, point6: Reference, point7: Reference) => Reference;
-    tesselateScalarField(fieldRef: Reference, resolution: number, contourValue: number): Reference;
+    tessellateTetrahedron: (contourValue: number, point0: RT.Reference, point1: RT.Reference, point2: RT.Reference, point3: RT.Reference) => RT.Reference;
+    tessellateCube: (contourValue: number, point0: RT.Reference, point1: RT.Reference, point2: RT.Reference, point3: RT.Reference, point4: RT.Reference, point5: RT.Reference, point6: RT.Reference, point7: RT.Reference) => RT.Reference;
+    tesselateScalarField(fieldRef: RT.Reference, resolution: number, contourValue: number): RT.Reference;
 }
 
 export const modules = {
-    stack: WA.module("stack.wasm", exports => exports as StackExports),
-    space: WA.module("space.wasm", exports => exports as SpaceExports),
-    scalarField: WA.module("scalarField.wasm", exports => exports as ScalarFieldExports),
+    mem: WA.module<RT.MemExports>("vibrato.js/rt/mem.wasm"),
+    space: WA.module<RT.SpaceExports>("vibrato.js/rt/space.wasm"),
+    scalarField: WA.module<ScalarFieldExports>("wa/scalarField.wasm"),
 }
 
-export function initWaModules(onready: () => void) {
-    WA.load(modules, "stack", "space", "scalarField").then(() => onready());
+export async function initWaModules() {
+    return WA.loadWeb("", modules, "mem", "space", "scalarField");
 }

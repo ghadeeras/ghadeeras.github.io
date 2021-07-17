@@ -28,7 +28,7 @@ let model;
 let modelTransformer;
 let viewTransformer;
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => Gear.load("/shaders", () => doInit(), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
 }
 const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
 const projectionMatrix = Space.Matrix.project(4, 100, 1);

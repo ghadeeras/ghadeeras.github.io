@@ -1,3 +1,12 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import * as Djee from "../djee/all.js";
 import * as Space from "../space/all.js";
 import * as Gear from "../gear/all.js";
@@ -18,39 +27,42 @@ let contourValue = 0;
 const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 5), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
 const projectionMatrix = Space.Matrix.project(2, 100, 1);
 export function initTetrahedronDemo() {
-    window.onload = () => Gear.load("/shaders", () => Space.initWaModules(() => doInit()), ["vertexColors.vert", shader => vertexShaderCode = shader], ["vertexColors.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => Gear.load("/shaders", () => doInit(), ["vertexColors.vert", shader => vertexShaderCode = shader], ["vertexColors.frag", shader => fragmentShaderCode = shader]);
 }
 function doInit() {
-    context = Djee.Context.of("canvas-gl");
-    const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
-    program.use();
-    tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
-    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
-    position = program.attribute("position");
-    normal = program.attribute("normal");
-    color = program.attribute("color");
-    matModel = program.uniform("matModel");
-    const matView = program.uniform("matView");
-    const matProjection = program.uniform("matProjection");
-    lightPosition = program.uniform("lightPosition");
-    shininess = program.uniform("shininess");
-    fogginess = program.uniform("fogginess");
-    matModel.data = Space.Matrix.identity().asColumnMajorArray;
-    matView.data = viewMatrix.asColumnMajorArray;
-    matProjection.data = projectionMatrix.asColumnMajorArray;
-    lightPosition.data = [2, 2, 2];
-    shininess.data = [1];
-    fogginess.data = [0];
-    const gl = context.gl;
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.clearColor(1, 1, 1, 1);
-    const canvas = Gear.elementEvents("canvas-gl");
-    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
-    canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(y, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(tetrahedron.value0, y, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, y, tetrahedron.value3)), flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, y))).to(tetrahedronSink())), flow => flow
-        .filter(selected("rotation"))
-        .map(transformer.rotation)
-        .to(rotationSink()));
+    return __awaiter(this, void 0, void 0, function* () {
+        yield Space.initWaModules();
+        context = Djee.Context.of("canvas-gl");
+        const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
+        program.use();
+        tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
+        contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
+        position = program.attribute("position");
+        normal = program.attribute("normal");
+        color = program.attribute("color");
+        matModel = program.uniform("matModel");
+        const matView = program.uniform("matView");
+        const matProjection = program.uniform("matProjection");
+        lightPosition = program.uniform("lightPosition");
+        shininess = program.uniform("shininess");
+        fogginess = program.uniform("fogginess");
+        matModel.data = Space.Matrix.identity().asColumnMajorArray;
+        matView.data = viewMatrix.asColumnMajorArray;
+        matProjection.data = projectionMatrix.asColumnMajorArray;
+        lightPosition.data = [2, 2, 2];
+        shininess.data = [1];
+        fogginess.data = [0];
+        const gl = context.gl;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(1, 1, 1, 1);
+        const canvas = Gear.elementEvents("canvas-gl");
+        const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
+        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(y, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(tetrahedron.value0, y, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, y, tetrahedron.value3)), flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, y))).to(tetrahedronSink())), flow => flow
+            .filter(selected("rotation"))
+            .map(transformer.rotation)
+            .to(rotationSink()));
+    });
 }
 function tetrahedronSink() {
     return Gear.sinkFlow(flow => flow
@@ -163,7 +175,7 @@ function tetrahedronData(tetrahedron) {
     return tetrahedronVertexes.reduce((a, v) => a.concat(...v.coordinates), []);
 }
 function contourSurfaceData(tetrahedron, contourValue) {
-    const stack = Space.modules.stack.exports;
+    const stack = Space.modules.mem.exports;
     const space = Space.modules.space.exports;
     const scalarField = Space.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {
