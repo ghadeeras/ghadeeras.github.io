@@ -58,7 +58,7 @@ function tetrahedronSink() {
         .producer(newTetrahedron => {
         tetrahedron = newTetrahedron;
         tetrahedronBuffer.float32Data = tetrahedronData(tetrahedron);
-        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
+        contourSurfaceBuffer.data = contourSurfaceData(tetrahedron, contourValue);
         draw();
     }));
 }
@@ -67,7 +67,7 @@ function contourValueSink() {
         .defaultsTo(0)
         .producer(newContourValue => {
         contourValue = newContourValue;
-        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
+        contourSurfaceBuffer.data = contourSurfaceData(tetrahedron, contourValue);
         draw();
     }));
 }
@@ -171,23 +171,17 @@ function contourSurfaceData(tetrahedron, contourValue) {
     }
     stack.leave();
     stack.enter();
-    const p0 = space.vec4(tetrahedron.point0.coordinates[0], tetrahedron.point0.coordinates[1], tetrahedron.point0.coordinates[2], 1);
-    const g0 = space.vec4(tetrahedron.gradient0.coordinates[0], tetrahedron.gradient0.coordinates[1], tetrahedron.gradient0.coordinates[2], tetrahedron.value0);
-    const p1 = space.vec4(tetrahedron.point1.coordinates[0], tetrahedron.point1.coordinates[1], tetrahedron.point1.coordinates[2], 1);
-    const g1 = space.vec4(tetrahedron.gradient1.coordinates[0], tetrahedron.gradient1.coordinates[1], tetrahedron.gradient1.coordinates[2], tetrahedron.value1);
-    const p2 = space.vec4(tetrahedron.point2.coordinates[0], tetrahedron.point2.coordinates[1], tetrahedron.point2.coordinates[2], 1);
-    const g2 = space.vec4(tetrahedron.gradient2.coordinates[0], tetrahedron.gradient2.coordinates[1], tetrahedron.gradient2.coordinates[2], tetrahedron.value2);
-    const p3 = space.vec4(tetrahedron.point3.coordinates[0], tetrahedron.point3.coordinates[1], tetrahedron.point3.coordinates[2], 1);
-    const g3 = space.vec4(tetrahedron.gradient3.coordinates[0], tetrahedron.gradient3.coordinates[1], tetrahedron.gradient3.coordinates[2], tetrahedron.value3);
+    const p0 = space.f64_vec4(tetrahedron.point0.coordinates[0], tetrahedron.point0.coordinates[1], tetrahedron.point0.coordinates[2], 1);
+    const g0 = space.f64_vec4(tetrahedron.gradient0.coordinates[0], tetrahedron.gradient0.coordinates[1], tetrahedron.gradient0.coordinates[2], tetrahedron.value0);
+    const p1 = space.f64_vec4(tetrahedron.point1.coordinates[0], tetrahedron.point1.coordinates[1], tetrahedron.point1.coordinates[2], 1);
+    const g1 = space.f64_vec4(tetrahedron.gradient1.coordinates[0], tetrahedron.gradient1.coordinates[1], tetrahedron.gradient1.coordinates[2], tetrahedron.value1);
+    const p2 = space.f64_vec4(tetrahedron.point2.coordinates[0], tetrahedron.point2.coordinates[1], tetrahedron.point2.coordinates[2], 1);
+    const g2 = space.f64_vec4(tetrahedron.gradient2.coordinates[0], tetrahedron.gradient2.coordinates[1], tetrahedron.gradient2.coordinates[2], tetrahedron.value2);
+    const p3 = space.f64_vec4(tetrahedron.point3.coordinates[0], tetrahedron.point3.coordinates[1], tetrahedron.point3.coordinates[2], 1);
+    const g3 = space.f64_vec4(tetrahedron.gradient3.coordinates[0], tetrahedron.gradient3.coordinates[1], tetrahedron.gradient3.coordinates[2], tetrahedron.value3);
     const begin = scalarField.tessellateTetrahedron(contourValue, p0, p1, p2, p3);
     const end = stack.allocate8(0);
-    const result = array(stack, begin, end);
-    return result;
-}
-function array(stack, begin, end) {
-    const typedArray = new Float64Array(stack.stack.buffer.slice(begin, end));
-    const result = [];
-    typedArray.forEach(value => result.push(value));
+    const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4);
     return result;
 }
 function fieldColor(fieldValue, alpha = 0.4) {

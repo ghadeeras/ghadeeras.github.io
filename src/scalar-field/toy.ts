@@ -225,7 +225,10 @@ function sampleField(): number {
 
     stack.leave()
     stack.enter()
-    const ref = stack.allocate8(0)
+    const length = 8 * (resolution + 1) ** 3 
+    const ref = stack.allocate64(length)
+    const view = new Float64Array(stack.stack.buffer, ref, length)
+    let i = 0
     for (let z = 0; z <= resolution; z++) {
         for (let y = 0; y <= resolution; y++) {
             for (let x = 0; x <= resolution; x++) {
@@ -233,8 +236,14 @@ function sampleField(): number {
                 const py = 2 * y / resolution - 1
                 const pz = 2 * z / resolution - 1
                 const v = fieldSampler(px, py, pz).coordinates
-                space.vec4(px, py, pz, 1)
-                space.vec4(v[0], v[1], v[2], v[3])
+                view[i++] = px
+                view[i++] = py
+                view[i++] = pz
+                view[i++] = 1
+                view[i++] = v[0]
+                view[i++] = v[1]
+                view[i++] = v[2]
+                view[i++] = v[3]
             }
         }
     }
@@ -252,7 +261,7 @@ function contourSurfaceData(fieldRef: number, contourValue: number): Float32Arra
     stack.enter()
     const begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue)
     const end = stack.allocate8(0)
-    const result = new Float32Array(new Float64Array(stack.stack.buffer, begin, (end - begin) / 8))
+    const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4)
     return result
 }
 

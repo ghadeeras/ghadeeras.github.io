@@ -208,7 +208,7 @@ function cubeSink(): Gear.Sink<Cube> {
         .producer(newCube => {
             cube = newCube;
             cubeBuffer.float32Data = cubeData(cube);
-            contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
+            contourSurfaceBuffer.data = contourSurfaceData(cube, contourValue);
             draw();
         })
     )
@@ -219,7 +219,7 @@ function contourValueSink(): Gear.Sink<number> {
         .defaultsTo(0)
         .producer(newContourValue => {
             contourValue = newContourValue;
-            contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
+            contourSurfaceBuffer.data = contourSurfaceData(cube, contourValue);
             draw();
         })
     )
@@ -376,7 +376,7 @@ function cubeData(cube: Cube): number[] {
     return vertexes.reduce<number[]>((a, v) => a.concat(...v.coordinates), []);
 }
 
-function contourSurfaceData(cube: Cube, contourValue: number): number[] {
+function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
     const stack = Space.modules.stack.exports;
     const space = Space.modules.space.exports;
     const scalarField = Space.modules.scalarField.exports;
@@ -385,32 +385,25 @@ function contourSurfaceData(cube: Cube, contourValue: number): number[] {
     }
     stack.leave();
     stack.enter();
-    const p0 = space.vec4(cube.point0.coordinates[0], cube.point0.coordinates[1], cube.point0.coordinates[2], 1)
-    const g0 = space.vec4(cube.gradient0.coordinates[0], cube.gradient0.coordinates[1], cube.gradient0.coordinates[2], cube.value0);
-    const p1 = space.vec4(cube.point1.coordinates[0], cube.point1.coordinates[1], cube.point1.coordinates[2], 1)
-    const g1 = space.vec4(cube.gradient1.coordinates[0], cube.gradient1.coordinates[1], cube.gradient1.coordinates[2], cube.value1);
-    const p2 = space.vec4(cube.point2.coordinates[0], cube.point2.coordinates[1], cube.point2.coordinates[2], 1)
-    const g2 = space.vec4(cube.gradient2.coordinates[0], cube.gradient2.coordinates[1], cube.gradient2.coordinates[2], cube.value2);
-    const p3 = space.vec4(cube.point3.coordinates[0], cube.point3.coordinates[1], cube.point3.coordinates[2], 1)
-    const g3 = space.vec4(cube.gradient3.coordinates[0], cube.gradient3.coordinates[1], cube.gradient3.coordinates[2], cube.value3);
-    const p4 = space.vec4(cube.point4.coordinates[0], cube.point4.coordinates[1], cube.point4.coordinates[2], 1)
-    const g4 = space.vec4(cube.gradient4.coordinates[0], cube.gradient4.coordinates[1], cube.gradient4.coordinates[2], cube.value4);
-    const p5 = space.vec4(cube.point5.coordinates[0], cube.point5.coordinates[1], cube.point5.coordinates[2], 1)
-    const g5 = space.vec4(cube.gradient5.coordinates[0], cube.gradient5.coordinates[1], cube.gradient5.coordinates[2], cube.value5);
-    const p6 = space.vec4(cube.point6.coordinates[0], cube.point6.coordinates[1], cube.point6.coordinates[2], 1)
-    const g6 = space.vec4(cube.gradient6.coordinates[0], cube.gradient6.coordinates[1], cube.gradient6.coordinates[2], cube.value6);
-    const p7 = space.vec4(cube.point7.coordinates[0], cube.point7.coordinates[1], cube.point7.coordinates[2], 1)
-    const g7 = space.vec4(cube.gradient7.coordinates[0], cube.gradient7.coordinates[1], cube.gradient7.coordinates[2], cube.value7);
+    const p0 = space.f64_vec4(cube.point0.coordinates[0], cube.point0.coordinates[1], cube.point0.coordinates[2], 1)
+    const g0 = space.f64_vec4(cube.gradient0.coordinates[0], cube.gradient0.coordinates[1], cube.gradient0.coordinates[2], cube.value0);
+    const p1 = space.f64_vec4(cube.point1.coordinates[0], cube.point1.coordinates[1], cube.point1.coordinates[2], 1)
+    const g1 = space.f64_vec4(cube.gradient1.coordinates[0], cube.gradient1.coordinates[1], cube.gradient1.coordinates[2], cube.value1);
+    const p2 = space.f64_vec4(cube.point2.coordinates[0], cube.point2.coordinates[1], cube.point2.coordinates[2], 1)
+    const g2 = space.f64_vec4(cube.gradient2.coordinates[0], cube.gradient2.coordinates[1], cube.gradient2.coordinates[2], cube.value2);
+    const p3 = space.f64_vec4(cube.point3.coordinates[0], cube.point3.coordinates[1], cube.point3.coordinates[2], 1)
+    const g3 = space.f64_vec4(cube.gradient3.coordinates[0], cube.gradient3.coordinates[1], cube.gradient3.coordinates[2], cube.value3);
+    const p4 = space.f64_vec4(cube.point4.coordinates[0], cube.point4.coordinates[1], cube.point4.coordinates[2], 1)
+    const g4 = space.f64_vec4(cube.gradient4.coordinates[0], cube.gradient4.coordinates[1], cube.gradient4.coordinates[2], cube.value4);
+    const p5 = space.f64_vec4(cube.point5.coordinates[0], cube.point5.coordinates[1], cube.point5.coordinates[2], 1)
+    const g5 = space.f64_vec4(cube.gradient5.coordinates[0], cube.gradient5.coordinates[1], cube.gradient5.coordinates[2], cube.value5);
+    const p6 = space.f64_vec4(cube.point6.coordinates[0], cube.point6.coordinates[1], cube.point6.coordinates[2], 1)
+    const g6 = space.f64_vec4(cube.gradient6.coordinates[0], cube.gradient6.coordinates[1], cube.gradient6.coordinates[2], cube.value6);
+    const p7 = space.f64_vec4(cube.point7.coordinates[0], cube.point7.coordinates[1], cube.point7.coordinates[2], 1)
+    const g7 = space.f64_vec4(cube.gradient7.coordinates[0], cube.gradient7.coordinates[1], cube.gradient7.coordinates[2], cube.value7);
     const begin = scalarField.tessellateCube(contourValue, p0, p1, p2, p3, p4, p5, p6, p7);
     const end = stack.allocate8(0);
-    const result: number[] = array(stack, begin, end);
-    return result;
-}
-
-function array(stack: Space.StackExports, begin: number, end: number) {
-    const typedArray = new Float64Array(stack.stack.buffer.slice(begin, end));
-    const result: number[] = [];
-    typedArray.forEach(value => result.push(value));
+    const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4);
     return result;
 }
 

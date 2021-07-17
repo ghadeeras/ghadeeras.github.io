@@ -16,6 +16,13 @@ export class FrameBuffer {
         const gl = this.context.gl;
         gl.bindFramebuffer(this.target, this.glFrameBuffer);
     }
+    check() {
+        this.bind();
+        const result = this.context.gl.checkFramebufferStatus(this.target);
+        if (result !== WebGLRenderingContext.FRAMEBUFFER_COMPLETE) {
+            failure("Frame buffer is in an incomplete status!");
+        }
+    }
     get colorBuffer() {
         return this._colorBuffer;
     }

@@ -3,13 +3,26 @@
     (import "stack" "stack" (memory $stack 1))
     (import "stack" "enter" (func $enter))
     (import "stack" "leave" (func $leave))
-    (import "stack" "allocate8" (func $allocate8 (param i32) (result i32)))
-    (import "stack" "allocate64" (func $allocate64 (param i32) (result i32)))
+    (import "stack" "allocate32" (func $allocate32 (param i32) (result i32)))
 
-    (import "space" "vec3Copy" (func $vec3Copy (param $src i32) (param $dst i32) (result i32)))
-    (import "space" "vec3Clone" (func $vec3Clone (param $v i32) (result i32)))
-    (import "space" "vec3Add" (func $vec3Add (param $v1 i32) (param $v2 i32) (result i32)))
-    (import "space" "vec3Scale" (func $vec3Scale (param $v i32) (param $factor f64) (result i32)))
+    (import "space" "f64_vec3_add" (func $vec3Add (param $v1 i32) (param $v2 i32) (result i32)))
+    (import "space" "f64_vec3_scalar_mul" (func $vec3Scale (param $v i32) (param $factor f64) (result i32)))
+
+    (func $f64_vec3_demote_copy (param $src i32) (param $dst i32) (result i32)
+        (f32.store offset=0 (local.get $dst) (f32.demote_f64 (f64.load offset=0 (local.get $src))))
+        (f32.store offset=4 (local.get $dst) (f32.demote_f64 (f64.load offset=8 (local.get $src))))
+        (f32.store offset=8 (local.get $dst) (f32.demote_f64 (f64.load offset=16 (local.get $src))))
+        (local.get $dst)
+    )
+
+    (func $f32_vec3_clone (param $v i32) (result i32)
+        (local $result i32)
+        (local.set $result (call $allocate32 (i32.const 3)))
+        (f32.store offset=0 (local.get $result) (f32.load offset=0 (local.get $v)))
+        (f32.store offset=4 (local.get $result) (f32.load offset=4 (local.get $v)))
+        (f32.store offset=8 (local.get $result) (f32.load offset=8 (local.get $v)))
+        (local.get $result)
+    )
 
     (func $tesselateScalarField (param $fieldRef i32) (param $resolution i32) (param $contourValue f64) (result i32)
         (local $point000 i32) 
@@ -228,7 +241,7 @@
     )
 
     (func $noTriangles (result i32)
-        (call $allocate8 (i32.const 0))
+        (call $allocate32 (i32.const 0))
     )
 
     (func $oneTriangle 
@@ -298,17 +311,17 @@
         (local.set $weight1 (f64.div (local.get $weight1) (local.get $sum)))
         (local.set $weight2 (f64.div (local.get $weight2) (local.get $sum)))
 
-        (local.tee $point (call $allocate64 (i32.const 3)))
-        (local.set $normal (call $allocate64 (i32.const 3)))
+        (local.tee $point (call $allocate32 (i32.const 3)))
+        (local.set $normal (call $allocate32 (i32.const 3)))
         (call $enter)
-        (drop (call $vec3Copy 
+        (drop (call $f64_vec3_demote_copy 
             (call $vec3Add 
                 (call $vec3Scale (local.get $point1) (local.get $weight1))
                 (call $vec3Scale (local.get $point2) (local.get $weight2))
             ) 
             (local.get $point)
         ))
-        (drop (call $vec3Copy 
+        (drop (call $f64_vec3_demote_copy 
             (call $vec3Scale (call $vec3Add 
                 (call $vec3Scale (local.get $gradient1) (local.get $weight1))
                 (call $vec3Scale (local.get $gradient2) (local.get $weight2))
@@ -319,8 +332,8 @@
     )
 
     (func $edgeClone (param $edge i32) (result i32)
-        (call $vec3Clone (local.get $edge))
-        (drop (call $vec3Clone (i32.add (local.get $edge) (i32.const 24))))
+        (call $f32_vec3_clone (local.get $edge))
+        (drop (call $f32_vec3_clone (i32.add (local.get $edge) (i32.const 12))))
     )
 
     (func $calculatePattern 

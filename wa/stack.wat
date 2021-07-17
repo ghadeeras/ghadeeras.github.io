@@ -36,6 +36,48 @@
         )
     )
 
+    (func $align2
+        (local $mod i32)
+        (local.set $mod (i32.and 
+            (global.get $stackTop) 
+            (i32.const 1) 
+        ))
+        (if (i32.ne (local.get $mod) (i32.const 0))
+            (then (drop (call $allocate8 (i32.sub 
+                (i32.const 2) 
+                (local.get $mod)
+            ))))
+        )
+    )
+
+    (func $align4
+        (local $mod i32)
+        (local.set $mod (i32.and 
+            (global.get $stackTop) 
+            (i32.const 3) 
+        ))
+        (if (i32.ne (local.get $mod) (i32.const 0))
+            (then (drop (call $allocate8 (i32.sub 
+                (i32.const 4) 
+                (local.get $mod)
+            ))))
+        )
+    )
+
+    (func $align8
+        (local $mod i32)
+        (local.set $mod (i32.and 
+            (global.get $stackTop) 
+            (i32.const 7) 
+        ))
+        (if (i32.ne (local.get $mod) (i32.const 0))
+            (then (drop (call $allocate8 (i32.sub 
+                (i32.const 8) 
+                (local.get $mod)
+            ))))
+        )
+    )
+
     (func $enter
         (call $grow (i32.const 4))
         (i32.store (global.get $stackTop) (global.get $localOffset))
@@ -50,6 +92,26 @@
         )
     )
 
+    (func $return_i32 (param $result i32) (result i32)
+        (call $leave)
+        (local.get $result)
+    )
+
+    (func $return_i64 (param $result i64) (result i64)
+        (call $leave)
+        (local.get $result)
+    )
+
+    (func $return_f32 (param $result f32) (result f32)
+        (call $leave)
+        (local.get $result)
+    )
+
+    (func $return_f64 (param $result f64) (result f64)
+        (call $leave)
+        (local.get $result)
+    )
+
     (func $allocate8 (param $size i32) (result i32)
         (local $ref i32)
         (call $grow (local.get $size))
@@ -59,14 +121,17 @@
     )
 
     (func $allocate16 (param $size i32) (result i32)
+        (call $align2)
         (call $allocate8 (i32.shl (local.get $size) (i32.const 1)))
     )
 
     (func $allocate32 (param $size i32) (result i32)
+        (call $align4)
         (call $allocate8 (i32.shl (local.get $size) (i32.const 2)))
     )
 
     (func $allocate64 (param $size i32) (result i32)
+        (call $align8)
         (call $allocate8 (i32.shl (local.get $size) (i32.const 3)))
     )
 
@@ -74,6 +139,10 @@
 
     (export "enter" (func $enter))
     (export "leave" (func $leave))
+    (export "return_i32" (func $return_i32))
+    (export "return_i64" (func $return_i64))
+    (export "return_f32" (func $return_f32))
+    (export "return_f64" (func $return_f64))
     (export "allocate8" (func $allocate8))
     (export "allocate16" (func $allocate16))
     (export "allocate32" (func $allocate32))
