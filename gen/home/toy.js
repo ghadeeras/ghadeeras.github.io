@@ -8,7 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as Djee from "../djee/all.js";
-import { ShaderType, TextureTarget } from "../djee/all.js";
 import * as Gear from "../gear/all.js";
 let vertexShaderCode;
 let fragmentShaderCode;
@@ -27,12 +26,12 @@ export function init() {
 }
 function doInit() {
     const context = Djee.Context.of("canvas");
-    const vertexShader = context.shader(ShaderType.VertexShader, vertexShaderCode);
-    const fragmentShader = context.shader(ShaderType.FragmentShader, fragmentShaderCode);
+    const vertexShader = context.shader(Djee.ShaderType.VertexShader, vertexShaderCode);
+    const fragmentShader = context.shader(Djee.ShaderType.FragmentShader, fragmentShaderCode);
     const program = vertexShader.linkTo(fragmentShader);
     program.use();
-    const texture = context.newTexture();
-    TextureTarget.texture2D.setImage(texture, {
+    const texture = context.newTexture2D();
+    texture.setRawImage({
         format: WebGLRenderingContext.RGBA,
         width: 2,
         height: 2,
@@ -41,7 +40,7 @@ function doInit() {
             0x00, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF
         ])
     });
-    const buffer = context.newBuffer();
+    const buffer = context.newAttributesBuffer();
     buffer.float32Data = square;
     const effect = program.uniform("effect");
     effect.data = [0];
@@ -76,7 +75,7 @@ function updateTexture(texture) {
             resizeWidth: canvas.width,
             resizeHeight: canvas.height
         });
-        TextureTarget.texture2D.setRGBAImage(texture, image);
+        texture.setImageSource(image);
         draw(context);
     });
 }
@@ -84,7 +83,7 @@ function useCurrentImage(e, mousePos, texture) {
     return __awaiter(this, void 0, void 0, function* () {
         distortImage(e, mousePos);
         const image = yield createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight);
-        TextureTarget.texture2D.setRGBAImage(texture, image);
+        texture.setImageSource(image);
     });
 }
 function distortImage(e, mousePos) {

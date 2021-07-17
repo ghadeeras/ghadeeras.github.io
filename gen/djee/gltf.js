@@ -7,7 +7,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BufferTarget } from "./buffer.js";
 import { asVariableInfo } from "./reflection.js";
 import { failure, lazily } from "./utils.js";
 export class Matrix extends Float64Array {
@@ -88,7 +87,7 @@ class ActiveBufferView {
         var _a, _b;
         this.buffer = indices ?
             context.newIndicesBuffer() :
-            context.newBuffer((_a = bufferView.byteStride) !== null && _a !== void 0 ? _a : 0);
+            context.newAttributesBuffer((_a = bufferView.byteStride) !== null && _a !== void 0 ? _a : 0);
         this.buffer.data = new Uint8Array(buffers[bufferView.buffer], (_b = bufferView.byteOffset) !== null && _b !== void 0 ? _b : 0, bufferView.byteLength);
     }
     delete() {
@@ -105,7 +104,7 @@ class ActiveAccessor {
             const byteOffset = (_a = accessor.byteOffset) !== null && _a !== void 0 ? _a : 0;
             const normalized = (_b = accessor.normalized) !== null && _b !== void 0 ? _b : false;
             this.bindTo = attribute => attribute.pointTo(buffer, byteOffset, normalized, variableInfo);
-            this.bindToIndex = () => BufferTarget.elementArrayBuffer.bind(buffer);
+            this.bindToIndex = () => buffer.bind();
         }
         else {
             this.bindTo = attribute => attribute.setTo(0);

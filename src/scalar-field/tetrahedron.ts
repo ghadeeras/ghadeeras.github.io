@@ -16,8 +16,8 @@ let lightPosition: Djee.Uniform;
 let shininess: Djee.Uniform;
 let fogginess: Djee.Uniform;
 
-let tetrahedronBuffer: Djee.Buffer;
-let contourSurfaceBuffer: Djee.Buffer;
+let tetrahedronBuffer: Djee.AttributesBuffer;
+let contourSurfaceBuffer: Djee.AttributesBuffer;
 
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue: number = 0;
@@ -59,8 +59,8 @@ function doInit() {
     )
     program.use();
 
-    tetrahedronBuffer = context.newBuffer(10 * 4);
-    contourSurfaceBuffer = context.newBuffer(6 * 4);
+    tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
+    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
 
     position = program.attribute("position");
     normal = program.attribute("normal");

@@ -1,8 +1,10 @@
 import { Shader, ShaderType } from "./shader.js"
 import { Program } from "./program.js"
-import { Buffer, BufferTarget } from "./buffer.js"
+import { AttributesBuffer, IndicesBuffer } from "./buffer.js"
 import { failure } from "./utils.js"
-import { Texture } from "./texture.js"
+import { Texture2D } from "./texture.js"
+import { RenderBuffer, RenderBufferFormat } from "./renderbuffer.js"
+import { FrameBuffer } from "./framebuffer.js"
 
 export class Context {
 
@@ -43,16 +45,24 @@ export class Context {
         return new Program(this, shaders)
     }
 
-    newBuffer(byteStride: number = 0, isDynamic: boolean = false) {
-        return new Buffer(this, byteStride, isDynamic)
+    newAttributesBuffer(byteStride: number = 0, isDynamic: boolean = false) {
+        return new AttributesBuffer(this, byteStride, isDynamic)
     }
 
     newIndicesBuffer(isDynamic: boolean = false) {
-        return new Buffer(this, 0, isDynamic, BufferTarget.elementArrayBuffer)
+        return new IndicesBuffer(this, isDynamic)
     }
 
-    newTexture(unit: number = 0) {
-        return new Texture(this, unit)
+    newTexture2D(unit: number = 0) {
+        return new Texture2D(this, unit)
+    }
+
+    newRenderBuffer(format: RenderBufferFormat, width: number, height: number) {
+        return new RenderBuffer(this, format, width, height)
+    }
+
+    newFrameBuffer() {
+        return new FrameBuffer(this)
     }
 
 }

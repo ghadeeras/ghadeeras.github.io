@@ -1,5 +1,5 @@
 import { Attribute } from "./attribute.js"
-import { Buffer, BufferTarget } from "./buffer.js"
+import { AttributesBuffer, Buffer } from "./buffer.js"
 import { Context } from "./context.js"
 import { asVariableInfo, VariableInfo } from "./reflection.js"
 import { Uniform } from "./uniform.js"
@@ -223,7 +223,7 @@ class ActiveBufferView {
     constructor(bufferView: BufferView, buffers: ArrayBufferLike[], indices: boolean, context: Context) {
         this.buffer = indices ?
             context.newIndicesBuffer() :
-            context.newBuffer(bufferView.byteStride ?? 0)
+            context.newAttributesBuffer(bufferView.byteStride ?? 0)
         this.buffer.data = new Uint8Array(buffers[bufferView.buffer], bufferView.byteOffset ?? 0, bufferView.byteLength)
     }
 
@@ -244,8 +244,8 @@ class ActiveAccessor {
             const variableInfo = toVariableInfo(accessor)
             const byteOffset = accessor.byteOffset ?? 0
             const normalized = accessor.normalized ?? false
-            this.bindTo = attribute => attribute.pointTo(buffer, byteOffset, normalized, variableInfo)
-            this.bindToIndex = () => BufferTarget.elementArrayBuffer.bind(buffer)
+            this.bindTo = attribute => attribute.pointTo(buffer as AttributesBuffer, byteOffset, normalized, variableInfo)
+            this.bindToIndex = () => buffer.bind()
         } else {
             this.bindTo = attribute => attribute.setTo(0)
             this.bindToIndex = () => failure("Should never reach this!")

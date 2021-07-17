@@ -9,7 +9,7 @@ export class Renderer {
         this.treeView = this.view.by(this.translationUp);
         this.proj = Space.Matrix.project(1, 100, 1);
         this.context = Djee.Context.of("canvas-gl");
-        this.buffer = this.context.newBuffer(6 * 4);
+        this.buffer = this.context.newAttributesBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();
         const vertexShader = this.context.vertexShader(vertexShaderCode);
         const fragmentShader = this.context.fragmentShader(fragmentShaderCode);

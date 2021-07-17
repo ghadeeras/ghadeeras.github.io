@@ -27,7 +27,7 @@ function doInit() {
     context = Djee.Context.of("canvas-gl");
     const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
     program.use();
-    contourSurfaceBuffer = context.newBuffer(6 * 4);
+    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true);
     position = program.attribute("position");
     normal = program.attribute("normal");
     matModel = program.uniform("matModel");
@@ -222,6 +222,9 @@ function envelopedCosine(x, y, z) {
     }
 }
 function draw() {
+    if (contourSurfaceBuffer.data.length == 0) {
+        return;
+    }
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);

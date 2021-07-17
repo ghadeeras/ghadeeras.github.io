@@ -39,8 +39,8 @@ export class View {
         this.shaderPosition = this.program.attribute("vPosition");
         this.shaderTwist = this.program.uniform("twist");
         this.shaderScale = this.program.uniform("scale");
-        this.cornersBuffer = this.context.newBuffer();
-        this.centersBuffer = this.context.newBuffer();
+        this.cornersBuffer = this.context.newAttributesBuffer();
+        this.centersBuffer = this.context.newAttributesBuffer();
         this.context.gl.clearColor(1, 1, 1, 1);
         this.sierpinsky = Gear.sink(s => this.setSierpinski(s));
         this.depth = Gear.sinkFlow(flow => flow.defaultsTo(5).map(v => v + "").to(Gear.text(depthId)));

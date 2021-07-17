@@ -1,8 +1,10 @@
 import { Shader, ShaderType } from "./shader.js";
 import { Program } from "./program.js";
-import { Buffer, BufferTarget } from "./buffer.js";
+import { AttributesBuffer, IndicesBuffer } from "./buffer.js";
 import { failure } from "./utils.js";
-import { Texture } from "./texture.js";
+import { Texture2D } from "./texture.js";
+import { RenderBuffer } from "./renderbuffer.js";
+import { FrameBuffer } from "./framebuffer.js";
 export class Context {
     constructor(canvasElementId) {
         this.canvas = getCanvas(canvasElementId);
@@ -30,14 +32,20 @@ export class Context {
     link(...shaders) {
         return new Program(this, shaders);
     }
-    newBuffer(byteStride = 0, isDynamic = false) {
-        return new Buffer(this, byteStride, isDynamic);
+    newAttributesBuffer(byteStride = 0, isDynamic = false) {
+        return new AttributesBuffer(this, byteStride, isDynamic);
     }
     newIndicesBuffer(isDynamic = false) {
-        return new Buffer(this, 0, isDynamic, BufferTarget.elementArrayBuffer);
+        return new IndicesBuffer(this, isDynamic);
     }
-    newTexture(unit = 0) {
-        return new Texture(this, unit);
+    newTexture2D(unit = 0) {
+        return new Texture2D(this, unit);
+    }
+    newRenderBuffer(format, width, height) {
+        return new RenderBuffer(this, format, width, height);
+    }
+    newFrameBuffer() {
+        return new FrameBuffer(this);
     }
 }
 function getCanvas(canvasId) {

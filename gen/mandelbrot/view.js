@@ -8,7 +8,7 @@ export class View {
         this.context = Djee.Context.of(_canvasId);
         const program = this.context.link(this.context.vertexShader(_vertexShaderCode), this.context.fragmentShader(_fragmentShaderCode));
         program.use();
-        const buffer = this.context.newBuffer();
+        const buffer = this.context.newAttributesBuffer();
         buffer.float32Data = [
             -1, -1,
             +1, -1,

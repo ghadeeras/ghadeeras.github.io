@@ -23,7 +23,7 @@ let color: Djee.Uniform
 let shininess: Djee.Uniform
 let fogginess: Djee.Uniform
 
-let contourSurfaceBuffer: Djee.Buffer
+let contourSurfaceBuffer: Djee.AttributesBuffer
 
 let contourValue: number = 0
 let fieldRef: number = 0
@@ -49,7 +49,7 @@ function doInit() {
     )
     program.use()
 
-    contourSurfaceBuffer = context.newBuffer(6 * 4)
+    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true)
 
     position = program.attribute("position")
     normal = program.attribute("normal")
@@ -302,6 +302,10 @@ function envelopedCosine(x: number, y: number, z: number): Space.Vector {
 }
 
 function draw() {
+    if (contourSurfaceBuffer.data.length == 0) {
+        return
+    }
+    
     const gl = context.gl
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -431,7 +435,7 @@ function createBinaryBuffer(indexedVertices: IndexedVertices) {
     return binaryBuffer
 }
 
-function indexVertices(buffer: Djee.Buffer) {
+function indexVertices(buffer: Djee.AttributesBuffer) {
     const indexedVertices: IndexedVertices = {
         indices: [],
         vertices: [],

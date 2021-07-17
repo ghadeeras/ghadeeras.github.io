@@ -5,7 +5,7 @@ import * as Gear from "../gear/all.js"
 export class Renderer {
 
     private context: Djee.Context;
-    private buffer: Djee.Buffer;
+    private buffer: Djee.AttributesBuffer;
     
     private matModel: Djee.Uniform;
     private matSubModel: Djee.Uniform;
@@ -28,7 +28,7 @@ export class Renderer {
 
     constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]) {
         this.context = Djee.Context.of("canvas-gl");
-        this.buffer = this.context.newBuffer(6 * 4);
+        this.buffer = this.context.newAttributesBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();
 
         const vertexShader = this.context.vertexShader(vertexShaderCode);

@@ -1,4 +1,3 @@
-import { BufferTarget } from "./buffer.js";
 import { failure } from "./utils.js";
 export class Attribute {
     constructor(program, name) {
@@ -11,7 +10,7 @@ export class Attribute {
         this.setter = getSetter(gl, this.location, this.info);
     }
     pointTo(buffer, byteOffset = 0, normalized = false, info = this.info) {
-        BufferTarget.arrayBuffer.bind(buffer);
+        buffer.bind();
         const gl = buffer.context.gl;
         gl.enableVertexAttribArray(this.location);
         gl.vertexAttribPointer(this.location, info.itemDimensions, info.primitiveType, normalized, buffer.byteStride, byteOffset);

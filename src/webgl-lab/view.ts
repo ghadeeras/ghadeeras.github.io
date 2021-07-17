@@ -22,7 +22,7 @@ type Scalar = {
 export class View {
 
     private context: Djee.Context;
-    private buffer: Djee.Buffer;
+    private buffer: Djee.AttributesBuffer;
     private program: Djee.Program | null = null;
     private defaultSample: ProgramSample;
     
@@ -36,7 +36,7 @@ export class View {
     constructor(canvasId: string, samples: ProgramSample[]) {
         setOptions("shader-sample", options(samples));
         this.context = Djee.Context.of(canvasId);
-        this.buffer = this.context.newBuffer();
+        this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
     }
 

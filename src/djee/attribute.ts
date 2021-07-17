@@ -1,5 +1,5 @@
 import { Program } from "./program.js"
-import { Buffer, BufferTarget } from "./buffer.js"
+import { AttributesBuffer } from "./buffer.js"
 import { failure } from "./utils.js";
 import { VariableInfo } from "./reflection.js";
 
@@ -16,8 +16,8 @@ export class Attribute {
         this.setter = getSetter(gl, this.location, this.info)
     }
 
-    pointTo(buffer: Buffer, byteOffset: number = 0, normalized: boolean = false, info: VariableInfo = this.info) {
-        BufferTarget.arrayBuffer.bind(buffer)
+    pointTo(buffer: AttributesBuffer, byteOffset: number = 0, normalized: boolean = false, info: VariableInfo = this.info) {
+        buffer.bind()
         const gl = buffer.context.gl
         gl.enableVertexAttribArray(this.location);
         gl.vertexAttribPointer(

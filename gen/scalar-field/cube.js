@@ -24,8 +24,8 @@ function doInit() {
     context = Djee.Context.of("canvas-gl");
     const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
     program.use();
-    cubeBuffer = context.newBuffer(10 * 4);
-    contourSurfaceBuffer = context.newBuffer(6 * 4);
+    cubeBuffer = context.newAttributesBuffer(10 * 4);
+    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
     position = program.attribute("position");
     normal = program.attribute("normal");
     color = program.attribute("color");

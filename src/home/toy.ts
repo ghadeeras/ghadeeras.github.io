@@ -1,5 +1,4 @@
 import * as Djee from "../djee/all.js"
-import { Context, ShaderType, TextureTarget } from "../djee/all.js"
 import * as Gear from "../gear/all.js"
 
 let vertexShaderCode: string
@@ -27,13 +26,13 @@ export function init() {
 function doInit() {
     const context = Djee.Context.of("canvas")
 
-    const vertexShader = context.shader(ShaderType.VertexShader, vertexShaderCode)
-    const fragmentShader = context.shader(ShaderType.FragmentShader, fragmentShaderCode)
+    const vertexShader = context.shader(Djee.ShaderType.VertexShader, vertexShaderCode)
+    const fragmentShader = context.shader(Djee.ShaderType.FragmentShader, fragmentShaderCode)
     const program = vertexShader.linkTo(fragmentShader)
     program.use()
 
-    const texture = context.newTexture()
-    TextureTarget.texture2D.setImage(texture, {
+    const texture = context.newTexture2D()
+    texture.setRawImage({
         format: WebGLRenderingContext.RGBA,
         width: 2,
         height: 2,
@@ -43,7 +42,7 @@ function doInit() {
         ])
     })
 
-    const buffer = context.newBuffer()
+    const buffer = context.newAttributesBuffer()
     buffer.float32Data = square
 
     const effect = program.uniform("effect")
@@ -72,28 +71,28 @@ function doInit() {
     context.canvas.ondrop = event => loadImage(event, effect)
 }
 
-function draw(context: Context) {
+function draw(context: Djee.Context) {
     const gl = context.gl
     gl.viewport(0, 0, context.canvas.width, context.canvas.height)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.flush()
 }
 
-async function updateTexture(texture: Djee.Texture) {
+async function updateTexture(texture: Djee.Texture2D) {
     const context = texture.context
     const canvas = context.canvas
     const image = await createImageBitmap(mySketch, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight, {
         resizeWidth: canvas.width,
         resizeHeight: canvas.height
     })
-    TextureTarget.texture2D.setRGBAImage(texture, image)
+    texture.setImageSource(image)
     draw(context)
 }
 
-async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform, texture: Djee.Texture) {
+async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform, texture: Djee.Texture2D) {
     distortImage(e, mousePos)
     const image = await createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight)
-    TextureTarget.texture2D.setRGBAImage(texture, image)
+    texture.setImageSource(image)
 }
 
 function distortImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform) {
@@ -108,7 +107,7 @@ function restoreImage(mousePos: Djee.Uniform, effect: Djee.Uniform) {
     draw(mousePos.program.context)
 }
 
-function restoreOriginalImage(e: MouseEvent,  texture: Djee.Texture) {
+function restoreOriginalImage(e: MouseEvent,  texture: Djee.Texture2D) {
     e.preventDefault()
     updateTexture(texture)
 }

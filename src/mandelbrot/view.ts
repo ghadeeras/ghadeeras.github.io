@@ -30,7 +30,7 @@ export class View {
         )
         program.use()
 
-        const buffer = this.context.newBuffer()
+        const buffer = this.context.newAttributesBuffer()
         buffer.float32Data = [
             -1, -1, 
             +1, -1, 

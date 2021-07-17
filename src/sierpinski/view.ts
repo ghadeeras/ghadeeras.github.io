@@ -42,8 +42,8 @@ export class View {
     private readonly shaderPosition: Djee.Attribute;
     private readonly shaderTwist: Djee.Uniform;
     private readonly shaderScale: Djee.Uniform;
-    private readonly cornersBuffer: Djee.Buffer;
-    private readonly centersBuffer: Djee.Buffer;
+    private readonly cornersBuffer: Djee.AttributesBuffer;
+    private readonly centersBuffer: Djee.AttributesBuffer;
 
     private mustShowCorners: boolean = true;
     private mustShowCenters: boolean = true;
@@ -73,8 +73,8 @@ export class View {
         this.shaderTwist = this.program.uniform("twist");
         this.shaderScale = this.program.uniform("scale");
 
-        this.cornersBuffer = this.context.newBuffer();
-        this.centersBuffer = this.context.newBuffer();
+        this.cornersBuffer = this.context.newAttributesBuffer();
+        this.centersBuffer = this.context.newAttributesBuffer();
 
         this.context.gl.clearColor(1, 1, 1, 1);
 

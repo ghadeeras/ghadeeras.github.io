@@ -12,7 +12,7 @@ export class View {
         this.yScalar = null;
         setOptions("shader-sample", options(samples));
         this.context = Djee.Context.of(canvasId);
-        this.buffer = this.context.newBuffer();
+        this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
     }
     get mesh() {
