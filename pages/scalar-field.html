@@ -62,10 +62,13 @@
             </div>
 
             <div>
-              <ul>
-                <li><a href="./scalar-field-th.html">Scalar Field (Tetrahedron)</a></li>
-                <li><a href="./scalar-field-cube.html">Scalar Field (Cube)</a></li>
-              </ul>
+                <p>
+                    I used the following to test the main building blocks:
+                </p>
+                <ul>
+                    <li><a href="./scalar-field-th.html" target="_blank">Scalar Field (Tetrahedron)</a></li>
+                    <li><a href="./scalar-field-cube.html" target="_blank">Scalar Field (Cube)</a></li>
+                </ul>
             </div>
 
         </div>
@@ -76,6 +79,42 @@
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
             </div>
+        </div>
+
+        <div id="other-side">
+
+            <div class="section">
+                <strong>Description</strong>
+            </div>
+
+            <div>
+                <p>
+                    This is an example on polygonizing scalar field isosurfaces. 
+                    A <a href="https://en.wikipedia.org/wiki/Scalar_field" target="_blank">scalar field</a> 
+                    can be thought of as a function of which the domain is an N-dimensional 
+                    space (3-dimensional space in this case), and the range is a set of scalar 
+                    (real) values. 
+                    An <a href="https://en.wikipedia.org/wiki/Isosurface" target="_blank">isosurface</a> 
+                    is a surface in the domain space of which every point is mapped to the 
+                    same scalar value when applying the scalar field function.
+                </p>
+                <p>
+                    To render such a surface, one needs to polygonize it or 
+                    <a href="https://en.wikipedia.org/wiki/Tessellation_(computer_graphics)" target="_blank">tessellate</a> 
+                    it first. One known algorithm for doing that is the 
+                    <a href="https://en.wikipedia.org/wiki/Marching_cubes" target="_blank">marching cubes</a>
+                    algorithm.
+                </p>
+                <p>
+                    The algorithm used here is a variant of the marching cubes, called the 
+                    marching tetrahedra.
+                </p>
+                <p>
+                    For a deeper dive, see this <a href="http://paulbourke.net/geometry/polygonise/" target="_blank">blog post</a>
+                    of Paul Bourke's.
+                </p>
+            </div>
+
         </div>
 
     </div>
