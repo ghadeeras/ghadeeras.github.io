@@ -1,6 +1,7 @@
 import * as Djee from "../djee/all.js"
 import * as Space from "../space/all.js"
 import * as Gear from "../gear/all.js"
+import { Mat, mat4, Vec, vec3 } from "../space/all.js";
 
 let vertexShaderCode: string;
 let fragmentShaderCode: string;
@@ -22,42 +23,43 @@ let contourSurfaceBuffer: Djee.AttributesBuffer;
 let cube: Cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue: number = 0;
 
-type Cube = {
-    point0: Space.Vector;
-    gradient0: Space.Vector;
+type Cube = CubePoints & CubeGradients & CubeValues
+
+type CubePoints = {
+    point0: Vec<3>;
+    point1: Vec<3>;
+    point2: Vec<3>;
+    point3: Vec<3>;
+    point4: Vec<3>;
+    point5: Vec<3>;
+    point6: Vec<3>;
+    point7: Vec<3>;
+}
+
+type CubeGradients = {
+    gradient0: Vec<3>;
+    gradient1: Vec<3>;
+    gradient2: Vec<3>;
+    gradient3: Vec<3>;
+    gradient4: Vec<3>;
+    gradient5: Vec<3>;
+    gradient6: Vec<3>;
+    gradient7: Vec<3>;
+}
+
+type CubeValues = {
     value0: number;
-
-    point1: Space.Vector;
-    gradient1: Space.Vector;
     value1: number;
-
-    point2: Space.Vector;
-    gradient2: Space.Vector;
     value2: number;
-
-    point3: Space.Vector;
-    gradient3: Space.Vector;
     value3: number;
-
-    point4: Space.Vector;
-    gradient4: Space.Vector;
     value4: number;
-
-    point5: Space.Vector;
-    gradient5: Space.Vector;
     value5: number;
-
-    point6: Space.Vector;
-    gradient6: Space.Vector;
     value6: number;
-
-    point7: Space.Vector;
-    gradient7: Space.Vector;
     value7: number;
 }
 
-const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 6), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
-const projectionMatrix = Space.Matrix.project(2, 100, 1);
+const viewMatrix = mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = mat4.projection(2);
 
 export function initCubeDemo() {
     window.onload = () => Gear.load("/shaders", () => doInit(),
@@ -91,9 +93,9 @@ async function doInit() {
     shininess = program.uniform("shininess");
     fogginess = program.uniform("fogginess");
 
-    matModel.data = Space.Matrix.identity().asColumnMajorArray
-    matView.data = viewMatrix.asColumnMajorArray;
-    matProjection.data = projectionMatrix.asColumnMajorArray;
+    matModel.data = mat4.columnMajorArray(mat4.identity())
+    matView.data = mat4.columnMajorArray(viewMatrix);
+    matProjection.data = mat4.columnMajorArray(projectionMatrix);
 
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
@@ -105,7 +107,7 @@ async function doInit() {
     gl.clearColor(1, 1, 1, 1);
 
     const canvas = Gear.elementEvents("canvas-gl");
-    const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix))
+    const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix))
     canvas.dragging.branch(
         flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
             2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
@@ -226,9 +228,9 @@ function contourValueSink(): Gear.Sink<number> {
     )
 }
 
-function rotationSink(): Gear.Sink<Space.Matrix> {
-    return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
-        matModel.data = matrix.asColumnMajorArray;
+function rotationSink(): Gear.Sink<Mat<4>> {
+    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
+        matModel.data = mat4.columnMajorArray(matrix);
         draw();
     }));
 }
@@ -250,7 +252,7 @@ function selected<T>(value: string): Gear.Predicate<T> {
 }
 
 function contourColorData(contourValue: number) {
-    return fieldColor(contourValue, 0.8).coordinates;
+    return fieldColor(contourValue, 0.8);
 }
 
 function draw() {
@@ -264,6 +266,8 @@ function draw() {
     color.pointTo(cubeBuffer, 6 * cubeBuffer.word);
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
 
+    gl.flush();
+
     position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     color.setTo(...contourColorData(contourValue));
@@ -273,17 +277,17 @@ function draw() {
 }
 
 function newCube(field0: number, field1: number, field2: number, field3: number, field4: number, field5: number, field6: number, field7: number): Cube {
-    const points = {
-        point0: Space.vec(-1, -1, -1),
-        point1: Space.vec(-1, -1, +1),
-        point2: Space.vec(-1, +1, -1),
-        point3: Space.vec(-1, +1, +1),
-        point4: Space.vec(+1, -1, -1),
-        point5: Space.vec(+1, -1, +1),
-        point6: Space.vec(+1, +1, -1),
-        point7: Space.vec(+1, +1, +1),
+    const points: CubePoints = {
+        point0: [-1, -1, -1],
+        point1: [-1, -1, +1],
+        point2: [-1, +1, -1],
+        point3: [-1, +1, +1],
+        point4: [+1, -1, -1],
+        point5: [+1, -1, +1],
+        point6: [+1, +1, -1],
+        point7: [+1, +1, +1],
     };
-    const gradients = {
+    const gradients: CubeGradients = {
         gradient0: gradient(points.point0, field0, points.point4, field4, points.point2, field2, points.point1, field1),
         gradient1: gradient(points.point1, field1, points.point5, field5, points.point3, field3, points.point0, field0),
         gradient2: gradient(points.point2, field2, points.point6, field6, points.point0, field0, points.point3, field3),
@@ -293,7 +297,7 @@ function newCube(field0: number, field1: number, field2: number, field3: number,
         gradient6: gradient(points.point6, field6, points.point2, field2, points.point4, field4, points.point7, field7),
         gradient7: gradient(points.point7, field7, points.point3, field3, points.point5, field5, points.point6, field6)
     };
-    const values = {
+    const values: CubeValues = {
         value0: field0,
         value1: field1,
         value2: field2,
@@ -306,20 +310,24 @@ function newCube(field0: number, field1: number, field2: number, field3: number,
     return {...points, ...gradients, ...values};
 }
 
-function gradient(point: Space.Vector, value: number, pointX: Space.Vector, valueX: number, pointY: Space.Vector, valueY: number, pointZ: Space.Vector, valueZ: number) {
-    return point.minus(pointX).scale(value - valueX)
-        .plus(point.minus(pointY).scale(value - valueY))
-        .plus(point.minus(pointZ).scale(value - valueZ))
+function gradient(point: Vec<3>, value: number, pointX: Vec<3>, valueX: number, pointY: Vec<3>, valueY: number, pointZ: Vec<3>, valueZ: number) {
+    return vec3.add(
+        vec3.scale(vec3.sub(point, pointX), value - valueX),
+        vec3.add(
+            vec3.scale(vec3.sub(point, pointY), value - valueY),
+            vec3.scale(vec3.sub(point, pointZ), value - valueZ)
+        )
+    )
 }
 
 function cubeData(cube: Cube): number[] {
     const normals = [
-        Space.vec(+0, +0, -1),
-        Space.vec(+0, +0, +1),
-        Space.vec(+0, -1, +0),
-        Space.vec(+0, +1, +0),
-        Space.vec(-1, +0, +0),
-        Space.vec(+1, +0, +0),
+        [+0, +0, -1],
+        [+0, +0, +1],
+        [+0, -1, +0],
+        [+0, +1, +0],
+        [-1, +0, +0],
+        [+1, +0, +0],
     ]
     const colors = [
         fieldColor(cube.value0),
@@ -374,7 +382,7 @@ function cubeData(cube: Cube): number[] {
         cube.point5, normals[5], colors[5],
         cube.point4, normals[5], colors[4],
     ];
-    return vertexes.reduce<number[]>((a, v) => a.concat(...v.coordinates), []);
+    return vertexes.reduce<number[]>((a, v) => a.concat(...v), []);
 }
 
 function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
@@ -386,28 +394,28 @@ function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
     }
     stack.leave();
     stack.enter();
-    const p0 = space.f64_vec4(cube.point0.coordinates[0], cube.point0.coordinates[1], cube.point0.coordinates[2], 1)
-    const g0 = space.f64_vec4(cube.gradient0.coordinates[0], cube.gradient0.coordinates[1], cube.gradient0.coordinates[2], cube.value0);
-    const p1 = space.f64_vec4(cube.point1.coordinates[0], cube.point1.coordinates[1], cube.point1.coordinates[2], 1)
-    const g1 = space.f64_vec4(cube.gradient1.coordinates[0], cube.gradient1.coordinates[1], cube.gradient1.coordinates[2], cube.value1);
-    const p2 = space.f64_vec4(cube.point2.coordinates[0], cube.point2.coordinates[1], cube.point2.coordinates[2], 1)
-    const g2 = space.f64_vec4(cube.gradient2.coordinates[0], cube.gradient2.coordinates[1], cube.gradient2.coordinates[2], cube.value2);
-    const p3 = space.f64_vec4(cube.point3.coordinates[0], cube.point3.coordinates[1], cube.point3.coordinates[2], 1)
-    const g3 = space.f64_vec4(cube.gradient3.coordinates[0], cube.gradient3.coordinates[1], cube.gradient3.coordinates[2], cube.value3);
-    const p4 = space.f64_vec4(cube.point4.coordinates[0], cube.point4.coordinates[1], cube.point4.coordinates[2], 1)
-    const g4 = space.f64_vec4(cube.gradient4.coordinates[0], cube.gradient4.coordinates[1], cube.gradient4.coordinates[2], cube.value4);
-    const p5 = space.f64_vec4(cube.point5.coordinates[0], cube.point5.coordinates[1], cube.point5.coordinates[2], 1)
-    const g5 = space.f64_vec4(cube.gradient5.coordinates[0], cube.gradient5.coordinates[1], cube.gradient5.coordinates[2], cube.value5);
-    const p6 = space.f64_vec4(cube.point6.coordinates[0], cube.point6.coordinates[1], cube.point6.coordinates[2], 1)
-    const g6 = space.f64_vec4(cube.gradient6.coordinates[0], cube.gradient6.coordinates[1], cube.gradient6.coordinates[2], cube.value6);
-    const p7 = space.f64_vec4(cube.point7.coordinates[0], cube.point7.coordinates[1], cube.point7.coordinates[2], 1)
-    const g7 = space.f64_vec4(cube.gradient7.coordinates[0], cube.gradient7.coordinates[1], cube.gradient7.coordinates[2], cube.value7);
+    const p0 = space.f64_vec4(cube.point0[0], cube.point0[1], cube.point0[2], 1)
+    const g0 = space.f64_vec4(cube.gradient0[0], cube.gradient0[1], cube.gradient0[2], cube.value0);
+    const p1 = space.f64_vec4(cube.point1[0], cube.point1[1], cube.point1[2], 1)
+    const g1 = space.f64_vec4(cube.gradient1[0], cube.gradient1[1], cube.gradient1[2], cube.value1);
+    const p2 = space.f64_vec4(cube.point2[0], cube.point2[1], cube.point2[2], 1)
+    const g2 = space.f64_vec4(cube.gradient2[0], cube.gradient2[1], cube.gradient2[2], cube.value2);
+    const p3 = space.f64_vec4(cube.point3[0], cube.point3[1], cube.point3[2], 1)
+    const g3 = space.f64_vec4(cube.gradient3[0], cube.gradient3[1], cube.gradient3[2], cube.value3);
+    const p4 = space.f64_vec4(cube.point4[0], cube.point4[1], cube.point4[2], 1)
+    const g4 = space.f64_vec4(cube.gradient4[0], cube.gradient4[1], cube.gradient4[2], cube.value4);
+    const p5 = space.f64_vec4(cube.point5[0], cube.point5[1], cube.point5[2], 1)
+    const g5 = space.f64_vec4(cube.gradient5[0], cube.gradient5[1], cube.gradient5[2], cube.value5);
+    const p6 = space.f64_vec4(cube.point6[0], cube.point6[1], cube.point6[2], 1)
+    const g6 = space.f64_vec4(cube.gradient6[0], cube.gradient6[1], cube.gradient6[2], cube.value6);
+    const p7 = space.f64_vec4(cube.point7[0], cube.point7[1], cube.point7[2], 1)
+    const g7 = space.f64_vec4(cube.gradient7[0], cube.gradient7[1], cube.gradient7[2], cube.value7);
     const begin = scalarField.tessellateCube(contourValue, p0, p1, p2, p3, p4, p5, p6, p7);
     const end = stack.allocate8(0);
     const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4);
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): Space.Vector {
-    return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
+function fieldColor(fieldValue: number, alpha: number = 0.4): Vec<4> {
+    return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }

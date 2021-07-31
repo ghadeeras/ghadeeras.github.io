@@ -1,4 +1,5 @@
 import * as Gear from "../gear/all.js";
+import { mat4 } from "../space/matrix.js";
 import { MatriciesGenerator } from "./matgen.js";
 import { Renderer } from "./renderer.js";
 let vertexShaderCode = null;
@@ -21,7 +22,7 @@ function doInit() {
         generator.depth = depth;
         return generator.generateMatricies();
     }).to(matricesSink));
-    const transformer = new Gear.Transformer(canvas.element, renderer.proj.by(renderer.treeView));
+    const transformer = new Gear.Transformer(canvas.element, mat4.mul(renderer.proj, renderer.treeView));
     canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(renderer.lightPositionSink()), flow => flow.filter(selected("color")).to(renderer.colorSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(renderer.shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => (1 + y) / 2).to(renderer.fogginessSink()), flow => flow.filter(selected("twist")).map(([x, y]) => y).to(renderer.twistSink()), flow => flow.filter(selected("angle"))
         .map(([x, y]) => {
         generator.verticalAngle = x * Math.PI;

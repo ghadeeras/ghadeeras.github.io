@@ -1,21 +1,21 @@
-import { Matrix, vec } from '../space/all.js';
+import { Mat, mat4, vec4, vec3 } from '../space/all.js';
 import { Dragging, PointerPosition } from './ui-input.js';
 import * as utils from './utils.js'
 
 export class Transformer {
 
-    private _startRotationMatrix: Matrix = Matrix.identity()
-    private _startTranslationMatrix: Matrix = Matrix.identity()
-    private _startScaleMatrix: Matrix = Matrix.identity()
+    private _startRotationMatrix: Mat<4> = mat4.identity()
+    private _startTranslationMatrix: Mat<4> = mat4.identity()
+    private _startScaleMatrix: Mat<4> = mat4.identity()
 
-    private _rotationMatrix: Matrix = Matrix.identity()
-    private _translationMatrix: Matrix = Matrix.identity()
-    private _scaleMatrix: Matrix = Matrix.identity()
+    private _rotationMatrix: Mat<4> = mat4.identity()
+    private _translationMatrix: Mat<4> = mat4.identity()
+    private _scaleMatrix: Mat<4> = mat4.identity()
 
-    private inverseViewMatrix: Matrix
+    private inverseViewMatrix: Mat<4>
 
-    constructor(private canvas: HTMLElement, private viewMatrix: Matrix, private speed: number = 8) {
-        this.inverseViewMatrix = viewMatrix.inverse
+    constructor(private canvas: HTMLElement, private viewMatrix: Mat<4>, private speed: number = 8) {
+        this.inverseViewMatrix = mat4.inverse(viewMatrix)
     }
 
     get translationMatrix() {
@@ -31,55 +31,55 @@ export class Transformer {
     }
 
     get matrix() {
-        return this._translationMatrix.by(this._rotationMatrix).by(this._scaleMatrix)
+        return mat4.mul(this._translationMatrix, mat4.mul(this._rotationMatrix, this._scaleMatrix))
     }
 
-    set translationMatrix(matrix: Matrix) {
+    set translationMatrix(matrix: Mat<4>) {
         this._startTranslationMatrix = matrix
         this._translationMatrix = matrix
     }
 
-    set rotationMatrix(matrix: Matrix) {
+    set rotationMatrix(matrix: Mat<4>) {
         this._startRotationMatrix = matrix
         this._rotationMatrix = matrix
     }
 
-    set scaleMatrix(matrix: Matrix) {
+    set scaleMatrix(matrix: Mat<4>) {
         this._startScaleMatrix = matrix
         this._scaleMatrix = matrix
     }
 
-    readonly rotation: utils.Mapper<Dragging, Matrix> = dragging => {
-        const v1 = this.inverseViewMatrix.prod(toVector(dragging.startPos, this.canvas))
-        const v2 = this.inverseViewMatrix.prod(toVector(dragging.pos, this.canvas))
-        const rotation = Matrix.crossProdRotation(v1, v2, 0, this.speed)
-        this._rotationMatrix = rotation.by(this._startRotationMatrix)
+    readonly rotation: utils.Mapper<Dragging, Mat<4>> = dragging => {
+        const v1 = mat4.apply(this.inverseViewMatrix, toVector(dragging.startPos, this.canvas))
+        const v2 = mat4.apply(this.inverseViewMatrix, toVector(dragging.pos, this.canvas))
+        const rotation = mat4.crossProdRotation(vec3.swizzle(v1, 0, 1, 2), vec3.swizzle(v2, 0, 1, 2), this.speed)
+        this._rotationMatrix = mat4.mul(rotation, this._startRotationMatrix)
         if (dragging.end) {
             this._startRotationMatrix = this._rotationMatrix
         }
         return this._rotationMatrix
     }
     
-    readonly translation: utils.Mapper<Dragging, Matrix> = dragging => {
-        const v1 = this.inverseViewMatrix.prod(toVector(dragging.startPos, this.canvas))
-        const v2 = this.inverseViewMatrix.prod(toVector(dragging.pos, this.canvas))
-        const translation = v2.minus(v1).scale(this.speed)
-        this._translationMatrix = Matrix.translation(
-            translation.coordinates[0], 
-            translation.coordinates[1], 
-            translation.coordinates[2]
-        ).by(this._startTranslationMatrix)
+    readonly translation: utils.Mapper<Dragging, Mat<4>> = dragging => {
+        const v1 = mat4.apply(this.inverseViewMatrix, toVector(dragging.startPos, this.canvas))
+        const v2 = mat4.apply(this.inverseViewMatrix, toVector(dragging.pos, this.canvas))
+        const translation = vec4.scale(vec4.sub(v2, v1), this.speed)
+        this._translationMatrix = mat4.mul(
+            mat4.translation(vec3.swizzle(translation, 0, 1, 2)),
+            this._startTranslationMatrix
+        )
         if (dragging.end) {
             this._startTranslationMatrix = this._translationMatrix
         }
         return this._translationMatrix
     }
     
-    readonly scale: utils.Mapper<Dragging, Matrix> = dragging => {
-        const v1 = this.inverseViewMatrix.prod(toVector(dragging.startPos, this.canvas))
-        const v2 = this.inverseViewMatrix.prod(toVector(dragging.pos, this.canvas))
-        const scale = Math.pow((1 + v2.minus(v1).length), (v2.coordinates[1] > v1.coordinates[1] ? this.speed : -this.speed))
-        this._scaleMatrix = Matrix.scaling(scale, scale, scale).by(this._startScaleMatrix)
+    readonly scale: utils.Mapper<Dragging, Mat<4>> = dragging => {
+        const v1 = mat4.apply(this.inverseViewMatrix, toVector(dragging.startPos, this.canvas))
+        const v2 = mat4.apply(this.inverseViewMatrix, toVector(dragging.pos, this.canvas))
+        const power = this.speed * (v2[1] - v1[1]);
+        const scale = Math.pow(2, power)
+        this._scaleMatrix = mat4.mul(mat4.scaling(scale, scale, scale), this._startScaleMatrix)
         if (dragging.end) {
             this._startScaleMatrix = this._scaleMatrix
         }
@@ -90,7 +90,11 @@ export class Transformer {
 
 
 export function toVector(p: PointerPosition, canvas: HTMLElement) {
-    return vec(p[0], p[1], -1, 1)
-        .multiply(vec(2 / canvas.clientWidth, -2 / canvas.clientHeight, 1, 1))
-        .minus(vec(1, -1, 0, 0));
+    return vec4.sub(
+        vec4.mul(
+            [p[0], p[1], -1, 1], 
+            [2 / canvas.clientWidth, -2 / canvas.clientHeight, 1, 1]
+        ),
+        [1, -1, 0, 0]
+    );
 }

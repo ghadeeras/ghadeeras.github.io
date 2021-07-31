@@ -1,6 +1,7 @@
 import * as Space from "../space/all.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
+import { Mat, mat4, Vec, vec2, vec3 } from "../space/all.js";
 
 export class Renderer {
 
@@ -20,11 +21,11 @@ export class Renderer {
 
     private matrices: number[][];
 
-    private translationUp = Space.Matrix.translation(0, +2, 0);
-    private translationDown = Space.Matrix.translation(0, -2, 0);
-    readonly view = Space.Matrix.globalView(Space.vec(0, 4, 9), Space.vec(0, 3, 0), Space.vec(0, 1, 0));
-    readonly treeView = this.view.by(this.translationUp);
-    readonly proj = Space.Matrix.project(1, 100, 1);
+    private translationUp = mat4.translation([0, +2, 0]);
+    private translationDown = mat4.translation([0, -2, 0]);
+    readonly view = mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
+    readonly treeView = mat4.mul(this.view, this.translationUp);
+    readonly proj = mat4.projection();
 
     constructor(vertexShaderCode: string, fragmentShaderCode: string, matrices: number[][]) {
         this.context = Djee.Context.of("canvas-gl");
@@ -46,10 +47,10 @@ export class Renderer {
         this.matView = program.uniform("matView");
         this.matProjection = program.uniform("matProjection");
 
-        const model = Space.Matrix.identity();
-        this.matModel.data = model.asColumnMajorArray;
-        this.matView.data = this.view.asColumnMajorArray;
-        this.matProjection.data = this.proj.asColumnMajorArray;
+        const model = mat4.identity();
+        this.matModel.data = mat4.columnMajorArray(model);
+        this.matView.data = mat4.columnMajorArray(this.view);
+        this.matProjection.data = mat4.columnMajorArray(this.proj);
 
         this.lightPosition = program.uniform("lightPosition");
         this.color = program.uniform("color");
@@ -76,12 +77,15 @@ export class Renderer {
         });
     }
 
-    rotationSink(): Gear.Sink<Space.Matrix> {
-        return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
-            this.matModel.data = this.translationUp
-                .by(matrix)
-                .by(this.translationDown)
-                .asColumnMajorArray;
+    rotationSink(): Gear.Sink<Mat<4>> {
+        return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
+            this.matModel.data = mat4.columnMajorArray(mat4.mul(
+                this.translationUp,
+                mat4.mul(
+                    matrix, 
+                    this.translationDown
+                )
+            ))
             this.draw();
         }));
     }
@@ -97,16 +101,15 @@ export class Renderer {
     }
 
     colorSink(): Gear.Sink<Gear.PointerPosition> {
-        const redVec = Space.vec(1, 0);
-        const greenVec = Space.vec(Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3));
-        const blueVec = Space.vec(Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3));
+        const redVec: Vec<2> = [1, 0];
+        const greenVec: Vec<2> = [Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3)];
+        const blueVec: Vec<2> = [Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3)];
         return Gear.sinkFlow(flow => flow
             .defaultsTo([-0.4, -0.2])
-            .map(([x, y]) => Space.vec(x, y))
             .producer(vec => {
-            const red = Math.min(2, 1 + vec.dot(redVec)) / 2;
-            const green = Math.min(2, 1 + vec.dot(greenVec)) / 2;
-            const blue = Math.min(2, 1 + vec.dot(blueVec)) / 2;
+            const red = Math.min(2, 1 + vec2.dot(vec, redVec)) / 2;
+            const green = Math.min(2, 1 + vec2.dot(vec, greenVec)) / 2;
+            const blue = Math.min(2, 1 + vec2.dot(vec, blueVec)) / 2;
             this.color.data = [red, green, blue];
             this.draw();
         }));
@@ -137,10 +140,6 @@ export class Renderer {
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
 
-        // gl.enable(gl.CULL_FACE);
-        // gl.frontFace(gl.CCW);
-        // gl.cullFace(gl.BACK);
-
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         for (let matrix of this.matrices) {
@@ -167,11 +166,11 @@ export class Renderer {
                 const r1 = r * (1 - d * (y1 - 0.5));
                 const r2 = r * (1 - d * (y2 - 0.5));
 
-                const n = Space.vec(x, r * d, z).unit;
+                const n = vec3.unit([x, r * d, z]);
                 
                 result.push(
-                    2 * x * r2, 2 * y2, 2 * z * r2, ...n.coordinates,
-                    2 * x * r1, 2 * y1, 2 * z * r1, ...n.coordinates, 
+                    2 * x * r2, 2 * y2, 2 * z * r2, ...n,
+                    2 * x * r1, 2 * y1, 2 * z * r1, ...n, 
                 );
             }
         }

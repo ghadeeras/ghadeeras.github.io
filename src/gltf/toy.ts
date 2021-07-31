@@ -1,5 +1,5 @@
 import * as Djee from "../djee/all.js"
-import * as Space from "../space/all.js"
+import { mat4, vec2, Vec } from '../space/all.js';
 import * as Gear from "../gear/all.js"
 import * as gltf from "../djee/gltf.js";
 
@@ -43,8 +43,8 @@ export function init() {
     );
 }
 
-const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
-const projectionMatrix = Space.Matrix.project(4, 100, 1);
+const viewMatrix = mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = mat4.projection(2);
 
 async function doInit() {
     const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
@@ -77,8 +77,8 @@ async function doInit() {
     shininess = program.uniform("shininess");
     fogginess = program.uniform("fogginess");
 
-    matView.data = viewMatrix.asColumnMajorArray;
-    matProjection.data = projectionMatrix.asColumnMajorArray;
+    matView.data = mat4.columnMajorArray(viewMatrix);
+    matProjection.data = mat4.columnMajorArray(projectionMatrix);
     color.data = [0.5, 0, 0.5, -1]
 
     const gl = context.gl;
@@ -90,7 +90,7 @@ async function doInit() {
 
     const canvas = Gear.elementEvents("canvas-gl");
 
-    modelTransformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix))
+    modelTransformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix), 4)
     viewTransformer = new Gear.Transformer(canvas.element, projectionMatrix)
 
     canvas.dragging.branch(
@@ -119,7 +119,7 @@ async function doInit() {
             .filter(selected("viewRotation"))
             .map(viewTransformer.rotation)
             .producer(matrix => {
-                matView.data = matrix.by(viewMatrix).asColumnMajorArray
+                matView.data = mat4.columnMajorArray(mat4.mul(matrix, viewMatrix))
                 draw()
             })
     );
@@ -138,9 +138,9 @@ function modelLoader(): Gear.Sink<string> {
             "POSITION" : position,
             "NORMAL" : normal,
         }, context)
-        modelTransformer.translationMatrix = Space.Matrix.identity()
+        modelTransformer.translationMatrix = mat4.identity()
         // modelTransformer.rotationMatrix = Space.Matrix.identity()
-        modelTransformer.scaleMatrix = Space.Matrix.identity()
+        modelTransformer.scaleMatrix = mat4.identity()
         draw()
     }))
 }
@@ -180,16 +180,15 @@ function shininessSink(): Gear.Sink<number> {
 
 function colorSink(): Gear.Sink<Gear.PointerPosition> {
     const third = 2 * Math.PI / 3
-    const redVec = Space.vec(1, 0);
-    const greenVec = Space.vec(Math.cos(third), Math.sin(third));
-    const blueVec = Space.vec(Math.cos(2 * third), Math.sin(2 * third));
+    const redVec: Vec<2> = [1, 0];
+    const greenVec: Vec<2> = [Math.cos(third), Math.sin(third)];
+    const blueVec: Vec<2> = [Math.cos(2 * third), Math.sin(2 * third)];
     return Gear.sinkFlow(flow => flow
         .defaultsTo([-0.4, -0.2])
-        .map(([x, y]) => Space.vec(x, y))
         .producer(vec => {
-        const red = Math.min(2, 1 + vec.dot(redVec)) / 2;
-        const green = Math.min(2, 1 + vec.dot(greenVec)) / 2;
-        const blue = Math.min(2, 1 + vec.dot(blueVec)) / 2;
+        const red = Math.min(2, 1 + vec2.dot(vec, redVec)) / 2;
+        const green = Math.min(2, 1 + vec2.dot(vec, greenVec)) / 2;
+        const blue = Math.min(2, 1 + vec2.dot(vec, blueVec)) / 2;
         color.data = [red, green, blue, -1];
         draw();
     }));
@@ -210,7 +209,7 @@ function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (model) {
-        model.defaultScene.render(gltf.Matrix.create(modelTransformer.matrix.asColumnMajorArray))
+        model.defaultScene.render(gltf.Matrix.create(mat4.columnMajorArray(modelTransformer.matrix)))
     }
     gl.flush();
 }

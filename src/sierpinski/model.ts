@@ -1,5 +1,6 @@
 import * as Gear from "../gear/all.js"
 import * as Space from "../space/all.js"
+import { Vec, vec2 } from "../space/all.js";
 
 export interface FlattenedSierpinski {
     corners: number[];
@@ -9,9 +10,9 @@ export interface FlattenedSierpinski {
 
 interface Sierpinski {
     depth: number;
-    a: Space.Vector;
-    b: Space.Vector;
-    c: Space.Vector;
+    a: Vec<2>;
+    b: Vec<2>;
+    c: Vec<2>;
 }
 
 const defaultSierpinski: Sierpinski = {
@@ -23,9 +24,9 @@ const defaultSierpinski: Sierpinski = {
 
 export function sierpinski(
     depth: Gear.Source<number> = new Gear.Value(),
-    a: Gear.Source<Space.Vector> = new Gear.Value(), 
-    b: Gear.Source<Space.Vector> = new Gear.Value(), 
-    c: Gear.Source<Space.Vector> = new Gear.Value(),
+    a: Gear.Source<Vec<2>> = new Gear.Value(), 
+    b: Gear.Source<Vec<2>> = new Gear.Value(), 
+    c: Gear.Source<Vec<2>> = new Gear.Value(),
 ): Gear.Source<FlattenedSierpinski> {
     const sierpinski: Sierpinski = { ...defaultSierpinski }
     return from<Sierpinski>(
@@ -40,35 +41,35 @@ function from<T>(...sources: Gear.Source<T>[]): Gear.Flow<T> {
     return Gear.Flow.from(...sources);
 }
 
-function vec(angleInDegrees: number) {
+function vec(angleInDegrees: number): Vec<2> {
     const angle = Math.PI * angleInDegrees / 180
-    return Space.vec(Math.cos(angle), Math.sin(angle));
+    return [Math.cos(angle), Math.sin(angle)];
 }
     
-export function tesselatedTriangle(a: Space.Vector, b: Space.Vector, c: Space.Vector, depth: number) {
+export function tesselatedTriangle(a: Vec<2>, b: Vec<2>, c: Vec<2>, depth: number) {
     const result: FlattenedSierpinski = {
         corners: [],
         centers: [],
-        stride: a.coordinates.length
+        stride: a.length
     };
     doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
     return result;
 }
 
 function doTesselateTriangle(
-    a: Space.Vector, 
-    b: Space.Vector, 
-    c: Space.Vector, 
+    a: Vec<2>, 
+    b: Vec<2>, 
+    c: Vec<2>, 
     depth: number, 
     corners: number[],
     centers: number[]
 ) {
     if (depth < 1) {
-        corners.push(...a.coordinates, ...b.coordinates, ...c.coordinates);
+        corners.push(...a, ...b, ...c);
     } else {
-        const ab = a.mix(b, 0.5);
-        const bc = b.mix(c, 0.5);
-        const ca = c.mix(a, 0.5);
+        const ab = vec2.mix(0.5, a, b);
+        const bc = vec2.mix(0.5, b, c);
+        const ca = vec2.mix(0.5, c, a);
         const newDepth = depth - 1;
         doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
         doTesselateTriangle(ab, b, bc, newDepth, corners, centers);

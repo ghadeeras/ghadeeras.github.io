@@ -1,8 +1,7 @@
-import * as Space from "../space/all.js";
 import * as Djee from "../djee/all.js";
 import * as Gear from "../gear/all.js";
 export class View {
-    constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = Space.vec(-0.75, 0), _scale = 2.0) {
+    constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
         this.julia = julia;
         this.drawCall = new Gear.Call(() => this.doDraw());
         this.context = Djee.Context.of(_canvasId);
@@ -29,13 +28,13 @@ export class View {
         this.palette = 0;
         this.center = _center;
         this.scale = _scale;
-        this.juliaNumber = Space.vec(0, 0, 0);
+        this.juliaNumber = [0, 0];
     }
     get center() {
-        return Space.vec(...this.uniformCenter.data);
+        return [this.uniformCenter.data[0], this.uniformCenter.data[1]];
     }
     set center(c) {
-        this.uniformCenter.data = c.coordinates;
+        this.uniformCenter.data = c;
         this.draw();
     }
     get scale() {
@@ -76,10 +75,10 @@ export class View {
         this.draw();
     }
     get juliaNumber() {
-        return Space.vec(...this.uniformJuliaNumber.data);
+        return [this.uniformJuliaNumber.data[0], this.uniformJuliaNumber.data[1]];
     }
     set juliaNumber(j) {
-        this.uniformJuliaNumber.data = [...j.swizzle(0, 1).coordinates, this.julia ? 1 : 0];
+        this.uniformJuliaNumber.data = [...j, this.julia ? 1 : 0];
         this.draw();
     }
     draw() {

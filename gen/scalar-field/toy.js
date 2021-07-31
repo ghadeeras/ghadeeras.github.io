@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as Djee from "../djee/all.js";
 import * as Space from "../space/all.js";
 import * as Gear from "../gear/all.js";
+import { mat4, vec3 } from "../space/all.js";
 let resolution = 64;
 let fieldSampler = envelopedCosine;
 let vertexShaderCode;
@@ -29,8 +30,8 @@ let fieldRef = 0;
 export function init() {
     window.onload = () => Gear.load("/shaders", () => doInit(), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
 }
-const viewMatrix = Space.Matrix.globalView(Space.vec(-2, 2, 10), Space.vec(0, 0, 0), Space.vec(0, 1, 0));
-const projectionMatrix = Space.Matrix.project(4, 100, 1);
+const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         yield Space.initWaModules();
@@ -48,15 +49,15 @@ function doInit() {
         color = program.uniform("color");
         shininess = program.uniform("shininess");
         fogginess = program.uniform("fogginess");
-        matModel.data = Space.Matrix.identity().asColumnMajorArray;
-        matView.data = viewMatrix.asColumnMajorArray;
-        matProjection.data = projectionMatrix.asColumnMajorArray;
+        matModel.data = mat4.columnMajorArray(mat4.identity());
+        matView.data = mat4.columnMajorArray(viewMatrix);
+        matProjection.data = mat4.columnMajorArray(projectionMatrix);
         const gl = context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
         const canvas = Gear.elementEvents("canvas-gl");
-        const transformer = new Gear.Transformer(canvas.element, projectionMatrix.by(viewMatrix));
+        const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix));
         canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
             .filter(selected("rotation"))
             .map(transformer.rotation)
@@ -103,22 +104,22 @@ function contourValueSink() {
         .producer(newContourValue => {
         contourValue = newContourValue;
         contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
-        color.data = fieldColor(contourValue, 1).coordinates;
+        color.data = fieldColor(contourValue, 1);
         draw();
     }));
 }
 function fieldColor(fieldValue, alpha = 0.4) {
-    return Space.vec((1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha);
+    return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }
 function rotationSink() {
-    return Gear.sinkFlow(flow => flow.defaultsTo(Space.Matrix.identity()).producer(matrix => {
-        matModel.data = matrix.asColumnMajorArray;
+    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
+        matModel.data = mat4.columnMajorArray(matrix);
         draw();
     }));
 }
 function focalRatioSink() {
-    return Gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 3).producer(ratio => {
-        matProjection.data = Space.Matrix.project(ratio, 100, 1).asColumnMajorArray;
+    return Gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
+        matProjection.data = mat4.columnMajorArray(mat4.projection(ratio));
         draw();
     }));
 }
@@ -185,7 +186,7 @@ function sampleField() {
                 const px = 2 * x / resolution - 1;
                 const py = 2 * y / resolution - 1;
                 const pz = 2 * z / resolution - 1;
-                const v = fieldSampler(px, py, pz).coordinates;
+                const v = fieldSampler(px, py, pz);
                 view[i++] = px;
                 view[i++] = py;
                 view[i++] = pz;
@@ -215,7 +216,12 @@ function contourSurfaceData(fieldRef, contourValue) {
 }
 const twoPi = 2 * Math.PI;
 function xyz(x, y, z) {
-    return Space.vec(y * z, z * x, x * y, x * y * z);
+    return [
+        y * z,
+        z * x,
+        x * y,
+        x * y * z
+    ];
 }
 function envelopedCosine(x, y, z) {
     const x2 = x * x;
@@ -236,10 +242,15 @@ function envelopedCosine(x, y, z) {
         const dValueDX = -twoPi * Math.sin(2 * piX);
         const dValueDY = -twoPi * Math.sin(2 * piY);
         const dValueDZ = -twoPi * Math.sin(2 * piZ);
-        return Space.vec(dEnvelopeDX * value + envelope * dValueDX, dEnvelopeDY * value + envelope * dValueDY, dEnvelopeDZ * value + envelope * dValueDZ, envelope * value / 3);
+        return [
+            dEnvelopeDX * value + envelope * dValueDX,
+            dEnvelopeDY * value + envelope * dValueDY,
+            dEnvelopeDZ * value + envelope * dValueDZ,
+            envelope * value / 3
+        ];
     }
     else {
-        return Space.vec(0, 0, 0, 0);
+        return [0, 0, 0, 0];
     }
 }
 function draw() {
@@ -365,7 +376,7 @@ function indexVertices(buffer) {
         const nextIndex = indexedVertices.vertices.length / stride;
         let index = lookUp(map, position, nextIndex);
         if (index == nextIndex) {
-            const unitNormal = Space.vec(...normal).unit.coordinates;
+            const unitNormal = vec3.unit([normal[0], normal[1], normal[2]]);
             indexedVertices.vertices.push(...position, ...unitNormal);
             indexedVertices.minPos = [
                 Math.min(position[0], indexedVertices.minPos[0]),

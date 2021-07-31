@@ -1,11 +1,11 @@
 import * as Space from "../space/all.js"
 import { View } from "./view.js"
 import * as Gear from "../gear/all.js"
+import { Vec, vec2 } from "../space/all.js"
 
-const audioContext = new window.AudioContext({sampleRate: 9450})
-const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
+let audioContext: AudioContext | null = null
 
-let center = Space.vec(-0.75, 0)
+let center: Vec<2> = [-0.75, 0]
 let scale = 2
 
 let vertexShaderCode: string
@@ -17,13 +17,13 @@ let canvas: Gear.ElementEvents
 let mandelbrotView: View
 let juliaView: View
 
-let centerSpan: Gear.Sink<Space.Vector>
+let centerSpan: Gear.Sink<Vec<2>>
 let scaleSpan: Gear.Sink<number>
 let hueSpan: Gear.Sink<number>
 let saturationSpan: Gear.Sink<number>
 let intensitySpan: Gear.Sink<number>
 let paletteSpan: Gear.Sink<number>
-let clickPosSpan: Gear.Sink<Space.Vector>
+let clickPosSpan: Gear.Sink<Vec<2>>
 
 export function init() {
     window.onload = () => Gear.load("/shaders", doInit,
@@ -46,11 +46,11 @@ function doInit() {
     }
 
     mandelbrotView = new View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale)
-    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, Space.vec(0, 0), 4)
+    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, [0, 0], 4)
 
     centerSpan = Gear.sinkFlow(flow => flow
         .defaultsTo(center)
-        .map(pos => pos.coordinates.map(c => c.toPrecision(3)))
+        .map(pos => pos.map(c => c.toPrecision(3)))
         .map(pos => "( " + pos[0] + ", " + pos[1] + ")")
         .to(Gear.text("center"))
     )
@@ -81,7 +81,7 @@ function doInit() {
     )
     clickPosSpan = Gear.sinkFlow(flow => flow
         .defaultsTo(center)
-        .map(pos => pos.coordinates.map(c => c.toPrecision(9)))
+        .map(pos => pos.map(c => c.toPrecision(9)))
         .map(pos => "(" + pos[0] + ", " + pos[1] + ")")
         .to(Gear.text("clickPos"))
     )
@@ -103,21 +103,26 @@ function doInit() {
         .producer(c => play(c))
 }
 
-function play(c: Space.Vector) {
+function play(c: Vec<2>) {
+    if (audioContext == null) {
+        audioContext = new window.AudioContext({sampleRate: 9450})
+    }
+    const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
+    
     const channel1 = audioBuffer.getChannelData(0)
     const channel2 = audioBuffer.getChannelData(1)
     let sum1 = 0
     let sum2 = 0
-    let z = Space.vec(0, 0)
-    for (let i = 0; i < audioBuffer.length && z.length < 2.0; i++) {
-        const [x, y] = z.coordinates
-        z = Space.vec(x * x - y * y, 2 * x * y).plus(c)
-        channel1[i] = z.coordinates[0] / 2
-        channel2[i] = z.coordinates[1] / 2
+    let z: Vec<2> = [0, 0]
+    for (let i = 0; i < audioBuffer.length && vec2.length(z) < 2.0; i++) {
+        const [x, y] = z
+        z = vec2.add([x * x - y * y, 2 * x * y], c)
+        channel1[i] = z[0] / 2
+        channel2[i] = z[1] / 2
         sum1 += channel1[i]
         sum2 += channel2[i]
     }
-    if (z.length < 2.0) {
+    if (vec2.length(z) < 2.0) {
         const avg1 = sum1 / channel1.length
         const avg2 = sum2 / channel2.length
         for (let i = 0; i < audioBuffer.length; i++) {
@@ -125,11 +130,11 @@ function play(c: Space.Vector) {
             channel1[i] = attenuation * (channel1[i] - avg1)
             channel2[i] = attenuation * (channel2[i] - avg2)
         }
-        playBuffer()
+        playBuffer(audioContext, audioBuffer)
     }
 }
 
-function playBuffer() {
+function playBuffer(audioContext: AudioContext, audioBuffer: AudioBuffer) {
     const source = audioContext.createBufferSource()
     source.channelCount = 2
     source.buffer = audioBuffer
@@ -137,16 +142,21 @@ function playBuffer() {
     source.start()
 }
 
-function toComplexNumber(pos: Gear.PointerPosition): Space.Vector {
-    return toVector(pos)
-        .scale(scale)
-        .plus(center)
+function toComplexNumber(pos: Gear.PointerPosition): Vec<2> {
+    return vec2.add(
+        vec2.scale(toVector(pos), scale),
+        center
+    )
 }
 
-function toVector(pos: Gear.PointerPosition): Space.Vector {
-    return Space.vec(...pos)
-        .divide(Space.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
-        .plus(Space.vec(-1, 1))
+function toVector(pos: Gear.PointerPosition): Vec<2> {
+    return vec2.add(
+        vec2.div(
+            pos,
+            [canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2]
+        ),
+        [-1, 1]
+    )
 }
 
 function action(key: string) {
@@ -168,12 +178,12 @@ function selected<T>(value: string): Gear.Predicate<T> {
 
 function zoom(dragging: Gear.Dragging) {
     const delta = calculateDelta(dragging.startPos, dragging.pos)
-    const power = -delta.coordinates[1]
+    const power = -delta[1]
     if (power != 0) {
         const centerToStart = calculateDelta(canvas.center, dragging.startPos, scale)
         const factor = 16 ** power
         const newScale = scale * factor
-        const newCenter = center.plus(centerToStart.scale(1 - factor))
+        const newCenter = vec2.add(center, vec2.scale(centerToStart, 1 - factor))
         if (dragging.end) {
             scale = newScale
             center = newCenter
@@ -187,10 +197,14 @@ function zoom(dragging: Gear.Dragging) {
 
 function move(dragging: Gear.Dragging) {
     const delta = calculateDelta(dragging.startPos, dragging.pos, scale)
-    if (delta.length > 0) {
-        const newCenter = center.minus(delta)
-            .combine(Space.vec(+4, +4), Math.min)
-            .combine(Space.vec(-4, -4), Math.max)
+    if (vec2.length(delta) > 0) {
+        const newCenter = vec2.max(
+            vec2.min(
+                vec2.sub(center, delta),
+                [+4, +4]
+            ),
+            [-4, -4]
+        )
         if (dragging.end) {
             center = newCenter
         }
@@ -229,8 +243,11 @@ function julia(dragging: Gear.Dragging) {
 }
 
 function calculateDelta(pos1: Gear.PointerPosition, pos2: Gear.PointerPosition, scale: number = 1) {
-    return Space.vec(...pos2)
-        .minus(Space.vec(...pos1))
-        .scale(2 * scale)
-        .divide(Space.vec(canvas.element.clientWidth, -canvas.element.clientHeight))
+    return vec2.div(
+        vec2.scale(
+            vec2.sub(pos2, pos1), 
+            2 * scale
+        ), 
+        [canvas.element.clientWidth, -canvas.element.clientHeight]
+    )
 }

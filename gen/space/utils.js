@@ -7,15 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { Vector } from "./vector.js";
-import { Matrix } from "./matrix.js";
 import * as WA from "../../vibrato.js/js/wa.js";
-export function vec(...coordinates) {
-    return new Vector(coordinates);
-}
-export function mat(...columns) {
-    return new Matrix(columns);
-}
 export const modules = {
     mem: WA.module("vibrato.js/rt/mem.wasm"),
     space: WA.module("vibrato.js/rt/space.wasm"),

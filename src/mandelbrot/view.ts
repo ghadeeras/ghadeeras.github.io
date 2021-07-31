@@ -1,6 +1,7 @@
 import * as Space from "../space/all.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
+import { Vec } from "../space/all.js"
 
 export class View {
 
@@ -19,7 +20,7 @@ export class View {
         _canvasId: string,
         _vertexShaderCode: string,
         _fragmentShaderCode: string,
-        _center = Space.vec(-0.75, 0),
+        _center: Vec<2> = [-0.75, 0],
         _scale = 2.0
     ) {
         this.context = Djee.Context.of(_canvasId)
@@ -54,15 +55,15 @@ export class View {
         this.palette = 0
         this.center = _center
         this.scale = _scale
-        this.juliaNumber = Space.vec(0, 0, 0)
+        this.juliaNumber = [0, 0]
     }
 
     get center() {
-        return Space.vec(...this.uniformCenter.data)
+        return [this.uniformCenter.data[0], this.uniformCenter.data[1]]
     }
 
-    set center(c: Space.Vector) {
-        this.uniformCenter.data = c.coordinates
+    set center(c: Vec<2>) {
+        this.uniformCenter.data = c
         this.draw()
     }
 
@@ -115,11 +116,11 @@ export class View {
     }
 
     get juliaNumber() {
-        return Space.vec(...this.uniformJuliaNumber.data)
+        return [this.uniformJuliaNumber.data[0], this.uniformJuliaNumber.data[1]]
     }
     
-    set juliaNumber(j: Space.Vector) {
-        this.uniformJuliaNumber.data = [...j.swizzle(0, 1).coordinates, this.julia ? 1 : 0]
+    set juliaNumber(j: Vec<2>) {
+        this.uniformJuliaNumber.data = [...j, this.julia ? 1 : 0]
         this.draw()
     }
     
