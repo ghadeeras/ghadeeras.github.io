@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as Djee from "../djee/all.js";
-import { mat4, vec2 } from '../space/all.js';
+import { mat4, vec2, vec3 } from '../space/all.js';
 import * as Gear from "../gear/all.js";
 import * as gltf from "../djee/gltf.js";
 let vertexShaderCode;
@@ -64,7 +64,7 @@ function doInit() {
         const canvas = Gear.elementEvents("canvas-gl");
         modelTransformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix), 4);
         viewTransformer = new Gear.Transformer(canvas.element, projectionMatrix);
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("color")).to(colorSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
+        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("color")).to(colorSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
             .filter(selected("modelRotation"))
             .map(modelTransformer.rotation)
             .producer(draw), flow => flow
@@ -111,10 +111,10 @@ function getModelUri(modelId) {
 }
 function lightPositionSink() {
     return Gear.sinkFlow(flow => flow
-        .defaultsTo([0.5, 0.5])
+        .defaultsTo([0, 0])
         .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
         .producer(([x, y]) => {
-        lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
+        lightPosition.data = vec3.swizzle(mat4.apply(mat4.inverse(viewMatrix), [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1]), 0, 1, 2);
         draw();
     }));
 }
