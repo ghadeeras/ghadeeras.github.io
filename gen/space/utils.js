@@ -7,10 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as WA from "../../vibrato.js/js/wa.js";
+import * as WA from "../../vibrato.js/latest/js/wa.js";
 export const modules = {
-    mem: WA.module("vibrato.js/rt/mem.wasm"),
-    space: WA.module("vibrato.js/rt/space.wasm"),
+    mem: WA.module("vibrato.js/latest/wa/mem.wasm"),
+    space: WA.module("vibrato.js/latest/wa/space.wasm"),
     scalarField: WA.module("wa/scalarField.wasm"),
 };
 export function initWaModules() {

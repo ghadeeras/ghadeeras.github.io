@@ -1,6 +1,6 @@
 
-import * as WA from "../../vibrato.js/js/wa.js"
-import * as RT from "../../vibrato.js/js/rt.js"
+import * as WA from "../../vibrato.js/latest/js/wa.js"
+import * as RT from "../../vibrato.js/latest/js/rt.js"
 
 export type ScalarFieldExports = {
     tessellateTetrahedron: (contourValue: number, point0: RT.Reference, point1: RT.Reference, point2: RT.Reference, point3: RT.Reference) => RT.Reference;
@@ -9,8 +9,8 @@ export type ScalarFieldExports = {
 }
 
 export const modules = {
-    mem: WA.module<RT.MemExports>("vibrato.js/rt/mem.wasm"),
-    space: WA.module<RT.SpaceExports>("vibrato.js/rt/space.wasm"),
+    mem: WA.module<RT.MemExports>("vibrato.js/latest/wa/mem.wasm"),
+    space: WA.module<RT.SpaceExports>("vibrato.js/latest/wa/space.wasm"),
     scalarField: WA.module<ScalarFieldExports>("wa/scalarField.wasm"),
 }
 

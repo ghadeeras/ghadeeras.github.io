@@ -5,14 +5,8 @@ LIBRARY=$1
     echo "Missing required argument! Usage: ./download <library>" && 
     exit 1
 
-VERSION=$2
-if [[ $VERSION == "" ]]
-then
-    VERSION="latest"
-fi
-
 LIBRARY_PATH="./dependencies/$LIBRARY"
-LIBRARY_URL="https://ghadeeras.github.io/$LIBRARY/$VERSION.zip"
+LIBRARY_URL="https://ghadeeras.github.io/$LIBRARY"
 echo
 echo "Download request details:"
 echo " - Library directory: $LIBRARY_PATH"
@@ -23,15 +17,15 @@ echo "Checking/setting up workspace ..."
 mkdir "./dependencies" 2>/dev/null &&
     echo " - Created 'dependencies' directory."
 rm -R "$LIBRARY_PATH" 2>/dev/null
-mkdir -p "$LIBRARY_PATH" 2>/dev/null &&
+mkdir "$LIBRARY_PATH" 2>/dev/null &&
     echo " - Created library '$LIBRARY' directory."
 echo "Workspace is ready."
 echo
 
 echo "Downloading $LIBRARY ..."
-curl --no-buffer --location --fail "$LIBRARY_URL" > "$LIBRARY_PATH.zip"
-unzip -o "$LIBRARY_PATH.zip" -d "$LIBRARY_PATH"
-rm "$LIBRARY_PATH.zip"
+curl --no-buffer --location --fail "$LIBRARY_URL/manifest" |
+    xargs -I {} \
+    curl --location --fail --create-dirs --output "$LIBRARY_PATH/{}" "$LIBRARY_URL/{}"
 echo
 
 echo "Downloaded files in '$LIBRARY_PATH':"
