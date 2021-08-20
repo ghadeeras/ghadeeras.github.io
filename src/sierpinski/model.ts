@@ -1,6 +1,6 @@
 import * as Gear from "../gear/all.js"
-import * as Space from "../space/all.js"
-import { Vec, vec2 } from "../space/all.js";
+import * as Ether from "../../ether/latest/index.js"
+import { Vec, vec2 } from "../../ether/latest/index.js";
 
 export interface FlattenedSierpinski {
     corners: number[];

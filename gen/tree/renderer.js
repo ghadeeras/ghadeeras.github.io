@@ -1,6 +1,6 @@
 import * as Djee from "../djee/all.js";
 import * as Gear from "../gear/all.js";
-import { mat4, vec2, vec3 } from "../space/all.js";
+import { mat4, vec2, vec3 } from "../../ether/latest/index.js";
 export class Renderer {
     constructor(vertexShaderCode, fragmentShaderCode, matrices) {
         this.translationUp = mat4.translation([0, +2, 0]);

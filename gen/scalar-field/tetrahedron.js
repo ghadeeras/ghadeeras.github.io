@@ -8,9 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as Djee from "../djee/all.js";
-import * as Space from "../space/all.js";
+import * as Ether from "../../ether/latest/index.js";
 import * as Gear from "../gear/all.js";
-import { mat4, vec3, vec4 } from "../space/all.js";
+import { mat4, vec3, vec4 } from "../../ether/latest/index.js";
 let vertexShaderCode;
 let fragmentShaderCode;
 let context;
@@ -32,7 +32,7 @@ export function initTetrahedronDemo() {
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield Space.initWaModules();
+        yield Ether.initWaModules();
         context = Djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
         program.use();
@@ -182,11 +182,11 @@ function tetrahedronData(tetrahedron) {
     return tetrahedronVertexes.reduce((a, v) => a.concat(...v), []);
 }
 function contourSurfaceData(tetrahedron, contourValue) {
-    const stack = Space.modules.mem.exports;
-    const space = Space.modules.space.exports;
-    const scalarField = Space.modules.scalarField.exports;
+    const stack = Ether.modules.mem.exports;
+    const space = Ether.modules.space.exports;
+    const scalarField = Ether.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Space modules!");
+        throw new Error("Failed to initialize Web Assembly Ether modules!");
     }
     stack.leave();
     stack.enter();

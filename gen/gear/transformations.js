@@ -1,4 +1,4 @@
-import { mat4, vec4, vec3 } from '../space/all.js';
+import { mat4, vec4, vec3 } from "../../ether/latest/index.js";
 export class Transformer {
     constructor(canvas, viewMatrix, speed = 8) {
         this.canvas = canvas;

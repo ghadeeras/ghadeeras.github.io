@@ -1,8 +1,8 @@
 import * as Djee from "../djee/all.js"
-import * as Space from "../space/all.js"
+import * as Ether from "../../ether/latest/index.js"
 import * as Gear from "../gear/all.js"
 import * as gltf from "../djee/gltf.js"
-import { Mat, mat4, Vec, vec3 } from "../space/all.js"
+import { Mat, mat4, Vec, vec3 } from "../../ether/latest/index.js"
 
 type FieldSampler = (x: number, y: number, z: number) => Vec<4>
 
@@ -40,7 +40,7 @@ const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 const projectionMatrix = mat4.projection(2)
 
 async function doInit() {
-    await Space.initWaModules()
+    await Ether.initWaModules()
     fieldRef = sampleField()
 
     context = Djee.Context.of("canvas-gl")
@@ -218,10 +218,10 @@ function getFieldFunction(functionName: string) {
 }
 
 function sampleField(): number {
-    const stack = Space.modules.mem.exports
-    const space = Space.modules.space.exports
+    const stack = Ether.modules.mem.exports
+    const space = Ether.modules.space.exports
     if (!stack || !space) {
-        throw new Error("Failed to initialize Web Assembly Space modules!")
+        throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
     stack.leave()
 
@@ -254,10 +254,10 @@ function sampleField(): number {
 }
 
 function contourSurfaceData(fieldRef: number, contourValue: number): Float32Array {
-    const stack = Space.modules.mem.exports
-    const scalarField = Space.modules.scalarField.exports
+    const stack = Ether.modules.mem.exports
+    const scalarField = Ether.modules.scalarField.exports
     if (!stack || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Space modules!")
+        throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
     stack.leave()
     stack.enter()

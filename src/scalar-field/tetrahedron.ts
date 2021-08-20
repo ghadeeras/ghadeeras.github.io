@@ -1,7 +1,7 @@
 import * as Djee from "../djee/all.js"
-import * as Space from "../space/all.js"
+import * as Ether from "../../ether/latest/index.js"
 import * as Gear from "../gear/all.js"
-import { Mat, mat4, Vec, vec3, vec4 } from "../space/all.js";
+import { Mat, mat4, Vec, vec3, vec4 } from "../../ether/latest/index.js";
 
 let vertexShaderCode: string;
 let fragmentShaderCode: string;
@@ -57,7 +57,7 @@ export function initTetrahedronDemo() {
 }
 
 async function doInit() {
-    await Space.initWaModules()
+    await Ether.initWaModules()
     context = Djee.Context.of("canvas-gl");
 
     const program = context.link(
@@ -270,11 +270,11 @@ function tetrahedronData(tetrahedron: Tetrahedron): number[] {
 }
 
 function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Float32Array {
-    const stack = Space.modules.mem.exports;
-    const space = Space.modules.space.exports;
-    const scalarField = Space.modules.scalarField.exports;
+    const stack = Ether.modules.mem.exports;
+    const space = Ether.modules.space.exports;
+    const scalarField = Ether.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Space modules!")
+        throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
     stack.leave();
     stack.enter();

@@ -1,7 +1,7 @@
-import * as Space from "../space/all.js"
+import * as Ether from "../../ether/latest/index.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
-import { Vec } from "../space/all.js"
+import { Vec } from "../../ether/latest/index.js"
 
 export class View {
 

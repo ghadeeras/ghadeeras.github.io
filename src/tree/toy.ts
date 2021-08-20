@@ -1,5 +1,5 @@
 import * as Gear from "../gear/all.js"
-import { mat4 } from "../space/matrix.js";
+import { mat4 } from "../../ether/latest/js/matrix.js";
 import { MatriciesGenerator } from "./matgen.js";
 import { Renderer } from "./renderer.js";
 

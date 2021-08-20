@@ -1,5 +1,5 @@
 import * as Gear from "../gear/all.js";
-import { vec2 } from "../space/all.js";
+import { vec2 } from "../../ether/latest/index.js";
 const defaultSierpinski = {
     depth: 5,
     a: vec(90),

@@ -8,9 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as Djee from "../djee/all.js";
-import * as Space from "../space/all.js";
+import * as Ether from "../../ether/latest/index.js";
 import * as Gear from "../gear/all.js";
-import { mat4, vec3 } from "../space/all.js";
+import { mat4, vec3 } from "../../ether/latest/index.js";
 let resolution = 64;
 let fieldSampler = envelopedCosine;
 let vertexShaderCode;
@@ -34,7 +34,7 @@ const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
 const projectionMatrix = mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield Space.initWaModules();
+        yield Ether.initWaModules();
         fieldRef = sampleField();
         context = Djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
@@ -168,10 +168,10 @@ function getFieldFunction(functionName) {
     }
 }
 function sampleField() {
-    const stack = Space.modules.mem.exports;
-    const space = Space.modules.space.exports;
+    const stack = Ether.modules.mem.exports;
+    const space = Ether.modules.space.exports;
     if (!stack || !space) {
-        throw new Error("Failed to initialize Web Assembly Space modules!");
+        throw new Error("Failed to initialize Web Assembly Ether modules!");
     }
     stack.leave();
     stack.leave();
@@ -202,10 +202,10 @@ function sampleField() {
     return ref;
 }
 function contourSurfaceData(fieldRef, contourValue) {
-    const stack = Space.modules.mem.exports;
-    const scalarField = Space.modules.scalarField.exports;
+    const stack = Ether.modules.mem.exports;
+    const scalarField = Ether.modules.scalarField.exports;
     if (!stack || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Space modules!");
+        throw new Error("Failed to initialize Web Assembly Ether modules!");
     }
     stack.leave();
     stack.enter();

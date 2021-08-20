@@ -1,7 +1,6 @@
-import * as Space from "../space/all.js"
 import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
-import { Mat, mat4, Vec, vec2, vec3 } from "../space/all.js";
+import { Mat, mat4, Vec, vec2, vec3 } from "../../ether/latest/index.js";
 
 export class Renderer {
 

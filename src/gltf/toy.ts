@@ -1,5 +1,5 @@
 import * as Djee from "../djee/all.js"
-import { mat4, vec2, Vec, vec3 } from '../space/all.js';
+import { mat4, vec2, Vec, vec3 } from "../../ether/latest/index.js";
 import * as Gear from "../gear/all.js"
 import * as gltf from "../djee/gltf.js";
 
@@ -139,7 +139,7 @@ function modelLoader(): Gear.Sink<string> {
             "NORMAL" : normal,
         }, context)
         modelTransformer.translationMatrix = mat4.identity()
-        // modelTransformer.rotationMatrix = Space.Matrix.identity()
+        // modelTransformer.rotationMatrix = Ether.Matrix.identity()
         modelTransformer.scaleMatrix = mat4.identity()
         draw()
     }))

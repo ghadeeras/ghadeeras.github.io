@@ -1,6 +1,6 @@
 import { View } from "./view.js";
 import * as Gear from "../gear/all.js";
-import { vec2 } from "../space/all.js";
+import { vec2 } from "../../ether/latest/index.js";
 let audioContext = null;
 let center = [-0.75, 0];
 let scale = 2;

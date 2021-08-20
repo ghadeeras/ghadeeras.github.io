@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as Djee from "../djee/all.js";
-import { mat4, vec2, vec3 } from '../space/all.js';
+import { mat4, vec2, vec3 } from "../../ether/latest/index.js";
 import * as Gear from "../gear/all.js";
 import * as gltf from "../djee/gltf.js";
 let vertexShaderCode;
@@ -94,7 +94,7 @@ function modelLoader() {
             "NORMAL": normal,
         }, context);
         modelTransformer.translationMatrix = mat4.identity();
-        // modelTransformer.rotationMatrix = Space.Matrix.identity()
+        // modelTransformer.rotationMatrix = Ether.Matrix.identity()
         modelTransformer.scaleMatrix = mat4.identity();
         draw();
     })));

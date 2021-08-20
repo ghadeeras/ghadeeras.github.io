@@ -1,4 +1,4 @@
-import { Mat, mat4, vec4, vec3 } from '../space/all.js';
+import { Mat, mat4, vec4, vec3 } from "../../ether/latest/index.js";
 import { Dragging, PointerPosition } from './ui-input.js';
 import * as utils from './utils.js'
 

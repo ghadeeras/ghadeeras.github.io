@@ -1,4 +1,4 @@
-import { mat4 } from "../space/all.js";
+import { mat4 } from "../../ether/latest/index.js";
 export class MatriciesGenerator {
     constructor() {
         this._verticalAngle = Math.PI / 4;
