@@ -32,10 +32,27 @@ export function causeEffectLink<C, E>(causeProducer: Producer<C>, effect: Effect
     return causeProducer(cause => effect(cause, effectConsumer));
 }
 
+export type Pair<A, B> = [A, B]
+
+export async function fetchFiles<K extends string, T extends Record<K, string>>(files: T, path: string = "."): Promise<T> {
+    const result: Partial<Record<K, string>> = {};
+    const keys = Object.keys(files) as K[];
+    const promises = keys.map(k => fetchFile(k, `${path}/${files[k]}`))
+    for (let [key, promise] of promises) {
+        result[key] = await promise
+    }
+    return result as T
+}
+
+function fetchFile<K extends string>(key: K, url: string): Pair<K, Promise<string>> {
+    return [key, fetch(url, { method : "get", mode : "no-cors" }).then(response => response.text())]
+}
+
+
 export function load(path: string, onready: Callable, ...files: [string, Consumer<string>][]) {
     const remaining: number[] = [files.length];
     for (let [file, consumer] of files) {
-        fetchFile(path + "/" + file, content => {
+        loadFile(path + "/" + file, content => {
             consumer(content);
             remaining[0]--;
             if (remaining[0] <= 0) {
@@ -45,6 +62,6 @@ export function load(path: string, onready: Callable, ...files: [string, Consume
     }
 }
 
-function fetchFile(url: string, consumer: Consumer<string>) {
+function loadFile(url: string, consumer: Consumer<string>) {
     fetch(url, { method : "get", mode : "no-cors" }).then(response => response.text().then(consumer));
 }

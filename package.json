@@ -1,0 +1,22 @@
+{
+  "name": "ghadeeras.github.io",
+  "version": "1.0.0",
+  "description": "Ghadeer's Playcloud",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ghadeeras/ghadeeras.github.io.git"
+  },
+  "author": "Ghadeer Abou-Saleh",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ghadeeras/ghadeeras.github.io/issues"
+  },
+  "homepage": "https://github.com/ghadeeras/ghadeeras.github.io#readme",
+  "devDependencies": {
+    "@webgpu/types": "^0.1.6"
+  }
+}

@@ -1,120 +1,88 @@
-import * as Djee from "../djee/all.js"
-import * as Ether from "../../ether/latest/index.js"
-import * as Gear from "../gear/all.js"
+import * as ether from "../../ether/latest/index.js"
+import * as gear from "../gear/all.js"
 import * as gltf from "../djee/gltf.js"
-import { Mat, mat4, Vec, vec3 } from "../../ether/latest/index.js"
+import * as v from "./view.js"
+import { ScalarFieldExports } from "../../ether/latest/index.js"
+import { MemExports, SpaceExports } from "../../vibrato.js/latest/js/rt.js"
 
-type FieldSampler = (x: number, y: number, z: number) => Vec<4>
+type FieldSampler = (x: number, y: number, z: number) => ether.Vec<4>
 
 let resolution = 64
 let fieldSampler: FieldSampler = envelopedCosine
 
-let vertexShaderCode: string
-let fragmentShaderCode: string
-
-let context: Djee.Context
-
-let position: Djee.Attribute
-let normal: Djee.Attribute
-
-let matModel: Djee.Uniform
-let matProjection: Djee.Uniform
-let lightPosition: Djee.Uniform
-let color: Djee.Uniform
-let shininess: Djee.Uniform
-let fogginess: Djee.Uniform
-
-let contourSurfaceBuffer: Djee.AttributesBuffer
-
 let contourValue: number = 0
 let fieldRef: number = 0
 
-export function init() {
-    window.onload = () => Gear.load("/shaders", () => doInit(),
-        ["uniformColors.vert", shader => vertexShaderCode = shader],
-        ["uniformColors.frag", shader => fragmentShaderCode = shader]
-    )
+type Modules = {
+    mem: MemExports
+    space: SpaceExports
+    scalarField: ScalarFieldExports
 }
 
-const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = mat4.projection(2)
+export function init() {
+    window.onload = () => doInit()
+}
+
+const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+const projectionMatrix = ether.mat4.projection(2)
 
 async function doInit() {
-    await Ether.initWaModules()
-    fieldRef = sampleField()
+    const wa = await ether.initWaModules()
+    const modules: Modules = {
+        mem: v.required(wa.mem.exports),
+        space: v.required(wa.space.exports),
+        scalarField: v.required(wa.scalarField.exports)
+    }
 
-    context = Djee.Context.of("canvas-gl")
+    const view = await v.newView("canvas-gl")
+    view.matView = viewMatrix
+    view.matProjection = projectionMatrix
 
-    const program = context.link(
-        context.vertexShader(vertexShaderCode),
-        context.fragmentShader(fragmentShaderCode)
-    )
-    program.use()
+    fieldRef = sampleField(modules)
 
-    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true)
-
-    position = program.attribute("position")
-    normal = program.attribute("normal")
-
-    matModel = program.uniform("matModel")
-    const matView = program.uniform("matView")
-    matProjection = program.uniform("matProjection")
-
-    lightPosition = program.uniform("lightPosition")
-    color = program.uniform("color")
-    shininess = program.uniform("shininess")
-    fogginess = program.uniform("fogginess")
-
-    matModel.data = mat4.columnMajorArray(mat4.identity())
-    matView.data = mat4.columnMajorArray(viewMatrix)
-    matProjection.data = mat4.columnMajorArray(projectionMatrix)
-
-    const gl = context.gl
-    gl.enable(gl.DEPTH_TEST)
-    gl.clearDepth(1)
-    gl.clearColor(1, 1, 1, 1)
-
-    const canvas = Gear.elementEvents("canvas-gl")
-    const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix))
+    const canvas = gear.elementEvents("canvas-gl")
+    const transformer = new gear.Transformer(canvas.element, ether.mat4.mul(projectionMatrix, viewMatrix))
     canvas.dragging.branch(
-        flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
+        flow => flow.map(d => d.pos).map(([x, y]) => gear.pos(
             2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
             2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
         )).branch(
-            flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()),
-            flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
-            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()),
-            flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()),
-            flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink()),
+            flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink(view)),
+            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink(modules, view)),
+            flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink(view)),
+            flow => flow.filter(selected("outlineSharpness")).map(([x, y]) => y).to(outlineSharpnessSink(view)),
+            flow => flow.filter(selected("lightPosition")).to(lightPositionSink(view)),
+            flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink(view)),
+            flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink(view)),
         ),
         flow => flow
             .filter(selected("rotation"))
             .map(transformer.rotation)
-            .to(rotationSink())
+            .to(rotationSink(view))
     )
-    levelOfDetailsFlow().to(levelOfDetailsSink())
-    Gear.readableValue("function").to(functionSink())
+    levelOfDetailsFlow().to(levelOfDetailsSink(modules, view))
+    gear.readableValue("function").to(functionSink(modules, view))
 
-    Gear.elementEvents("save").click.producer(saveModel)
+    gear.elementEvents("save").click.producer(() => saveModel(modules))
 }
 
-function selected<T>(value: string): Gear.Predicate<T> {
+function selected<T>(value: string): gear.Predicate<T> {
     const mouseBinding = document.getElementById("mouse-binding") as HTMLInputElement
     return () => mouseBinding.value == value
 }
 
 function levelOfDetailsFlow() {
-    const inc = Gear.elementEvents("lod-inc").mouseButtons
+    const inc = gear.elementEvents("lod-inc").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? +8 : 0)
-    const dec = Gear.elementEvents("lod-dec").mouseButtons
+    const dec = gear.elementEvents("lod-dec").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? -8 : 0)
-    const flow = Gear.Flow.from(inc, dec)
+    const flow = gear.Flow.from(inc, dec)
         .defaultsTo(0)
-        .then(Gear.repeater(128, 0))
+        .then(gear.repeater(128, 0))
         .reduce((i, lod) => clamp(lod + i, 32, 96), 64)
-    flow.map(lod => lod.toString()).to(Gear.text("lod"))
+    flow.map(lod => lod.toString()).to(gear.text("lod"))
     return flow
 }
 
@@ -122,89 +90,103 @@ function clamp(n: number, min: number, max: number) {
     return n < min ? min : (n > max ? max : n)
 }
 
-function levelOfDetailsSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow
+function levelOfDetailsSink(modules: Modules, view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(64)
         .producer(lod => {
             resolution = lod
-            fieldRef = sampleField()
-            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue)
-            draw()
+            fieldRef = sampleField(modules)
+            view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue))
         })
     )
 }
 
-function contourValueSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow
+function contourValueSink(modules: Modules, view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(0)
         .producer(newContourValue => {
             contourValue = newContourValue
-            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue)
-            color.data = fieldColor(contourValue, 1)
-            draw()
+            view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue))
+            view.color = fieldColor(contourValue, 1)
         })
     )
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): Vec<4> {
-    return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha]
+function fieldColor(fieldValue: number, alpha: number = 0.4): ether.Vec<4> {
+    return fieldValue > 0 ?
+        [1, 0, (1 - fieldValue) / (1 + fieldValue), alpha] : 
+        [1 - (1 + fieldValue) / (1 - fieldValue), 1, 0, alpha] 
 }
 
-function rotationSink(): Gear.Sink<Mat<4>> {
-    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
-        matModel.data = mat4.columnMajorArray(matrix)
-        draw()
+function rotationSink(view: v.View): gear.Sink<ether.Mat<4>> {
+    return gear.sinkFlow(flow => flow.defaultsTo(ether.mat4.identity()).producer(matrix => {
+        view.setMatModel(matrix, matrix)
     }))
 }
 
-function focalRatioSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
-        matProjection.data = mat4.columnMajorArray(mat4.projection(ratio))
-        draw()
+function focalRatioSink(view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
+        view.matProjection = ether.mat4.projection(ratio)
     }))
 }
 
-function lightPositionSink(): Gear.Sink<Gear.PointerPosition> {
-    return Gear.sinkFlow(flow => flow
+function lightPositionSink(view: v.View): gear.Sink<gear.PointerPosition> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo([0.5, 0.5])
         .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
         .producer(([x, y]) => {
-            lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)]
-            draw()
+            view.lightPosition = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1]
         })
     )
 }
 
-function shininessSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow
+function lightRadiusSink(view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
+        .map(r => (r + 1) / 2)
+        .defaultsTo(0.1)
+        .producer(r => {
+            view.lightRadius = r
+        })
+    )
+}
+
+function shininessSink(view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(-1)
         .map(value => (value + 1) / 2)
         .producer(value => {
-            shininess.data = [value]
-            draw()
+            view.shininess = value
         })
     )
 }
 
-function fogginessSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow
+function outlineSharpnessSink(view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
+        .defaultsTo(1)
+        .map(value => (value + 1) / 2)
+        .producer(value => {
+            view.outlineSharpness = value
+        })
+    )
+}
+
+function fogginessSink(view: v.View): gear.Sink<number> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(-1)
         .map(value => (value + 1) / 2)
         .producer(value => {
-            fogginess.data = [value]
-            draw()
+            view.fogginess = value
         })
     )
 }
 
-function functionSink(): Gear.Sink<string> {
-    return Gear.sinkFlow(flow => flow
+function functionSink(modules: Modules, view: v.View): gear.Sink<string> {
+    return gear.sinkFlow(flow => flow
         .defaultsTo("xyz")
         .producer(functionName => {
             fieldSampler = getFieldFunction(functionName)
-            fieldRef = sampleField()
-            contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue)
-            draw()
+            fieldRef = sampleField(modules)
+            view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue))
         })
     )
 }
@@ -217,19 +199,17 @@ function getFieldFunction(functionName: string) {
     }
 }
 
-function sampleField(): number {
-    const stack = Ether.modules.mem.exports
-    const space = Ether.modules.space.exports
-    if (!stack || !space) {
+function sampleField(modules: Modules): number {
+    if (!modules.mem || !modules.space) {
         throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
-    stack.leave()
+    modules.mem.leave()
 
-    stack.leave()
-    stack.enter()
+    modules.mem.leave()
+    modules.mem.enter()
     const length = 8 * (resolution + 1) ** 3 
-    const ref = stack.allocate64(length)
-    const view = new Float64Array(stack.stack.buffer, ref, length)
+    const ref = modules.mem.allocate64(length)
+    const view = new Float64Array(modules.mem.stack.buffer, ref, length)
     let i = 0
     for (let z = 0; z <= resolution; z++) {
         for (let y = 0; y <= resolution; y++) {
@@ -249,27 +229,25 @@ function sampleField(): number {
             }
         }
     }
-    stack.enter()
+    modules.mem.enter()
     return ref
 }
 
-function contourSurfaceData(fieldRef: number, contourValue: number): Float32Array {
-    const stack = Ether.modules.mem.exports
-    const scalarField = Ether.modules.scalarField.exports
-    if (!stack || !scalarField) {
+function contourSurfaceData(modules: Modules, fieldRef: number, contourValue: number): Float32Array {
+    if (!modules.mem || !modules.scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
-    stack.leave()
-    stack.enter()
-    const begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue)
-    const end = stack.allocate8(0)
-    const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4)
+    modules.mem.leave()
+    modules.mem.enter()
+    const begin = modules.scalarField.tesselateScalarField(fieldRef, resolution, contourValue)
+    const end = modules.mem.allocate8(0)
+    const result = new Float32Array(modules.mem.stack.buffer, begin, (end - begin) / 4)
     return result
 }
 
 const twoPi = 2 * Math.PI
 
-function xyz(x: number, y: number, z: number): Vec<4> {
+function xyz(x: number, y: number, z: number): ether.Vec<4> {
     return [
         y * z,
         z * x,
@@ -278,7 +256,7 @@ function xyz(x: number, y: number, z: number): Vec<4> {
     ]
 }
 
-function envelopedCosine(x: number, y: number, z: number): Vec<4> {
+function envelopedCosine(x: number, y: number, z: number): ether.Vec<4> {
     const x2 = x * x
     const y2 = y * y
     const z2 = z * z
@@ -312,23 +290,8 @@ function envelopedCosine(x: number, y: number, z: number): Vec<4> {
     }
 }
 
-function draw() {
-    if (contourSurfaceBuffer.data.length == 0) {
-        return
-    }
-    
-    const gl = context.gl
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word)
-    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word)
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6)
-
-    gl.flush()
-}
-
-function saveModel() {
-    const model = createModel("ScalarField")
+async function saveModel(modules: Modules) {
+    const model = createModel(modules, "ScalarField")
 
     const anchor1 = document.createElement("a")
     anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]))
@@ -343,6 +306,14 @@ function saveModel() {
     anchor2.target = '_blank'
     anchor2.download = 'ScalarField.bin'
     anchor2.click()
+
+    const anchor3 = document.createElement("a")
+    const canvas = document.getElementById("canvas-gl") as HTMLCanvasElement
+    anchor3.href = canvas.toDataURL("image/png")
+    anchor3.type = 'image/png'
+    anchor3.target = '_blank'
+    anchor3.download = 'ScalarField.png'
+    anchor3.click()
 }
 
 type VerticesMap = {
@@ -362,8 +333,8 @@ type ModelAndBinary = {
     binary: ArrayBuffer
 }
 
-function createModel(name: string): ModelAndBinary {
-    const indexedVertices: IndexedVertices = indexVertices(contourSurfaceBuffer)
+function createModel(modules: Modules, name: string): ModelAndBinary {
+    const indexedVertices: IndexedVertices = indexVertices(contourSurfaceData(modules, fieldRef, contourValue))
     return {
         model: createModelJson(name, indexedVertices),
         binary: createBinaryBuffer(indexedVertices)
@@ -375,7 +346,8 @@ function createModelJson(name: string, indexedVertices: IndexedVertices): gltf.M
     const uniqueVerticesCount = indexedVertices.vertices.length / 6
     const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2
     const totalIndicesSize = verticesCount * intScalarSize
-    const totalVerticesSize = uniqueVerticesCount * contourSurfaceBuffer.byteStride
+    const byteStride = 6 * 4
+    const totalVerticesSize = uniqueVerticesCount * byteStride
     return {
         asset: {
             version: "2.0"
@@ -415,7 +387,7 @@ function createModelJson(name: string, indexedVertices: IndexedVertices): gltf.M
             componentType: WebGLRenderingContext.FLOAT,
             bufferView: 1,
             count: uniqueVerticesCount,
-            byteOffset: contourSurfaceBuffer.byteStride / 2
+            byteOffset: byteStride / 2
         }],
         bufferViews: [{
             buffer: 0,
@@ -425,7 +397,7 @@ function createModelJson(name: string, indexedVertices: IndexedVertices): gltf.M
             buffer: 0,
             byteOffset: totalIndicesSize,
             byteLength: totalVerticesSize,
-            byteStride: contourSurfaceBuffer.byteStride
+            byteStride: byteStride
         }],
         buffers: [{
             uri: `./${name}.bin`,
@@ -446,7 +418,7 @@ function createBinaryBuffer(indexedVertices: IndexedVertices) {
     return binaryBuffer
 }
 
-function indexVertices(buffer: Djee.AttributesBuffer) {
+function indexVertices(vertices: Float32Array) {
     const indexedVertices: IndexedVertices = {
         indices: [],
         vertices: [],
@@ -454,15 +426,15 @@ function indexVertices(buffer: Djee.AttributesBuffer) {
         maxPos: [-2, -2, -2]
     }
     const map: VerticesMap = {}
-    const stride = buffer.byteStride / buffer.data.BYTES_PER_ELEMENT
-    for (let i = 0; i < buffer.data.length; i += stride) {
-        const vertex = buffer.data.slice(i, i + stride)
+    const stride = 6
+    for (let i = 0; i < vertices.length; i += stride) {
+        const vertex = vertices.slice(i, i + stride)
         const position = vertex.slice(0, 3)
         const normal = vertex.slice(3, 6)
         const nextIndex = indexedVertices.vertices.length / stride
         let index = lookUp(map, position, nextIndex)
         if (index == nextIndex) {
-            const unitNormal = vec3.unit([normal[0], normal[1], normal[2]])
+            const unitNormal = ether.vec3.unit([normal[0], normal[1], normal[2]])
             indexedVertices.vertices.push(...position, ...unitNormal)
             indexedVertices.minPos = [
                 Math.min(position[0], indexedVertices.minPos[0]),

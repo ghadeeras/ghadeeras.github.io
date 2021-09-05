@@ -7,64 +7,39 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as Djee from "../djee/all.js";
-import * as Ether from "../../ether/latest/index.js";
-import * as Gear from "../gear/all.js";
-import { mat4, vec3 } from "../../ether/latest/index.js";
+import * as ether from "../../ether/latest/index.js";
+import * as gear from "../gear/all.js";
+import * as v from "./view.js";
 let resolution = 64;
 let fieldSampler = envelopedCosine;
-let vertexShaderCode;
-let fragmentShaderCode;
-let context;
-let position;
-let normal;
-let matModel;
-let matProjection;
-let lightPosition;
-let color;
-let shininess;
-let fogginess;
-let contourSurfaceBuffer;
 let contourValue = 0;
 let fieldRef = 0;
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => doInit(), ["uniformColors.vert", shader => vertexShaderCode = shader], ["uniformColors.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => doInit();
 }
-const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = mat4.projection(2);
+const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = ether.mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield Ether.initWaModules();
-        fieldRef = sampleField();
-        context = Djee.Context.of("canvas-gl");
-        const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
-        program.use();
-        contourSurfaceBuffer = context.newAttributesBuffer(6 * 4, true);
-        position = program.attribute("position");
-        normal = program.attribute("normal");
-        matModel = program.uniform("matModel");
-        const matView = program.uniform("matView");
-        matProjection = program.uniform("matProjection");
-        lightPosition = program.uniform("lightPosition");
-        color = program.uniform("color");
-        shininess = program.uniform("shininess");
-        fogginess = program.uniform("fogginess");
-        matModel.data = mat4.columnMajorArray(mat4.identity());
-        matView.data = mat4.columnMajorArray(viewMatrix);
-        matProjection.data = mat4.columnMajorArray(projectionMatrix);
-        const gl = context.gl;
-        gl.enable(gl.DEPTH_TEST);
-        gl.clearDepth(1);
-        gl.clearColor(1, 1, 1, 1);
-        const canvas = Gear.elementEvents("canvas-gl");
-        const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix));
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink()), flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
+        const wa = yield ether.initWaModules();
+        const modules = {
+            mem: v.required(wa.mem.exports),
+            space: v.required(wa.space.exports),
+            scalarField: v.required(wa.scalarField.exports)
+        };
+        const view = yield v.newView("canvas-gl");
+        view.matView = viewMatrix;
+        view.matProjection = projectionMatrix;
+        fieldRef = sampleField(modules);
+        const canvas = gear.elementEvents("canvas-gl");
+        const transformer = new gear.Transformer(canvas.element, ether.mat4.mul(projectionMatrix, viewMatrix));
+        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink(view)), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink(modules, view)), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink(view)), flow => flow.filter(selected("outlineSharpness")).map(([x, y]) => y).to(outlineSharpnessSink(view)), flow => flow.filter(selected("lightPosition")).to(lightPositionSink(view)), flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink(view)), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink(view))), flow => flow
             .filter(selected("rotation"))
             .map(transformer.rotation)
-            .to(rotationSink()));
-        levelOfDetailsFlow().to(levelOfDetailsSink());
-        Gear.readableValue("function").to(functionSink());
-        Gear.elementEvents("save").click.producer(saveModel);
+            .to(rotationSink(view)));
+        levelOfDetailsFlow().to(levelOfDetailsSink(modules, view));
+        gear.readableValue("function").to(functionSink(modules, view));
+        gear.elementEvents("save").click.producer(() => saveModel(modules));
     });
 }
 function selected(value) {
@@ -72,92 +47,102 @@ function selected(value) {
     return () => mouseBinding.value == value;
 }
 function levelOfDetailsFlow() {
-    const inc = Gear.elementEvents("lod-inc").mouseButtons
+    const inc = gear.elementEvents("lod-inc").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? +8 : 0);
-    const dec = Gear.elementEvents("lod-dec").mouseButtons
+    const dec = gear.elementEvents("lod-dec").mouseButtons
         .map(([l, m, r]) => l)
         .map((pressed) => pressed ? -8 : 0);
-    const flow = Gear.Flow.from(inc, dec)
+    const flow = gear.Flow.from(inc, dec)
         .defaultsTo(0)
-        .then(Gear.repeater(128, 0))
+        .then(gear.repeater(128, 0))
         .reduce((i, lod) => clamp(lod + i, 32, 96), 64);
-    flow.map(lod => lod.toString()).to(Gear.text("lod"));
+    flow.map(lod => lod.toString()).to(gear.text("lod"));
     return flow;
 }
 function clamp(n, min, max) {
     return n < min ? min : (n > max ? max : n);
 }
-function levelOfDetailsSink() {
-    return Gear.sinkFlow(flow => flow
+function levelOfDetailsSink(modules, view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(64)
         .producer(lod => {
         resolution = lod;
-        fieldRef = sampleField();
-        contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
-        draw();
+        fieldRef = sampleField(modules);
+        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
     }));
 }
-function contourValueSink() {
-    return Gear.sinkFlow(flow => flow
+function contourValueSink(modules, view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(0)
         .producer(newContourValue => {
         contourValue = newContourValue;
-        contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
-        color.data = fieldColor(contourValue, 1);
-        draw();
+        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
+        view.color = fieldColor(contourValue, 1);
     }));
 }
 function fieldColor(fieldValue, alpha = 0.4) {
-    return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
+    return fieldValue > 0 ?
+        [1, 0, (1 - fieldValue) / (1 + fieldValue), alpha] :
+        [1 - (1 + fieldValue) / (1 - fieldValue), 1, 0, alpha];
 }
-function rotationSink() {
-    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
-        matModel.data = mat4.columnMajorArray(matrix);
-        draw();
+function rotationSink(view) {
+    return gear.sinkFlow(flow => flow.defaultsTo(ether.mat4.identity()).producer(matrix => {
+        view.setMatModel(matrix, matrix);
     }));
 }
-function focalRatioSink() {
-    return Gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
-        matProjection.data = mat4.columnMajorArray(mat4.projection(ratio));
-        draw();
+function focalRatioSink(view) {
+    return gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
+        view.matProjection = ether.mat4.projection(ratio);
     }));
 }
-function lightPositionSink() {
-    return Gear.sinkFlow(flow => flow
+function lightPositionSink(view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo([0.5, 0.5])
         .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
         .producer(([x, y]) => {
-        lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
-        draw();
+        view.lightPosition = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1];
     }));
 }
-function shininessSink() {
-    return Gear.sinkFlow(flow => flow
+function lightRadiusSink(view) {
+    return gear.sinkFlow(flow => flow
+        .map(r => (r + 1) / 2)
+        .defaultsTo(0.1)
+        .producer(r => {
+        view.lightRadius = r;
+    }));
+}
+function shininessSink(view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(-1)
         .map(value => (value + 1) / 2)
         .producer(value => {
-        shininess.data = [value];
-        draw();
+        view.shininess = value;
     }));
 }
-function fogginessSink() {
-    return Gear.sinkFlow(flow => flow
+function outlineSharpnessSink(view) {
+    return gear.sinkFlow(flow => flow
+        .defaultsTo(1)
+        .map(value => (value + 1) / 2)
+        .producer(value => {
+        view.outlineSharpness = value;
+    }));
+}
+function fogginessSink(view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo(-1)
         .map(value => (value + 1) / 2)
         .producer(value => {
-        fogginess.data = [value];
-        draw();
+        view.fogginess = value;
     }));
 }
-function functionSink() {
-    return Gear.sinkFlow(flow => flow
+function functionSink(modules, view) {
+    return gear.sinkFlow(flow => flow
         .defaultsTo("xyz")
         .producer(functionName => {
         fieldSampler = getFieldFunction(functionName);
-        fieldRef = sampleField();
-        contourSurfaceBuffer.data = contourSurfaceData(fieldRef, contourValue);
-        draw();
+        fieldRef = sampleField(modules);
+        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
     }));
 }
 function getFieldFunction(functionName) {
@@ -167,18 +152,16 @@ function getFieldFunction(functionName) {
         default: return xyz;
     }
 }
-function sampleField() {
-    const stack = Ether.modules.mem.exports;
-    const space = Ether.modules.space.exports;
-    if (!stack || !space) {
+function sampleField(modules) {
+    if (!modules.mem || !modules.space) {
         throw new Error("Failed to initialize Web Assembly Ether modules!");
     }
-    stack.leave();
-    stack.leave();
-    stack.enter();
-    const length = 8 * (resolution + 1) ** 3;
-    const ref = stack.allocate64(length);
-    const view = new Float64Array(stack.stack.buffer, ref, length);
+    modules.mem.leave();
+    modules.mem.leave();
+    modules.mem.enter();
+    const length = 8 * Math.pow((resolution + 1), 3);
+    const ref = modules.mem.allocate64(length);
+    const view = new Float64Array(modules.mem.stack.buffer, ref, length);
     let i = 0;
     for (let z = 0; z <= resolution; z++) {
         for (let y = 0; y <= resolution; y++) {
@@ -198,20 +181,18 @@ function sampleField() {
             }
         }
     }
-    stack.enter();
+    modules.mem.enter();
     return ref;
 }
-function contourSurfaceData(fieldRef, contourValue) {
-    const stack = Ether.modules.mem.exports;
-    const scalarField = Ether.modules.scalarField.exports;
-    if (!stack || !scalarField) {
+function contourSurfaceData(modules, fieldRef, contourValue) {
+    if (!modules.mem || !modules.scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!");
     }
-    stack.leave();
-    stack.enter();
-    const begin = scalarField.tesselateScalarField(fieldRef, resolution, contourValue);
-    const end = stack.allocate8(0);
-    const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4);
+    modules.mem.leave();
+    modules.mem.enter();
+    const begin = modules.scalarField.tesselateScalarField(fieldRef, resolution, contourValue);
+    const end = modules.mem.allocate8(0);
+    const result = new Float32Array(modules.mem.stack.buffer, begin, (end - begin) / 4);
     return result;
 }
 const twoPi = 2 * Math.PI;
@@ -253,34 +234,32 @@ function envelopedCosine(x, y, z) {
         return [0, 0, 0, 0];
     }
 }
-function draw() {
-    if (contourSurfaceBuffer.data.length == 0) {
-        return;
-    }
-    const gl = context.gl;
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
-    normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-    gl.flush();
+function saveModel(modules) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const model = createModel(modules, "ScalarField");
+        const anchor1 = document.createElement("a");
+        anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]));
+        anchor1.type = 'text/json';
+        anchor1.target = '_blank';
+        anchor1.download = 'ScalarField.gltf';
+        anchor1.click();
+        const anchor2 = document.createElement("a");
+        anchor2.href = URL.createObjectURL(new Blob([model.binary]));
+        anchor2.type = 'application/gltf-buffer';
+        anchor2.target = '_blank';
+        anchor2.download = 'ScalarField.bin';
+        anchor2.click();
+        const anchor3 = document.createElement("a");
+        const canvas = document.getElementById("canvas-gl");
+        anchor3.href = canvas.toDataURL("image/png");
+        anchor3.type = 'image/png';
+        anchor3.target = '_blank';
+        anchor3.download = 'ScalarField.png';
+        anchor3.click();
+    });
 }
-function saveModel() {
-    const model = createModel("ScalarField");
-    const anchor1 = document.createElement("a");
-    anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]));
-    anchor1.type = 'text/json';
-    anchor1.target = '_blank';
-    anchor1.download = 'ScalarField.gltf';
-    anchor1.click();
-    const anchor2 = document.createElement("a");
-    anchor2.href = URL.createObjectURL(new Blob([model.binary]));
-    anchor2.type = 'application/gltf-buffer';
-    anchor2.target = '_blank';
-    anchor2.download = 'ScalarField.bin';
-    anchor2.click();
-}
-function createModel(name) {
-    const indexedVertices = indexVertices(contourSurfaceBuffer);
+function createModel(modules, name) {
+    const indexedVertices = indexVertices(contourSurfaceData(modules, fieldRef, contourValue));
     return {
         model: createModelJson(name, indexedVertices),
         binary: createBinaryBuffer(indexedVertices)
@@ -291,7 +270,8 @@ function createModelJson(name, indexedVertices) {
     const uniqueVerticesCount = indexedVertices.vertices.length / 6;
     const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
     const totalIndicesSize = verticesCount * intScalarSize;
-    const totalVerticesSize = uniqueVerticesCount * contourSurfaceBuffer.byteStride;
+    const byteStride = 6 * 4;
+    const totalVerticesSize = uniqueVerticesCount * byteStride;
     return {
         asset: {
             version: "2.0"
@@ -331,7 +311,7 @@ function createModelJson(name, indexedVertices) {
                 componentType: WebGLRenderingContext.FLOAT,
                 bufferView: 1,
                 count: uniqueVerticesCount,
-                byteOffset: contourSurfaceBuffer.byteStride / 2
+                byteOffset: byteStride / 2
             }],
         bufferViews: [{
                 buffer: 0,
@@ -341,7 +321,7 @@ function createModelJson(name, indexedVertices) {
                 buffer: 0,
                 byteOffset: totalIndicesSize,
                 byteLength: totalVerticesSize,
-                byteStride: contourSurfaceBuffer.byteStride
+                byteStride: byteStride
             }],
         buffers: [{
                 uri: `./${name}.bin`,
@@ -360,7 +340,7 @@ function createBinaryBuffer(indexedVertices) {
     verticesView.set(indexedVertices.vertices);
     return binaryBuffer;
 }
-function indexVertices(buffer) {
+function indexVertices(vertices) {
     const indexedVertices = {
         indices: [],
         vertices: [],
@@ -368,15 +348,15 @@ function indexVertices(buffer) {
         maxPos: [-2, -2, -2]
     };
     const map = {};
-    const stride = buffer.byteStride / buffer.data.BYTES_PER_ELEMENT;
-    for (let i = 0; i < buffer.data.length; i += stride) {
-        const vertex = buffer.data.slice(i, i + stride);
+    const stride = 6;
+    for (let i = 0; i < vertices.length; i += stride) {
+        const vertex = vertices.slice(i, i + stride);
         const position = vertex.slice(0, 3);
         const normal = vertex.slice(3, 6);
         const nextIndex = indexedVertices.vertices.length / stride;
         let index = lookUp(map, position, nextIndex);
         if (index == nextIndex) {
-            const unitNormal = vec3.unit([normal[0], normal[1], normal[2]]);
+            const unitNormal = ether.vec3.unit([normal[0], normal[1], normal[2]]);
             indexedVertices.vertices.push(...position, ...unitNormal);
             indexedVertices.minPos = [
                 Math.min(position[0], indexedVertices.minPos[0]),

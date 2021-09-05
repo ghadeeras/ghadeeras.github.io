@@ -1,5 +1,4 @@
-import * as Ether from "../../ether/latest/index.js"
-import { View } from "./view.js"
+import { view, View } from "./view.js"
 import * as Gear from "../gear/all.js"
 import { Vec, vec2 } from "../../ether/latest/index.js"
 
@@ -26,13 +25,10 @@ let paletteSpan: Gear.Sink<number>
 let clickPosSpan: Gear.Sink<Vec<2>>
 
 export function init() {
-    window.onload = () => Gear.load("/shaders", doInit,
-        ["mandelbrot.vert", shader => vertexShaderCode = shader],
-        ["mandelbrot.frag", shader => fragmentShaderCode = shader]
-    )
+    window.onload = () => doInit()
 }
 
-function doInit() {
+async function doInit() {
     mouseBindingElement = document.getElementById("mouse-binding") as HTMLInputElement;
     mouseBindingElement.onkeypress = e => {
         e.preventDefault()
@@ -45,8 +41,8 @@ function doInit() {
         }
     }
 
-    mandelbrotView = new View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale)
-    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, [0, 0], 4)
+    mandelbrotView = await view(false, "canvas-gl", center, scale)
+    juliaView = await view(true, "julia-gl", [0, 0], 4)
 
     centerSpan = Gear.sinkFlow(flow => flow
         .defaultsTo(center)

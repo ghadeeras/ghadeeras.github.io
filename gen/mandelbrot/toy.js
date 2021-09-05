@@ -1,4 +1,13 @@
-import { View } from "./view.js";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+import { view } from "./view.js";
 import * as Gear from "../gear/all.js";
 import { vec2 } from "../../ether/latest/index.js";
 let audioContext = null;
@@ -18,59 +27,61 @@ let intensitySpan;
 let paletteSpan;
 let clickPosSpan;
 export function init() {
-    window.onload = () => Gear.load("/shaders", doInit, ["mandelbrot.vert", shader => vertexShaderCode = shader], ["mandelbrot.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => doInit();
 }
 function doInit() {
-    mouseBindingElement = document.getElementById("mouse-binding");
-    mouseBindingElement.onkeypress = e => {
-        e.preventDefault();
-    };
-    window.onkeypress = (e) => {
-        const key = e.key.toUpperCase();
-        const act = action(key);
-        if (act != null) {
-            mouseBindingElement.value = act;
-        }
-    };
-    mandelbrotView = new View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale);
-    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, [0, 0], 4);
-    centerSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(center)
-        .map(pos => pos.map(c => c.toPrecision(3)))
-        .map(pos => "( " + pos[0] + ", " + pos[1] + ")")
-        .to(Gear.text("center")));
-    scaleSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(scale)
-        .map(s => s.toPrecision(3).toString())
-        .to(Gear.text("scale")));
-    hueSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(mandelbrotView.hue)
-        .map(h => h.toPrecision(3).toString())
-        .to(Gear.text("hue")));
-    saturationSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(mandelbrotView.saturation)
-        .map(s => s.toPrecision(3).toString())
-        .to(Gear.text("saturation")));
-    intensitySpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(mandelbrotView.intensity)
-        .map(i => i.toPrecision(3).toString())
-        .to(Gear.text("intensity")));
-    paletteSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(mandelbrotView.palette)
-        .map(s => s.toPrecision(3).toString())
-        .to(Gear.text("palette")));
-    clickPosSpan = Gear.sinkFlow(flow => flow
-        .defaultsTo(center)
-        .map(pos => pos.map(c => c.toPrecision(9)))
-        .map(pos => "(" + pos[0] + ", " + pos[1] + ")")
-        .to(Gear.text("clickPos")));
-    canvas = Gear.ElementEvents.create("canvas-gl");
-    canvas.dragging.branch(flow => flow.filter(selected("move")).producer(d => move(d)), flow => flow.filter(selected("zoom")).producer(d => zoom(d)), flow => flow.filter(selected("color")).producer(d => colorize(d)), flow => flow.filter(selected("intensity")).producer(d => intensity(d)), flow => flow.filter(selected("palette")).producer(d => palette(d)), flow => flow.filter(selected("julia")).producer(d => julia(d)));
-    Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(ps => ps[0]))
-        .map(pos => toComplexNumber(pos))
-        .branch(flow => flow.to(clickPosSpan))
-        .filter(selected("music"))
-        .producer(c => play(c));
+    return __awaiter(this, void 0, void 0, function* () {
+        mouseBindingElement = document.getElementById("mouse-binding");
+        mouseBindingElement.onkeypress = e => {
+            e.preventDefault();
+        };
+        window.onkeypress = (e) => {
+            const key = e.key.toUpperCase();
+            const act = action(key);
+            if (act != null) {
+                mouseBindingElement.value = act;
+            }
+        };
+        mandelbrotView = yield view(false, "canvas-gl", center, scale);
+        juliaView = yield view(true, "julia-gl", [0, 0], 4);
+        centerSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(center)
+            .map(pos => pos.map(c => c.toPrecision(3)))
+            .map(pos => "( " + pos[0] + ", " + pos[1] + ")")
+            .to(Gear.text("center")));
+        scaleSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(scale)
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("scale")));
+        hueSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(mandelbrotView.hue)
+            .map(h => h.toPrecision(3).toString())
+            .to(Gear.text("hue")));
+        saturationSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(mandelbrotView.saturation)
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("saturation")));
+        intensitySpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(mandelbrotView.intensity)
+            .map(i => i.toPrecision(3).toString())
+            .to(Gear.text("intensity")));
+        paletteSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(mandelbrotView.palette)
+            .map(s => s.toPrecision(3).toString())
+            .to(Gear.text("palette")));
+        clickPosSpan = Gear.sinkFlow(flow => flow
+            .defaultsTo(center)
+            .map(pos => pos.map(c => c.toPrecision(9)))
+            .map(pos => "(" + pos[0] + ", " + pos[1] + ")")
+            .to(Gear.text("clickPos")));
+        canvas = Gear.ElementEvents.create("canvas-gl");
+        canvas.dragging.branch(flow => flow.filter(selected("move")).producer(d => move(d)), flow => flow.filter(selected("zoom")).producer(d => zoom(d)), flow => flow.filter(selected("color")).producer(d => colorize(d)), flow => flow.filter(selected("intensity")).producer(d => intensity(d)), flow => flow.filter(selected("palette")).producer(d => palette(d)), flow => flow.filter(selected("julia")).producer(d => julia(d)));
+        Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(ps => ps[0]))
+            .map(pos => toComplexNumber(pos))
+            .branch(flow => flow.to(clickPosSpan))
+            .filter(selected("music"))
+            .producer(c => play(c));
+    });
 }
 function play(c) {
     if (audioContext == null) {
@@ -134,7 +145,7 @@ function zoom(dragging) {
     const power = -delta[1];
     if (power != 0) {
         const centerToStart = calculateDelta(canvas.center, dragging.startPos, scale);
-        const factor = 16 ** power;
+        const factor = Math.pow(16, power);
         const newScale = scale * factor;
         const newCenter = vec2.add(center, vec2.scale(centerToStart, 1 - factor));
         if (dragging.end) {

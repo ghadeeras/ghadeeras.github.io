@@ -15,7 +15,7 @@ export function asVariableInfo(info, specificPrimitiveType = null) {
         sizeInBytes: 0
     };
     result.itemOrderName = orderName(result.itemOrder);
-    result.itemSize = result.itemDimensions ** result.itemOrder;
+    result.itemSize = Math.pow(result.itemDimensions, result.itemOrder);
     result.itemSizeInBytes = result.itemSize * result.primitiveSize;
     result.primitiveTypeName = primitiveTypeName(result.primitiveType);
     result.sizeInBytes = result.itemCount * result.itemSize * result.primitiveSize;
