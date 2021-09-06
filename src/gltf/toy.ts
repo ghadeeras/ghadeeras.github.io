@@ -215,7 +215,7 @@ function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (model) {
-        model.defaultScene.render(gltf.Matrix.create(mat4.columnMajorArray(modelTransformer.matrix)))
+        model.defaultScene.render(modelTransformer.matrix)
     }
     gl.flush();
 }

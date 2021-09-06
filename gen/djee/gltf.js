@@ -7,71 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { mat4, quat } from "../../ether/latest/index.js";
 import { asVariableInfo } from "./reflection.js";
 import { failure, lazily } from "./utils.js";
-export class Matrix extends Float64Array {
-    constructor() {
-        super(16);
-    }
-    prod(matrix) {
-        const result = new Matrix();
-        for (let i = 0; i < 16; i++) {
-            let left = i & 3;
-            let right = i - left;
-            let dot = 0;
-            while (left < 16) {
-                dot += this[left] * matrix[right++];
-                left += 4;
-            }
-            result[i] = dot;
-        }
-        return result;
-    }
-    static create(components) {
-        const matrix = new Matrix();
-        matrix.set(components);
-        return matrix;
-    }
-    static rotate(q) {
-        const xx = q[0] * q[0];
-        const yy = q[1] * q[1];
-        const zz = q[2] * q[2];
-        const xy = q[0] * q[1];
-        const yz = q[1] * q[2];
-        const zx = q[2] * q[0];
-        const wx = q[3] * q[0];
-        const wy = q[3] * q[1];
-        const wz = q[3] * q[2];
-        return Matrix.create([
-            1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (zx + wy), 0,
-            2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx), 0,
-            2 * (zx - wy), 2 * (yz + wx), 1 - 2 * (xx + yy), 0,
-            0, 0, 0, 1
-        ]);
-    }
-    static scale(s) {
-        return Matrix.create([
-            s[0], 0, 0, 0,
-            0, s[1], 0, 0,
-            0, 0, s[2], 0,
-            0, 0, 0, 1,
-        ]);
-    }
-    static translate(t) {
-        return Matrix.create([
-            1, 0, 0, 0,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            t[0], t[1], t[2], 1
-        ]);
-    }
-}
-Matrix.identity = Matrix.create([
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-]);
 function fetchBuffer(bufferRef, baseUri) {
     return __awaiter(this, void 0, void 0, function* () {
         const url = new URL(bufferRef.uri, baseUri);
@@ -168,26 +106,26 @@ class ActiveNode {
             return children;
         });
         this.matrix = node.matrix !== undefined ?
-            Matrix.create(node.matrix) :
-            Matrix.identity;
+            asMat(node.matrix) :
+            mat4.identity();
         this.matrix = node.translation !== undefined ?
-            this.matrix.prod(Matrix.translate(node.translation)) :
+            mat4.mul(this.matrix, mat4.translation(node.translation)) :
             this.matrix;
         this.matrix = node.rotation !== undefined ?
-            this.matrix.prod(Matrix.rotate(node.rotation)) :
+            mat4.mul(this.matrix, mat4.cast(quat.toMatrix(node.rotation))) :
             this.matrix;
         this.matrix = node.scale !== undefined ?
-            this.matrix.prod(Matrix.scale(node.scale)) :
+            mat4.mul(this.matrix, mat4.scaling(...node.scale)) :
             this.matrix;
         nodes.push(this);
     }
     render(parentMatrix) {
-        const matrix = parentMatrix.prod(this.matrix);
-        this.matrixUniform.data = matrix;
+        const matrix = mat4.mul(parentMatrix, this.matrix);
+        this.matrixUniform.data = mat4.columnMajorArray(matrix);
         for (let child of this.children()) {
             child.render(matrix);
         }
-        this.matrixUniform.data = parentMatrix;
+        this.matrixUniform.data = mat4.columnMajorArray(parentMatrix);
     }
 }
 class ActiveMesh {
@@ -255,5 +193,16 @@ function glTypeOf(accessor) {
         case "MAT3": return WebGLRenderingContext.FLOAT_MAT3;
         case "MAT4": return WebGLRenderingContext.FLOAT_MAT4;
     }
+}
+function asVec(array, offset = 0) {
+    return [...array.slice(offset, offset + 4)];
+}
+function asMat(array, offset = 0) {
+    return [
+        asVec(array, offset + 0),
+        asVec(array, offset + 4),
+        asVec(array, offset + 8),
+        asVec(array, offset + 12)
+    ];
 }
 //# sourceMappingURL=gltf.js.map

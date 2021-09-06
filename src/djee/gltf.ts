@@ -1,3 +1,4 @@
+import { Mat, mat4, quat, Vec } from "../../ether/latest/index.js"
 import { Attribute } from "./attribute.js"
 import { AttributesBuffer, Buffer } from "./buffer.js"
 import { Context } from "./context.js"
@@ -131,82 +132,6 @@ export type AttributesMap = {
 
 type SideEffect = () => void
 
-export class Matrix extends Float64Array {
-
-    private constructor() {
-        super(16)
-    }
-
-    prod(matrix: Matrix): Matrix {
-        const result = new Matrix()
-        for (let i = 0; i < 16; i++) {
-            let left = i & 3
-            let right = i - left
-            let dot = 0
-            while (left < 16) {
-                dot += this[left] * matrix[right++]
-                left += 4
-            }
-            result[i] = dot
-    
-        }
-        return result
-    }
-
-    static create(components: number[]): Matrix {
-        const matrix = new Matrix()
-        matrix.set(components)
-        return matrix
-    }
-
-    static rotate(q: [number, number, number, number]): Matrix {
-        const xx = q[0] * q[0]
-        const yy = q[1] * q[1]
-        const zz = q[2] * q[2]
-
-        const xy = q[0] * q[1]
-        const yz = q[1] * q[2]
-        const zx = q[2] * q[0]
-
-        const wx = q[3] * q[0]
-        const wy = q[3] * q[1]
-        const wz = q[3] * q[2]
-
-        return Matrix.create([
-            1 - 2 * (yy + zz),     2 * (xy - wz),     2 * (zx + wy), 0,
-                2 * (xy + wz), 1 - 2 * (xx + zz),     2 * (yz - wx), 0,
-                2 * (zx - wy),     2 * (yz + wx), 1 - 2 * (xx + yy), 0,
-                            0,                 0,                 0, 1
-        ])
-    }
-
-    static scale(s: [number, number, number]): Matrix {
-        return Matrix.create([
-            s[0],    0,    0, 0,
-               0, s[1],    0, 0,
-               0,    0, s[2], 0,
-               0,    0,    0, 1,
-        ])
-    }
-
-    static translate(t: [number, number, number]): Matrix {
-        return Matrix.create([
-               1,    0,    0, 0,
-               0,    1,    0, 0, 
-               0,    0,    1, 0,
-            t[0], t[1], t[2], 1
-        ])
-    }
-
-    static readonly identity = Matrix.create([
-        1, 0, 0, 0, 
-        0, 1, 0, 0, 
-        0, 0, 1, 0, 
-        0, 0, 0, 1
-    ])
-
-}
-
 async function fetchBuffer(bufferRef: BufferRef, baseUri: string): Promise<ArrayBuffer> {
     const url = new URL(bufferRef.uri, baseUri)
     const response = await fetch(url.href)
@@ -256,7 +181,7 @@ class ActiveAccessor {
 
 export interface RenderSubject {
 
-    render(matrix: Matrix): void
+    render(matrix: Mat<4>): void
 
 }
 
@@ -293,7 +218,7 @@ export class ActiveModel implements RenderSubject {
         return new ActiveModel(model, buffers, matrixUniform, attributesMap, context)
     }
 
-    render(matrix: Matrix): void {
+    render(matrix: Mat<4>): void {
         this.defaultScene.render(matrix)
     }
 
@@ -311,7 +236,7 @@ export class ActiveScene implements RenderSubject {
         this.nodes = scene.nodes.map(child => nodes[child])
     }
 
-    render(matView: Matrix) {
+    render(matView: Mat<4>) {
         for (let node of this.nodes) {
             node.render(matView)
         }
@@ -322,7 +247,7 @@ export class ActiveScene implements RenderSubject {
 class ActiveNode implements RenderSubject {
 
     private children: Supplier<RenderSubject[]>
-    private matrix: Matrix 
+    private matrix: Mat<4> 
 
     constructor(node: Node, meshes: ActiveMesh[], nodes: RenderSubject[], private matrixUniform: Uniform) {
         this.children = lazily(() => {
@@ -333,27 +258,27 @@ class ActiveNode implements RenderSubject {
             return children
         })
         this.matrix = node.matrix !== undefined ? 
-            Matrix.create(node.matrix) : 
-            Matrix.identity
+            asMat(node.matrix) : 
+            mat4.identity()
         this.matrix = node.translation !== undefined ? 
-            this.matrix.prod(Matrix.translate(node.translation)) :
+            mat4.mul(this.matrix, mat4.translation(node.translation)) :
             this.matrix 
         this.matrix = node.rotation !== undefined ? 
-            this.matrix.prod(Matrix.rotate(node.rotation)) :
+            mat4.mul(this.matrix, mat4.cast(quat.toMatrix(node.rotation))) :
             this.matrix 
         this.matrix = node.scale !== undefined ? 
-            this.matrix.prod(Matrix.scale(node.scale)) :
+            mat4.mul(this.matrix, mat4.scaling(...node.scale)) :
             this.matrix 
         nodes.push(this)
     }
 
-    render(parentMatrix: Matrix) {
-        const matrix = parentMatrix.prod(this.matrix)
-        this.matrixUniform.data = matrix
+    render(parentMatrix: Mat<4>) {
+        const matrix = mat4.mul(parentMatrix, this.matrix)
+        this.matrixUniform.data = mat4.columnMajorArray(matrix)
         for (let child of this.children()) {
             child.render(matrix)
         }
-        this.matrixUniform.data = parentMatrix
+        this.matrixUniform.data = mat4.columnMajorArray(parentMatrix)
     }
 
 }
@@ -447,3 +372,17 @@ function glTypeOf(accessor: Accessor) {
         case "MAT4": return WebGLRenderingContext.FLOAT_MAT4  
     }
 }
+
+function asVec(array: number[] | Float32Array | Float64Array, offset: number = 0): Vec<4> {
+    return [...array.slice(offset, offset + 4)] as Vec<4>
+}
+
+function asMat(array: number[] | Float32Array | Float64Array, offset: number = 0): Mat<4> {
+    return [
+        asVec(array, offset +  0),
+        asVec(array, offset +  4),
+        asVec(array, offset +  8),
+        asVec(array, offset + 12)
+    ]
+}
+
