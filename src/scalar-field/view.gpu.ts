@@ -5,7 +5,8 @@ import * as v from "./view.js"
 export class GPUView implements v.View {
 
     private context: GPUCanvasContext
-    private depthTexture: GPUTexture
+    private colorView: GPUTextureView
+    private depthView: GPUTextureView
     private uniforms: GPUBuffer
     private vertices: GPUBuffer
     private pipeline: GPURenderPipeline
@@ -18,7 +19,6 @@ export class GPUView implements v.View {
         1, 1, 1, 1,
         2, 2, 2, 1,
         0,
-        1,
         0.1,
         0
     ])
@@ -44,19 +44,37 @@ export class GPUView implements v.View {
 
         const canvas = document.getElementById(canvasId) as HTMLCanvasElement
         this.context = v.required(canvas.getContext("webgpu") ?? canvas.getContext("gpupresent"))
+
         const colorFormat: GPUTextureFormat = this.context.getPreferredFormat(adapter)
+        const pixelRatio = window.devicePixelRatio || 1
+        const sampleCount = Math.pow(Math.ceil(pixelRatio), 2)
+        const size = {
+            width: canvas.clientWidth * pixelRatio,
+            height: canvas.clientHeight * pixelRatio
+        }
+
         this.context.configure({
             device: device,
             format: colorFormat,
-            size: { width: canvas.clientWidth, height: canvas.clientHeight },
+            size: size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         })
 
-        this.depthTexture = device.createTexture({
-            format: "depth24plus",
-            size: { width: canvas.clientWidth, height: canvas.clientHeight },
+        const colorTexture = device.createTexture({
+            format: colorFormat,
+            size: size,
+            sampleCount: sampleCount,
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         })
+        this.colorView = colorTexture.createView()
+
+        const depthTexture = device.createTexture({
+            format: "depth24plus",
+            size: size,
+            sampleCount: sampleCount,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT
+        })
+        this.depthView = depthTexture.createView()
 
         const shaderModule = device.createShaderModule({ code: shaderCode });
         this.pipeline = device.createRenderPipeline({
@@ -90,6 +108,9 @@ export class GPUView implements v.View {
             },
             primitive: {
                 topology: "triangle-list"
+            },
+            multisample: {
+                count: sampleCount
             }
         })
 
@@ -183,31 +204,22 @@ export class GPUView implements v.View {
         this.device.queue.writeBuffer(this.uniforms, 56 * 4, this.uniformsData, 56, 1)
     }
 
-    get outlineSharpness(): number {
+    get lightRadius(): number {
         return this.uniformsData[57]
     }
 
-    set outlineSharpness(s: number) {
+    set lightRadius(s: number) {
         this.uniformsData[57] = s
         this.device.queue.writeBuffer(this.uniforms, 57 * 4, this.uniformsData, 57, 1)
     }
 
-    get lightRadius(): number {
+    get fogginess(): number {
         return this.uniformsData[58]
     }
 
-    set lightRadius(s: number) {
-        this.uniformsData[58] = s
-        this.device.queue.writeBuffer(this.uniforms, 58 * 4, this.uniformsData, 58, 1)
-    }
-
-    get fogginess(): number {
-        return this.uniformsData[59]
-    }
-
     set fogginess(f: number) {
-        this.uniformsData[59] = f
-        this.device.queue.writeBuffer(this.uniforms, 59 * 4, this.uniformsData, 59, 1)
+        this.uniformsData[58] = f
+        this.device.queue.writeBuffer(this.uniforms, 58 * 4, this.uniformsData, 58, 1)
     }
 
     async setMesh(primitives: GLenum, vertices: Float32Array) {
@@ -237,16 +249,17 @@ export class GPUView implements v.View {
         const encoder = this.device.createCommandEncoder()
         const passDescription: GPURenderPassDescriptor = {
             colorAttachments: [{
-                view: this.context.getCurrentTexture().createView(),
+                view: this.colorView,
+                resolveTarget: this.context.getCurrentTexture().createView(),
                 loadValue: { r: 1, g: 1, b: 1, a: 1 },
-                storeOp: "store"
+                storeOp: "discard"
             }],
             depthStencilAttachment: {
                 depthLoadValue: 1,
-                depthStoreOp: "store",
+                depthStoreOp: "discard",
                 stencilLoadValue: "load",
                 stencilStoreOp: "discard",
-                view: this.depthTexture.createView()
+                view: this.depthView
             }
         };
         const pass = encoder.beginRenderPass(passDescription)
@@ -265,10 +278,7 @@ export async function newView(canvasId: string): Promise<v.View> {
         shader: "generic.wgsl"
     }, "/shaders")
     const gpu = v.required(navigator.gpu)
-    const adapter = v.required(await gpu.requestAdapter({
-        powerPreference: "high-performance",
-        forceSoftware: false
-    }))
+    const adapter = v.required(await gpu.requestAdapter())
     const device = v.required(await adapter.requestDevice())
     return new GPUView(device, adapter, canvasId, shaders.shader)
 }

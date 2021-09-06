@@ -18,8 +18,6 @@ export interface View {
 
     shininess: number
 
-    outlineSharpness: number
-
     lightPosition: Vec<4>
 
     lightRadius: number

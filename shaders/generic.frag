@@ -11,7 +11,6 @@ varying vec3 fragNormal;
 
 uniform vec4 color;
 uniform float shininess;
-uniform float outlineSharpness;
 
 uniform vec3 lightPosition;
 uniform float lightRadius;
@@ -25,8 +24,7 @@ void main() {
     vec3 normal = normalize(fragNormal);
     vec3 lightDir = normalize(lightRay);
                 
-    float facing = -dot(viewDir, normal);
-    if (facing < 0.0) {
+    if (!gl_FrontFacing) {
         normal = -normal;
         materialColor = vec3(1.0) - materialColor;
     }
@@ -37,11 +35,10 @@ void main() {
     vec3 reflection = lightDir + 2.0 * cosLN * normal;
     
     float cosRP = -dot(reflection, viewDir);
-    float specular = pow((cosRP + 1.0) / 2.0, length(lightRay) / lightRadius) + 0.5;
+    float specular = pow((cosRP + 1.0) / 2.0, length(lightRay) / lightRadius);
                 
-    float outline = 1.0 - pow(1.0 - facing * facing, 1.0 + outlineSharpness * 15.0);
     float fogFactor = exp2(fragPosition.z * fogginess / 8.0);
 
-    float shade = mix(diffuse * diffuse, specular, shininess) * outline;
+    float shade = diffuse * diffuse + specular * shininess;
     gl_FragColor = vec4(mix(vec3(1.0), shade * materialColor, fogFactor), color.a);
 }

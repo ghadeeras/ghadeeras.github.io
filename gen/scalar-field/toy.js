@@ -33,7 +33,7 @@ function doInit() {
         fieldRef = sampleField(modules);
         const canvas = gear.elementEvents("canvas-gl");
         const transformer = new gear.Transformer(canvas.element, ether.mat4.mul(projectionMatrix, viewMatrix));
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink(view)), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink(modules, view)), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink(view)), flow => flow.filter(selected("outlineSharpness")).map(([x, y]) => y).to(outlineSharpnessSink(view)), flow => flow.filter(selected("lightPosition")).to(lightPositionSink(view)), flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink(view)), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink(view))), flow => flow
+        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink(view)), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink(modules, view)), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink(view)), flow => flow.filter(selected("lightPosition")).to(lightPositionSink(view)), flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink(view)), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink(view))), flow => flow
             .filter(selected("rotation"))
             .map(transformer.rotation)
             .to(rotationSink(view)));
@@ -118,14 +118,6 @@ function shininessSink(view) {
         .map(value => (value + 1) / 2)
         .producer(value => {
         view.shininess = value;
-    }));
-}
-function outlineSharpnessSink(view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo(1)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
-        view.outlineSharpness = value;
     }));
 }
 function fogginessSink(view) {

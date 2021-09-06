@@ -28,7 +28,6 @@ export class GLView {
         this._matProjection = this.program.uniform("projectionMat");
         this._color = this.program.uniform("color");
         this._shininess = this.program.uniform("shininess");
-        this._outlineSharpness = this.program.uniform("outlineSharpness");
         this._lightPosition = this.program.uniform("lightPosition");
         this._lightRadius = this.program.uniform("lightRadius");
         this._fogginess = this.program.uniform("fogginess");
@@ -38,7 +37,6 @@ export class GLView {
         this._matProjection.data = mat4.columnMajorArray(mat4.identity());
         this._color.data = [0.2, 0.4, 0.8, 1.0];
         this._shininess.data = [0.5];
-        this._outlineSharpness.data = [0.25];
         this._globalLightPosition = [2, 2, 2, 1];
         this._lightPosition.data = [2, 2, 2];
         this._lightRadius.data = [0.1];
@@ -90,12 +88,6 @@ export class GLView {
     }
     set shininess(s) {
         this._shininess.data = [s];
-    }
-    get outlineSharpness() {
-        return this._outlineSharpness.data[0];
-    }
-    set outlineSharpness(s) {
-        this._outlineSharpness.data = [s];
     }
     get lightPosition() {
         return this._globalLightPosition;

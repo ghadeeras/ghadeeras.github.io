@@ -12,7 +12,6 @@ struct Uniforms {
     color: vec4<f32>;
     lightPos: vec4<f32>;
     shininess: f32;
-    outlineSharpness: f32;
     lightRadius: f32;
     fogginess: f32;
 };
@@ -22,7 +21,8 @@ var<uniform> uniforms: Uniforms;
 
 fn color(
     fragPosition: vec3<f32>,
-    fragNormal: vec3<f32>
+    fragNormal: vec3<f32>,
+    frontFacing: bool
 ) -> vec4<f32> {
     var materialColor = uniforms.color.rgb;
     var lightRay = fragPosition - uniforms.lightPos.xyz;
@@ -31,8 +31,7 @@ fn color(
     var normal = normalize(fragNormal);
     var lightDir = normalize(lightRay);
 
-    var facing = -dot(viewDir, normal);
-    if (facing < 0.0) {
+    if (!frontFacing) {
         normal = -normal;
         materialColor = vec3<f32>(1.0) - materialColor;
     }
@@ -43,12 +42,11 @@ fn color(
     var reflection = lightDir + 2.0 * cosLN * normal;
 
     var cosRP = -dot(viewDir, reflection);
-    var specular = pow((cosRP + 1.0) / 2.0, length(lightRay) / uniforms.lightRadius) + 0.5;
+    var specular = pow((cosRP + 1.0) / 2.0, length(lightRay) / uniforms.lightRadius);
 
-    var outline = 1.0 - pow(1.0 - facing * facing, 1.0 + uniforms.outlineSharpness * 15.0);
     var fogFactor = exp2(fragPosition.z * uniforms.fogginess / 8.0);
 
-    var shade = mix(diffuse * diffuse, specular, uniforms.shininess) * outline;
+    var shade = diffuse * diffuse + specular * uniforms.shininess;
     return vec4<f32>(mix(vec3<f32>(1.0), shade * materialColor, fogFactor), uniforms.color.a);
 }
 
@@ -70,6 +68,7 @@ fn v_main(
 fn f_main(
     [[location(0)]] pos: vec3<f32>,
     [[location(1)]] normal: vec3<f32>,
+    [[builtin(front_facing)]] frontFacing: bool
 ) -> [[location(0)]] vec4<f32> {
-    return color(pos, normal);
+    return color(pos, normal, frontFacing);
 }

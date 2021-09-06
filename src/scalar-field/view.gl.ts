@@ -19,7 +19,6 @@ export class GLView implements v.View {
 
     private _color: Djee.Uniform
     private _shininess: Djee.Uniform
-    private _outlineSharpness: Djee.Uniform
 
     private _lightPosition: Djee.Uniform
     private _lightRadius: Djee.Uniform
@@ -56,7 +55,6 @@ export class GLView implements v.View {
     
         this._color = this.program.uniform("color")
         this._shininess = this.program.uniform("shininess")
-        this._outlineSharpness = this.program.uniform("outlineSharpness")
 
         this._lightPosition = this.program.uniform("lightPosition")
         this._lightRadius = this.program.uniform("lightRadius")
@@ -69,7 +67,6 @@ export class GLView implements v.View {
 
         this._color.data = [0.2, 0.4, 0.8, 1.0]
         this._shininess.data = [0.5]
-        this._outlineSharpness.data = [0.25]
 
         this._globalLightPosition = [2, 2, 2, 1]
         this._lightPosition.data = [2, 2, 2]
@@ -138,14 +135,6 @@ export class GLView implements v.View {
 
     set shininess(s: number) {
         this._shininess.data = [s]
-    }
-
-    get outlineSharpness(): number {
-        return this._outlineSharpness.data[0]
-    }
-
-    set outlineSharpness(s: number) {
-        this._outlineSharpness.data = [s]
     }
 
     get lightPosition(): Vec<4> {
