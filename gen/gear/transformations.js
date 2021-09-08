@@ -1,8 +1,8 @@
 import { mat4, vec4, vec3 } from "../../ether/latest/index.js";
 export class Transformer {
-    constructor(canvas, viewMatrix, speed = 8) {
+    constructor(canvas, _viewMatrix, speed = 8) {
         this.canvas = canvas;
-        this.viewMatrix = viewMatrix;
+        this._viewMatrix = _viewMatrix;
         this.speed = speed;
         this._startRotationMatrix = mat4.identity();
         this._startTranslationMatrix = mat4.identity();
@@ -41,7 +41,14 @@ export class Transformer {
             }
             return this._scaleMatrix;
         };
-        this.inverseViewMatrix = mat4.inverse(viewMatrix);
+        this.inverseViewMatrix = mat4.inverse(_viewMatrix);
+    }
+    get viewMatrix() {
+        return this._viewMatrix;
+    }
+    set viewMatrix(m) {
+        this._viewMatrix = m;
+        this.inverseViewMatrix = mat4.inverse(m);
     }
     get translationMatrix() {
         return this._translationMatrix;

@@ -181,7 +181,7 @@ class ActiveAccessor {
 
 export interface RenderSubject {
 
-    render(matrix: Mat<4>): void
+    render(matrix: Mat<4>, normalsMatrix?: Mat<4>): void
 
 }
 
@@ -191,7 +191,7 @@ export class ActiveModel implements RenderSubject {
     readonly scenes: ActiveScene[]
     readonly defaultScene: ActiveScene
 
-    private constructor(model: Model, buffers: ArrayBufferLike[], matrixUniform: Uniform, attributesMap: AttributesMap, context: Context) {
+    private constructor(model: Model, buffers: ArrayBufferLike[], positionsMatUniform: Uniform, normalsMatUniform: Uniform | null, attributesMap: AttributesMap, context: Context) {
         const indices = new Set<number>()
         model.meshes
             .forEach(mesh => mesh.primitives
@@ -201,25 +201,25 @@ export class ActiveModel implements RenderSubject {
             )
         this.bufferViews = model.bufferViews.map((bufferView, i) => new ActiveBufferView(bufferView, buffers, indices.has(i), context))
         const accessors = model.accessors.map(accessor => new ActiveAccessor(accessor, this.bufferViews))
-        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context))
+        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context, positionsMatUniform, normalsMatUniform))
         const nodes: ActiveNode[] = []
-        model.nodes.forEach(node => new ActiveNode(node, meshes, nodes, matrixUniform))
+        model.nodes.forEach(node => new ActiveNode(node, meshes, nodes))
         this.scenes = model.scenes.map(scene => new ActiveScene(scene, nodes))
         this.defaultScene = this.scenes[model.scene ?? 0]
     }
 
-    static async create(modelUri: string, matrixUniform: Uniform, attributesMap: AttributesMap, context: Context) {
+    static async create(modelUri: string, positionsMatUniform: Uniform, normalsMatUniform: Uniform | null, attributesMap: AttributesMap, context: Context) {
         const response = await fetch(modelUri, {mode : "cors"})
         const model = await response.json() as Model
         const buffers: ArrayBufferLike[] = new Array<ArrayBufferLike>(model.buffers.length)
         for (let i = 0; i < buffers.length; i++) {
             buffers[i] = await fetchBuffer(model.buffers[i], modelUri)
         }
-        return new ActiveModel(model, buffers, matrixUniform, attributesMap, context)
+        return new ActiveModel(model, buffers, positionsMatUniform, normalsMatUniform, attributesMap, context)
     }
 
-    render(matrix: Mat<4>): void {
-        this.defaultScene.render(matrix)
+    render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix): void {
+        this.defaultScene.render(positionsMatrix, normalsMatrix)
     }
 
     delete() {
@@ -236,9 +236,9 @@ export class ActiveScene implements RenderSubject {
         this.nodes = scene.nodes.map(child => nodes[child])
     }
 
-    render(matView: Mat<4>) {
+    render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix) {
         for (let node of this.nodes) {
-            node.render(matView)
+            node.render(positionsMatrix, normalsMatrix)
         }
     }
 
@@ -247,9 +247,10 @@ export class ActiveScene implements RenderSubject {
 class ActiveNode implements RenderSubject {
 
     private children: Supplier<RenderSubject[]>
-    private matrix: Mat<4> 
+    private positionsMatrix: Mat<4> 
+    private normalsMatrix: Mat<4> 
 
-    constructor(node: Node, meshes: ActiveMesh[], nodes: RenderSubject[], private matrixUniform: Uniform) {
+    constructor(node: Node, meshes: ActiveMesh[], nodes: RenderSubject[]) {
         this.children = lazily(() => {
             const children = node.children !== undefined ? node.children.map(child => nodes[child]) : []
             if (node.mesh !== undefined) {
@@ -257,28 +258,28 @@ class ActiveNode implements RenderSubject {
             }
             return children
         })
-        this.matrix = node.matrix !== undefined ? 
+        this.positionsMatrix = node.matrix !== undefined ? 
             asMat(node.matrix) : 
             mat4.identity()
-        this.matrix = node.translation !== undefined ? 
-            mat4.mul(this.matrix, mat4.translation(node.translation)) :
-            this.matrix 
-        this.matrix = node.rotation !== undefined ? 
-            mat4.mul(this.matrix, mat4.cast(quat.toMatrix(node.rotation))) :
-            this.matrix 
-        this.matrix = node.scale !== undefined ? 
-            mat4.mul(this.matrix, mat4.scaling(...node.scale)) :
-            this.matrix 
+        this.positionsMatrix = node.translation !== undefined ? 
+            mat4.mul(this.positionsMatrix, mat4.translation(node.translation)) :
+            this.positionsMatrix 
+        this.positionsMatrix = node.rotation !== undefined ? 
+            mat4.mul(this.positionsMatrix, mat4.cast(quat.toMatrix(node.rotation))) :
+            this.positionsMatrix 
+        this.positionsMatrix = node.scale !== undefined ? 
+            mat4.mul(this.positionsMatrix, mat4.scaling(...node.scale)) :
+            this.positionsMatrix
+        this.normalsMatrix = this.positionsMatrix // mat4.transpose(mat4.inverse(this.matrix)) 
         nodes.push(this)
     }
 
-    render(parentMatrix: Mat<4>) {
-        const matrix = mat4.mul(parentMatrix, this.matrix)
-        this.matrixUniform.data = mat4.columnMajorArray(matrix)
+    render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
+        const positionsMatrix = mat4.mul(parentPositionsMatrix, this.positionsMatrix)
+        const normalsMatrix = mat4.mul(parentNormalsMatrix, this.normalsMatrix)
         for (let child of this.children()) {
-            child.render(matrix)
+            child.render(positionsMatrix, normalsMatrix)
         }
-        this.matrixUniform.data = mat4.columnMajorArray(parentMatrix)
     }
 
 }
@@ -291,12 +292,18 @@ class ActiveMesh implements RenderSubject {
         mesh: Mesh,
         accessors: ActiveAccessor[], 
         attributeMap: AttributesMap,
-        context: Context
+        context: Context,
+        private positionsMatUniform: Uniform, 
+        private normalsMatUniform: Uniform | null
     ) {
         this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, attributeMap, context))
     }
 
-    render() {
+    render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
+        this.positionsMatUniform.data = mat4.columnMajorArray(parentPositionsMatrix)
+        if (this.normalsMatUniform !== null) {
+            this.normalsMatUniform.data = mat4.columnMajorArray(parentNormalsMatrix)
+        }
         for (const primitive of this.primitives) {
             primitive.render()
         }

@@ -51,7 +51,7 @@ class ActiveAccessor {
     }
 }
 export class ActiveModel {
-    constructor(model, buffers, matrixUniform, attributesMap, context) {
+    constructor(model, buffers, positionsMatUniform, normalsMatUniform, attributesMap, context) {
         var _a;
         const indices = new Set();
         model.meshes
@@ -61,13 +61,13 @@ export class ActiveModel {
             .forEach(accessor => { var _a; return indices.add((_a = accessor.bufferView) !== null && _a !== void 0 ? _a : -1); }));
         this.bufferViews = model.bufferViews.map((bufferView, i) => new ActiveBufferView(bufferView, buffers, indices.has(i), context));
         const accessors = model.accessors.map(accessor => new ActiveAccessor(accessor, this.bufferViews));
-        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context));
+        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context, positionsMatUniform, normalsMatUniform));
         const nodes = [];
-        model.nodes.forEach(node => new ActiveNode(node, meshes, nodes, matrixUniform));
+        model.nodes.forEach(node => new ActiveNode(node, meshes, nodes));
         this.scenes = model.scenes.map(scene => new ActiveScene(scene, nodes));
         this.defaultScene = this.scenes[(_a = model.scene) !== null && _a !== void 0 ? _a : 0];
     }
-    static create(modelUri, matrixUniform, attributesMap, context) {
+    static create(modelUri, positionsMatUniform, normalsMatUniform, attributesMap, context) {
         return __awaiter(this, void 0, void 0, function* () {
             const response = yield fetch(modelUri, { mode: "cors" });
             const model = yield response.json();
@@ -75,11 +75,11 @@ export class ActiveModel {
             for (let i = 0; i < buffers.length; i++) {
                 buffers[i] = yield fetchBuffer(model.buffers[i], modelUri);
             }
-            return new ActiveModel(model, buffers, matrixUniform, attributesMap, context);
+            return new ActiveModel(model, buffers, positionsMatUniform, normalsMatUniform, attributesMap, context);
         });
     }
-    render(matrix) {
-        this.defaultScene.render(matrix);
+    render(positionsMatrix, normalsMatrix = positionsMatrix) {
+        this.defaultScene.render(positionsMatrix, normalsMatrix);
     }
     delete() {
         this.bufferViews.forEach(bufferView => bufferView.delete());
@@ -89,15 +89,14 @@ export class ActiveScene {
     constructor(scene, nodes) {
         this.nodes = scene.nodes.map(child => nodes[child]);
     }
-    render(matView) {
+    render(positionsMatrix, normalsMatrix = positionsMatrix) {
         for (let node of this.nodes) {
-            node.render(matView);
+            node.render(positionsMatrix, normalsMatrix);
         }
     }
 }
 class ActiveNode {
-    constructor(node, meshes, nodes, matrixUniform) {
-        this.matrixUniform = matrixUniform;
+    constructor(node, meshes, nodes) {
         this.children = lazily(() => {
             const children = node.children !== undefined ? node.children.map(child => nodes[child]) : [];
             if (node.mesh !== undefined) {
@@ -105,34 +104,40 @@ class ActiveNode {
             }
             return children;
         });
-        this.matrix = node.matrix !== undefined ?
+        this.positionsMatrix = node.matrix !== undefined ?
             asMat(node.matrix) :
             mat4.identity();
-        this.matrix = node.translation !== undefined ?
-            mat4.mul(this.matrix, mat4.translation(node.translation)) :
-            this.matrix;
-        this.matrix = node.rotation !== undefined ?
-            mat4.mul(this.matrix, mat4.cast(quat.toMatrix(node.rotation))) :
-            this.matrix;
-        this.matrix = node.scale !== undefined ?
-            mat4.mul(this.matrix, mat4.scaling(...node.scale)) :
-            this.matrix;
+        this.positionsMatrix = node.translation !== undefined ?
+            mat4.mul(this.positionsMatrix, mat4.translation(node.translation)) :
+            this.positionsMatrix;
+        this.positionsMatrix = node.rotation !== undefined ?
+            mat4.mul(this.positionsMatrix, mat4.cast(quat.toMatrix(node.rotation))) :
+            this.positionsMatrix;
+        this.positionsMatrix = node.scale !== undefined ?
+            mat4.mul(this.positionsMatrix, mat4.scaling(...node.scale)) :
+            this.positionsMatrix;
+        this.normalsMatrix = this.positionsMatrix; // mat4.transpose(mat4.inverse(this.matrix)) 
         nodes.push(this);
     }
-    render(parentMatrix) {
-        const matrix = mat4.mul(parentMatrix, this.matrix);
-        this.matrixUniform.data = mat4.columnMajorArray(matrix);
+    render(parentPositionsMatrix, parentNormalsMatrix = parentPositionsMatrix) {
+        const positionsMatrix = mat4.mul(parentPositionsMatrix, this.positionsMatrix);
+        const normalsMatrix = mat4.mul(parentNormalsMatrix, this.normalsMatrix);
         for (let child of this.children()) {
-            child.render(matrix);
+            child.render(positionsMatrix, normalsMatrix);
         }
-        this.matrixUniform.data = mat4.columnMajorArray(parentMatrix);
     }
 }
 class ActiveMesh {
-    constructor(mesh, accessors, attributeMap, context) {
+    constructor(mesh, accessors, attributeMap, context, positionsMatUniform, normalsMatUniform) {
+        this.positionsMatUniform = positionsMatUniform;
+        this.normalsMatUniform = normalsMatUniform;
         this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, attributeMap, context));
     }
-    render() {
+    render(parentPositionsMatrix, parentNormalsMatrix = parentPositionsMatrix) {
+        this.positionsMatUniform.data = mat4.columnMajorArray(parentPositionsMatrix);
+        if (this.normalsMatUniform !== null) {
+            this.normalsMatUniform.data = mat4.columnMajorArray(parentNormalsMatrix);
+        }
         for (const primitive of this.primitives) {
             primitive.render();
         }

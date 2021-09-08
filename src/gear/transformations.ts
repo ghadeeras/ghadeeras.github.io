@@ -14,8 +14,17 @@ export class Transformer {
 
     private inverseViewMatrix: Mat<4>
 
-    constructor(private canvas: HTMLElement, private viewMatrix: Mat<4>, private speed: number = 8) {
-        this.inverseViewMatrix = mat4.inverse(viewMatrix)
+    constructor(private canvas: HTMLElement, private _viewMatrix: Mat<4>, private speed: number = 8) {
+        this.inverseViewMatrix = mat4.inverse(_viewMatrix)
+    }
+
+    get viewMatrix() {
+        return this._viewMatrix
+    }
+
+    set viewMatrix(m: Mat<4>) {
+        this._viewMatrix = m
+        this.inverseViewMatrix = mat4.inverse(m)
     }
 
     get translationMatrix() {
