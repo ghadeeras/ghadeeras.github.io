@@ -13,8 +13,6 @@ import { vec2 } from "../../ether/latest/index.js";
 let audioContext = null;
 let center = [-0.75, 0];
 let scale = 2;
-let vertexShaderCode;
-let fragmentShaderCode;
 let mouseBindingElement;
 let canvas;
 let mandelbrotView;

@@ -1,5 +1,5 @@
-import * as Gear from "../gear/all.js"
-import { Mat, mat4, Vec } from "../../ether/latest/index.js"
+import * as gear from "../../gear/latest/files.js"
+import * as ether from "../../ether/latest/index.js"
 import * as v from "./view.js"
 
 export class GPUView implements v.View {
@@ -13,9 +13,9 @@ export class GPUView implements v.View {
     private uniformsGroup: GPUBindGroup
 
     private uniformsData: Float32Array = new Float32Array([
-        ...mat4.columnMajorArray(mat4.identity()),
-        ...mat4.columnMajorArray(mat4.identity()),
-        ...mat4.columnMajorArray(mat4.identity()),
+        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
+        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
+        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
         1, 1, 1, 1,
         2, 2, 2, 1,
         0,
@@ -27,10 +27,10 @@ export class GPUView implements v.View {
     private _next: null | GPUBuffer = null
     private _nextCount: number = 0
 
-    private _matPositions: Mat<4> = mat4.identity()
-    private _matNormals: Mat<4> = mat4.identity()
-    private _matView: Mat<4> = mat4.identity()
-    private _globalLightPosition: Vec<4> = [2, 2, 2, 1]
+    private _matPositions: ether.Mat<4> = ether.mat4.identity()
+    private _matNormals: ether.Mat<4> = ether.mat4.identity()
+    private _matView: ether.Mat<4> = ether.mat4.identity()
+    private _globalLightPosition: ether.Vec<4> = [2, 2, 2, 1]
     private _verticesCount: number = 0
 
     constructor(
@@ -135,62 +135,62 @@ export class GPUView implements v.View {
         return buffer;
     }
 
-    get matPositions(): Mat<4> {
+    get matPositions(): ether.Mat<4> {
         return this._matPositions
     }
 
-    get matNormals(): Mat<4> {
+    get matNormals(): ether.Mat<4> {
         return this._matNormals
     }
 
-    get matView(): Mat<4> {
+    get matView(): ether.Mat<4> {
         return this._matView
     }    
 
-    set matView(m: Mat<4>) {
+    set matView(m: ether.Mat<4>) {
         this._matView = m
         this.lightPosition = this._globalLightPosition
     }    
 
-    setMatModel(modelPositions: Mat<4>, modelNormals: Mat<4> = mat4.transpose(mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions: ether.Mat<4>, modelNormals: ether.Mat<4> = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        const matPositions = mat4.columnMajorArray(mat4.mul(this.matView, modelPositions))
+        const matPositions = ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelPositions))
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            mat4.columnMajorArray(mat4.mul(this.matView, modelNormals))
+            ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelNormals))
 
         this.uniformsData.set(matPositions, 0)
         this.uniformsData.set(matNormals, 16)
         this.device.queue.writeBuffer(this.uniforms, 0, this.uniformsData, 0, 32)
     }
 
-    get matProjection(): Mat<4> {
+    get matProjection(): ether.Mat<4> {
         return v.asMat(this.uniformsData, 32)
     }
 
-    set matProjection(m: Mat<4>) {
-        this.uniformsData.set(mat4.columnMajorArray(m), 32)
+    set matProjection(m: ether.Mat<4>) {
+        this.uniformsData.set(ether.mat4.columnMajorArray(m), 32)
         this.device.queue.writeBuffer(this.uniforms, 32 * 4, this.uniformsData, 32, 16)
     }
 
-    get color(): Vec<4> {
+    get color(): ether.Vec<4> {
         return v.asVec(this.uniformsData, 48)
     }
 
-    set color(c: Vec<4>) {
+    set color(c: ether.Vec<4>) {
         this.uniformsData.set(c, 48)
         this.device.queue.writeBuffer(this.uniforms, 48 * 4, this.uniformsData, 48, 4)
     }
 
-    get lightPosition(): Vec<4> {
+    get lightPosition(): ether.Vec<4> {
         return this._globalLightPosition
     }
 
-    set lightPosition(p: Vec<4>) {
+    set lightPosition(p: ether.Vec<4>) {
         this._globalLightPosition = p
-        const vp = mat4.apply(this._matView, p)
+        const vp = ether.mat4.apply(this._matView, p)
         this.uniformsData.set(vp, 52)
         this.device.queue.writeBuffer(this.uniforms, 52 * 4, this.uniformsData, 52, 4)
     }
@@ -274,7 +274,7 @@ export class GPUView implements v.View {
 }
 
 export async function newView(canvasId: string): Promise<v.View> {
-    const shaders = await Gear.fetchFiles({
+    const shaders = await gear.fetchTextFiles({
         shader: "generic.wgsl"
     }, "/shaders")
     const gpu = v.required(navigator.gpu)

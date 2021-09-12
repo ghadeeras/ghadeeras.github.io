@@ -7,17 +7,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as Gear from "../gear/all.js";
-import { mat4 } from "../../ether/latest/index.js";
+import * as gear from "../../gear/latest/files.js";
+import * as ether from "../../ether/latest/index.js";
 import * as v from "./view.js";
 export class GPUView {
     constructor(device, adapter, canvasId, shaderCode) {
         var _a;
         this.device = device;
         this.uniformsData = new Float32Array([
-            ...mat4.columnMajorArray(mat4.identity()),
-            ...mat4.columnMajorArray(mat4.identity()),
-            ...mat4.columnMajorArray(mat4.identity()),
+            ...ether.mat4.columnMajorArray(ether.mat4.identity()),
+            ...ether.mat4.columnMajorArray(ether.mat4.identity()),
+            ...ether.mat4.columnMajorArray(ether.mat4.identity()),
             1, 1, 1, 1,
             2, 2, 2, 1,
             0,
@@ -27,9 +27,9 @@ export class GPUView {
         this._frame = null;
         this._next = null;
         this._nextCount = 0;
-        this._matPositions = mat4.identity();
-        this._matNormals = mat4.identity();
-        this._matView = mat4.identity();
+        this._matPositions = ether.mat4.identity();
+        this._matNormals = ether.mat4.identity();
+        this._matView = ether.mat4.identity();
         this._globalLightPosition = [2, 2, 2, 1];
         this._verticesCount = 0;
         this.uniforms = GPUView.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsData);
@@ -132,13 +132,13 @@ export class GPUView {
         this._matView = m;
         this.lightPosition = this._globalLightPosition;
     }
-    setMatModel(modelPositions, modelNormals = mat4.transpose(mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions, modelNormals = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
         this._matNormals = modelNormals;
-        const matPositions = mat4.columnMajorArray(mat4.mul(this.matView, modelPositions));
+        const matPositions = ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelPositions));
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            mat4.columnMajorArray(mat4.mul(this.matView, modelNormals));
+            ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelNormals));
         this.uniformsData.set(matPositions, 0);
         this.uniformsData.set(matNormals, 16);
         this.device.queue.writeBuffer(this.uniforms, 0, this.uniformsData, 0, 32);
@@ -147,7 +147,7 @@ export class GPUView {
         return v.asMat(this.uniformsData, 32);
     }
     set matProjection(m) {
-        this.uniformsData.set(mat4.columnMajorArray(m), 32);
+        this.uniformsData.set(ether.mat4.columnMajorArray(m), 32);
         this.device.queue.writeBuffer(this.uniforms, 32 * 4, this.uniformsData, 32, 16);
     }
     get color() {
@@ -162,7 +162,7 @@ export class GPUView {
     }
     set lightPosition(p) {
         this._globalLightPosition = p;
-        const vp = mat4.apply(this._matView, p);
+        const vp = ether.mat4.apply(this._matView, p);
         this.uniformsData.set(vp, 52);
         this.device.queue.writeBuffer(this.uniforms, 52 * 4, this.uniformsData, 52, 4);
     }
@@ -239,7 +239,7 @@ export class GPUView {
 }
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield Gear.fetchFiles({
+        const shaders = yield gear.fetchTextFiles({
             shader: "generic.wgsl"
         }, "/shaders");
         const gpu = v.required(navigator.gpu);

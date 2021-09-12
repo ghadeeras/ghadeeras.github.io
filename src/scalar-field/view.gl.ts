@@ -1,45 +1,43 @@
-import * as Djee from "../djee/all.js"
-import * as Ether from "../../ether/latest/index.js"
-import * as Gear from "../gear/all.js"
-import * as gltf from "../djee/gltf.js"
-import { Mat, mat4, Vec, vec3 } from "../../ether/latest/index.js"
+import * as ether from "../../ether/latest/index.js"
+import * as djee from "../djee/all.js"
+import * as gear from "../../gear/latest/files.js"
 import * as v from "./view.js"
 
 export class GLView implements v.View {
 
-    private context: Djee.Context
-    private program: Djee.Program
+    private context: djee.Context
+    private program: djee.Program
 
-    private position: Djee.Attribute
-    private normal: Djee.Attribute
+    private position: djee.Attribute
+    private normal: djee.Attribute
 
-    private _matModelPositions: Djee.Uniform
-    private _matModelNormals: Djee.Uniform
-    private _matProjection: Djee.Uniform
+    private _matModelPositions: djee.Uniform
+    private _matModelNormals: djee.Uniform
+    private _matProjection: djee.Uniform
 
-    private _color: Djee.Uniform
-    private _shininess: Djee.Uniform
+    private _color: djee.Uniform
+    private _shininess: djee.Uniform
 
-    private _lightPosition: Djee.Uniform
-    private _lightRadius: Djee.Uniform
-    private _fogginess: Djee.Uniform
+    private _lightPosition: djee.Uniform
+    private _lightRadius: djee.Uniform
+    private _fogginess: djee.Uniform
     
-    private _vertices: Djee.AttributesBuffer
+    private _vertices: djee.AttributesBuffer
     private _primitives: GLenum
 
     private _frame: null | (() => void) = null
 
-    private _matPositions: Mat<4> = mat4.identity()
-    private _matNormals: Mat<4> = mat4.identity()
-    private _matView: Mat<4> = mat4.identity()
-    private _globalLightPosition: Vec<4> = [2, 2, 2, 1]
+    private _matPositions: ether.Mat<4> = ether.mat4.identity()
+    private _matNormals: ether.Mat<4> = ether.mat4.identity()
+    private _matView: ether.Mat<4> = ether.mat4.identity()
+    private _globalLightPosition: ether.Vec<4> = [2, 2, 2, 1]
 
     constructor(
         canvasId: string,
         vertexShaderCode: string,
         fragmentShaderCode: string
     ) {
-        this.context = Djee.Context.of(canvasId)
+        this.context = djee.Context.of(canvasId)
         this.program = this.context.link(
             this.context.vertexShader(vertexShaderCode),
             this.context.fragmentShader(fragmentShaderCode)
@@ -60,10 +58,10 @@ export class GLView implements v.View {
         this._lightRadius = this.program.uniform("lightRadius")
         this._fogginess = this.program.uniform("fogginess")
 
-        this._matModelPositions.data = mat4.columnMajorArray(mat4.identity())
-        this._matModelNormals.data = mat4.columnMajorArray(mat4.identity())
-        this._matView = mat4.identity()
-        this._matProjection.data = mat4.columnMajorArray(mat4.identity())
+        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.identity())
+        this._matModelNormals.data = ether.mat4.columnMajorArray(ether.mat4.identity())
+        this._matView = ether.mat4.identity()
+        this._matProjection.data = ether.mat4.columnMajorArray(ether.mat4.identity())
 
         this._color.data = [0.2, 0.4, 0.8, 1.0]
         this._shininess.data = [0.5]
@@ -86,46 +84,46 @@ export class GLView implements v.View {
         gl.clearColor(1, 1, 1, 1)
     }
 
-    setMatModel(modelPositions: Mat<4>, modelNormals: Mat<4> = mat4.transpose(mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions: ether.Mat<4>, modelNormals: ether.Mat<4> = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        this._matModelPositions.data = mat4.columnMajorArray(mat4.mul(this._matView, modelPositions))
+        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelPositions))
         this._matModelNormals.data = modelPositions === modelNormals ? 
             this._matModelPositions.data :
-            mat4.columnMajorArray(mat4.mul(this._matView, modelNormals))
+            ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelNormals))
     }
 
-    get matPositions(): Mat<4> {
+    get matPositions(): ether.Mat<4> {
         return this._matPositions
     }
 
-    get matNormals(): Mat<4> {
+    get matNormals(): ether.Mat<4> {
         return this._matNormals
     }
 
-    get matView(): Mat<4> {
+    get matView(): ether.Mat<4> {
         return this._matView
     }    
 
-    set matView(m: Mat<4>) {
+    set matView(m: ether.Mat<4>) {
         this._matView = m
         this.lightPosition = this._globalLightPosition
     }    
 
-    get matProjection(): Mat<4> {
+    get matProjection(): ether.Mat<4> {
         return v.asMat(this._matProjection.data)
     }
 
-    set matProjection(m: Mat<4>) {
-        this._matProjection.data = mat4.columnMajorArray(m)
+    set matProjection(m: ether.Mat<4>) {
+        this._matProjection.data = ether.mat4.columnMajorArray(m)
     }
 
-    get color(): Vec<4> {
+    get color(): ether.Vec<4> {
         return v.asVec(this._color.data)
     }
 
-    set color(c: Vec<4>) {
+    set color(c: ether.Vec<4>) {
         this._color.data = c
     }
 
@@ -137,13 +135,13 @@ export class GLView implements v.View {
         this._shininess.data = [s]
     }
 
-    get lightPosition(): Vec<4> {
+    get lightPosition(): ether.Vec<4> {
         return this._globalLightPosition
     }
 
-    set lightPosition(p: Vec<4>) {
+    set lightPosition(p: ether.Vec<4>) {
         this._globalLightPosition = p
-        this._lightPosition.data = mat4.apply(this._matView, p).slice(0, 3)
+        this._lightPosition.data = ether.mat4.apply(this._matView, p).slice(0, 3)
     }
 
     get lightRadius(): number {
@@ -183,7 +181,7 @@ export class GLView implements v.View {
 }
 
 export async function newView(canvasId: string): Promise<v.View> {
-    const shaders = await Gear.fetchFiles({
+    const shaders = await gear.fetchTextFiles({
         vertexShader: "generic.vert", 
         fragmentShader: "generic.frag"
     }, "/shaders")

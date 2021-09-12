@@ -7,9 +7,6 @@ let audioContext: AudioContext | null = null
 let center: Vec<2> = [-0.75, 0]
 let scale = 2
 
-let vertexShaderCode: string
-let fragmentShaderCode: string
-
 let mouseBindingElement: HTMLInputElement
 let canvas: Gear.ElementEvents
 

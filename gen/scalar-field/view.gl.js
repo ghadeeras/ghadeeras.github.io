@@ -7,18 +7,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as Djee from "../djee/all.js";
-import * as Gear from "../gear/all.js";
-import { mat4 } from "../../ether/latest/index.js";
+import * as ether from "../../ether/latest/index.js";
+import * as djee from "../djee/all.js";
+import * as gear from "../../gear/latest/files.js";
 import * as v from "./view.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this._frame = null;
-        this._matPositions = mat4.identity();
-        this._matNormals = mat4.identity();
-        this._matView = mat4.identity();
+        this._matPositions = ether.mat4.identity();
+        this._matNormals = ether.mat4.identity();
+        this._matView = ether.mat4.identity();
         this._globalLightPosition = [2, 2, 2, 1];
-        this.context = Djee.Context.of(canvasId);
+        this.context = djee.Context.of(canvasId);
         this.program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         this.program.use();
         this.position = this.program.attribute("position");
@@ -31,10 +31,10 @@ export class GLView {
         this._lightPosition = this.program.uniform("lightPosition");
         this._lightRadius = this.program.uniform("lightRadius");
         this._fogginess = this.program.uniform("fogginess");
-        this._matModelPositions.data = mat4.columnMajorArray(mat4.identity());
-        this._matModelNormals.data = mat4.columnMajorArray(mat4.identity());
-        this._matView = mat4.identity();
-        this._matProjection.data = mat4.columnMajorArray(mat4.identity());
+        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.identity());
+        this._matModelNormals.data = ether.mat4.columnMajorArray(ether.mat4.identity());
+        this._matView = ether.mat4.identity();
+        this._matProjection.data = ether.mat4.columnMajorArray(ether.mat4.identity());
         this._color.data = [0.2, 0.4, 0.8, 1.0];
         this._shininess.data = [0.5];
         this._globalLightPosition = [2, 2, 2, 1];
@@ -50,13 +50,13 @@ export class GLView {
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
     }
-    setMatModel(modelPositions, modelNormals = mat4.transpose(mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions, modelNormals = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
         this._matNormals = modelNormals;
-        this._matModelPositions.data = mat4.columnMajorArray(mat4.mul(this._matView, modelPositions));
+        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelPositions));
         this._matModelNormals.data = modelPositions === modelNormals ?
             this._matModelPositions.data :
-            mat4.columnMajorArray(mat4.mul(this._matView, modelNormals));
+            ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelNormals));
     }
     get matPositions() {
         return this._matPositions;
@@ -75,7 +75,7 @@ export class GLView {
         return v.asMat(this._matProjection.data);
     }
     set matProjection(m) {
-        this._matProjection.data = mat4.columnMajorArray(m);
+        this._matProjection.data = ether.mat4.columnMajorArray(m);
     }
     get color() {
         return v.asVec(this._color.data);
@@ -94,7 +94,7 @@ export class GLView {
     }
     set lightPosition(p) {
         this._globalLightPosition = p;
-        this._lightPosition.data = mat4.apply(this._matView, p).slice(0, 3);
+        this._lightPosition.data = ether.mat4.apply(this._matView, p).slice(0, 3);
     }
     get lightRadius() {
         return this._lightRadius.data[0];
@@ -127,7 +127,7 @@ export class GLView {
 }
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield Gear.fetchFiles({
+        const shaders = yield gear.fetchTextFiles({
             vertexShader: "generic.vert",
             fragmentShader: "generic.frag"
         }, "/shaders");

@@ -8,186 +8,360 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as ether from "../../ether/latest/index.js";
-import * as gear from "../gear/all.js";
+import * as gear from "../../gear/latest/index.js";
 import * as v from "./view.js";
-let resolution = 64;
-let fieldSampler = envelopedCosine;
-let contourValue = 0;
-let fieldRef = 0;
+import * as dragging from "../utils/dragging.js";
+const twoPi = 2 * Math.PI;
+const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = ether.mat4.projection(Math.pow(2, 1.5));
 export function init() {
     window.onload = () => doInit();
 }
-const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const wa = yield ether.initWaModules();
-        const modules = {
-            mem: v.required(wa.mem.exports),
-            space: v.required(wa.space.exports),
-            scalarField: v.required(wa.scalarField.exports)
-        };
         const view = yield v.newView("canvas-gl");
         view.matView = viewMatrix;
         view.matProjection = projectionMatrix;
-        fieldRef = sampleField(modules);
-        const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new gear.Transformer(canvas.element, ether.mat4.mul(projectionMatrix, viewMatrix));
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("focalRatio")).map(([x, y]) => y).to(focalRatioSink(view)), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).defaultsTo(0.01).to(contourValueSink(modules, view)), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink(view)), flow => flow.filter(selected("lightPosition")).to(lightPositionSink(view)), flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink(view)), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink(view))), flow => flow
-            .filter(selected("rotation"))
-            .map(transformer.rotation)
-            .to(rotationSink(view)));
-        levelOfDetailsFlow().to(levelOfDetailsSink(modules, view));
-        gear.readableValue("function").to(functionSink(modules, view));
-        gear.elementEvents("save").click.producer(() => saveModel(modules));
+        const toy = new Toy(view, v.required(wa.mem.exports), v.required(wa.space.exports), v.required(wa.scalarField.exports));
     });
 }
-function selected(value) {
-    const mouseBinding = document.getElementById("mouse-binding");
-    return () => mouseBinding.value == value;
-}
-function levelOfDetailsFlow() {
-    const inc = gear.elementEvents("lod-inc").mouseButtons
-        .map(([l, m, r]) => l)
-        .map((pressed) => pressed ? +8 : 0);
-    const dec = gear.elementEvents("lod-dec").mouseButtons
-        .map(([l, m, r]) => l)
-        .map((pressed) => pressed ? -8 : 0);
-    const flow = gear.Flow.from(inc, dec)
-        .defaultsTo(0)
-        .then(gear.repeater(128, 0))
-        .reduce((i, lod) => clamp(lod + i, 32, 96), 64);
-    flow.map(lod => lod.toString()).to(gear.text("lod"));
-    return flow;
-}
-function clamp(n, min, max) {
-    return n < min ? min : (n > max ? max : n);
-}
-function levelOfDetailsSink(modules, view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo(64)
-        .producer(lod => {
-        resolution = lod;
-        fieldRef = sampleField(modules);
-        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
-    }));
-}
-function contourValueSink(modules, view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo(0)
-        .producer(newContourValue => {
-        contourValue = newContourValue;
-        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
-        view.color = fieldColor(contourValue, 1);
-    }));
-}
-function fieldColor(fieldValue, alpha = 0.4) {
-    return fieldValue > 0 ?
-        [1, 0, (1 - fieldValue) / (1 + fieldValue), alpha] :
-        [1 - (1 + fieldValue) / (1 - fieldValue), 1, 0, alpha];
-}
-function rotationSink(view) {
-    return gear.sinkFlow(flow => flow.defaultsTo(ether.mat4.identity()).producer(matrix => {
-        view.setMatModel(matrix, matrix);
-    }));
-}
-function focalRatioSink(view) {
-    return gear.sinkFlow(flow => flow.defaultsTo(0).map(ratio => (ratio + 1.4) * 2).producer(ratio => {
-        view.matProjection = ether.mat4.projection(ratio);
-    }));
-}
-function lightPositionSink(view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo([0.5, 0.5])
-        .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
-        .producer(([x, y]) => {
-        view.lightPosition = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1];
-    }));
-}
-function lightRadiusSink(view) {
-    return gear.sinkFlow(flow => flow
-        .map(r => (r + 1) / 2)
-        .defaultsTo(0.1)
-        .producer(r => {
-        view.lightRadius = r;
-    }));
-}
-function shininessSink(view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo(-1)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
-        view.shininess = value;
-    }));
-}
-function fogginessSink(view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo(-1)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
-        view.fogginess = value;
-    }));
-}
-function functionSink(modules, view) {
-    return gear.sinkFlow(flow => flow
-        .defaultsTo("xyz")
-        .producer(functionName => {
-        fieldSampler = getFieldFunction(functionName);
-        fieldRef = sampleField(modules);
-        view.setMesh(WebGLRenderingContext.TRIANGLES, contourSurfaceData(modules, fieldRef, contourValue));
-    }));
-}
-function getFieldFunction(functionName) {
-    switch (functionName) {
-        case "xyz": return xyz;
-        case "envelopedCosine": return envelopedCosine;
-        default: return xyz;
+class Toy {
+    constructor(view, mem, space, scalarField) {
+        this.view = view;
+        this.fieldSampler = xyz;
+        this.resolution = 64;
+        this.contourValue = 0;
+        this.fieldRef = 0;
+        this.meshComputer = new gear.DeferredComputation(() => {
+            this.view.setMesh(WebGLRenderingContext.TRIANGLES, this.contourSurfaceData());
+        });
+        this.modules = { mem, space, scalarField };
+        this.fieldRef = this.sampleField();
+        const canvas = gear.elementEvents("canvas-gl");
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 8);
+        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0]);
+        this.rotationTarget(view).value = canvas.dragging.value
+            .filter(this.selected("rotation"))
+            .then(gear.drag(rotationDragging))
+            .defaultsTo(ether.mat4.identity());
+        this.focalRatioTarget(view).value = canvas.dragging.value
+            .filter(this.selected("focalRatio"))
+            .then(gear.drag(focalRatioDragging))
+            .defaultsTo(focalRatioDragging.currentValue());
+        this.contourValueTarget().value = canvas.dragging.value
+            .filter(this.selected("contourValue"))
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => y)
+            .defaultsTo(0.01);
+        this.shininessTarget(view).value = canvas.dragging.value
+            .filter(this.selected("shininess"))
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0);
+        this.fogginessTarget(view).value = canvas.dragging.value
+            .filter(this.selected("fogginess"))
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0);
+        this.lightPositionTarget(view).value = canvas.dragging.value
+            .filter(this.selected("lightPosition"))
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
+            .map(([x, y]) => ether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)))
+            .defaultsTo(ether.vec3.of(0, 0, 2));
+        this.lightRadiusTarget(view).value = canvas.dragging.value
+            .filter(this.selected("lightRadius"))
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0.1);
+        this.levelOfDetailsTarget().value = this.levelOfDetailsFlow().defaultsTo(64);
+        this.functionTarget().value = gear.readableValue("function").defaultsTo("xyz");
+        gear.elementEvents("save").click.value.attach(() => this.saveModel());
     }
-}
-function sampleField(modules) {
-    if (!modules.mem || !modules.space) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!");
+    selected(value) {
+        const mouseBinding = document.getElementById("mouse-binding");
+        return () => mouseBinding.value == value;
     }
-    modules.mem.leave();
-    modules.mem.leave();
-    modules.mem.enter();
-    const length = 8 * Math.pow((resolution + 1), 3);
-    const ref = modules.mem.allocate64(length);
-    const view = new Float64Array(modules.mem.stack.buffer, ref, length);
-    let i = 0;
-    for (let z = 0; z <= resolution; z++) {
-        for (let y = 0; y <= resolution; y++) {
-            for (let x = 0; x <= resolution; x++) {
-                const px = 2 * x / resolution - 1;
-                const py = 2 * y / resolution - 1;
-                const pz = 2 * z / resolution - 1;
-                const v = fieldSampler(px, py, pz);
-                view[i++] = px;
-                view[i++] = py;
-                view[i++] = pz;
-                view[i++] = 1;
-                view[i++] = v[0];
-                view[i++] = v[1];
-                view[i++] = v[2];
-                view[i++] = v[3];
-            }
+    levelOfDetailsFlow() {
+        const inc = gear.elementEvents("lod-inc").pointerButtons.value
+            .map(([l, m, r]) => l)
+            .map((pressed) => pressed ? +8 : 0);
+        const dec = gear.elementEvents("lod-dec").pointerButtons.value
+            .map(([l, m, r]) => l)
+            .map((pressed) => pressed ? -8 : 0);
+        const flow = gear.Value.from(inc, dec)
+            .defaultsTo(0)
+            .then(gear.repeater(128, 0))
+            .reduce((i, lod) => this.clamp(lod + i, 32, 96), 64);
+        gear.text("lod").value = flow.map(lod => lod.toString());
+        return flow;
+    }
+    clamp(n, min, max) {
+        return n < min ? min : (n > max ? max : n);
+    }
+    levelOfDetailsTarget() {
+        return new gear.Target(lod => {
+            this.resolution = lod;
+            this.fieldRef = this.sampleField();
+            this.meshComputer.perform();
+        });
+    }
+    contourValueTarget() {
+        return new gear.Target(newContourValue => {
+            this.contourValue = newContourValue;
+            this.view.color = this.fieldColor();
+            this.meshComputer.perform();
+        });
+    }
+    fieldColor() {
+        return this.contourValue > 0 ?
+            [1, 0, (1 - this.contourValue) / (1 + this.contourValue), 1] :
+            [1 - (1 + this.contourValue) / (1 - this.contourValue), 1, 0, 1];
+    }
+    rotationTarget(view) {
+        return new gear.Target(matrix => {
+            view.setMatModel(matrix, matrix);
+        });
+    }
+    focalRatioTarget(view) {
+        return new gear.Target(ratio => {
+            view.matProjection = ether.mat4.projection(ratio);
+        });
+    }
+    lightPositionTarget(view) {
+        return new gear.Target(position => {
+            view.lightPosition = [...position, 1];
+        });
+    }
+    lightRadiusTarget(view) {
+        return new gear.Target(value => {
+            view.lightRadius = value;
+        });
+    }
+    shininessTarget(view) {
+        return new gear.Target(value => {
+            view.shininess = value;
+        });
+    }
+    fogginessTarget(view) {
+        return new gear.Target(value => {
+            view.fogginess = value;
+        });
+    }
+    functionTarget() {
+        return new gear.Target(functionName => {
+            this.fieldSampler = this.getFieldFunction(functionName);
+            this.fieldRef = this.sampleField();
+            this.meshComputer.perform();
+        });
+    }
+    getFieldFunction(functionName) {
+        switch (functionName) {
+            case "xyz": return xyz;
+            case "envelopedCosine": return envelopedCosine;
+            default: return xyz;
         }
     }
-    modules.mem.enter();
-    return ref;
-}
-function contourSurfaceData(modules, fieldRef, contourValue) {
-    if (!modules.mem || !modules.scalarField) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!");
+    sampleField() {
+        if (!this.modules.mem || !this.modules.space) {
+            throw new Error("Failed to initialize Web Assembly Ether modules!");
+        }
+        this.modules.mem.leave();
+        this.modules.mem.leave();
+        this.modules.mem.enter();
+        const length = 8 * Math.pow((this.resolution + 1), 3);
+        const ref = this.modules.mem.allocate64(length);
+        const view = new Float64Array(this.modules.mem.stack.buffer, ref, length);
+        let i = 0;
+        for (let z = 0; z <= this.resolution; z++) {
+            for (let y = 0; y <= this.resolution; y++) {
+                for (let x = 0; x <= this.resolution; x++) {
+                    const px = 2 * x / this.resolution - 1;
+                    const py = 2 * y / this.resolution - 1;
+                    const pz = 2 * z / this.resolution - 1;
+                    const v = this.fieldSampler(px, py, pz);
+                    view[i++] = px;
+                    view[i++] = py;
+                    view[i++] = pz;
+                    view[i++] = 1;
+                    view[i++] = v[0];
+                    view[i++] = v[1];
+                    view[i++] = v[2];
+                    view[i++] = v[3];
+                }
+            }
+        }
+        this.modules.mem.enter();
+        return ref;
     }
-    modules.mem.leave();
-    modules.mem.enter();
-    const begin = modules.scalarField.tesselateScalarField(fieldRef, resolution, contourValue);
-    const end = modules.mem.allocate8(0);
-    const result = new Float32Array(modules.mem.stack.buffer, begin, (end - begin) / 4);
-    return result;
+    contourSurfaceData() {
+        if (!this.modules.mem || !this.modules.scalarField) {
+            throw new Error("Failed to initialize Web Assembly Ether modules!");
+        }
+        this.modules.mem.leave();
+        this.modules.mem.enter();
+        const begin = this.modules.scalarField.tesselateScalarField(this.fieldRef, this.resolution, this.contourValue);
+        const end = this.modules.mem.allocate8(0);
+        const result = new Float32Array(this.modules.mem.stack.buffer, begin, (end - begin) / 4);
+        return result;
+    }
+    saveModel() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const model = this.createModel("ScalarField");
+            const anchor1 = document.createElement("a");
+            anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]));
+            anchor1.type = 'text/json';
+            anchor1.target = '_blank';
+            anchor1.download = 'ScalarField.gltf';
+            anchor1.click();
+            const anchor2 = document.createElement("a");
+            anchor2.href = URL.createObjectURL(new Blob([model.binary]));
+            anchor2.type = 'application/gltf-buffer';
+            anchor2.target = '_blank';
+            anchor2.download = 'ScalarField.bin';
+            anchor2.click();
+            const anchor3 = document.createElement("a");
+            const canvas = document.getElementById("canvas-gl");
+            anchor3.href = canvas.toDataURL("image/png");
+            anchor3.type = 'image/png';
+            anchor3.target = '_blank';
+            anchor3.download = 'ScalarField.png';
+            anchor3.click();
+        });
+    }
+    createModel(name) {
+        const indexedVertices = this.indexVertices(this.contourSurfaceData());
+        return {
+            model: this.createModelJson(name, indexedVertices),
+            binary: this.createBinaryBuffer(indexedVertices)
+        };
+    }
+    createModelJson(name, indexedVertices) {
+        const verticesCount = indexedVertices.indices.length;
+        const uniqueVerticesCount = indexedVertices.vertices.length / 6;
+        const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
+        const totalIndicesSize = verticesCount * intScalarSize;
+        const byteStride = 6 * 4;
+        const totalVerticesSize = uniqueVerticesCount * byteStride;
+        return {
+            asset: {
+                version: "2.0"
+            },
+            scenes: [{
+                    nodes: [0]
+                }],
+            nodes: [{
+                    mesh: 0
+                }],
+            meshes: [{
+                    primitives: [{
+                            indices: 0,
+                            attributes: {
+                                "POSITION": 1,
+                                "NORMAL": 2
+                            }
+                        }]
+                }],
+            accessors: [{
+                    type: "SCALAR",
+                    componentType: intScalarSize == 2 ?
+                        WebGLRenderingContext.UNSIGNED_SHORT :
+                        WebGLRenderingContext.UNSIGNED_INT,
+                    bufferView: 0,
+                    count: verticesCount
+                }, {
+                    type: "VEC3",
+                    componentType: WebGLRenderingContext.FLOAT,
+                    bufferView: 1,
+                    count: uniqueVerticesCount,
+                    byteOffset: 0,
+                    min: indexedVertices.minPos,
+                    max: indexedVertices.maxPos
+                }, {
+                    type: "VEC3",
+                    componentType: WebGLRenderingContext.FLOAT,
+                    bufferView: 1,
+                    count: uniqueVerticesCount,
+                    byteOffset: byteStride / 2
+                }],
+            bufferViews: [{
+                    buffer: 0,
+                    byteOffset: 0,
+                    byteLength: totalIndicesSize
+                }, {
+                    buffer: 0,
+                    byteOffset: totalIndicesSize,
+                    byteLength: totalVerticesSize,
+                    byteStride: byteStride
+                }],
+            buffers: [{
+                    uri: `./${name}.bin`,
+                    byteLength: totalIndicesSize + totalVerticesSize
+                }]
+        };
+    }
+    createBinaryBuffer(indexedVertices) {
+        const uniqueVerticesCount = indexedVertices.vertices.length / 6;
+        const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
+        const binaryBuffer = new ArrayBuffer(indexedVertices.indices.length * intScalarSize + indexedVertices.vertices.length * 4);
+        const arrayConstructor = intScalarSize == 2 ? Uint16Array : Uint32Array;
+        const indicesView = new arrayConstructor(binaryBuffer, 0, indexedVertices.indices.length);
+        const verticesView = new Float32Array(binaryBuffer, indicesView.byteLength);
+        indicesView.set(indexedVertices.indices);
+        verticesView.set(indexedVertices.vertices);
+        return binaryBuffer;
+    }
+    indexVertices(vertices) {
+        const indexedVertices = {
+            indices: [],
+            vertices: [],
+            minPos: [2, 2, 2],
+            maxPos: [-2, -2, -2]
+        };
+        const map = {};
+        const stride = 6;
+        for (let i = 0; i < vertices.length; i += stride) {
+            const vertex = vertices.slice(i, i + stride);
+            const position = vertex.slice(0, 3);
+            const normal = vertex.slice(3, 6);
+            const nextIndex = indexedVertices.vertices.length / stride;
+            let index = this.lookUp(map, position, nextIndex);
+            if (index == nextIndex) {
+                const unitNormal = ether.vec3.unit([normal[0], normal[1], normal[2]]);
+                indexedVertices.vertices.push(...position, ...unitNormal);
+                indexedVertices.minPos = [
+                    Math.min(position[0], indexedVertices.minPos[0]),
+                    Math.min(position[1], indexedVertices.minPos[1]),
+                    Math.min(position[2], indexedVertices.minPos[2])
+                ];
+                indexedVertices.maxPos = [
+                    Math.max(position[0], indexedVertices.maxPos[0]),
+                    Math.max(position[1], indexedVertices.maxPos[1]),
+                    Math.max(position[2], indexedVertices.maxPos[2])
+                ];
+            }
+            indexedVertices.indices.push(index);
+        }
+        return indexedVertices;
+    }
+    lookUp(map, position, defaultIndex) {
+        let subMap = map;
+        for (const component of position) {
+            let subSubMap = subMap[component];
+            if (subSubMap === undefined) {
+                subSubMap = {};
+                subMap[component] = subSubMap;
+            }
+            subMap = subSubMap;
+        }
+        if (subMap.index === undefined) {
+            subMap.index = defaultIndex;
+        }
+        return subMap.index;
+    }
 }
-const twoPi = 2 * Math.PI;
 function xyz(x, y, z) {
     return [
         y * z,
@@ -225,159 +399,5 @@ function envelopedCosine(x, y, z) {
     else {
         return [0, 0, 0, 0];
     }
-}
-function saveModel(modules) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const model = createModel(modules, "ScalarField");
-        const anchor1 = document.createElement("a");
-        anchor1.href = URL.createObjectURL(new Blob([JSON.stringify(model.model)]));
-        anchor1.type = 'text/json';
-        anchor1.target = '_blank';
-        anchor1.download = 'ScalarField.gltf';
-        anchor1.click();
-        const anchor2 = document.createElement("a");
-        anchor2.href = URL.createObjectURL(new Blob([model.binary]));
-        anchor2.type = 'application/gltf-buffer';
-        anchor2.target = '_blank';
-        anchor2.download = 'ScalarField.bin';
-        anchor2.click();
-        const anchor3 = document.createElement("a");
-        const canvas = document.getElementById("canvas-gl");
-        anchor3.href = canvas.toDataURL("image/png");
-        anchor3.type = 'image/png';
-        anchor3.target = '_blank';
-        anchor3.download = 'ScalarField.png';
-        anchor3.click();
-    });
-}
-function createModel(modules, name) {
-    const indexedVertices = indexVertices(contourSurfaceData(modules, fieldRef, contourValue));
-    return {
-        model: createModelJson(name, indexedVertices),
-        binary: createBinaryBuffer(indexedVertices)
-    };
-}
-function createModelJson(name, indexedVertices) {
-    const verticesCount = indexedVertices.indices.length;
-    const uniqueVerticesCount = indexedVertices.vertices.length / 6;
-    const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
-    const totalIndicesSize = verticesCount * intScalarSize;
-    const byteStride = 6 * 4;
-    const totalVerticesSize = uniqueVerticesCount * byteStride;
-    return {
-        asset: {
-            version: "2.0"
-        },
-        scenes: [{
-                nodes: [0]
-            }],
-        nodes: [{
-                mesh: 0
-            }],
-        meshes: [{
-                primitives: [{
-                        indices: 0,
-                        attributes: {
-                            "POSITION": 1,
-                            "NORMAL": 2
-                        }
-                    }]
-            }],
-        accessors: [{
-                type: "SCALAR",
-                componentType: intScalarSize == 2 ?
-                    WebGLRenderingContext.UNSIGNED_SHORT :
-                    WebGLRenderingContext.UNSIGNED_INT,
-                bufferView: 0,
-                count: verticesCount
-            }, {
-                type: "VEC3",
-                componentType: WebGLRenderingContext.FLOAT,
-                bufferView: 1,
-                count: uniqueVerticesCount,
-                byteOffset: 0,
-                min: indexedVertices.minPos,
-                max: indexedVertices.maxPos
-            }, {
-                type: "VEC3",
-                componentType: WebGLRenderingContext.FLOAT,
-                bufferView: 1,
-                count: uniqueVerticesCount,
-                byteOffset: byteStride / 2
-            }],
-        bufferViews: [{
-                buffer: 0,
-                byteOffset: 0,
-                byteLength: totalIndicesSize
-            }, {
-                buffer: 0,
-                byteOffset: totalIndicesSize,
-                byteLength: totalVerticesSize,
-                byteStride: byteStride
-            }],
-        buffers: [{
-                uri: `./${name}.bin`,
-                byteLength: totalIndicesSize + totalVerticesSize
-            }]
-    };
-}
-function createBinaryBuffer(indexedVertices) {
-    const uniqueVerticesCount = indexedVertices.vertices.length / 6;
-    const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
-    const binaryBuffer = new ArrayBuffer(indexedVertices.indices.length * intScalarSize + indexedVertices.vertices.length * 4);
-    const arrayConstructor = intScalarSize == 2 ? Uint16Array : Uint32Array;
-    const indicesView = new arrayConstructor(binaryBuffer, 0, indexedVertices.indices.length);
-    const verticesView = new Float32Array(binaryBuffer, indicesView.byteLength);
-    indicesView.set(indexedVertices.indices);
-    verticesView.set(indexedVertices.vertices);
-    return binaryBuffer;
-}
-function indexVertices(vertices) {
-    const indexedVertices = {
-        indices: [],
-        vertices: [],
-        minPos: [2, 2, 2],
-        maxPos: [-2, -2, -2]
-    };
-    const map = {};
-    const stride = 6;
-    for (let i = 0; i < vertices.length; i += stride) {
-        const vertex = vertices.slice(i, i + stride);
-        const position = vertex.slice(0, 3);
-        const normal = vertex.slice(3, 6);
-        const nextIndex = indexedVertices.vertices.length / stride;
-        let index = lookUp(map, position, nextIndex);
-        if (index == nextIndex) {
-            const unitNormal = ether.vec3.unit([normal[0], normal[1], normal[2]]);
-            indexedVertices.vertices.push(...position, ...unitNormal);
-            indexedVertices.minPos = [
-                Math.min(position[0], indexedVertices.minPos[0]),
-                Math.min(position[1], indexedVertices.minPos[1]),
-                Math.min(position[2], indexedVertices.minPos[2])
-            ];
-            indexedVertices.maxPos = [
-                Math.max(position[0], indexedVertices.maxPos[0]),
-                Math.max(position[1], indexedVertices.maxPos[1]),
-                Math.max(position[2], indexedVertices.maxPos[2])
-            ];
-        }
-        indexedVertices.indices.push(index);
-    }
-    return indexedVertices;
-}
-function lookUp(map, position, defaultIndex) {
-    let subMap = map;
-    for (const component of position) {
-        let subSubMap = subMap[component];
-        if (subSubMap === undefined) {
-            subSubMap = {};
-            subMap[component] = subSubMap;
-        }
-        subMap = subSubMap;
-    }
-    if (subMap.index === undefined) {
-        subMap.index = defaultIndex;
-    }
-    return subMap.index;
 }
 //# sourceMappingURL=toy.js.map
