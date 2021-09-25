@@ -1,6 +1,6 @@
-import { Mat, mat4, quat, Vec } from "../../ether/latest/index.js"
+import { Mat, mat4, quat, Vec, vec3, vec4 } from "../../ether/latest/index.js"
 import { Attribute } from "./attribute.js"
-import { AttributesBuffer, Buffer } from "./buffer.js"
+import { AttributesBuffer, Buffer, IndicesBuffer } from "./buffer.js"
 import { Context } from "./context.js"
 import { asVariableInfo, VariableInfo } from "./reflection.js"
 import { Uniform } from "./uniform.js"
@@ -124,11 +124,110 @@ export type MeshPrimitive = {
 
 }
 
-export type AttributesMap = {
+export interface Renderer<I, A> {
 
-    [attributeName: string]: Attribute | undefined
+    newIndicesBuffer(byteOffset: number, byteLength: number, data: ArrayBufferLike): I
+
+    newAttributesBuffer(byteStride: number, byteOffset: number, byteLength: number, data: ArrayBufferLike): A
+
+    deleteBuffer(buffer: I | A): void
+
+    bind(attribute: string, buffer: A, byteOffset: number, normalized: boolean, variableInfo: VariableInfo): void
+
+    bindIndices(buffer: I): void
+
+    setToZero(attribute: string): void
+
+    setIndexComponentType(componentType: GLenum): void
+
+    draw(componentType: GLenum, mode: GLenum, count: number, byteOffset: number): void
+
+    drawIndexed(mode: GLenum, count: number, byteOffset: number): void
+
+    positionsMat: Mat<4>
+
+    normalsMat: Mat<4>
 
 }
+
+export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
+
+    constructor(
+        private context: Context, 
+        private attributes: Record<string, Attribute>, 
+        private positionsMatUniform: Uniform, 
+        private normalsMatUniform: Uniform
+    ) {        
+    }
+
+    newIndicesBuffer(byteOffset: number, byteLength: number, data: ArrayBuffer): IndicesBuffer {
+        const buffer = this.context.newIndicesBuffer()
+        buffer.data = new Uint8Array(data, byteOffset, byteLength)
+        return buffer
+    }
+
+    newAttributesBuffer(byteStride: number, byteOffset: number, byteLength: number, data: ArrayBuffer): AttributesBuffer {
+        const buffer = this.context.newAttributesBuffer(byteStride)
+        buffer.data = new Uint8Array(data, byteOffset, byteLength)
+        return buffer
+    }
+
+    deleteBuffer(buffer: Buffer): void {
+        buffer.delete()
+    }
+
+    bind(attributeName: string, buffer: AttributesBuffer, byteOffset: number, normalized: boolean, variableInfo: VariableInfo): void {
+        const attribute = this.attributes[attributeName]
+        if (attribute) {
+            attribute.pointTo(buffer, byteOffset, normalized, variableInfo)
+        }
+    }
+
+    bindIndices(buffer: IndicesBuffer): void {
+        buffer.bind()
+    }
+
+    setToZero(attributeName: string): void {
+        const attribute = this.attributes[attributeName]
+        if (attribute instanceof AttributesBuffer) {
+            attribute.setTo(0)
+        }
+    }
+
+    setIndexComponentType(componentType: number): void {
+        if (componentType === WebGLRenderingContext.UNSIGNED_INT) {
+            const ext = this.context.gl.getExtension('OES_element_index_uint')
+            if (!ext) {
+                failure("OES_element_index_uint extension is not supported")
+            }
+        }
+    }
+
+    draw(componentType: number, mode: number, count: number, byteOffset: number): void {
+        this.context.gl.drawElements(mode, count, componentType, byteOffset)
+    }
+
+    drawIndexed(mode: number, count: number, byteOffset: number): void {
+        this.context.gl.drawArrays(mode, byteOffset, count)
+    }
+
+    get positionsMat(): Mat<4> {
+        return asMat(this.positionsMatUniform.data)
+    }
+
+    set positionsMat(mat: Mat<4>) {
+        this.positionsMatUniform.data = mat4.columnMajorArray(mat)
+    }
+
+    get normalsMat(): Mat<4> {
+        return asMat(this.normalsMatUniform.data)
+    }
+
+    set normalsMat(mat: Mat<4>) {
+        this.normalsMatUniform.data = mat4.columnMajorArray(mat)
+    }
+
+} 
 
 type SideEffect = () => void
 
@@ -141,38 +240,37 @@ async function fetchBuffer(bufferRef: BufferRef, baseUri: string): Promise<Array
         failure(`Buffer at '${bufferRef.uri}' does not have expected length of ${bufferRef.byteLength} bytes!`)
 }
 
-class ActiveBufferView {
+class ActiveBufferView<I, A> {
 
-    readonly buffer: Buffer
+    readonly buffer: I | A
 
-    constructor(bufferView: BufferView, buffers: ArrayBufferLike[], indices: boolean, context: Context) {
+    constructor(bufferView: BufferView, buffers: ArrayBufferLike[], indices: boolean, private renderer: Renderer<I, A>) {
         this.buffer = indices ?
-            context.newIndicesBuffer() :
-            context.newAttributesBuffer(bufferView.byteStride ?? 0)
-        this.buffer.data = new Uint8Array(buffers[bufferView.buffer], bufferView.byteOffset ?? 0, bufferView.byteLength)
+            renderer.newIndicesBuffer(bufferView.byteOffset ?? 0, bufferView.byteLength, buffers[bufferView.buffer]) :
+            renderer.newAttributesBuffer(bufferView.byteStride ?? 0, bufferView.byteOffset ?? 0, bufferView.byteLength, buffers[bufferView.buffer])
     }
 
     delete() {
-        this.buffer.delete()
+        this.renderer.deleteBuffer(this.buffer)
     }
 
 }
 
-class ActiveAccessor {
+class ActiveAccessor<I, A> {
 
-    readonly bindTo: (attribute: Attribute) => void
+    readonly bindTo: (attribute: string) => void
     readonly bindToIndex: () => void
     
-    constructor(readonly accessor: Accessor, bufferViews: ActiveBufferView[]) {
+    constructor(renderer: Renderer<I, A>, readonly accessor: Accessor, bufferViews: ActiveBufferView<I, A>[]) {
         if (accessor.bufferView !== undefined) {
             const buffer = bufferViews[accessor.bufferView].buffer
             const variableInfo = toVariableInfo(accessor)
             const byteOffset = accessor.byteOffset ?? 0
             const normalized = accessor.normalized ?? false
-            this.bindTo = attribute => attribute.pointTo(buffer as AttributesBuffer, byteOffset, normalized, variableInfo)
-            this.bindToIndex = () => buffer.bind()
+            this.bindTo = attribute => renderer.bind(attribute, buffer as A, byteOffset, normalized, variableInfo)
+            this.bindToIndex = () => renderer.bindIndices(buffer as I)
         } else {
-            this.bindTo = attribute => attribute.setTo(0)
+            this.bindTo = attribute => renderer.setToZero(attribute)
             this.bindToIndex = () => failure("Should never reach this!")
         }
     }
@@ -183,15 +281,23 @@ export interface RenderSubject {
 
     render(matrix: Mat<4>, normalsMatrix?: Mat<4>): void
 
+    readonly min: Vec<3>
+    readonly max: Vec<3>
+
+    readonly hasMesh: boolean
+
 }
 
-export class ActiveModel implements RenderSubject {
+export class ActiveModel<I, A> implements RenderSubject {
     
-    readonly bufferViews: ActiveBufferView[]
-    readonly scenes: ActiveScene[]
-    readonly defaultScene: ActiveScene
+    readonly bufferViews: ActiveBufferView<I, A>[]
+    readonly scenes: ActiveScene<I, A>[]
+    readonly defaultScene: ActiveScene<I, A>
+    readonly min: Vec<3>
+    readonly max: Vec<3>
+    readonly hasMesh: boolean
 
-    private constructor(model: Model, buffers: ArrayBufferLike[], positionsMatUniform: Uniform, normalsMatUniform: Uniform | null, attributesMap: AttributesMap, context: Context) {
+    private constructor(model: Model, buffers: ArrayBufferLike[], renderer: Renderer<I, A>) {
         const indices = new Set<number>()
         model.meshes
             .forEach(mesh => mesh.primitives
@@ -199,23 +305,26 @@ export class ActiveModel implements RenderSubject {
                 .map(p => model.accessors[p.indices ?? -1])
                 .forEach(accessor => indices.add(accessor.bufferView ?? -1))
             )
-        this.bufferViews = model.bufferViews.map((bufferView, i) => new ActiveBufferView(bufferView, buffers, indices.has(i), context))
-        const accessors = model.accessors.map(accessor => new ActiveAccessor(accessor, this.bufferViews))
-        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, attributesMap, context, positionsMatUniform, normalsMatUniform))
-        const nodes: ActiveNode[] = []
+        this.bufferViews = model.bufferViews.map((bufferView, i) => new ActiveBufferView(bufferView, buffers, indices.has(i), renderer))
+        const accessors = model.accessors.map(accessor => new ActiveAccessor(renderer, accessor, this.bufferViews))
+        const meshes = model.meshes.map(mesh => new ActiveMesh(mesh, accessors, renderer))
+        const nodes: ActiveNode<I, A>[] = []
         model.nodes.forEach(node => new ActiveNode(node, meshes, nodes))
+        this.hasMesh = nodes.some(node => node.hasMesh)
         this.scenes = model.scenes.map(scene => new ActiveScene(scene, nodes))
         this.defaultScene = this.scenes[model.scene ?? 0]
+        this.min = this.defaultScene.min
+        this.max = this.defaultScene.max
     }
 
-    static async create(modelUri: string, positionsMatUniform: Uniform, normalsMatUniform: Uniform | null, attributesMap: AttributesMap, context: Context) {
+    static async create<I, A>(modelUri: string, renderer: Renderer<I, A>) {
         const response = await fetch(modelUri, {mode : "cors"})
         const model = await response.json() as Model
         const buffers: ArrayBufferLike[] = new Array<ArrayBufferLike>(model.buffers.length)
         for (let i = 0; i < buffers.length; i++) {
             buffers[i] = await fetchBuffer(model.buffers[i], modelUri)
         }
-        return new ActiveModel(model, buffers, positionsMatUniform, normalsMatUniform, attributesMap, context)
+        return new ActiveModel(model, buffers, renderer)
     }
 
     render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix): void {
@@ -228,29 +337,61 @@ export class ActiveModel implements RenderSubject {
 
 }
 
-export class ActiveScene implements RenderSubject {
+export class ActiveScene<I, A> implements RenderSubject {
 
-    private nodes: ActiveNode[]
+    private nodes: ActiveNode<I, A>[]
+    readonly min: Vec<3>
+    readonly max: Vec<3>
+    readonly hasMesh: boolean
 
-    constructor(scene: Scene, nodes: ActiveNode[]) {
+    readonly positionsMat: Mat<4>
+    readonly normalsMat: Mat<4>
+
+    constructor(scene: Scene, nodes: ActiveNode<I, A>[]) {
         this.nodes = scene.nodes.map(child => nodes[child])
+        const nodesWithMeshes = this.nodes.filter(node => node.hasMesh)
+        this.hasMesh = nodesWithMeshes.length > 0
+        this.min = this.hasMesh ? nodesWithMeshes.map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) : [-1, -1, -1]
+        this.max = this.hasMesh ? nodesWithMeshes.map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) : [+1, +1, +1]
+
+        const s = [
+            2 / Math.abs(this.max[0] - this.min[0]),
+            2 / Math.abs(this.max[1] - this.min[1]),
+            2 / Math.abs(this.max[2] - this.min[2]),
+        ].reduce((a, b) => Math.min(a, b))
+        this.positionsMat = mat4.mul(
+            mat4.scaling(s, s, s), 
+            mat4.translation([
+                -(this.min[0] + this.max[0]) / 2,
+                -(this.min[1] + this.max[1]) / 2,
+                -(this.min[2] + this.max[2]) / 2,
+            ]),
+        )
+        this.normalsMat = this.positionsMat; // mat4.transpose(mat4.inverse(this.positionsMat))
     }
 
     render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix) {
+        const positionsMat = mat4.mul(positionsMatrix, this.positionsMat)
+        const normalsMat = mat4.mul(normalsMatrix, this.normalsMat)
         for (let node of this.nodes) {
-            node.render(positionsMatrix, normalsMatrix)
+            node.render(positionsMat, normalsMat)
         }
     }
 
 }
 
-class ActiveNode implements RenderSubject {
+class ActiveNode<I, A> implements RenderSubject {
 
     private children: Supplier<RenderSubject[]>
     private positionsMatrix: Mat<4> 
     private normalsMatrix: Mat<4> 
 
-    constructor(node: Node, meshes: ActiveMesh[], nodes: RenderSubject[]) {
+    readonly _min: Supplier<Vec<3>>
+    readonly _max: Supplier<Vec<3>>
+    readonly hasMesh: boolean
+
+    constructor(node: Node, meshes: ActiveMesh<I, A>[], nodes: RenderSubject[]) {
+        this.hasMesh = node.mesh !== undefined
         this.children = lazily(() => {
             const children = node.children !== undefined ? node.children.map(child => nodes[child]) : []
             if (node.mesh !== undefined) {
@@ -271,7 +412,26 @@ class ActiveNode implements RenderSubject {
             mat4.mul(this.positionsMatrix, mat4.scaling(...node.scale)) :
             this.positionsMatrix
         this.normalsMatrix = this.positionsMatrix // mat4.transpose(mat4.inverse(this.matrix)) 
+        const minMax: Supplier<[Vec<3>, Vec<3>]> = lazily(() => minMaxPos(
+            this.positionsMatrix,
+            this.hasMesh ? 
+                this.children().filter(node => node.hasMesh).map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) : 
+                [-1, -1, -1],
+            this.hasMesh ? 
+                this.children().filter(node => node.hasMesh).map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) :
+                [+1, +1, +1] 
+        ))
+        this._min = lazily(() => minMax()[0])
+        this._max = lazily(() => minMax()[1])
         nodes.push(this)
+    }
+
+    get min(): Vec<3> {
+        return this._min()
+    }
+
+    get max(): Vec<3> {
+        return this._max()
     }
 
     render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
@@ -284,26 +444,46 @@ class ActiveNode implements RenderSubject {
 
 }
 
-class ActiveMesh implements RenderSubject {
+function minMaxPos(mat: Mat<4>, min: Vec<3>, max: Vec<3>): [Vec<3>, Vec<3>] {
+    let positions: Vec<4>[] = [
+        [min[0], min[1], min[2], 1],
+        [min[0], min[1], max[2], 1],
+        [min[0], max[1], min[2], 1],
+        [min[0], max[1], max[2], 1],
+        [max[0], min[1], min[2], 1],
+        [max[0], min[1], max[2], 1],
+        [max[0], max[1], min[2], 1],
+        [max[0], max[1], max[2], 1],
+    ]
+    positions = positions.map(p => mat4.apply(mat, p))
+    const minPos = positions.reduce((prev, curr) => vec4.min(prev, curr))
+    const maxPos = positions.reduce((prev, curr) => vec4.max(prev, curr))
+    return [
+        [minPos[0], minPos[1], minPos[2]],
+        [maxPos[0], maxPos[1], maxPos[2]],
+    ]
+}
 
-    private primitives: ActiveMeshPrimitive[]
+class ActiveMesh<I, A> implements RenderSubject {
+
+    private primitives: ActiveMeshPrimitive<I, A>[]
+    readonly min: Vec<3>
+    readonly max: Vec<3>
+    readonly hasMesh = true
 
     constructor(
         mesh: Mesh,
-        accessors: ActiveAccessor[], 
-        attributeMap: AttributesMap,
-        context: Context,
-        private positionsMatUniform: Uniform, 
-        private normalsMatUniform: Uniform | null
+        accessors: ActiveAccessor<I, A>[], 
+        private renderer: Renderer<I, A>
     ) {
-        this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, attributeMap, context))
+        this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, renderer))
+        this.min = this.primitives.map(primitive => primitive.min).reduce((prev, curr) => vec3.min(prev, curr))
+        this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => vec3.max(prev, curr))
     }
 
     render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
-        this.positionsMatUniform.data = mat4.columnMajorArray(parentPositionsMatrix)
-        if (this.normalsMatUniform !== null) {
-            this.normalsMatUniform.data = mat4.columnMajorArray(parentNormalsMatrix)
-        }
+        this.renderer.positionsMat = parentPositionsMatrix
+        this.renderer.normalsMat = parentNormalsMatrix
         for (const primitive of this.primitives) {
             primitive.render()
         }
@@ -311,43 +491,39 @@ class ActiveMesh implements RenderSubject {
 
 }
 
-class ActiveMeshPrimitive {
+class ActiveMeshPrimitive<I, A> {
 
     private sideEffects: SideEffect[] = []
+    readonly min: Vec<3>
+    readonly max: Vec<3>
 
     constructor(
         meshPrimitive: MeshPrimitive, 
-        accessors: ActiveAccessor[], 
-        attributeMap: AttributesMap,
-        context: Context
+        accessors: ActiveAccessor<I, A>[], 
+        renderer: Renderer<I, A>
     ) {
+        const accessor = accessors[meshPrimitive.attributes["POSITION"]].accessor
+        this.min = accessor.min ? [accessor.min[0], accessor.min[1], accessor.min[2]] : [-1, -1, -1]
+        this.max = accessor.max ? [accessor.max[0], accessor.max[1], accessor.max[2]] : [+1, +1, +1]
         const indicesAccessor = meshPrimitive.indices !== undefined ? accessors[meshPrimitive.indices] : null 
         let count = indicesAccessor ? indicesAccessor.accessor.count : Number.MAX_SAFE_INTEGER 
         for (let attributeName in meshPrimitive.attributes) {
-            const attribute = attributeMap[attributeName]
             const accessorIndex = meshPrimitive.attributes[attributeName]
             const accessor = accessors[accessorIndex]
-            if (attribute) {
-                this.sideEffects.push(() => accessor.bindTo(attribute))
-            }
+            this.sideEffects.push(() => accessor.bindTo(attributeName))
             if (!indicesAccessor && accessor.accessor.count < count) {
                 count = accessor.accessor.count
             }
         }
         count %= Number.MAX_SAFE_INTEGER
         if (indicesAccessor) {
+            renderer.setIndexComponentType(indicesAccessor.accessor.componentType)
             this.sideEffects.push(indicesAccessor.bindToIndex)
-        }
-        if (indicesAccessor?.accessor.componentType === WebGLRenderingContext.UNSIGNED_INT) {
-            const ext = context.gl.getExtension('OES_element_index_uint')
-            if (!ext) {
-                failure("OES_element_index_uint extension is not supported")
-            }
         }
         const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES
         this.sideEffects.push(indicesAccessor ?
-            () => context.gl.drawElements(mode, count, indicesAccessor.accessor.componentType, indicesAccessor.accessor.byteOffset ?? 0) :
-            () => context.gl.drawArrays(mode, 0, count)
+            () => renderer.draw(indicesAccessor.accessor.componentType, mode, count, indicesAccessor.accessor.byteOffset ?? 0) :
+            () => renderer.drawIndexed(mode, count, 0)
         )
     }
 

@@ -29,7 +29,7 @@ let uShininess: Djee.Uniform;
 let uFogginess: Djee.Uniform;
 
 let modelIndex: ModelIndexEntry[]
-let model: gltf.ActiveModel
+let model: gltf.ActiveModel<Djee.IndicesBuffer, Djee.AttributesBuffer>
 
 let modelTransformer: Gear.Transformer
 let viewTransformer: Gear.Transformer
@@ -138,10 +138,11 @@ function selected<T>(value: string): Gear.Predicate<T> {
 function modelLoader(): Gear.Sink<string> {
     return Gear.sinkFlow(flow => flow.defaultsTo('ScalarField').producer(async (modelId) => {
         const modelUri = getModelUri(modelId)
-        model = await gltf.ActiveModel.create(modelUri, uPositionsMat, uNormalsMat, {
+        const renderer = new gltf.GLRenderer(context, {
             "POSITION" : position,
             "NORMAL" : normal,
-        }, context)
+        }, uPositionsMat, uNormalsMat)
+        model = await gltf.ActiveModel.create(modelUri, renderer)
         modelTransformer.translationMatrix = mat4.identity()
         // modelTransformer.rotationMatrix = Ether.Matrix.identity()
         modelTransformer.scaleMatrix = mat4.identity()
@@ -225,7 +226,7 @@ function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (model) {
-        model.defaultScene.render(mat4.mul(viewMatrix, modelTransformer.matrix))
+        model.render(mat4.mul(viewMatrix, modelTransformer.matrix))
     }
     gl.flush();
 }
