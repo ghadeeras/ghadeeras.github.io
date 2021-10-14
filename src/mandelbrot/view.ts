@@ -24,12 +24,13 @@ export interface View {
 }
 
 export async function view(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
+    const apiElement = required(document.getElementById("graphics-api"))
     try {
         const view = await viewGPU(julia, canvasId, center, scale)
-        console.log("Using WebGPU :-)")
+        apiElement.innerHTML = "WebGPU"
         return view
     } catch (e) {
-        console.log("Using WebGL :(")
+        apiElement.innerHTML = "WebGL"
         return await viewGL(julia, canvasId, center, scale)
     }
 }

@@ -29,12 +29,13 @@ export interface View {
 }
 
 export async function newView(canvasId: string): Promise<View> {
+    const apiElement = required(document.getElementById("graphics-api"))
     try {
         const view = await gpuView.newView(canvasId)
-        console.log("Using WebGPU :-)")
+        apiElement.innerHTML = "WebGPU"
         return view
     } catch (e) {
-        console.log("Using WebGL :(")
+        apiElement.innerHTML = "WebGL"
         return await glView.newView(canvasId)
     }
 }

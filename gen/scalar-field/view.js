@@ -11,13 +11,14 @@ import * as glView from './view.gl.js';
 import * as gpuView from './view.gpu.js';
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
+        const apiElement = required(document.getElementById("graphics-api"));
         try {
             const view = yield gpuView.newView(canvasId);
-            console.log("Using WebGPU :-)");
+            apiElement.innerHTML = "WebGPU";
             return view;
         }
         catch (e) {
-            console.log("Using WebGL :(");
+            apiElement.innerHTML = "WebGL";
             return yield glView.newView(canvasId);
         }
     });

@@ -12,13 +12,14 @@ import { ViewGL } from "./view.gl.js";
 import { required, ViewGPU } from "./view.gpu.js";
 export function view(julia, canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
+        const apiElement = required(document.getElementById("graphics-api"));
         try {
             const view = yield viewGPU(julia, canvasId, center, scale);
-            console.log("Using WebGPU :-)");
+            apiElement.innerHTML = "WebGPU";
             return view;
         }
         catch (e) {
-            console.log("Using WebGL :(");
+            apiElement.innerHTML = "WebGL";
             return yield viewGL(julia, canvasId, center, scale);
         }
     });

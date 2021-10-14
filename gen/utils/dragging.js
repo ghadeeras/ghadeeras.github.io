@@ -41,6 +41,23 @@ export class RatioDragging {
         return ratio;
     }
 }
+export class LinearDragging {
+    constructor(value, min = -1, max = 1, speed = 1) {
+        this.value = value;
+        this.min = min;
+        this.max = max;
+        this.speed = speed;
+    }
+    currentValue() {
+        return this.value();
+    }
+    mapper(value, from) {
+        return to => clamp(value + this.speed * (to[1] - from[1]), this.min, this.max);
+    }
+    finalize(value) {
+        return value;
+    }
+}
 class PositionDragging extends gear.SimpleDraggingHandler {
     constructor() {
         super(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)]);

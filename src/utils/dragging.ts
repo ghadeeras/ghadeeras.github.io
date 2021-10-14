@@ -51,6 +51,25 @@ export class RatioDragging implements gear.DraggingHandler<number> {
 
 }
 
+export class LinearDragging implements gear.DraggingHandler<number> {
+
+    constructor(private value: gear.Supplier<number>, private min: number = -1, private max: number = 1, private speed: number = 1) {
+    }
+
+    currentValue(): number {
+        return this.value();
+    }
+
+    mapper(value: number, from: gear.PointerPosition): gear.DraggingPositionMapper<number> {
+        return to => clamp(value + this.speed * (to[1] - from[1]), this.min, this.max);
+    }
+
+    finalize(value: number): number {
+        return value;
+    }
+
+}
+
 class PositionDragging extends gear.SimpleDraggingHandler<gear.PointerPosition> {
 
     constructor() {

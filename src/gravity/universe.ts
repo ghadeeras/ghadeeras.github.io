@@ -1,0 +1,159 @@
+import { DeferredComputation } from '../../gear/latest/scheduling.js'
+import * as gputils from '../djee/gpu/utils.js'
+
+const WORKGROUP_SIZE = 256
+
+export class Universe {
+
+    readonly bodiesCount: number = 16348
+    
+    private readonly workGroupsCount: number = Math.ceil(this.bodiesCount / WORKGROUP_SIZE)
+
+    private readonly computePipeline: GPUComputePipeline
+    
+    readonly bodyDescriptionsBuffer: GPUBuffer
+    private readonly universeUniformsBuffer: GPUBuffer
+    private readonly stateBuffers: [GPUBuffer, GPUBuffer]
+
+    private readonly computeBindGroups: [GPUBindGroup, GPUBindGroup]
+
+    private currentBuffer: number
+
+    private readonly universeUniformsData: number[] = [
+        // bodyPointedness: f32;
+        0.1,
+        // gravityConstant: f32;
+        1000,
+        // dT: f32;
+        0.0001
+    ]
+
+    private updateUniverseUniformsData = new DeferredComputation(() => {
+        this.device.queue.writeBuffer(this.universeUniformsBuffer, 0, new Float32Array(this.universeUniformsData))
+    })
+
+    constructor(private device: GPUDevice, computeShader: GPUShaderModule) {
+        const [bodyDescriptions, initialState] = this.createUniverse()
+        
+        /* Pipeline */
+        this.computePipeline = gputils.createComputePipeline(device, "c_main", computeShader)
+        const computeBindGroupLayout = this.computePipeline.getBindGroupLayout(0)
+
+        /* Buffers */
+        this.bodyDescriptionsBuffer = gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, new Float32Array(bodyDescriptions))
+        this.universeUniformsBuffer = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, new Float32Array(this.universeUniformsData))
+        this.stateBuffers = [
+            gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, new Float32Array(initialState)),
+            gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialState.length * Float32Array.BYTES_PER_ELEMENT),
+        ]
+
+        /* Bind Groups */
+        this.computeBindGroups = [
+            gputils.createBindGroup(this.device, computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.universeUniformsBuffer]),
+            gputils.createBindGroup(this.device, computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.universeUniformsBuffer]),
+        ]
+        
+        this.currentBuffer = 0  
+    }
+
+    get currentState() {
+        return this.stateBuffers[this.currentBuffer]
+    }
+
+    get bodyPointedness() {
+        return this.universeUniformsData[0]
+    }
+
+    set bodyPointedness(v: number) {
+        this.universeUniformsData[0] = v
+        this.updateUniverseUniformsData.perform()
+    }
+
+    get gravityConstant() {
+        return this.universeUniformsData[1]
+    }
+
+    set gravityConstant(v: number) {
+        this.universeUniformsData[1] = v
+        this.updateUniverseUniformsData.perform()
+    }
+
+    get dT() {
+        return this.universeUniformsData[2]
+    }
+
+    set dT(v: number) {
+        this.universeUniformsData[2] = v
+        this.updateUniverseUniformsData.perform()
+    }
+
+    recreateUniverse(universeRadius: number = 12) {
+        const [bodyDescriptions, initialState] = this.createUniverse(universeRadius)
+        this.device.queue.writeBuffer(this.bodyDescriptionsBuffer, 0, new Float32Array(bodyDescriptions))
+        this.device.queue.writeBuffer(this.stateBuffers[0], 0, new Float32Array(initialState))
+        this.device.queue.writeBuffer(this.stateBuffers[1], 0, new Float32Array(initialState))
+    }
+
+    private createUniverse(universeRadius: number = 12): [number[], number[]] {
+        const descriptions: number[] = []
+        const initialState: number[] = []
+
+        for (let i = 0; i < this.bodiesCount; i++) {
+            const mass = skewDown(Math.random(), 10, 0.1)
+            const radius = mass ** (1 / 3)
+            const p = randomVector(universeRadius) 
+            const v = randomVector(0.001 / mass)
+            descriptions.push(100 * mass, radius)
+            initialState.push(...p, 1, ...v, 0)
+        }
+
+        return [descriptions, initialState]
+    }
+
+    tick() {
+        this.device.queue.submit([
+            gputils.encodeCommand(this.device, encoder => {
+                gputils.computePass(encoder, pass => {
+                    pass.setPipeline(this.computePipeline)
+                    pass.setBindGroup(0, this.computeBindGroups[this.currentBuffer])
+                    pass.dispatch(this.workGroupsCount)
+                })
+            })
+        ])
+        this.currentBuffer ^= 1
+    }
+
+}
+
+function randomVector(radius: number): [number, number, number] {
+    const ya = Math.PI * (Math.random() + Math.random()) / 2
+    const xa = 2 * Math.PI * Math.random()
+    const r = radius * skewUp(Math.random(), 100) // (1 - Math.abs(Math.random() + Math.random() - 1))
+    const ry = r * Math.sin(ya)
+    const x = ry * Math.cos(xa)
+    const y = r * Math.cos(ya)
+    const z = ry * Math.sin(xa)
+    return [x, y, z]
+}
+
+function skewDown(x: number, s: number, m: number = 0): number {
+    const r = x ** s
+    return r * (1 - m)
+}
+
+function skewUp(x: number, s: number, m: number = 0): number {
+    return 1 - skewDown(1 - x, s, m)
+}
+
+function skewMid(x: number, s: number): number {
+    const y = 2 * x - 1
+    const z = y >= 0 ?
+        +skewDown(+y, s, 0) :
+        -skewDown(-y, s, 0)
+    return (z + 1) / 2
+}
+
+export async function newUniverse(device: GPUDevice) {
+    const shaderModule = await gputils.loadShaderModule(device, "gravity-compute.wgsl")
+    return new Universe(device, shaderModule)
+}
