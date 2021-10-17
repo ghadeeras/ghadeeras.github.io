@@ -7,9 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { fetchFiles } from "../gear/all.js";
-import { ViewGL } from "./view.gl.js";
-import { required, ViewGPU } from "./view.gpu.js";
+import { viewGL } from "./view.gl.js";
+import { required, viewGPU } from "./view.gpu.js";
 export function view(julia, canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));
@@ -22,26 +21,6 @@ export function view(julia, canvasId, center, scale) {
             apiElement.innerHTML = "WebGL";
             return yield viewGL(julia, canvasId, center, scale);
         }
-    });
-}
-export function viewGL(julia, canvasId, center, scale) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield fetchFiles({
-            vertexShaderCode: "mandelbrot.vert",
-            fragmentShaderCode: "mandelbrot.frag"
-        }, "/shaders");
-        return new ViewGL(julia, canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, center, scale);
-    });
-}
-export function viewGPU(julia, canvasId, center, scale) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield fetchFiles({
-            shaderCode: "mandelbrot.wgsl"
-        }, "/shaders");
-        const gpu = required(navigator.gpu);
-        const adapter = required(yield gpu.requestAdapter());
-        const device = yield adapter.requestDevice();
-        return new ViewGPU(julia, device, adapter, canvasId, shaders.shaderCode, center, scale);
     });
 }
 //# sourceMappingURL=view.js.map

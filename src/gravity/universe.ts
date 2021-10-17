@@ -5,7 +5,7 @@ const WORKGROUP_SIZE = 256
 
 export class Universe {
 
-    readonly bodiesCount: number = 16348
+    readonly bodiesCount: number = 16384
     
     private readonly workGroupsCount: number = Math.ceil(this.bodiesCount / WORKGROUP_SIZE)
 
@@ -25,7 +25,9 @@ export class Universe {
         // gravityConstant: f32;
         1000,
         // dT: f32;
-        0.0001
+        0.0001,
+        // padding
+        0
     ]
 
     private updateUniverseUniformsData = new DeferredComputation(() => {

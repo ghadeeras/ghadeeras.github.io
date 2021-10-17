@@ -22,7 +22,7 @@ export function createBuffer(device, usage, bufferDataOrSize) {
             mappedAtCreation: true,
         });
         const mappedRange = new Uint8Array(buffer.getMappedRange());
-        mappedRange.set(new Uint8Array(bufferDataOrSize.buffer));
+        mappedRange.set(new Uint8Array(bufferDataOrSize.buffer, bufferDataOrSize.byteOffset, bufferDataOrSize.byteLength));
         buffer.unmap();
         return buffer;
     }
@@ -58,6 +58,12 @@ export function readCopySrcBuffer(device, buffer, size, offset = 0) {
         }
     });
 }
+export function writeToBuffer(device, buffer, data, size = data.length, bufferOffset = 0, dataOffset = bufferOffset) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const wordSize = data.BYTES_PER_ELEMENT;
+        device.queue.writeBuffer(buffer, bufferOffset * wordSize, data.buffer, dataOffset * wordSize, size * wordSize);
+    });
+}
 export function encodeCommand(device, encoding) {
     const encoder = device.createCommandEncoder();
     try {
@@ -69,13 +75,21 @@ export function encodeCommand(device, encoding) {
 }
 export function computePass(encoder, passSetter) {
     const pass = encoder.beginComputePass();
-    passSetter(pass);
-    pass.endPass();
+    try {
+        passSetter(pass);
+    }
+    finally {
+        pass.endPass();
+    }
 }
 export function renderPass(encoder, descriptor, passSetter) {
     const pass = encoder.beginRenderPass(descriptor);
-    passSetter(pass);
-    pass.endPass();
+    try {
+        passSetter(pass);
+    }
+    finally {
+        pass.endPass();
+    }
 }
 export function depthAttachment(depthTexture) {
     return {
@@ -106,6 +120,18 @@ export function loadShaderModule(device, shaderName) {
         const shaderModule = device.createShaderModule({
             code: shaderCodes["shader"]
         });
+        if (shaderModule === null || (yield hasCompilationErrors(shaderModule))) {
+            throw new Error("Module compilation failed!");
+        }
+        return shaderModule;
+    });
+}
+function hasCompilationErrors(shaderModule) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!shaderModule.compilationInfo) {
+            // TODO remove check when compilationInfo becomes supported in all browsers. 
+            return false;
+        }
         const info = yield shaderModule.compilationInfo();
         for (const message of info.messages) {
             switch (message.type) {
@@ -121,10 +147,21 @@ export function loadShaderModule(device, shaderName) {
                 default:
             }
         }
-        if (info.messages.some(m => m.type == "error")) {
-            throw new Error("Module compilation failed!");
+        return info.messages.some(m => m.type == "error");
+    });
+}
+export function assertValidations(device, expression) {
+    return __awaiter(this, void 0, void 0, function* () {
+        device.pushErrorScope("validation");
+        try {
+            return expression();
         }
-        return shaderModule;
+        finally {
+            const error = yield device.popErrorScope();
+            if (error !== null) {
+                throw error;
+            }
+        }
     });
 }
 export function gpuObjects() {

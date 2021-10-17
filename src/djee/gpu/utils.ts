@@ -22,7 +22,7 @@ export function createBuffer(device: GPUDevice, usage: GPUBufferUsageFlags, buff
             mappedAtCreation: true,
         })
         const mappedRange = new Uint8Array(buffer.getMappedRange())
-        mappedRange.set(new Uint8Array(bufferDataOrSize.buffer))
+        mappedRange.set(new Uint8Array(bufferDataOrSize.buffer, bufferDataOrSize.byteOffset, bufferDataOrSize.byteLength))
         buffer.unmap()
         return buffer
     }
@@ -57,6 +57,11 @@ export async function readCopySrcBuffer(device: GPUDevice, buffer: GPUBuffer, si
     }
 }
 
+export async function writeToBuffer(device: GPUDevice, buffer: GPUBuffer, data: TypedArray, size: number = data.length, bufferOffset: number = 0, dataOffset: number = bufferOffset) {
+    const wordSize = data.BYTES_PER_ELEMENT
+    device.queue.writeBuffer(buffer, bufferOffset * wordSize, data.buffer, dataOffset * wordSize, size * wordSize)
+}
+
 export function encodeCommand(device: GPUDevice, encoding: (encoder: GPUCommandEncoder) => void): GPUCommandBuffer {
     const encoder = device.createCommandEncoder()
     try {
@@ -68,14 +73,20 @@ export function encodeCommand(device: GPUDevice, encoding: (encoder: GPUCommandE
 
 export function computePass(encoder: GPUCommandEncoder, passSetter: (pass: GPUComputePassEncoder) => void): void {
     const pass = encoder.beginComputePass()
-    passSetter(pass)
-    pass.endPass()
+    try {
+        passSetter(pass)
+    } finally {
+        pass.endPass()
+    }
 }
 
 export function renderPass(encoder: GPUCommandEncoder, descriptor: GPURenderPassDescriptor, passSetter: (pass: GPURenderPassEncoder) => void): void {
     const pass = encoder.beginRenderPass(descriptor)
-    passSetter(pass)
-    pass.endPass()
+    try {
+        passSetter(pass)
+    } finally {
+        pass.endPass()
+    }
 }
 
 export function depthAttachment(depthTexture: GPUTexture): GPURenderPassDepthStencilAttachment {
@@ -111,6 +122,18 @@ export async function loadShaderModule<K extends string>(device: GPUDevice, shad
         code: shaderCodes["shader"]
     })
 
+    if (shaderModule === null || await hasCompilationErrors(shaderModule)) {
+        throw new Error("Module compilation failed!")
+    }
+
+    return shaderModule
+}
+
+async function hasCompilationErrors(shaderModule: GPUShaderModule) {
+    if (!shaderModule.compilationInfo) {
+        // TODO remove check when compilationInfo becomes supported in all browsers. 
+        return false
+    }
     const info = await shaderModule.compilationInfo()
     for (const message of info.messages) {
         switch (message.type) {
@@ -120,12 +143,19 @@ export async function loadShaderModule<K extends string>(device: GPUDevice, shad
             default:
         }
     }
+    return info.messages.some(m => m.type == "error")
+}
 
-    if (info.messages.some(m => m.type == "error")) {
-        throw new Error("Module compilation failed!")
+export async function assertValidations<T>(device: GPUDevice, expression: () => T): Promise<T> {
+    device.pushErrorScope("validation")
+    try {
+        return expression()
+    } finally {
+        const error = await device.popErrorScope()
+        if (error !== null) {
+            throw error
+        }
     }
-
-    return shaderModule
 }
 
 export async function gpuObjects(): Promise<[GPUDevice, GPUAdapter]> {

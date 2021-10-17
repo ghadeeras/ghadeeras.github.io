@@ -30,7 +30,7 @@ let redVec = vec2<f32>(1.0, 0.0);
 let greenVec = vec2<f32>(-0.5, 0.86602540378443864676372317075294);
 let blueVec = vec2<f32>(-0.5, -0.86602540378443864676372317075294);
 
-let white = vec3<f32>(1.0);
+let white = vec3<f32>(1.0, 1.0, 1.0);
 
 fn component(v: vec2<f32>, c: vec2<f32>) -> f32 {
     return (dot(v, c) + 1.0) / 2.0;

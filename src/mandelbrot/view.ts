@@ -1,7 +1,6 @@
 import { Vec } from "../../ether/latest/index.js"
-import { fetchFiles } from "../gear/all.js"
-import { ViewGL } from "./view.gl.js"
-import { required, ViewGPU } from "./view.gpu.js"
+import { viewGL } from "./view.gl.js"
+import { required, viewGPU } from "./view.gpu.js"
 
 export interface View {
 
@@ -33,22 +32,4 @@ export async function view(julia: boolean, canvasId: string, center: Vec<2>, sca
         apiElement.innerHTML = "WebGL"
         return await viewGL(julia, canvasId, center, scale)
     }
-}
-
-export async function viewGL(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
-    const shaders = await fetchFiles({ 
-        vertexShaderCode: "mandelbrot.vert", 
-        fragmentShaderCode: "mandelbrot.frag"
-    }, "/shaders")
-    return new ViewGL(julia, canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, center, scale)
-}
-
-export async function viewGPU(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
-    const shaders = await fetchFiles({ 
-        shaderCode: "mandelbrot.wgsl"
-    }, "/shaders")
-    const gpu = required(navigator.gpu)
-    const adapter = required(await gpu.requestAdapter())
-    const device = await adapter.requestDevice()
-    return new ViewGPU(julia, device, adapter, canvasId, shaders.shaderCode, center, scale)
 }

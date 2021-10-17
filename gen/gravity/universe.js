@@ -13,7 +13,7 @@ const WORKGROUP_SIZE = 256;
 export class Universe {
     constructor(device, computeShader) {
         this.device = device;
-        this.bodiesCount = 16348;
+        this.bodiesCount = 16384;
         this.workGroupsCount = Math.ceil(this.bodiesCount / WORKGROUP_SIZE);
         this.universeUniformsData = [
             // bodyPointedness: f32;
@@ -21,7 +21,9 @@ export class Universe {
             // gravityConstant: f32;
             1000,
             // dT: f32;
-            0.0001
+            0.0001,
+            // padding
+            0
         ];
         this.updateUniverseUniformsData = new DeferredComputation(() => {
             this.device.queue.writeBuffer(this.universeUniformsBuffer, 0, new Float32Array(this.universeUniformsData));

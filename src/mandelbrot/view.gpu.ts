@@ -1,9 +1,11 @@
-import { Vec } from "../../ether/latest";
-import { View } from "./view";
+import * as gputils from "../djee/gpu/utils.js";
+import { Canvas } from "../djee/gpu/canvas.js";
+import { Vec } from "../../ether/latest/index.js";
+import { View } from "./view.js";
 
 export class ViewGPU implements View {
 
-    private context: GPUCanvasContext
+    private canvas: Canvas
     private params: GPUBuffer
     private vertices: GPUBuffer
     private pipeline: GPURenderPipeline
@@ -24,7 +26,7 @@ export class ViewGPU implements View {
         private device: GPUDevice,
         adapter: GPUAdapter,
         canvasId: string,
-        shaderCode: string,
+        shaderModule: GPUShaderModule,
         center: Vec<2>,
         scale: number
     ) {
@@ -32,23 +34,16 @@ export class ViewGPU implements View {
         this.paramsData[6] = scale
         this.paramsData[9] = julia ? 1 : 0 
 
-        this.params = ViewGPU.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.paramsData);
-        this.vertices = ViewGPU.createBuffer(device, GPUBufferUsage.VERTEX, new Float32Array([
+        this.params = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.paramsData);
+        this.vertices = gputils.createBuffer(device, GPUBufferUsage.VERTEX, new Float32Array([
             -1, +1,
             -1, -1,
             +1, +1,
             +1, -1
         ]))
 
-        const canvas = document.getElementById(canvasId) as HTMLCanvasElement
-        this.context = required(canvas.getContext("webgpu") ?? canvas.getContext("gpupresent"))
-        const colorFormat = this.context.getPreferredFormat(adapter)
-        this.context.configure({
-            device: device,
-            format: colorFormat
-        })
+        this.canvas = new Canvas(canvasId, device, adapter)
 
-        const shaderModule = device.createShaderModule({ code: shaderCode });
         this.pipeline = device.createRenderPipeline({
             vertex: {
                 module: shaderModule,
@@ -66,22 +61,19 @@ export class ViewGPU implements View {
                 module: shaderModule,
                 entryPoint: "f_main",
                 targets: [{
-                    format: colorFormat
+                    format: this.canvas.format
                 }]
             },
             primitive: {
                 stripIndexFormat: "uint16",
                 topology: "triangle-strip"
+            },
+            multisample: {
+                count: this.canvas.sampleCount
             }
         })
 
-        this.paramsGroup = this.device.createBindGroup({
-            layout: this.pipeline.getBindGroupLayout(0),
-            entries: [{
-                resource: { buffer: this.params },
-                binding: 0
-            }]
-        });
+        this.paramsGroup = gputils.createBindGroup(device, this.pipeline.getBindGroupLayout(0), [this.params])
 
         const frame = () => {
             this.draw()
@@ -90,30 +82,18 @@ export class ViewGPU implements View {
         frame()
     }
     
-    private static createBuffer(device: GPUDevice, usage: GPUBufferUsageFlags, data: ArrayLike<number> & ArrayBufferView) {
-        const buffer = device.createBuffer({
-            size: data.byteLength,
-            usage: usage,
-            mappedAtCreation: true
-        });
-        const array = new Float32Array(buffer.getMappedRange());
-        array.set(data);
-        buffer.unmap();
-        return buffer;
-    }
-
     get center(): Vec<2> {
         return [this.paramsData[0], this.paramsData[1]]
     }
 
     set center(c: Vec<2>) {
         this.paramsData.set(c, 0)
-        this.device.queue.writeBuffer(this.params, 0 * 4, this.paramsData, 0, 2)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 2, 0)
     }
 
     setColor(h: number, s: number): void {
         this.paramsData.set([h, s], 2)
-        this.device.queue.writeBuffer(this.params, 2 * 4, this.paramsData, 2, 2)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 2, 2)
     }
     
     get hue(): number {
@@ -122,7 +102,7 @@ export class ViewGPU implements View {
 
     set hue(h: number) {
         this.paramsData[2] = h
-        this.device.queue.writeBuffer(this.params, 2 * 4, this.paramsData, 2, 1)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 1, 2)
     }
 
     get saturation(): number {
@@ -131,7 +111,7 @@ export class ViewGPU implements View {
 
     set saturation(s: number) {
         this.paramsData[3] = s
-        this.device.queue.writeBuffer(this.params, 3 * 4, this.paramsData, 3, 1)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 1, 3)
     }
 
     get juliaNumber(): Vec<2> {
@@ -140,7 +120,7 @@ export class ViewGPU implements View {
     
     set juliaNumber(j: Vec<2>) {
         this.paramsData.set(j, 4)
-        this.device.queue.writeBuffer(this.params, 4 * 4, this.paramsData, 4, 2)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 2, 4)
     }
     
     get scale(): number {
@@ -149,7 +129,7 @@ export class ViewGPU implements View {
 
     set scale(s: number) {
         this.paramsData[6] = s
-        this.device.queue.writeBuffer(this.params, 6 * 4, this.paramsData, 6, 1)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 1, 6)
     }
 
     get intensity(): number {
@@ -158,7 +138,7 @@ export class ViewGPU implements View {
 
     set intensity(i: number) {
         this.paramsData[7] = i
-        this.device.queue.writeBuffer(this.params, 7 * 4, this.paramsData, 7, 1)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 1, 7)
     }
 
     get palette(): number {
@@ -167,27 +147,30 @@ export class ViewGPU implements View {
 
     set palette(p: number) {
         this.paramsData[8] = p
-        this.device.queue.writeBuffer(this.params, 8 * 4, this.paramsData, 8, 1)
+        gputils.writeToBuffer(this.device, this.params, this.paramsData, 1, 8)
     }
 
     private draw() {
-        const encoder = this.device.createCommandEncoder()
-        const passDescription: GPURenderPassDescriptor = {
-            colorAttachments: [{
-                view: this.context.getCurrentTexture().createView(),
-                loadValue: { r: 0, g: 0, b: 0, a: 1 },
-                storeOp: "store"
-            }]
-        };
-        const pass = encoder.beginRenderPass(passDescription)
-        pass.setPipeline(this.pipeline)
-        pass.setVertexBuffer(0, this.vertices)
-        pass.setBindGroup(0, this.paramsGroup)
-        pass.draw(4)
-        pass.endPass()
-        this.device.queue.submit([encoder.finish()])
+        const command = gputils.encodeCommand(this.device, encoder => {
+            const passDescriptor: GPURenderPassDescriptor = {
+                colorAttachments: [this.canvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
+            };
+            gputils.renderPass(encoder, passDescriptor, pass => {
+                pass.setPipeline(this.pipeline)
+                pass.setVertexBuffer(0, this.vertices)
+                pass.setBindGroup(0, this.paramsGroup)
+                pass.draw(4)
+            })
+        })
+        this.device.queue.submit([command])
     }
 
+}
+
+export async function viewGPU(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
+    const [device, adapter] = await gputils.gpuObjects()
+    const shaderCode = await gputils.loadShaderModule(device, "mandelbrot.wgsl")
+    return new ViewGPU(julia, device, adapter, canvasId, shaderCode, center, scale)
 }
 
 export function required<T>(value: T | null | undefined): T {

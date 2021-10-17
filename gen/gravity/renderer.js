@@ -23,6 +23,10 @@ export class Renderer {
             ...this.mvpMatrix(),
             // radiusScale: f32;
             0.05,
+            // padding
+            0,
+            0,
+            0,
         ];
         this.updateRenderingUniformsData = new DeferredComputation(() => {
             this.device.queue.writeBuffer(this.renderingUniformsBuffer, 0, new Float32Array(this.renderingUniformsData));

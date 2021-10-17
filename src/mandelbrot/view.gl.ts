@@ -2,6 +2,7 @@ import * as Djee from "../djee/all.js"
 import * as Gear from "../gear/all.js"
 import { Vec } from "../../ether/latest/index.js"
 import { View } from "./view.js"
+import { fetchTextFiles } from "../../gear/latest/files.js"
 
 export class ViewGL implements View {
 
@@ -134,3 +135,11 @@ export class ViewGL implements View {
     }
 
 } 
+
+export async function viewGL(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
+    const shaders = await fetchTextFiles({ 
+        vertexShaderCode: "mandelbrot.vert", 
+        fragmentShaderCode: "mandelbrot.frag"
+    }, "/shaders")
+    return new ViewGL(julia, canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, center, scale)
+}
