@@ -1,5 +1,5 @@
 import * as Djee from "../djee/all.js"
-import * as Gear from "../gear/all.js"
+import * as Gear from "../../gear/latest/index.js"
 import { Vec } from "../../ether/latest/index.js"
 import { View } from "./view.js"
 import { fetchTextFiles } from "../../gear/latest/files.js"
@@ -14,7 +14,7 @@ export class ViewGL implements View {
     private uniformPalette: Djee.Uniform
     private uniformJuliaNumber: Djee.Uniform
 
-    private drawCall: Gear.Call = new Gear.Call(() => this.doDraw())
+    private drawCall: Gear.DeferredComputation<void> = new Gear.DeferredComputation(() => this.doDraw())
 
     constructor(
         private julia: boolean,
@@ -126,7 +126,7 @@ export class ViewGL implements View {
     }
     
     private draw() {
-        this.drawCall.later();
+        this.drawCall.perform();
     }
     
     private doDraw() {

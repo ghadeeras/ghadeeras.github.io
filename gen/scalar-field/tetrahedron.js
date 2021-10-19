@@ -7,12 +7,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as Djee from "../djee/all.js";
-import * as Ether from "../../ether/latest/index.js";
-import * as Gear from "../gear/all.js";
+import * as djee from "../djee/all.js";
+import * as ether from "../../ether/latest/index.js";
+import * as gear from "../../gear/latest/index.js";
+import * as dragging from "../utils/dragging.js";
 import { mat4, vec3, vec4 } from "../../ether/latest/index.js";
-let vertexShaderCode;
-let fragmentShaderCode;
+import { asMat } from "./view.js";
 let context;
 let position;
 let normal;
@@ -28,13 +28,17 @@ let contourValue = 0;
 const viewMatrix = mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
 const projectionMatrix = mat4.projection(2);
 export function initTetrahedronDemo() {
-    window.onload = () => Gear.load("/shaders", () => doInit(), ["vertexColors.vert", shader => vertexShaderCode = shader], ["vertexColors.frag", shader => fragmentShaderCode = shader]);
+    window.onload = () => doInit();
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield Ether.initWaModules();
-        context = Djee.Context.of("canvas-gl");
-        const program = context.link(context.vertexShader(vertexShaderCode), context.fragmentShader(fragmentShaderCode));
+        const shaders = yield gear.fetchTextFiles({
+            vertexShaderCode: "vertexColors.vert",
+            fragmentShaderCode: "vertexColors.frag"
+        }, "/shaders");
+        yield ether.initWaModules();
+        context = djee.Context.of("canvas-gl");
+        const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
         program.use();
         tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
         contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
@@ -57,51 +61,77 @@ function doInit() {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
-        const canvas = Gear.elementEvents("canvas-gl");
-        const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix));
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * (x - canvas.element.clientWidth / 2) / canvas.element.clientWidth, 2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()), flow => Gear.Flow.from(flow.filter(selected("value0")).map(([x, y]) => newTetrahedron(y, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value1")).map(([x, y]) => newTetrahedron(tetrahedron.value0, y, tetrahedron.value2, tetrahedron.value3)), flow.filter(selected("value2")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, y, tetrahedron.value3)), flow.filter(selected("value3")).map(([x, y]) => newTetrahedron(tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, y))).to(tetrahedronSink())), flow => flow
-            .filter(selected("rotation"))
-            .map(transformer.rotation)
-            .to(rotationSink()));
+        const canvas = gear.elementEvents("canvas-gl");
+        const transformer = new dragging.RotationDragging(() => asMat(matModel.data), () => mat4.mul(projectionMatrix, viewMatrix), 8);
+        const cases = {
+            rotation: new gear.Value(),
+            lightPosition: new gear.Value(),
+            contourValue: new gear.Value(),
+            value0: new gear.Value(),
+            value1: new gear.Value(),
+            value2: new gear.Value(),
+            value3: new gear.Value(),
+        };
+        const mouseBinding = gear.readableValue("mouse-binding");
+        gear.invokeLater(() => mouseBinding.flow("rotation"));
+        canvas.dragging.value.switch(mouseBinding, cases);
+        rotationTarget().value = cases.rotation
+            .then(gear.drag(transformer))
+            .defaultsTo(mat4.identity());
+        lightPositionTarget().value = cases.lightPosition
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .defaultsTo([Math.PI / 4, Math.PI / 4]);
+        contourValueTarget().value = cases.contourValue
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => y)
+            .defaultsTo(0);
+        tetrahedronTarget().value = gear.Value.from(cases.value0
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(0)), cases.value1
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(1)), cases.value2
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(2)), cases.value3
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(3))).reduce(tetrahedronAdjustor, tetrahedron).defaultsTo(tetrahedron);
     });
 }
-function tetrahedronSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(newTetrahedron(1, -1, -1, -1))
-        .producer(newTetrahedron => {
+function cornerValue(corner) {
+    return ([x, y]) => [corner, y];
+}
+function tetrahedronAdjustor(tetrahedron, cornerValue) {
+    const [corner, value] = cornerValue;
+    const values = [tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3];
+    values[corner] = value;
+    return newTetrahedron(values[0], values[1], values[2], values[3]);
+}
+function tetrahedronTarget() {
+    return new gear.Target(newTetrahedron => {
         tetrahedron = newTetrahedron;
         tetrahedronBuffer.float32Data = tetrahedronData(tetrahedron);
-        contourSurfaceBuffer.data = contourSurfaceData(tetrahedron, contourValue);
+        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
         draw();
-    }));
+    });
 }
-function contourValueSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(0)
-        .producer(newContourValue => {
+function contourValueTarget() {
+    return new gear.Target(newContourValue => {
         contourValue = newContourValue;
-        contourSurfaceBuffer.data = contourSurfaceData(tetrahedron, contourValue);
+        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue);
         draw();
-    }));
+    });
 }
-function rotationSink() {
-    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
+function rotationTarget() {
+    return new gear.Target(matrix => {
         matModel.data = mat4.columnMajorArray(matrix);
         draw();
-    }));
+    });
 }
-function lightPositionSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo([0.5, 0.5])
-        .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
-        .producer(([x, y]) => {
+function lightPositionTarget() {
+    return new gear.Target(([x, y]) => {
         lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
         draw();
-    }));
-}
-function selected(value) {
-    const mouseBinding = document.getElementById("mouse-binding");
-    return () => mouseBinding.value == value;
+    });
 }
 function contourColorData(contourValue) {
     return fieldColor(contourValue, 0.8);
@@ -182,9 +212,9 @@ function tetrahedronData(tetrahedron) {
     return tetrahedronVertexes.reduce((a, v) => a.concat(...v), []);
 }
 function contourSurfaceData(tetrahedron, contourValue) {
-    const stack = Ether.modules.mem.exports;
-    const space = Ether.modules.space.exports;
-    const scalarField = Ether.modules.scalarField.exports;
+    const stack = ether.modules.mem.exports;
+    const space = ether.modules.space.exports;
+    const scalarField = ether.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!");
     }

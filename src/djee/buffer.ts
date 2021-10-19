@@ -13,7 +13,7 @@ export abstract class Buffer {
     readonly glBuffer: WebGLBuffer
     readonly usageHint: GLenum;
 
-    protected _data: NumberArray = new Uint8Array([])
+    protected _data: NumberArray = new Float32Array([])
 
     constructor(
         readonly target: BufferTarget,

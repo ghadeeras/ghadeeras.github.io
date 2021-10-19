@@ -1,24 +1,23 @@
-import * as Djee from "../djee/all.js"
-import * as Ether from "../../ether/latest/index.js"
-import * as Gear from "../gear/all.js"
+import * as djee from "../djee/all.js"
+import * as ether from "../../ether/latest/index.js"
+import * as gear from "../../gear/latest/index.js"
+import * as dragging from "../utils/dragging.js"
 import { Mat, mat4, Vec, vec3 } from "../../ether/latest/index.js";
+import { asMat } from "./view.js";
 
-let vertexShaderCode: string;
-let fragmentShaderCode: string;
+let context: djee.Context;
 
-let context: Djee.Context;
+let position: djee.Attribute;
+let normal: djee.Attribute;
+let color: djee.Attribute;
 
-let position: Djee.Attribute;
-let normal: Djee.Attribute;
-let color: Djee.Attribute;
+let matModel: djee.Uniform;
+let lightPosition: djee.Uniform;
+let shininess: djee.Uniform;
+let fogginess: djee.Uniform;
 
-let matModel: Djee.Uniform;
-let lightPosition: Djee.Uniform;
-let shininess: Djee.Uniform;
-let fogginess: Djee.Uniform;
-
-let cubeBuffer: Djee.AttributesBuffer;
-let contourSurfaceBuffer: Djee.AttributesBuffer;
+let cubeBuffer: djee.AttributesBuffer;
+let contourSurfaceBuffer: djee.AttributesBuffer;
 
 let cube: Cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue: number = 0;
@@ -62,19 +61,21 @@ const viewMatrix = mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
 const projectionMatrix = mat4.projection(2);
 
 export function initCubeDemo() {
-    window.onload = () => Gear.load("/shaders", () => doInit(),
-        ["vertexColors.vert", shader => vertexShaderCode = shader],
-        ["vertexColors.frag", shader => fragmentShaderCode = shader]
-    );
+    window.onload = () => doInit()
 }
 
 async function doInit() {
-    await Ether.initWaModules()
-    context = Djee.Context.of("canvas-gl");
+    const shaders = await gear.fetchTextFiles({
+        vertexShaderCode: "vertexColors.vert",
+        fragmentShaderCode: "vertexColors.frag"
+    }, "/shaders")
+
+    await ether.initWaModules()
+    context = djee.Context.of("canvas-gl");
 
     const program = context.link(
-        context.vertexShader(vertexShaderCode),
-        context.fragmentShader(fragmentShaderCode)
+        context.vertexShader(shaders.vertexShaderCode),
+        context.fragmentShader(shaders.fragmentShaderCode)
     )
     program.use();
 
@@ -106,149 +107,115 @@ async function doInit() {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(1, 1, 1, 1);
 
-    const canvas = Gear.elementEvents("canvas-gl");
-    const transformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix))
-    canvas.dragging.branch(
-        flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(
-            2 * (x - canvas.element.clientWidth / 2 ) / canvas.element.clientWidth, 
-            2 * (canvas.element.clientHeight / 2 - y) / canvas.element.clientHeight
-        )).branch(
-            flow => flow.filter(selected("lightPosition")).to(lightPositionSink()),
-            flow => flow.filter(selected("contourValue")).map(([x, y]) => y).to(contourValueSink()),
-            flow => Gear.Flow.from(
-                flow.filter(selected("value0")).map(([x, y]) => newCube(
-                    y, 
-                    cube.value1,
-                    cube.value2,
-                    cube.value3,
-                    cube.value4,
-                    cube.value5,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value1")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    y,
-                    cube.value2,
-                    cube.value3,
-                    cube.value4,
-                    cube.value5,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value2")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    y,
-                    cube.value3,
-                    cube.value4,
-                    cube.value5,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value3")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    cube.value2,
-                    y,
-                    cube.value4,
-                    cube.value5,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value4")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    cube.value2,
-                    cube.value3,
-                    y,
-                    cube.value5,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value5")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    cube.value2,
-                    cube.value3,
-                    cube.value4,
-                    y,
-                    cube.value6,
-                    cube.value7
-                )),
-                flow.filter(selected("value6")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    cube.value2,
-                    cube.value3,
-                    cube.value4,
-                    cube.value5,
-                    y,
-                    cube.value7
-                )),
-                flow.filter(selected("value7")).map(([x, y]) => newCube(
-                    cube.value0, 
-                    cube.value1,
-                    cube.value2,
-                    cube.value3,
-                    cube.value4,
-                    cube.value5,
-                    cube.value6,
-                    y
-                ))
-            ).to(cubeSink())
-        ),
-        flow => flow
-            .filter(selected("rotation"))
-            .map(transformer.rotation)
-            .to(rotationSink())
-    );
-}
-
-function cubeSink(): Gear.Sink<Cube> {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(newCube(-1, -1, -1, -1, -1, -1, -1, -1))
-        .producer(newCube => {
-            cube = newCube;
-            cubeBuffer.float32Data = cubeData(cube);
-            contourSurfaceBuffer.data = contourSurfaceData(cube, contourValue);
-            draw();
-        })
+    const canvas = gear.elementEvents("canvas-gl");
+    const transformer = new dragging.RotationDragging(
+        () => asMat(matModel.data), 
+        () => mat4.mul(projectionMatrix, viewMatrix),
+        8
     )
-}
 
-function contourValueSink(): Gear.Sink<number> {
-    return Gear.sinkFlow(flow => flow
+    const cases = {
+        rotation: new gear.Value<gear.Dragging>(),
+        lightPosition: new gear.Value<gear.Dragging>(),
+        contourValue: new gear.Value<gear.Dragging>(),
+        value0: new gear.Value<gear.Dragging>(),
+        value1: new gear.Value<gear.Dragging>(),
+        value2: new gear.Value<gear.Dragging>(),
+        value3: new gear.Value<gear.Dragging>(),
+        value4: new gear.Value<gear.Dragging>(),
+        value5: new gear.Value<gear.Dragging>(),
+        value6: new gear.Value<gear.Dragging>(),
+        value7: new gear.Value<gear.Dragging>(),
+    }
+    const mouseBinding = gear.readableValue("mouse-binding")
+    gear.invokeLater(() => mouseBinding.flow("rotation"))
+    canvas.dragging.value.switch(mouseBinding, cases)
+
+    rotationTarget().value = cases.rotation
+        .then(gear.drag(transformer))
+        .defaultsTo(mat4.identity())
+
+    lightPositionTarget().value = cases.lightPosition
+        .then(gear.drag(dragging.positionDragging))
+        .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+        .defaultsTo([Math.PI / 4, Math.PI / 4])
+
+    contourValueTarget().value = cases.contourValue
+        .then(gear.drag(dragging.positionDragging))
+        .map(([x, y]) => y)
         .defaultsTo(0)
-        .producer(newContourValue => {
-            contourValue = newContourValue;
-            contourSurfaceBuffer.data = contourSurfaceData(cube, contourValue);
-            draw();
-        })
-    )
+
+    cubeTarget().value = gear.Value.from(
+        cases.value0
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(0)),
+        cases.value1
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(1)),
+        cases.value2
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(2)),
+        cases.value3
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(3)),
+        cases.value4
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(4)),
+        cases.value5
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(5)),
+        cases.value6
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(6)),
+        cases.value7
+            .then(gear.drag(dragging.positionDragging))
+            .map(cornerValue(7)),
+    ).reduce(cubeAdjustor, cube).defaultsTo(cube)
 }
 
-function rotationSink(): Gear.Sink<Mat<4>> {
-    return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
-        matModel.data = mat4.columnMajorArray(matrix);
-        draw();
-    }));
+type CubeCorner = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+type CubeCornerValue = [CubeCorner, number]
+
+function cornerValue(corner: CubeCorner): (xy: ether.Vec<2>) => CubeCornerValue {
+    return ([x, y]) => [corner, y]
+} 
+
+function cubeAdjustor(cube: Cube, cornerValue: number[]): Cube {
+    const [corner, value] = cornerValue
+    const values = [cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7]
+    values[corner] = value
+    return newCube(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7])
 }
 
-function lightPositionSink(): Gear.Sink<Gear.PointerPosition> {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo([0.5, 0.5])
-        .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
-        .producer(([x, y]) => {
-            lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
-            draw();
-        })
-    );
+function cubeTarget(): gear.Target<Cube> {
+    return new gear.Target(newCube => {
+        cube = newCube
+        cubeBuffer.float32Data = cubeData(cube)
+        contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue)
+        draw()
+    })
 }
 
-function selected<T>(value: string): Gear.Predicate<T> {
-    const mouseBinding = document.getElementById("mouse-binding") as HTMLInputElement;
-    return () => mouseBinding.value == value;
+function contourValueTarget(): gear.Target<number> {
+    return new gear.Target(newContourValue => {
+        contourValue = newContourValue
+        contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue)
+        draw()
+    })
+}
+
+function rotationTarget(): gear.Target<Mat<4>> {
+    return new gear.Target(matrix => {
+        matModel.data = mat4.columnMajorArray(matrix)
+        draw()
+    })
+}
+
+function lightPositionTarget(): gear.Target<gear.PointerPosition> {
+    return new gear.Target<gear.PointerPosition>(([x, y]) => {
+        lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)]
+        draw()
+    })
 }
 
 function contourColorData(contourValue: number) {
@@ -386,9 +353,9 @@ function cubeData(cube: Cube): number[] {
 }
 
 function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
-    const stack = Ether.modules.mem.exports;
-    const space = Ether.modules.space.exports;
-    const scalarField = Ether.modules.scalarField.exports;
+    const stack = ether.modules.mem.exports;
+    const space = ether.modules.space.exports;
+    const scalarField = ether.modules.scalarField.exports;
     if (!stack || !space || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!")
     }

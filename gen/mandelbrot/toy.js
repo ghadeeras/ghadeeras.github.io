@@ -7,79 +7,145 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { view } from "./view.js";
-import * as Gear from "../gear/all.js";
+import * as gear from "../../gear/latest/index.js";
 import { vec2 } from "../../ether/latest/index.js";
-let audioContext = null;
-let center = [-0.75, 0];
-let scale = 2;
-let mouseBindingElement;
-let canvas;
-let mandelbrotView;
-let juliaView;
-let centerSpan;
-let scaleSpan;
-let hueSpan;
-let saturationSpan;
-let intensitySpan;
-let paletteSpan;
-let clickPosSpan;
+import { view } from "./view.js";
+import { positionDragging } from "../utils/dragging.js";
+let audioContext;
 export function init() {
     window.onload = () => doInit();
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        mouseBindingElement = document.getElementById("mouse-binding");
-        mouseBindingElement.onkeypress = e => {
-            e.preventDefault();
+        const mandelbrotView = yield view(false, "canvas-gl", [-0.75, 0], 2);
+        const juliaView = yield view(true, "julia-gl", [0, 0], 4);
+        const toComplexNumber = (p) => vec2.add(vec2.scale(p, mandelbrotView.scale), mandelbrotView.center);
+        const transformation = transformationTarget(mandelbrotView);
+        const color = colorTarget(mandelbrotView, juliaView);
+        const intensity = intensityTarget(mandelbrotView, juliaView);
+        const palette = paletteTarget(mandelbrotView, juliaView);
+        const julia = juliaTarget(juliaView);
+        const canvas = gear.ElementEvents.create("canvas-gl");
+        const mouseBinding = mouseBindingValue();
+        const cases = {
+            move: new gear.Value(),
+            zoom: new gear.Value(),
+            color: new gear.Value(),
+            intensity: new gear.Value(),
+            palette: new gear.Value(),
+            julia: new gear.Value(),
         };
-        window.onkeypress = (e) => {
-            const key = e.key.toUpperCase();
-            const act = action(key);
-            if (act != null) {
-                mouseBindingElement.value = act;
-            }
-        };
-        mandelbrotView = yield view(false, "canvas-gl", center, scale);
-        juliaView = yield view(true, "julia-gl", [0, 0], 4);
-        centerSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(center)
-            .map(pos => pos.map(c => c.toPrecision(3)))
-            .map(pos => "( " + pos[0] + ", " + pos[1] + ")")
-            .to(Gear.text("center")));
-        scaleSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(scale)
-            .map(s => s.toPrecision(3).toString())
-            .to(Gear.text("scale")));
-        hueSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(mandelbrotView.hue)
-            .map(h => h.toPrecision(3).toString())
-            .to(Gear.text("hue")));
-        saturationSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(mandelbrotView.saturation)
-            .map(s => s.toPrecision(3).toString())
-            .to(Gear.text("saturation")));
-        intensitySpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(mandelbrotView.intensity)
-            .map(i => i.toPrecision(3).toString())
-            .to(Gear.text("intensity")));
-        paletteSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(mandelbrotView.palette)
-            .map(s => s.toPrecision(3).toString())
-            .to(Gear.text("palette")));
-        clickPosSpan = Gear.sinkFlow(flow => flow
-            .defaultsTo(center)
-            .map(pos => pos.map(c => c.toPrecision(9)))
-            .map(pos => "(" + pos[0] + ", " + pos[1] + ")")
-            .to(Gear.text("clickPos")));
-        canvas = Gear.ElementEvents.create("canvas-gl");
-        canvas.dragging.branch(flow => flow.filter(selected("move")).producer(d => move(d)), flow => flow.filter(selected("zoom")).producer(d => zoom(d)), flow => flow.filter(selected("color")).producer(d => colorize(d)), flow => flow.filter(selected("intensity")).producer(d => intensity(d)), flow => flow.filter(selected("palette")).producer(d => palette(d)), flow => flow.filter(selected("julia")).producer(d => julia(d)));
-        Gear.Flow.from(canvas.clickPos, canvas.touchStartPos.map(ps => ps[0]))
-            .map(pos => toComplexNumber(pos))
-            .branch(flow => flow.to(clickPosSpan))
-            .filter(selected("music"))
-            .producer(c => play(c));
+        canvas.dragging.value.switch(mouseBinding, cases);
+        transformation.value = gear.Value.from(cases.move.then(gear.drag(new Move(mandelbrotView))), cases.zoom.then(gear.drag(new Zoom(mandelbrotView)))).defaultsTo(mandelbrotView);
+        color.value = cases.color
+            .then(gear.drag(positionDragging))
+            .map(([x, y]) => vec2.of(x + 1, (y + 1) / 2))
+            .defaultsTo([mandelbrotView.hue, mandelbrotView.saturation]);
+        intensity.value = cases.intensity
+            .then(gear.drag(positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(mandelbrotView.intensity);
+        palette.value = cases.palette
+            .then(gear.drag(positionDragging))
+            .map(([x, y]) => y * 2)
+            .defaultsTo(mandelbrotView.palette);
+        julia.value = cases.julia
+            .then(gear.drag(positionDragging))
+            .map(toComplexNumber)
+            .defaultsTo(juliaView.juliaNumber);
+        const clickPos = canvas.pointerDown.value.map(canvas.positionNormalizer);
+        gear.text("clickPos").value = clickPos
+            .map(pos => toString(pos, 9))
+            .defaultsTo(toString([0, 0], 9));
+        clickPos
+            .then(gear.flowSwitch(mouseBinding.map(v => v === "music")))
+            .map(toComplexNumber)
+            .attach(play);
     });
+}
+function juliaTarget(juliaView) {
+    return new gear.Target(c => {
+        juliaView.juliaNumber = c;
+    });
+}
+function paletteTarget(mandelbrotView, juliaView) {
+    const paletteWatch = text("palette");
+    const palette = new gear.Target(p => {
+        const palette = p > 0.75 ? 1 : p < -0.75 ? 0 : (p + 0.75) / 1.5;
+        mandelbrotView.palette = palette;
+        juliaView.palette = palette;
+        paletteWatch(palette.toPrecision(3));
+    });
+    return palette;
+}
+function intensityTarget(mandelbrotView, juliaView) {
+    const intensityWatch = text("intensity");
+    const intensity = new gear.Target(intensity => {
+        mandelbrotView.intensity = intensity;
+        juliaView.intensity = intensity;
+        intensityWatch(intensity.toPrecision(3));
+    });
+    return intensity;
+}
+function colorTarget(mandelbrotView, juliaView) {
+    const hueWatch = text("hue");
+    const saturationWatch = text("saturation");
+    const color = new gear.Target(color => {
+        const [hue, saturation] = color;
+        mandelbrotView.setColor(hue, saturation);
+        juliaView.setColor(hue, saturation);
+        hueWatch(hue.toPrecision(3));
+        saturationWatch(saturation.toPrecision(3));
+    });
+    return color;
+}
+function transformationTarget(mandelbrotView) {
+    const centerWatch = text("center");
+    const scaleWatch = text("scale");
+    const transformation = new gear.Target(t => {
+        mandelbrotView.scale = t.scale;
+        mandelbrotView.center = t.center;
+        centerWatch(toString(t.center));
+        scaleWatch(t.scale.toPrecision(3));
+    });
+    return transformation;
+}
+function mouseBindingValue() {
+    const mouseBinding = gear.readableValue("mouse-binding");
+    const mouseBindingElement = document.getElementById("mouse-binding");
+    mouseBindingElement.onkeyup = mouseBindingElement.onkeydown = e => {
+        e.preventDefault();
+    };
+    window.onkeypress = (e) => {
+        const key = e.key.toUpperCase();
+        const act = action(key);
+        if (act != null) {
+            mouseBindingElement.value = act;
+            mouseBinding.flow(act);
+        }
+    };
+    return mouseBinding.defaultsTo("move");
+}
+function text(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        throw new Error(`Element with id '${elementId}' not found!`);
+    }
+    const update = [null];
+    return s => {
+        if (update[0] == null) {
+            setTimeout(() => {
+                var _a;
+                element.innerText = (_a = update[0]) !== null && _a !== void 0 ? _a : element.innerText;
+                update[0] = null;
+            }, 100);
+        }
+        update[0] = s;
+    };
+}
+function toString(v, precision = 3) {
+    const [x, y] = v.map(c => c.toPrecision(precision));
+    return `(${x}, ${y})`;
 }
 function play(c) {
     if (audioContext == null) {
@@ -117,12 +183,6 @@ function playBuffer(audioContext, audioBuffer) {
     source.connect(audioContext.destination);
     source.start();
 }
-function toComplexNumber(pos) {
-    return vec2.add(vec2.scale(toVector(pos), scale), center);
-}
-function toVector(pos) {
-    return vec2.add(vec2.div(pos, [canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2]), [-1, 1]);
-}
 function action(key) {
     switch (key.toUpperCase()) {
         case "M": return "move";
@@ -135,64 +195,55 @@ function action(key) {
         default: return null;
     }
 }
-function selected(value) {
-    return () => mouseBindingElement.value == value;
-}
-function zoom(dragging) {
-    const delta = calculateDelta(dragging.startPos, dragging.pos);
-    const power = -delta[1];
-    if (power != 0) {
-        const centerToStart = calculateDelta(canvas.center, dragging.startPos, scale);
-        const factor = Math.pow(16, power);
-        const newScale = scale * factor;
-        const newCenter = vec2.add(center, vec2.scale(centerToStart, 1 - factor));
-        if (dragging.end) {
-            scale = newScale;
-            center = newCenter;
-        }
-        mandelbrotView.scale = newScale;
-        mandelbrotView.center = newCenter;
-        scaleSpan.consumer(newScale);
-        centerSpan.consumer(newCenter);
+class Zoom {
+    constructor(view) {
+        this.view = view;
+    }
+    currentValue() {
+        return {
+            scale: this.view.scale,
+            center: this.view.center
+        };
+    }
+    mapper(value, from) {
+        return to => {
+            const delta = calculateDelta(from, to);
+            const power = -delta[1];
+            const factor = Math.pow(16, power);
+            return power == 0 ? value : {
+                scale: value.scale * factor,
+                center: vec2.sub(value.center, vec2.scale(calculateDelta([0, 0], from, value.scale), factor - 1))
+            };
+        };
+    }
+    finalize(value) {
+        return value;
     }
 }
-function move(dragging) {
-    const delta = calculateDelta(dragging.startPos, dragging.pos, scale);
-    if (vec2.length(delta) > 0) {
-        const newCenter = vec2.max(vec2.min(vec2.sub(center, delta), [+4, +4]), [-4, -4]);
-        if (dragging.end) {
-            center = newCenter;
-        }
-        mandelbrotView.center = newCenter;
-        centerSpan.consumer(newCenter);
+class Move {
+    constructor(view) {
+        this.view = view;
     }
-}
-function colorize(dragging) {
-    const hue = 2 * dragging.pos[0] / canvas.element.clientWidth;
-    const saturation = 1 - dragging.pos[1] / canvas.element.clientHeight;
-    mandelbrotView.setColor(hue, saturation);
-    juliaView.setColor(hue, saturation);
-    hueSpan.consumer(hue);
-    saturationSpan.consumer(saturation);
-}
-function intensity(dragging) {
-    const intensity = 1 - dragging.pos[1] / canvas.element.clientWidth;
-    mandelbrotView.intensity = intensity;
-    juliaView.intensity = intensity;
-    intensitySpan.consumer(intensity);
-}
-function palette(dragging) {
-    const p = 1.5 - 2 * dragging.pos[1] / canvas.element.clientWidth;
-    const palette = p > 1 ? 1 : p < 0 ? 0 : p;
-    mandelbrotView.palette = palette;
-    juliaView.palette = palette;
-    paletteSpan.consumer(palette);
-}
-function julia(dragging) {
-    const complexNumber = toComplexNumber(dragging.pos);
-    juliaView.juliaNumber = complexNumber;
+    currentValue() {
+        return {
+            scale: this.view.scale,
+            center: this.view.center
+        };
+    }
+    mapper(value, from) {
+        return to => {
+            const delta = calculateDelta(from, to, value.scale);
+            return {
+                scale: value.scale,
+                center: vec2.max(vec2.min(vec2.sub(value.center, delta), [+4, +4]), [-4, -4])
+            };
+        };
+    }
+    finalize(value) {
+        return value;
+    }
 }
 function calculateDelta(pos1, pos2, scale = 1) {
-    return vec2.div(vec2.scale(vec2.sub(pos2, pos1), 2 * scale), [canvas.element.clientWidth, -canvas.element.clientHeight]);
+    return vec2.scale(vec2.sub(pos2, pos1), scale);
 }
 //# sourceMappingURL=toy.js.map
