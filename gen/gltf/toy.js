@@ -7,10 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as Djee from "../djee/all.js";
-import { mat4, vec2 } from "../../ether/latest/index.js";
-import * as Gear from "../gear/all.js";
+import * as djee from "../djee/all.js";
+import * as ether from "../../ether/latest/index.js";
+import * as gear from "../../gear/latest/index.js";
 import * as gltf from "../djee/gltf.js";
+import * as dragging from "../utils/dragging.js";
 let context;
 let position;
 let normal;
@@ -24,17 +25,16 @@ let uShininess;
 let uFogginess;
 let modelIndex;
 let model;
-let modelTransformer;
-let viewTransformer;
 let lightPosition = [2, 2, 2];
-let viewMatrix = mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+let viewMatrix = ether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+let modelMatrix = ether.mat4.identity();
 export function init() {
     window.onload = () => doInit();
 }
-const projectionMatrix = mat4.projection(2);
+const projectionMatrix = ether.mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield Gear.fetchFiles({
+        const shaders = yield gear.fetchTextFiles({
             vertexShaderCode: "generic.vert",
             fragmentShaderCode: "generic.frag"
         }, "/shaders");
@@ -44,15 +44,17 @@ function doInit() {
         for (let entry of modelIndex) {
             modelElement.appendChild(new Option(entry.name, entry.name));
         }
-        context = Djee.Context.of("canvas-gl");
+        context = djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
         program.use();
         position = program.attribute("position");
         normal = program.attribute("normal");
         normal.setTo(0, 0, 1);
-        const canvas = Gear.elementEvents("canvas-gl");
-        viewTransformer = new Gear.Transformer(canvas.element, projectionMatrix);
-        modelTransformer = new Gear.Transformer(canvas.element, mat4.mul(projectionMatrix, viewMatrix), 4);
+        const canvas = gear.elementEvents("canvas-gl");
+        const viewRotation = new dragging.RotationDragging(() => viewMatrix, () => projectionMatrix);
+        const modelRotation = new dragging.RotationDragging(() => modelMatrix, () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const modelTranslation = new dragging.TranslationDragging(() => modelMatrix, () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const modelScale = new dragging.ScaleDragging(() => modelMatrix, 4);
         uPositionsMat = program.uniform("positionsMat");
         uNormalsMat = program.uniform("normalsMat");
         uProjectionMat = program.uniform("projectionMat");
@@ -61,7 +63,7 @@ function doInit() {
         uColor = program.uniform("color");
         uShininess = program.uniform("shininess");
         uFogginess = program.uniform("fogginess");
-        uProjectionMat.data = mat4.columnMajorArray(projectionMatrix);
+        uProjectionMat.data = ether.mat4.columnMajorArray(projectionMatrix);
         uColor.data = [0.5, 0, 0.5, 1];
         uLightPosition.data = lightPosition;
         uLightRadius.data = [0.1];
@@ -69,43 +71,69 @@ function doInit() {
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
-        Gear.readableValue("model").to(modelLoader());
-        canvas.dragging.branch(flow => flow.map(d => d.pos).map(([x, y]) => Gear.pos(2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight)).branch(flow => flow.filter(selected("lightPosition")).to(lightPositionSink()), flow => flow.filter(selected("lightRadius")).map(([x, y]) => y).to(lightRadiusSink()), flow => flow.filter(selected("color")).to(colorSink()), flow => flow.filter(selected("shininess")).map(([x, y]) => y).to(shininessSink()), flow => flow.filter(selected("fogginess")).map(([x, y]) => y).to(fogginessSink())), flow => flow
-            .filter(selected("modelRotation"))
-            .map(modelTransformer.rotation)
-            .producer(draw), flow => flow
-            .filter(selected("modelMove"))
-            .map(modelTransformer.translation)
-            .producer(draw), flow => flow
-            .filter(selected("modelScale"))
-            .map(modelTransformer.scale)
-            .producer(draw), flow => flow
-            .filter(selected("viewRotation"))
-            .map(viewTransformer.rotation)
-            .producer(m => {
-            viewMatrix = mat4.mul(m, mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]));
-            modelTransformer.viewMatrix = viewMatrix;
-            draw();
-        }));
+        const mouseBinding = gear.readableValue("mouse-binding");
+        gear.invokeLater(() => mouseBinding.flow("modelRotation"));
+        const model = gear.readableValue("model");
+        gear.invokeLater(() => model.flow("ScalarField"));
+        modelLoaderTarget().value = model;
+        const cases = {
+            lightPosition: new gear.Value(),
+            lightRadius: new gear.Value(),
+            color: new gear.Value(),
+            shininess: new gear.Value(),
+            fogginess: new gear.Value(),
+            modelRotation: new gear.Value(),
+            modelMove: new gear.Value(),
+            modelScale: new gear.Value(),
+            viewRotation: new gear.Value(),
+        };
+        canvas.dragging.value.switch(mouseBinding, cases);
+        lightPositionTarget().value = cases.lightPosition
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .defaultsTo(ether.vec2.of(0, 0));
+        lightRadiusTarget().value = cases.lightRadius
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0.1);
+        colorTarget().value = cases.color
+            .then(gear.drag(dragging.positionDragging))
+            .defaultsTo([-0.4, -0.2]);
+        shininessTarget().value = cases.shininess
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0);
+        fogginessTarget().value = cases.fogginess
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => (y + 1) / 2)
+            .defaultsTo(0);
+        modelMatrixTarget().value = gear.Value.from(cases.modelRotation.then(gear.drag(modelRotation)), cases.modelMove.then(gear.drag(modelTranslation)), cases.modelScale.then(gear.drag(modelScale)));
+        viewMatrixTarget().value = cases.viewRotation.then(gear.drag(viewRotation));
     });
 }
-function selected(value) {
-    const mouseBinding = document.getElementById("mouse-binding");
-    return () => mouseBinding.value == value;
+function modelMatrixTarget() {
+    return new gear.Target(matrix => {
+        modelMatrix = matrix;
+        draw();
+    });
 }
-function modelLoader() {
-    return Gear.sinkFlow(flow => flow.defaultsTo('ScalarField').producer((modelId) => __awaiter(this, void 0, void 0, function* () {
+function viewMatrixTarget() {
+    return new gear.Target(matrix => {
+        viewMatrix = matrix;
+        draw();
+    });
+}
+function modelLoaderTarget() {
+    return new gear.Target((modelId) => __awaiter(this, void 0, void 0, function* () {
         const modelUri = getModelUri(modelId);
         const renderer = new gltf.GLRenderer(context, {
             "POSITION": position,
             "NORMAL": normal,
         }, uPositionsMat, uNormalsMat);
         model = yield gltf.ActiveModel.create(modelUri, renderer);
-        modelTransformer.translationMatrix = mat4.identity();
-        // modelTransformer.rotationMatrix = Ether.Matrix.identity()
-        modelTransformer.scaleMatrix = mat4.identity();
+        modelMatrix = ether.mat4.identity();
         draw();
-    })));
+    }));
 }
 function getModelUri(modelId) {
     switch (modelId) {
@@ -117,63 +145,49 @@ function getModelUri(modelId) {
             return `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry === null || modelIndexEntry === void 0 ? void 0 : modelIndexEntry.variants.glTF}`;
     }
 }
-function lightPositionSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo([0, 0])
-        .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
-        .producer(([x, y]) => {
+function lightPositionTarget() {
+    return new gear.Target(([x, y]) => {
         lightPosition = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y) - 2];
         uLightPosition.data = lightPosition;
         draw();
-    }));
+    });
 }
-function lightRadiusSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(-0.8)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
+function lightRadiusTarget() {
+    return new gear.Target(value => {
         uLightRadius.data = [value];
         draw();
-    }));
+    });
 }
-function shininessSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(-1)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
+function shininessTarget() {
+    return new gear.Target(value => {
         uShininess.data = [value];
         draw();
-    }));
+    });
 }
-function colorSink() {
+function colorTarget() {
     const third = 2 * Math.PI / 3;
     const redVec = [1, 0];
     const greenVec = [Math.cos(third), Math.sin(third)];
     const blueVec = [Math.cos(2 * third), Math.sin(2 * third)];
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo([-0.4, -0.2])
-        .producer(vec => {
-        const red = Math.min(2, 1 + vec2.dot(vec, redVec)) / 2;
-        const green = Math.min(2, 1 + vec2.dot(vec, greenVec)) / 2;
-        const blue = Math.min(2, 1 + vec2.dot(vec, blueVec)) / 2;
+    return new gear.Target(vec => {
+        const red = Math.min(2, 1 + ether.vec2.dot(vec, redVec)) / 2;
+        const green = Math.min(2, 1 + ether.vec2.dot(vec, greenVec)) / 2;
+        const blue = Math.min(2, 1 + ether.vec2.dot(vec, blueVec)) / 2;
         uColor.data = [red, green, blue, 1];
         draw();
-    }));
+    });
 }
-function fogginessSink() {
-    return Gear.sinkFlow(flow => flow
-        .defaultsTo(-1)
-        .map(value => (value + 1) / 2)
-        .producer(value => {
+function fogginessTarget() {
+    return new gear.Target(value => {
         uFogginess.data = [value];
         draw();
-    }));
+    });
 }
 function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (model) {
-        model.render(mat4.mul(viewMatrix, modelTransformer.matrix));
+        model.render(ether.mat4.mul(viewMatrix, modelMatrix));
     }
     gl.flush();
 }

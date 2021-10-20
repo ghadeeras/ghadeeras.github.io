@@ -54,7 +54,7 @@ function setupControls(canvas, universe, renderer) {
     }, "r");
     gear.elementEvents(canvas.element.id).dragging.value.switch(controller, keyMappings);
     universeRotation
-        .then(gear.drag(new dragging.RotationDragging(() => renderer.modelMatrix, () => renderer.projectionViewMatrix, 24)))
+        .then(gear.drag(new dragging.RotationDragging(() => renderer.modelMatrix, () => renderer.projectionViewMatrix)))
         .later()
         .attach(m => renderer.modelMatrix = m);
     observerPosition

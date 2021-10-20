@@ -70,7 +70,7 @@ class Toy {
         this.fieldRef = this.sampleField()
 
         const canvas = gear.elementEvents("canvas-gl")
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 8)
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
         
         this.rotationTarget(view).value = canvas.dragging.value

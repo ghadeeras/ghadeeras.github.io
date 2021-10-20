@@ -1,6 +1,6 @@
 import * as ether from "../../ether/latest/index.js";
 import * as gear from "../../gear/latest/index.js";
-export class RotationDragging {
+export class ModelMatrixDragging {
     constructor(matrix, projViewMatrix, speed = 1) {
         this.matrix = matrix;
         this.projViewMatrix = projViewMatrix;
@@ -11,17 +11,50 @@ export class RotationDragging {
     }
     mapper(matrix, from) {
         const invProjViewMatrix = ether.mat4.inverse(this.projViewMatrix());
-        const actualFrom = ether.mat4.apply(invProjViewMatrix, [...from, -1, 1]);
+        const actualFrom = ether.vec3.swizzle(ether.mat4.apply(invProjViewMatrix, [...from, -1, 1]), 0, 1, 2);
+        const speed = this.speed * ether.vec3.length(actualFrom);
         return to => {
-            const actualTo = ether.mat4.apply(invProjViewMatrix, [...to, -1, 1]);
-            return ether.mat4.mul(ether.mat4.crossProdRotation(ether.vec3.swizzle(actualFrom, 0, 1, 2), ether.vec3.swizzle(actualTo, 0, 1, 2), this.speed), matrix);
+            const actualTo = ether.vec3.swizzle(ether.mat4.apply(invProjViewMatrix, [...to, -1, 1]), 0, 1, 2);
+            const delta = this.delta(actualFrom, actualTo, speed);
+            return ether.mat4.mul(delta, matrix);
         };
     }
     finalize(matrix) {
+        const s = Math.pow(ether.mat4.determinant(matrix), (1 / 3));
         const x = ether.vec4.unit(matrix[0]);
         const y = ether.vec4.unit(ether.vec4.subAll(matrix[1], ether.vec4.project(matrix[1], x)));
         const z = ether.vec4.unit(ether.vec4.subAll(matrix[2], ether.vec4.project(matrix[2], x), ether.vec4.project(matrix[2], y)));
-        return [x, y, z, matrix[3]];
+        return [
+            ether.vec4.scale(x, s),
+            ether.vec4.scale(y, s),
+            ether.vec4.scale(z, s),
+            matrix[3]
+        ];
+    }
+}
+export class RotationDragging extends ModelMatrixDragging {
+    constructor(matrix, projViewMatrix, speed = 1) {
+        super(matrix, projViewMatrix, speed);
+    }
+    delta(actualFrom, actualTo, speed) {
+        return ether.mat4.crossProdRotation(actualFrom, actualTo, speed);
+    }
+}
+export class TranslationDragging extends ModelMatrixDragging {
+    constructor(matrix, projViewMatrix, speed = 1) {
+        super(matrix, projViewMatrix, speed);
+    }
+    delta(actualFrom, actualTo, speed) {
+        return ether.mat4.translation(ether.vec3.scale(ether.vec3.sub(actualTo, actualFrom), speed));
+    }
+}
+export class ScaleDragging extends ModelMatrixDragging {
+    constructor(matrix, speed = 1) {
+        super(matrix, () => ether.mat4.identity(), speed);
+    }
+    delta(actualFrom, actualTo, speed) {
+        const s = Math.pow(2, speed * (actualTo[1] - actualFrom[1]));
+        return ether.mat4.scaling(s, s, s);
     }
 }
 export class RatioDragging {

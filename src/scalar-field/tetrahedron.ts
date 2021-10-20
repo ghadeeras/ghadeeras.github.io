@@ -99,7 +99,7 @@ async function doInit() {
     const transformer = new dragging.RotationDragging(
         () => asMat(matModel.data), 
         () => mat4.mul(projectionMatrix, viewMatrix),
-        8
+        4
     )
 
     const cases = {

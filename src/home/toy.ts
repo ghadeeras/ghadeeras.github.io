@@ -1,11 +1,7 @@
-import * as Djee from "../djee/all.js"
-import * as Gear from "../gear/all.js"
-
-let vertexShaderCode: string
-let fragmentShaderCode: string
+import * as djee from "../djee/all.js"
+import * as gear from "../../gear/latest/index.js"
 
 const mySketch = new Image()
-const fileReader = new FileReader()
 
 const square = [
     -1, +1,
@@ -15,19 +11,19 @@ const square = [
 ]
 
 export function init() {
-    window.onload = () => {
-        Gear.load("/shaders", doInit,
-            ["mandelbrot.vert", shader => vertexShaderCode = shader],
-            ["home.frag", shader => fragmentShaderCode = shader]
-        )
-    }
+    window.onload = doInit
 }
 
-function doInit() {
-    const context = Djee.Context.of("canvas")
+async function doInit() {
+    const shaders = await gear.fetchTextFiles({
+        vertexShaderCode: "mandelbrot.vert",
+        fragmentShaderCode: "home.frag"
+    }, "/shaders")
 
-    const vertexShader = context.shader(Djee.ShaderType.VertexShader, vertexShaderCode)
-    const fragmentShader = context.shader(Djee.ShaderType.FragmentShader, fragmentShaderCode)
+    const context = djee.Context.of("canvas")
+
+    const vertexShader = context.shader(djee.ShaderType.VertexShader, shaders.vertexShaderCode)
+    const fragmentShader = context.shader(djee.ShaderType.FragmentShader, shaders.fragmentShaderCode)
     const program = vertexShader.linkTo(fragmentShader)
     program.use()
 
@@ -71,14 +67,14 @@ function doInit() {
     context.canvas.ondrop = event => loadImage(event, effect)
 }
 
-function draw(context: Djee.Context) {
+function draw(context: djee.Context) {
     const gl = context.gl
     gl.viewport(0, 0, context.canvas.width, context.canvas.height)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.flush()
 }
 
-async function updateTexture(texture: Djee.Texture2D) {
+async function updateTexture(texture: djee.Texture2D) {
     const context = texture.context
     const canvas = context.canvas
     const image = await createImageBitmap(mySketch, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight, {
@@ -89,30 +85,30 @@ async function updateTexture(texture: Djee.Texture2D) {
     draw(context)
 }
 
-async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform, texture: Djee.Texture2D) {
+async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: djee.Uniform, texture: djee.Texture2D) {
     distortImage(e, mousePos)
     const image = await createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight)
     texture.setImageSource(image)
 }
 
-function distortImage(e: PointerEvent | MouseEvent, mousePos: Djee.Uniform) {
+function distortImage(e: PointerEvent | MouseEvent, mousePos: djee.Uniform) {
     e.preventDefault()
     mousePos.data = normalizePosition(e)
     draw(mousePos.program.context)
 }
 
-function restoreImage(mousePos: Djee.Uniform, effect: Djee.Uniform) {
+function restoreImage(mousePos: djee.Uniform, effect: djee.Uniform) {
     mousePos.data = [0x10000, 0x10000]
     effect.data = [(effect.data[0] + 1) % 3]
     draw(mousePos.program.context)
 }
 
-function restoreOriginalImage(e: MouseEvent,  texture: Djee.Texture2D) {
+function restoreOriginalImage(e: MouseEvent,  texture: djee.Texture2D) {
     e.preventDefault()
     updateTexture(texture)
 }
 
-function tearImage(e: DragEvent, mousePos: Djee.Uniform, effect: Djee.Uniform) {
+function tearImage(e: DragEvent, mousePos: djee.Uniform, effect: djee.Uniform) {
     e.preventDefault()
     mousePos.data = normalizePosition(e)
     if (effect.data[0] < 3) {
@@ -121,7 +117,7 @@ function tearImage(e: DragEvent, mousePos: Djee.Uniform, effect: Djee.Uniform) {
     draw(mousePos.program.context)
 }
 
-async function loadImage(e: DragEvent, effect: Djee.Uniform) {
+async function loadImage(e: DragEvent, effect: djee.Uniform) {
     e.preventDefault()
     effect.data = [effect.data[0] - 3]
     if (e.dataTransfer) {

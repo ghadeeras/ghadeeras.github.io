@@ -62,7 +62,7 @@ function doInit() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
         const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => asMat(matModel.data), () => mat4.mul(projectionMatrix, viewMatrix), 8);
+        const transformer = new dragging.RotationDragging(() => asMat(matModel.data), () => mat4.mul(projectionMatrix, viewMatrix), 4);
         const cases = {
             rotation: new gear.Value(),
             lightPosition: new gear.Value(),

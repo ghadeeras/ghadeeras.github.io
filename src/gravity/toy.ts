@@ -55,8 +55,7 @@ function setupControls(canvas: Canvas, universe: Universe, renderer: Renderer) {
     universeRotation
         .then(gear.drag(new dragging.RotationDragging(
             () => renderer.modelMatrix,
-            () => renderer.projectionViewMatrix,
-            24
+            () => renderer.projectionViewMatrix
         )))
         .later()
         .attach(m => renderer.modelMatrix = m)

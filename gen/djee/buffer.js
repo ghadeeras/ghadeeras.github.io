@@ -70,7 +70,8 @@ export class AttributesBuffer extends Buffer {
 export class IndicesBuffer extends Buffer {
     constructor(context, isDynamic = false) {
         super(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic);
-        this.type = this.glTypeOf(this._data);
+        this.type = WebGLRenderingContext.UNSIGNED_SHORT;
+        this.data = new Uint16Array([]);
     }
     glTypeOf(data) {
         if (data instanceof Uint32Array) {

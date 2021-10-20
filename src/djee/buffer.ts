@@ -101,10 +101,11 @@ export class AttributesBuffer extends Buffer {
 
 export class IndicesBuffer extends Buffer {
 
-    private type = this.glTypeOf(this._data)
+    private type = WebGLRenderingContext.UNSIGNED_SHORT
 
     constructor(context: Context, isDynamic: boolean = false) {
         super(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic)
+        this.data = new Uint16Array([])
     }
 
     private glTypeOf(data: NumberArray) {
