@@ -1,7 +1,7 @@
 import { mat4 } from "../../ether/latest/index.js";
-export class MatriciesGenerator {
+export class MatricesGenerator {
     constructor() {
-        this._verticalAngle = Math.PI / 4;
+        this._angle = Math.PI / 4;
         this._depth = 5;
         this.branch1Matrix = null;
         this.branch2Matrix = null;
@@ -17,34 +17,24 @@ export class MatriciesGenerator {
         this.init();
     }
     init() {
-        this.branch1Matrix = mat4.mul(this.translation, mat4.mul(mat4.rotation(this._verticalAngle, this.axis1), this.scaling));
-        this.branch2Matrix = mat4.mul(this.translation, mat4.mul(mat4.rotation(this._verticalAngle, this.axis2), this.scaling));
-        this.branch3Matrix = mat4.mul(mat4.translation([0, 2, 0]), mat4.mul(mat4.rotation(this._verticalAngle, this.axis3), this.scaling));
+        this.branch1Matrix = mat4.mul(this.translation, mat4.mul(mat4.rotation(this._angle, this.axis1), this.scaling));
+        this.branch2Matrix = mat4.mul(this.translation, mat4.mul(mat4.rotation(this._angle, this.axis2), this.scaling));
+        this.branch3Matrix = mat4.mul(mat4.translation([0, 2, 0]), mat4.mul(mat4.rotation(this._angle, this.axis3), this.scaling));
     }
-    get verticalAngle() {
-        return this._verticalAngle;
-    }
-    set verticalAngle(value) {
-        this._verticalAngle = value;
+    generateMatrices(depth, angle) {
+        this._depth = depth !== null && depth !== void 0 ? depth : this._depth;
+        this._angle = angle !== null && angle !== void 0 ? angle : this._angle;
         this.init();
-    }
-    get depth() {
-        return this._depth;
-    }
-    set depth(value) {
-        this._depth = value;
-    }
-    generateMatricies() {
         const result = [];
-        this.doGenerateMatricies(result, this._depth, mat4.identity());
-        return result.map(matrix => mat4.columnMajorArray(matrix));
+        this.doGenerateMatrices(result, this._depth, mat4.identity());
+        return result;
     }
-    doGenerateMatricies(result, depth, matrix) {
+    doGenerateMatrices(result, depth, matrix) {
         result.push(matrix);
         if (depth > 0 && this.branch1Matrix && this.branch2Matrix && this.branch3Matrix) {
-            this.doGenerateMatricies(result, depth - 1, mat4.mul(matrix, this.branch1Matrix));
-            this.doGenerateMatricies(result, depth - 1, mat4.mul(matrix, this.branch2Matrix));
-            this.doGenerateMatricies(result, depth - 1, mat4.mul(matrix, this.branch3Matrix));
+            this.doGenerateMatrices(result, depth - 1, mat4.mul(matrix, this.branch1Matrix));
+            this.doGenerateMatrices(result, depth - 1, mat4.mul(matrix, this.branch2Matrix));
+            this.doGenerateMatrices(result, depth - 1, mat4.mul(matrix, this.branch3Matrix));
         }
     }
 }

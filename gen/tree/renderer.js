@@ -1,14 +1,23 @@
-import * as Djee from "../djee/all.js";
-import * as Gear from "../gear/all.js";
-import { mat4, vec2, vec3 } from "../../ether/latest/index.js";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+import * as djee from "../djee/all.js";
+import * as gear from "../../gear/latest/index.js";
+import * as ether from "../../ether/latest/index.js";
 export class Renderer {
-    constructor(vertexShaderCode, fragmentShaderCode, matrices) {
-        this.translationUp = mat4.translation([0, +2, 0]);
-        this.translationDown = mat4.translation([0, -2, 0]);
-        this.view = mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
-        this.treeView = mat4.mul(this.view, this.translationUp);
-        this.proj = mat4.projection();
-        this.context = Djee.Context.of("canvas-gl");
+    constructor(vertexShaderCode, fragmentShaderCode, proj, view, inputSuppliers) {
+        this.proj = proj;
+        this.view = view;
+        this.lastTime = performance.now();
+        this.translationDown = ether.mat4.translation([0, -2, 0]);
+        const inputs = inputSuppliers();
+        this.context = djee.Context.of("canvas-gl");
         this.buffer = this.context.newAttributesBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();
         const vertexShader = this.context.vertexShader(vertexShaderCode);
@@ -23,77 +32,57 @@ export class Renderer {
         this.matSubModel = program.uniform("matSubModel");
         this.matView = program.uniform("matView");
         this.matProjection = program.uniform("matProjection");
-        const model = mat4.identity();
-        this.matModel.data = mat4.columnMajorArray(model);
-        this.matView.data = mat4.columnMajorArray(this.view);
-        this.matProjection.data = mat4.columnMajorArray(this.proj);
         this.lightPosition = program.uniform("lightPosition");
         this.color = program.uniform("color");
         this.shininess = program.uniform("shininess");
         this.fogginess = program.uniform("fogginess");
         this.twist = program.uniform("twist");
-        this.lightPosition.data = [8, 8, 8];
-        this.color.data = [0.3, 0.5, 0.7];
-        this.shininess.data = [0.0];
-        this.fogginess.data = [0.0];
-        this.twist.data = [0.0];
-        this.matrices = matrices;
-        this.draw();
-    }
-    matricesSink() {
-        return Gear.sink(matrices => {
-            if (matrices) {
-                this.matrices = matrices;
-                this.draw();
-            }
+        this.matView.data = ether.mat4.columnMajorArray(this.view);
+        this.matProjection.data = ether.mat4.columnMajorArray(this.proj);
+        this.matrices = [];
+        inputs.matrices.attach(matrices => {
+            this.matrices = matrices.map(m => ether.mat4.columnMajorArray(m));
         });
-    }
-    rotationSink() {
-        return Gear.sinkFlow(flow => flow.defaultsTo(mat4.identity()).producer(matrix => {
-            this.matModel.data = mat4.columnMajorArray(mat4.mul(this.translationUp, mat4.mul(matrix, this.translationDown)));
-            this.draw();
-        }));
-    }
-    lightPositionSink() {
-        return Gear.sinkFlow(flow => flow
-            .defaultsTo([0.5, 0.5])
-            .map(([x, y]) => [x * Math.PI / 2, y * Math.PI / 2])
-            .producer(([x, y]) => {
-            this.lightPosition.data = [8 * Math.sin(x) * Math.cos(y), 8 * Math.sin(y), 8 * Math.cos(x) * Math.cos(y)];
-            this.draw();
-        }));
-    }
-    colorSink() {
+        inputs.rotation.map(toMat3).defaultsTo(ether.mat3.identity()).attach(matrix => {
+            this.matModel.data = ether.mat4.columnMajorArray(ether.mat4.translated(matrix, [0, +2, 0]));
+        });
+        inputs.lightPosition.defaultsTo(ether.vec3.of(4, 4, 4)).attach(pos => {
+            this.lightPosition.data = pos;
+        });
         const redVec = [1, 0];
         const greenVec = [Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3)];
         const blueVec = [Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3)];
-        return Gear.sinkFlow(flow => flow
-            .defaultsTo([-0.4, -0.2])
-            .producer(vec => {
-            const red = Math.min(2, 1 + vec2.dot(vec, redVec)) / 2;
-            const green = Math.min(2, 1 + vec2.dot(vec, greenVec)) / 2;
-            const blue = Math.min(2, 1 + vec2.dot(vec, blueVec)) / 2;
-            this.color.data = [red, green, blue];
-            this.draw();
-        }));
-    }
-    shininessSink() {
-        return Gear.sink(shininess => {
+        inputs.color.defaultsTo([0.55, 0.8]).attach(([hue, saturation]) => {
+            const hueAngle = 2 * Math.PI * hue;
+            const hueVec = ether.vec2.of(Math.cos(hueAngle), Math.sin(hueAngle));
+            const red = (ether.vec2.dot(redVec, hueVec) + 1) / 2;
+            const green = (ether.vec2.dot(greenVec, hueVec) + 1) / 2;
+            const blue = (ether.vec2.dot(blueVec, hueVec) + 1) / 2;
+            const max = Math.max(red, green, blue);
+            this.color.data = ether.vec3.mix(saturation, [red / max, green / max, blue / max], [1, 1, 1]);
+        });
+        inputs.shininess.defaultsTo(0).attach(shininess => {
             this.shininess.data = [shininess];
-            this.draw();
         });
-    }
-    fogginessSink() {
-        return Gear.sink(fogginess => {
+        inputs.fogginess.defaultsTo(0).attach(fogginess => {
             this.fogginess.data = [fogginess];
-            this.draw();
         });
-    }
-    twistSink() {
-        return Gear.sink(twist => {
+        inputs.twist.defaultsTo(0).attach(twist => {
             this.twist.data = [twist];
-            this.draw();
         });
+        this.animate(20);
+    }
+    animate(maxFPS) {
+        const minPeriod = 1000 / maxFPS;
+        const frame = (time) => {
+            const dT = time - this.lastTime;
+            if (dT >= minPeriod) {
+                this.draw();
+                this.lastTime = time + (dT % minPeriod);
+            }
+            requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
     }
     draw() {
         const gl = this.context.gl;
@@ -101,29 +90,49 @@ export class Renderer {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         for (let matrix of this.matrices) {
             this.matSubModel.data = matrix;
-            for (let y = 0; y < 16; y++) {
-                gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, y * 34, 34);
-            }
+            gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, 0, this.buffer.data.byteLength / (6 * 4));
         }
         gl.flush();
     }
     vertexData() {
-        const result = [];
-        for (let i = 0; i < 16; i++) {
-            for (let j = 0; j <= 16; j++) {
-                const y1 = i / 16;
-                const y2 = (i + 1) / 16;
-                const z = Math.cos(Math.PI * j / 8);
-                const x = Math.sin(Math.PI * j / 8);
-                const r = 1 / 8;
-                const d = 2 * (1 - Math.SQRT1_2) / (1 + Math.SQRT1_2);
-                const r1 = r * (1 - d * (y1 - 0.5));
-                const r2 = r * (1 - d * (y2 - 0.5));
-                const n = vec3.unit([x, r * d, z]);
-                result.push(2 * x * r2, 2 * y2, 2 * z * r2, ...n, 2 * x * r1, 2 * y1, 2 * z * r1, ...n);
-            }
-        }
-        return result;
+        const d = 2 * (1 - Math.SQRT1_2) / (1 + Math.SQRT1_2);
+        const radiusBottom = (1 + d / 2) / 4;
+        const radiusTop = (1 - d / 2) / 4;
+        const height = 2;
+        const stacks = 8;
+        const slices = 12;
+        return cone(radiusTop, radiusBottom, height, stacks, slices);
     }
+}
+function toMat3(matrix) {
+    const vs = matrix.map(v => ether.vec3.swizzle(v, 0, 1, 2));
+    const m = [vs[0], vs[1], vs[2]];
+    return m;
+}
+function cone(radiusTop, radiusBottom, height, stacks, slices) {
+    const slope = (radiusTop - radiusBottom) / height;
+    const result = [];
+    for (let i = 0; i < stacks; i++) {
+        for (let j = 0; j <= slices; j++) {
+            const y1 = height * (i / stacks);
+            const y2 = height * ((i + 1) / stacks);
+            const r1 = radiusBottom + slope * y1;
+            const r2 = radiusBottom + slope * y2;
+            const z = Math.cos(2 * Math.PI * j / slices);
+            const x = Math.sin(2 * Math.PI * j / slices);
+            const n = ether.vec3.unit([x, slope, z]);
+            result.push(x * r2, y2, z * r2, ...n, x * r1, y1, z * r1, ...n);
+        }
+    }
+    return result;
+}
+export function renderer(proj, view, inputSuppliers) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const shaders = yield gear.fetchTextFiles({
+            vertexShaderCode: "tree.vert",
+            fragmentShaderCode: "tree.frag"
+        }, "/shaders");
+        return new Renderer(shaders.vertexShaderCode, shaders.fragmentShaderCode, proj, view, inputSuppliers);
+    });
 }
 //# sourceMappingURL=renderer.js.map
