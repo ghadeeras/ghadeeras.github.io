@@ -8,6 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { fetchTextFiles } from "../../../gear/latest/index.js";
+import { required } from "../../utils/misc.js";
 export function createBuffer(device, usage, bufferDataOrSize) {
     if (typeof bufferDataOrSize === 'number') {
         return device.createBuffer({
@@ -171,11 +172,5 @@ export function gpuObjects() {
         const device = required(yield adapter.requestDevice());
         return [device, adapter];
     });
-}
-export function required(value) {
-    if (!value) {
-        throw new Error(`Required value is ${value}!`);
-    }
-    return value;
 }
 //# sourceMappingURL=utils.js.map

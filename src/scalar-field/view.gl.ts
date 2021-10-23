@@ -1,4 +1,5 @@
 import * as ether from "../../ether/latest/index.js"
+import * as etherX from "../utils/ether.js"
 import * as djee from "../djee/all.js"
 import * as gear from "../../gear/latest/files.js"
 import * as v from "./view.js"
@@ -112,7 +113,7 @@ export class GLView implements v.View {
     }    
 
     get matProjection(): ether.Mat<4> {
-        return v.asMat(this._matProjection.data)
+        return etherX.asMat(this._matProjection.data)
     }
 
     set matProjection(m: ether.Mat<4>) {
@@ -120,7 +121,7 @@ export class GLView implements v.View {
     }
 
     get color(): ether.Vec<4> {
-        return v.asVec(this._color.data)
+        return etherX.asVec(this._color.data)
     }
 
     set color(c: ether.Vec<4>) {

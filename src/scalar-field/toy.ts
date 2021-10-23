@@ -4,6 +4,7 @@ import * as gltf from "../djee/gltf.js"
 import * as v from "./view.js"
 import * as vib from "../../vibrato.js/latest/js/rt.js"
 import * as dragging from "../utils/dragging.js"
+import { required } from "../utils/misc.js"
 
 type FieldSampler = (x: number, y: number, z: number) => ether.Vec<4>
 
@@ -46,9 +47,9 @@ async function doInit() {
     view.matProjection = projectionMatrix
     const toy = new Toy(
         view,
-        v.required(wa.mem.exports),
-        v.required(wa.space.exports),
-        v.required(wa.scalarField.exports)
+        required(wa.mem.exports),
+        required(wa.space.exports),
+        required(wa.scalarField.exports)
     )
 }
 
@@ -61,83 +62,87 @@ class Toy {
     private contourValue: number = 0
     private fieldRef: number = 0
 
-    private meshComputer: gear.DeferredComputation<void> = new gear.DeferredComputation(() => {
-        this.view.setMesh(WebGLRenderingContext.TRIANGLES, this.contourSurfaceData())
-    })
+    private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.contourSurfaceData())
     
-    constructor(private view: v.View, mem: vib.MemExports, space: vib.SpaceExports, scalarField: ether.ScalarFieldExports) {
+    constructor(view: v.View, mem: vib.MemExports, space: vib.SpaceExports, scalarField: ether.ScalarFieldExports) {
         this.modules = {mem, space, scalarField}
         this.fieldRef = this.sampleField()
 
         const canvas = gear.elementEvents("canvas-gl")
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
+
+        const cases = {
+            contourValue: gear.Value.from<gear.Dragging>(),
+            rotation: gear.Value.from<gear.Dragging>(),
+            focalRatio: gear.Value.from<gear.Dragging>(),
+            shininess: gear.Value.from<gear.Dragging>(),
+            fogginess: gear.Value.from<gear.Dragging>(),
+            lightPosition: gear.Value.from<gear.Dragging>(),
+            lightRadius: gear.Value.from<gear.Dragging>(),
+        }
         
-        this.rotationTarget(view).value = canvas.dragging.value
-            .filter(this.selected("rotation"))
-            .then(gear.drag(rotationDragging))
-            .defaultsTo(ether.mat4.identity())
+        canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases) 
 
-        this.focalRatioTarget(view).value = canvas.dragging.value
-            .filter(this.selected("focalRatio"))
-            .then(gear.drag(focalRatioDragging))
-            .defaultsTo(focalRatioDragging.currentValue())
-
-        this.contourValueTarget().value = canvas.dragging.value
-            .filter(this.selected("contourValue"))
+        const contourValue = cases.contourValue
             .then(gear.drag(dragging.positionDragging))
             .map(([x, y]) => y)
             .defaultsTo(0.01)
+        const resolution = this.levelOfDetails()
 
-        this.shininessTarget(view).value = canvas.dragging.value
-            .filter(this.selected("shininess"))
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => (y + 1) / 2)
-            .defaultsTo(0)
+        v.wire(view, {
+            matModel: cases.rotation
+                .then(gear.drag(rotationDragging))
+                .defaultsTo(rotationDragging.currentValue()),
 
-        this.fogginessTarget(view).value = canvas.dragging.value
-            .filter(this.selected("fogginess"))
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => (y + 1) / 2)
-            .defaultsTo(0)
+            matView: gear.Value.from<ether.Mat<4>>()
+                .defaultsTo(view.matView),
+            
+            matProjection: cases.focalRatio
+                .then(gear.drag(focalRatioDragging))
+                .defaultsTo(focalRatioDragging.currentValue())
+                .map(ratio => ether.mat4.projection(ratio)),
 
-        this.lightPositionTarget(view).value = canvas.dragging.value
-            .filter(this.selected("lightPosition"))
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-            .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-            .map(([x, y]) => ether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)))
-            .defaultsTo(ether.vec3.of(0, 0, 2))
+            color: contourValue
+                .map(v => this.fieldColor(v)),
 
-        this.lightRadiusTarget(view).value = canvas.dragging.value
-            .filter(this.selected("lightRadius"))
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => (y + 1) / 2)
-            .defaultsTo(0.1)
+            shininess: cases.shininess
+                .then(gear.drag(dragging.positionDragging))
+                .map(([x, y]) => (y + 1) / 2)
+                .defaultsTo(view.shininess),
 
-        this.levelOfDetailsTarget().value = this.levelOfDetailsFlow().defaultsTo(64)
-        this.functionTarget().value = gear.readableValue("function").defaultsTo("xyz")
-
+            fogginess: cases.fogginess
+                .then(gear.drag(dragging.positionDragging))
+                .map(([x, y]) => (y + 1) / 2)
+                .defaultsTo(view.fogginess),
+            
+            lightPosition: cases.lightPosition
+                .then(gear.drag(dragging.positionDragging))
+                .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+                .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
+                .map(([x, y]) => ether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
+                .defaultsTo(ether.vec4.of(0, 0, 2, 1)),
+            
+            lightRadius: cases.lightRadius
+                .then(gear.drag(dragging.positionDragging))
+                .map(([x, y]) => (y + 1) / 2)
+                .defaultsTo(0.1),
+            
+            vertices: gear.Value.from(
+                resolution.then((r, c) => this.contourSurfaceDataForResolution(r, c)),
+                contourValue.then((v, c) => this.contourSurfaceDataForValue(v, c)),
+                gear.readableValue("function").defaultsTo("xyz").then((f, c) => this.contourSurfaceDataForFunction(f, c))
+            )
+        })
+        
+        gear.text("lod").value = resolution.map(lod => lod.toString())
         gear.elementEvents("save").click.value.attach(() => this.saveModel())
     }
 
-    selected<T>(value: string): gear.Predicate<T> {
-        const mouseBinding = document.getElementById("mouse-binding") as HTMLInputElement
-        return () => mouseBinding.value == value
-    }
-
-    levelOfDetailsFlow() {
-        const inc = gear.elementEvents("lod-inc").pointerButtons.value
-            .map(([l, m, r]) => l)
-            .map((pressed) => pressed ? +8 : 0)
-        const dec = gear.elementEvents("lod-dec").pointerButtons.value
-            .map(([l, m, r]) => l)
-            .map((pressed) => pressed ? -8 : 0)
-        const flow = gear.Value.from(inc, dec)
-            .defaultsTo(0)
-            .then(gear.repeater(128, 0))
-            .reduce((i, lod) => this.clamp(lod + i, 32, 96), 64)
-        gear.text("lod").value = flow.map(lod => lod.toString())
+    levelOfDetails() {
+        const inc = gear.elementEvents("lod-inc").click.value.map(() => +8)
+        const dec = gear.elementEvents("lod-dec").click.value.map(() => -8)
+        const flow = gear.Value.from(inc, dec).reduce((i, lod) => this.clamp(lod + i, 32, 96), 64)
         return flow
     }
 
@@ -145,70 +150,10 @@ class Toy {
         return n < min ? min : (n > max ? max : n)
     }
 
-    levelOfDetailsTarget(): gear.Target<number> {
-        return new gear.Target(lod => {
-            this.resolution = lod
-            this.fieldRef = this.sampleField()
-            this.meshComputer.perform()
-        })
-    }
-
-    contourValueTarget(): gear.Target<number> {
-        return new gear.Target(newContourValue => {
-            this.contourValue = newContourValue
-            this.view.color = this.fieldColor()
-            this.meshComputer.perform()
-        })
-    }
-
-    fieldColor(): ether.Vec<4> {
-        return this.contourValue > 0 ?
-            [1, 0, (1 - this.contourValue) / (1 + this.contourValue), 1] : 
-            [1 - (1 + this.contourValue) / (1 - this.contourValue), 1, 0, 1] 
-    }
-
-    rotationTarget(view: v.View): gear.Target<ether.Mat<4>> {
-        return new gear.Target(matrix => {
-            view.setMatModel(matrix, matrix)
-        })
-    }
-
-    focalRatioTarget(view: v.View): gear.Target<number> {
-        return new gear.Target(ratio => {
-            view.matProjection = ether.mat4.projection(ratio)
-        })
-    }
-
-    lightPositionTarget(view: v.View): gear.Target<ether.Vec<3>> {
-        return new gear.Target(position => {
-            view.lightPosition = [...position, 1]
-        })
-    }
-
-    lightRadiusTarget(view: v.View): gear.Target<number> {
-        return new gear.Target(value => {
-            view.lightRadius = value
-        })
-    }
-
-    shininessTarget(view: v.View): gear.Target<number> {
-        return new gear.Target(value => {
-            view.shininess = value
-        })
-    }
-
-    fogginessTarget(view: v.View): gear.Target<number> {
-        return new gear.Target(value => {
-            view.fogginess = value
-        })
-    }
-
-    functionTarget(): gear.Target<string> {
-        return new gear.Target(functionName => {
-            this.fieldSampler = this.getFieldFunction(functionName)
-            this.fieldRef = this.sampleField()
-            this.meshComputer.perform()
-        })
+    fieldColor(contourValue: number = this.contourValue): ether.Vec<4> {
+        return contourValue > 0 ?
+            [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
+            [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
     }
 
     getFieldFunction(functionName: string) {
@@ -251,6 +196,23 @@ class Toy {
         }
         this.modules.mem.enter()
         return ref
+    }
+
+    contourSurfaceDataForValue(value: number, meshConsumer: gear.Consumer<Float32Array>) {
+        this.contourValue = value
+        this.meshComputer.perform().then(meshConsumer)
+    }
+
+    contourSurfaceDataForResolution(resolution: number, meshConsumer: gear.Consumer<Float32Array>) {
+        this.resolution = resolution
+        this.fieldRef = this.sampleField()
+        this.meshComputer.perform().then(meshConsumer)
+    }
+
+    contourSurfaceDataForFunction(functionName: string, meshConsumer: gear.Consumer<Float32Array>) {
+        this.fieldSampler = this.getFieldFunction(functionName)
+        this.fieldRef = this.sampleField()
+        this.meshComputer.perform().then(meshConsumer)
     }
 
     contourSurfaceData(): Float32Array {

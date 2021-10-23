@@ -14,6 +14,7 @@ import * as gputils from '../djee/gpu/utils.js';
 import { Canvas } from '../djee/gpu/canvas.js';
 import { newUniverse } from './universe.js';
 import { newRenderer } from './renderer.js';
+import { required } from '../utils/misc.js';
 export function init() {
     window.onload = doInit;
 }
@@ -100,10 +101,10 @@ function setupActions(universe, renderer, pauseResumeAction) {
     };
 }
 function control(previous) {
-    return gputils.required(document.getElementById(`control-${previous}`));
+    return required(document.getElementById(`control-${previous}`));
 }
 function action(previous) {
-    return gputils.required(document.getElementById(`action-${previous}`));
+    return required(document.getElementById(`action-${previous}`));
 }
 function animation(canvas, universe, renderer) {
     const depthTexture = canvas.depthTexture();
@@ -147,7 +148,7 @@ function throttled(freqInHz, logic) {
 }
 function gpuObjects() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gputils.required(document.getElementById("gpu-status"));
+        const gpuStatus = required(document.getElementById("gpu-status"));
         try {
             const objects = yield gputils.gpuObjects();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

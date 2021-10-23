@@ -1,4 +1,5 @@
 import { fetchTextFiles } from "../../../gear/latest/index.js"
+import { required } from "../../utils/misc.js"
 
 export type TypedArray = 
     Float32Array |
@@ -163,11 +164,4 @@ export async function gpuObjects(): Promise<[GPUDevice, GPUAdapter]> {
     const adapter = required(await gpu.requestAdapter())
     const device = required(await adapter.requestDevice())
     return [device, adapter]
-}
-
-export function required<T>(value: T | null | undefined): T {
-    if (!value) {
-        throw new Error(`Required value is ${value}!`)
-    }
-    return value
 }

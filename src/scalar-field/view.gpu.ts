@@ -1,4 +1,5 @@
 import * as ether from "../../ether/latest/index.js"
+import * as etherX from "../utils/ether.js"
 import * as v from "./view.js"
 import * as gputils from "../djee/gpu/utils.js"
 import { Canvas } from "../djee/gpu/canvas.js"
@@ -119,7 +120,7 @@ export class GPUView implements v.View {
     }
 
     get matProjection(): ether.Mat<4> {
-        return v.asMat(this.uniformsData, 32)
+        return etherX.asMat(this.uniformsData, 32)
     }
 
     set matProjection(m: ether.Mat<4>) {
@@ -128,7 +129,7 @@ export class GPUView implements v.View {
     }
 
     get color(): ether.Vec<4> {
-        return v.asVec(this.uniformsData, 48)
+        return etherX.asVec(this.uniformsData, 48)
     }
 
     set color(c: ether.Vec<4>) {

@@ -9,6 +9,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as glView from './view.gl.js';
 import * as gpuView from './view.gpu.js';
+import { required } from "../utils/misc.js";
+export function wire(view, inputs, primitives = WebGLRenderingContext.TRIANGLES) {
+    inputs.matModel.attach(mat => view.setMatModel(mat));
+    inputs.matView.attach(mat => view.matView = mat);
+    inputs.matProjection.attach(mat => view.matProjection = mat);
+    inputs.color.attach(c => view.color = c);
+    inputs.shininess.attach(s => view.shininess = s);
+    inputs.lightPosition.attach(pos => view.lightPosition = pos);
+    inputs.lightRadius.attach(r => view.lightRadius = r);
+    inputs.fogginess.attach(f => view.fogginess = f);
+    inputs.vertices.attach(v => view.setMesh(primitives, v));
+}
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));
@@ -22,22 +34,5 @@ export function newView(canvasId) {
             return yield glView.newView(canvasId);
         }
     });
-}
-export function asVec(array, offset = 0) {
-    return [...array.slice(offset, offset + 4)];
-}
-export function asMat(array, offset = 0) {
-    return [
-        asVec(array, offset + 0),
-        asVec(array, offset + 4),
-        asVec(array, offset + 8),
-        asVec(array, offset + 12)
-    ];
-}
-export function required(value) {
-    if (!value) {
-        throw new Error(`Required value is ${value}!`);
-    }
-    return value;
 }
 //# sourceMappingURL=view.js.map

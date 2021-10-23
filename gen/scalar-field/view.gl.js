@@ -8,9 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as ether from "../../ether/latest/index.js";
+import * as etherX from "../utils/ether.js";
 import * as djee from "../djee/all.js";
 import * as gear from "../../gear/latest/files.js";
-import * as v from "./view.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this._frame = null;
@@ -72,13 +72,13 @@ export class GLView {
         this.lightPosition = this._globalLightPosition;
     }
     get matProjection() {
-        return v.asMat(this._matProjection.data);
+        return etherX.asMat(this._matProjection.data);
     }
     set matProjection(m) {
         this._matProjection.data = ether.mat4.columnMajorArray(m);
     }
     get color() {
-        return v.asVec(this._color.data);
+        return etherX.asVec(this._color.data);
     }
     set color(c) {
         this._color.data = c;

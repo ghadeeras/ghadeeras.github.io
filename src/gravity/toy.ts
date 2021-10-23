@@ -5,6 +5,7 @@ import * as gputils from '../djee/gpu/utils.js'
 import { Canvas } from '../djee/gpu/canvas.js'
 import { newUniverse, Universe } from './universe.js'
 import { newRenderer, Renderer } from './renderer.js'
+import { required } from '../utils/misc.js'
 
 export function init() {
     window.onload = doInit
@@ -109,11 +110,11 @@ function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction:
 }
 
 function control(previous: string) {
-    return gputils.required(document.getElementById(`control-${previous}`))
+    return required(document.getElementById(`control-${previous}`))
 }
 
 function action(previous: string) {
-    return gputils.required(document.getElementById(`action-${previous}`))
+    return required(document.getElementById(`action-${previous}`))
 }
 
 function animation(canvas: Canvas, universe: Universe, renderer: Renderer) {
@@ -161,7 +162,7 @@ function throttled(freqInHz: number, logic: () => void): (time?: number) => void
 }
 
 async function gpuObjects() {
-    const gpuStatus = gputils.required(document.getElementById("gpu-status"))
+    const gpuStatus = required(document.getElementById("gpu-status"))
     try {
         const objects = await gputils.gpuObjects()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

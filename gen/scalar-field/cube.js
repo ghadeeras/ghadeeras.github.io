@@ -9,10 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as djee from "../djee/all.js";
 import * as ether from "../../ether/latest/index.js";
+import * as etherX from "../utils/ether.js";
 import * as gear from "../../gear/latest/index.js";
 import * as dragging from "../utils/dragging.js";
-import { mat4, vec3 } from "../../ether/latest/index.js";
-import { asMat } from "./view.js";
 let context;
 let position;
 let normal;
@@ -25,8 +24,8 @@ let cubeBuffer;
 let contourSurfaceBuffer;
 let cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue = 0;
-const viewMatrix = mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = mat4.projection(2);
+const viewMatrix = ether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = ether.mat4.projection(2);
 export function initCubeDemo() {
     window.onload = () => doInit();
 }
@@ -51,9 +50,9 @@ function doInit() {
         lightPosition = program.uniform("lightPosition");
         shininess = program.uniform("shininess");
         fogginess = program.uniform("fogginess");
-        matModel.data = mat4.columnMajorArray(mat4.identity());
-        matView.data = mat4.columnMajorArray(viewMatrix);
-        matProjection.data = mat4.columnMajorArray(projectionMatrix);
+        matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity());
+        matView.data = ether.mat4.columnMajorArray(viewMatrix);
+        matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
         lightPosition.data = [2, 2, 2];
         shininess.data = [1];
         fogginess.data = [0];
@@ -62,7 +61,7 @@ function doInit() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
         const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => asMat(matModel.data), () => mat4.mul(projectionMatrix, viewMatrix), 4);
+        const transformer = new dragging.RotationDragging(() => etherX.asMat(matModel.data), () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const cases = {
             rotation: new gear.Value(),
             lightPosition: new gear.Value(),
@@ -79,18 +78,17 @@ function doInit() {
         const mouseBinding = gear.readableValue("mouse-binding");
         gear.invokeLater(() => mouseBinding.flow("rotation"));
         canvas.dragging.value.switch(mouseBinding, cases);
-        rotationTarget().value = cases.rotation
+        cases.rotation
             .then(gear.drag(transformer))
-            .defaultsTo(mat4.identity());
-        lightPositionTarget().value = cases.lightPosition
+            .defaultsTo(transformer.currentValue())
+            .attach(m => matModel.data = ether.mat4.columnMajorArray(m));
+        cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
             .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-            .defaultsTo([Math.PI / 4, Math.PI / 4]);
-        contourValueTarget().value = cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => y)
-            .defaultsTo(0);
-        cubeTarget().value = gear.Value.from(cases.value0
+            .defaultsTo([Math.PI / 4, Math.PI / 4])
+            .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
+            .attach(pos => lightPosition.data = pos);
+        const cubeValue = gear.Value.from(cases.value0
             .then(gear.drag(dragging.positionDragging))
             .map(cornerValue(0)), cases.value1
             .then(gear.drag(dragging.positionDragging))
@@ -106,7 +104,18 @@ function doInit() {
             .then(gear.drag(dragging.positionDragging))
             .map(cornerValue(6)), cases.value7
             .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(7))).reduce(cubeAdjustor, cube).defaultsTo(cube);
+            .map(cornerValue(7))).reduce(cubeAdjustor, cube)
+            .defaultsTo(cube);
+        cubeValue
+            .map(c => cubeData(cube = c))
+            .attach(data => cubeBuffer.float32Data = data);
+        gear.Value.from(cubeValue
+            .map(c => contourSurfaceData(cube = c, contourValue)), cases.contourValue
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => y)
+            .defaultsTo(0)
+            .map(v => contourSurfaceData(cube, contourValue = v))).attach(data => contourSurfaceBuffer.float32Data = data);
+        draw();
     });
 }
 function cornerValue(corner) {
@@ -117,33 +126,6 @@ function cubeAdjustor(cube, cornerValue) {
     const values = [cube.value0, cube.value1, cube.value2, cube.value3, cube.value4, cube.value5, cube.value6, cube.value7];
     values[corner] = value;
     return newCube(values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7]);
-}
-function cubeTarget() {
-    return new gear.Target(newCube => {
-        cube = newCube;
-        cubeBuffer.float32Data = cubeData(cube);
-        contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-        draw();
-    });
-}
-function contourValueTarget() {
-    return new gear.Target(newContourValue => {
-        contourValue = newContourValue;
-        contourSurfaceBuffer.float32Data = contourSurfaceData(cube, contourValue);
-        draw();
-    });
-}
-function rotationTarget() {
-    return new gear.Target(matrix => {
-        matModel.data = mat4.columnMajorArray(matrix);
-        draw();
-    });
-}
-function lightPositionTarget() {
-    return new gear.Target(([x, y]) => {
-        lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
-        draw();
-    });
 }
 function contourColorData(contourValue) {
     return fieldColor(contourValue, 0.8);
@@ -162,6 +144,7 @@ function draw() {
     color.setTo(...contourColorData(contourValue));
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
     gl.flush();
+    requestAnimationFrame(draw);
 }
 function newCube(field0, field1, field2, field3, field4, field5, field6, field7) {
     const points = {
@@ -197,7 +180,7 @@ function newCube(field0, field1, field2, field3, field4, field5, field6, field7)
     return Object.assign(Object.assign(Object.assign({}, points), gradients), values);
 }
 function gradient(point, value, pointX, valueX, pointY, valueY, pointZ, valueZ) {
-    return vec3.add(vec3.scale(vec3.sub(point, pointX), value - valueX), vec3.add(vec3.scale(vec3.sub(point, pointY), value - valueY), vec3.scale(vec3.sub(point, pointZ), value - valueZ)));
+    return ether.vec3.add(ether.vec3.scale(ether.vec3.sub(point, pointX), value - valueX), ether.vec3.add(ether.vec3.scale(ether.vec3.sub(point, pointY), value - valueY), ether.vec3.scale(ether.vec3.sub(point, pointZ), value - valueZ)));
 }
 function cubeData(cube) {
     const normals = [

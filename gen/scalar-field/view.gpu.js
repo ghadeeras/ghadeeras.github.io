@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as ether from "../../ether/latest/index.js";
-import * as v from "./view.js";
+import * as etherX from "../utils/ether.js";
 import * as gputils from "../djee/gpu/utils.js";
 import { Canvas } from "../djee/gpu/canvas.js";
 export class GPUView {
@@ -101,14 +101,14 @@ export class GPUView {
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 32, 0);
     }
     get matProjection() {
-        return v.asMat(this.uniformsData, 32);
+        return etherX.asMat(this.uniformsData, 32);
     }
     set matProjection(m) {
         this.uniformsData.set(ether.mat4.columnMajorArray(m), 32);
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 16, 32);
     }
     get color() {
-        return v.asVec(this.uniformsData, 48);
+        return etherX.asVec(this.uniformsData, 48);
     }
     set color(c) {
         this.uniformsData.set(c, 48);

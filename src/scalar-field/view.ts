@@ -1,24 +1,26 @@
-import { Mat, Vec } from "../../ether/latest/index.js"
+import * as gear from "../../gear/latest/index.js"
+import * as ether from "../../ether/latest/index.js"
 import * as glView from './view.gl.js' 
 import * as gpuView from './view.gpu.js' 
+import { required } from "../utils/misc.js"
 
 export interface View {
 
-    setMatModel(modelPositions: Mat<4>, modelNormals?: Mat<4>): void
+    setMatModel(modelPositions: ether.Mat<4>, modelNormals?: ether.Mat<4>): void
 
-    readonly matPositions: Mat<4>
+    readonly matPositions: ether.Mat<4>
 
-    readonly matNormals: Mat<4>
+    readonly matNormals: ether.Mat<4>
 
-    matView: Mat<4>
+    matView: ether.Mat<4>
 
-    matProjection: Mat<4>
+    matProjection: ether.Mat<4>
 
-    color: Vec<4>
+    color: ether.Vec<4>
 
     shininess: number
 
-    lightPosition: Vec<4>
+    lightPosition: ether.Vec<4>
 
     lightRadius: number
 
@@ -26,6 +28,40 @@ export interface View {
 
     setMesh(primitives: GLenum, vertices: Float32Array): void
 
+}
+
+export type ViewInputs = {
+
+    matModel: gear.Value<ether.Mat<4>>
+
+    matView: gear.Value<ether.Mat<4>>
+
+    matProjection: gear.Value<ether.Mat<4>>
+
+    color: gear.Value<ether.Vec<4>>
+
+    shininess: gear.Value<number>
+
+    lightPosition: gear.Value<ether.Vec<4>>
+
+    lightRadius: gear.Value<number>
+
+    fogginess: gear.Value<number>
+
+    vertices: gear.Value<Float32Array>
+
+}
+
+export function wire(view: View, inputs: ViewInputs, primitives: GLenum = WebGLRenderingContext.TRIANGLES) {
+    inputs.matModel.attach(mat => view.setMatModel(mat))
+    inputs.matView.attach(mat => view.matView = mat)
+    inputs.matProjection.attach(mat => view.matProjection = mat)
+    inputs.color.attach(c => view.color = c)
+    inputs.shininess.attach(s => view.shininess = s)
+    inputs.lightPosition.attach(pos => view.lightPosition = pos)
+    inputs.lightRadius.attach(r => view.lightRadius = r)
+    inputs.fogginess.attach(f => view.fogginess = f)
+    inputs.vertices.attach(v => view.setMesh(primitives, v))
 }
 
 export async function newView(canvasId: string): Promise<View> {
@@ -38,24 +74,4 @@ export async function newView(canvasId: string): Promise<View> {
         apiElement.innerHTML = "WebGL"
         return await glView.newView(canvasId)
     }
-}
-
-export function asVec(array: number[] | Float32Array | Float64Array, offset: number = 0): Vec<4> {
-    return [...array.slice(offset, offset + 4)] as Vec<4>
-}
-
-export function asMat(array: number[] | Float32Array | Float64Array, offset: number = 0): Mat<4> {
-    return [
-        asVec(array, offset +  0),
-        asVec(array, offset +  4),
-        asVec(array, offset +  8),
-        asVec(array, offset + 12)
-    ]
-}
-
-export function required<T>(value: T | null | undefined): T {
-    if (!value) {
-        throw new Error(`Required value is ${value}!`)
-    }
-    return value
 }

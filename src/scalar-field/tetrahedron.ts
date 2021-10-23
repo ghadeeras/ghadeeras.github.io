@@ -1,9 +1,8 @@
 import * as djee from "../djee/all.js"
 import * as ether from "../../ether/latest/index.js"
+import * as etherX from "../utils/ether.js"
 import * as gear from "../../gear/latest/index.js"
 import * as dragging from "../utils/dragging.js"
-import { Mat, mat4, Vec, vec3, vec4 } from "../../ether/latest/index.js";
-import { asMat } from "./view.js";
 
 let context: djee.Context;
 
@@ -25,17 +24,17 @@ let contourValue: number = 0;
 type Tetrahedron = TetrahedronPoints & TetrahedronGradients & TetrahedronValues
 
 type TetrahedronPoints = {
-    point0: Vec<3>;
-    point1: Vec<3>;
-    point2: Vec<3>;
-    point3: Vec<3>;
+    point0: ether.Vec<3>;
+    point1: ether.Vec<3>;
+    point2: ether.Vec<3>;
+    point3: ether.Vec<3>;
 }
 
 type TetrahedronGradients = {
-    gradient0: Vec<3>;
-    gradient1: Vec<3>;
-    gradient2: Vec<3>;
-    gradient3: Vec<3>;
+    gradient0: ether.Vec<3>;
+    gradient1: ether.Vec<3>;
+    gradient2: ether.Vec<3>;
+    gradient3: ether.Vec<3>;
 }
 
 type TetrahedronValues = {
@@ -45,8 +44,8 @@ type TetrahedronValues = {
     value3: number;
 }
 
-const viewMatrix = mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = mat4.projection(2);
+const viewMatrix = ether.mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = ether.mat4.projection(2);
 
 export function initTetrahedronDemo() {
     window.onload = () => doInit();
@@ -82,9 +81,9 @@ async function doInit() {
     shininess = program.uniform("shininess");
     fogginess = program.uniform("fogginess");
 
-    matModel.data = mat4.columnMajorArray(mat4.identity())
-    matView.data = mat4.columnMajorArray(viewMatrix);
-    matProjection.data = mat4.columnMajorArray(projectionMatrix);
+    matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity())
+    matView.data = ether.mat4.columnMajorArray(viewMatrix);
+    matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
 
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
@@ -97,8 +96,8 @@ async function doInit() {
 
     const canvas = gear.elementEvents("canvas-gl");
     const transformer = new dragging.RotationDragging(
-        () => asMat(matModel.data), 
-        () => mat4.mul(projectionMatrix, viewMatrix),
+        () => etherX.asMat(matModel.data), 
+        () => ether.mat4.mul(projectionMatrix, viewMatrix),
         4
     )
 
@@ -115,21 +114,26 @@ async function doInit() {
     gear.invokeLater(() => mouseBinding.flow("rotation"))
     canvas.dragging.value.switch(mouseBinding, cases)
     
-    rotationTarget().value = cases.rotation
+    cases.rotation
         .then(gear.drag(transformer))
-        .defaultsTo(mat4.identity())
+        .defaultsTo(ether.mat4.identity())
+        .attach(m => matModel.data = ether.mat4.columnMajorArray(m))
 
-    lightPositionTarget().value = cases.lightPosition
+    cases.lightPosition
         .then(gear.drag(dragging.positionDragging))
         .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
         .defaultsTo([Math.PI / 4, Math.PI / 4])
+        .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
+        .attach(pos => lightPosition.data = pos)
 
-    contourValueTarget().value = cases.contourValue
+    cases.contourValue
         .then(gear.drag(dragging.positionDragging))
         .map(([x, y]) => y)
         .defaultsTo(0)
+        .map(v => contourSurfaceData(tetrahedron, contourValue = v))
+        .attach(data => contourSurfaceBuffer.data = data)
 
-    tetrahedronTarget().value = gear.Value.from(
+    const tetrahedronValue = gear.Value.from(
         cases.value0
             .then(gear.drag(dragging.positionDragging))
             .map(cornerValue(0)),
@@ -141,8 +145,24 @@ async function doInit() {
             .map(cornerValue(2)),
         cases.value3
             .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(3)),
+            .map(cornerValue(3))
     ).reduce(tetrahedronAdjustor, tetrahedron).defaultsTo(tetrahedron)
+
+    tetrahedronValue
+        .map(t => tetrahedronData(tetrahedron = t))
+        .attach(data => tetrahedronBuffer.float32Data = data)
+
+    gear.Value.from(
+        tetrahedronValue
+            .map(t => contourSurfaceData(tetrahedron = t, contourValue)),
+        cases.contourValue
+            .then(gear.drag(dragging.positionDragging))
+            .map(([x, y]) => y)
+            .defaultsTo(0)
+            .map(v => contourSurfaceData(tetrahedron, contourValue = v))
+    ).attach(data => contourSurfaceBuffer.float32Data = data)
+
+    draw()
 }
 
 type TetrahedronCorner = 0 | 1 | 2 | 3
@@ -157,37 +177,6 @@ function tetrahedronAdjustor(tetrahedron: Tetrahedron, cornerValue: number[]): T
     const values = [tetrahedron.value0, tetrahedron.value1, tetrahedron.value2, tetrahedron.value3]
     values[corner] = value
     return newTetrahedron(values[0], values[1], values[2], values[3])
-}
-
-function tetrahedronTarget(): gear.Target<Tetrahedron> {
-    return new gear.Target(newTetrahedron => {
-        tetrahedron = newTetrahedron
-        tetrahedronBuffer.float32Data = tetrahedronData(tetrahedron)
-        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue)
-        draw()
-    })
-}
-
-function contourValueTarget(): gear.Target<number> {
-    return new gear.Target(newContourValue => {
-        contourValue = newContourValue
-        contourSurfaceBuffer.float32Data = contourSurfaceData(tetrahedron, contourValue)
-        draw()
-    })
-}
-
-function rotationTarget(): gear.Target<Mat<4>> {
-    return new gear.Target(matrix => {
-        matModel.data = mat4.columnMajorArray(matrix)
-        draw()
-    })
-}
-
-function lightPositionTarget(): gear.Target<gear.PointerPosition> {
-    return new gear.Target<gear.PointerPosition>(([x, y]) => {
-        lightPosition.data = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)]
-        draw()
-    })
 }
 
 function contourColorData(contourValue: number) {
@@ -211,6 +200,8 @@ function draw() {
     gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
     gl.flush();
+
+    requestAnimationFrame(draw)
 }
 
 function newTetrahedron(field0: number, field1: number, field2: number, field3: number): Tetrahedron {
@@ -223,14 +214,14 @@ function newTetrahedron(field0: number, field1: number, field2: number, field3: 
         point2: [cos * sin, cos, -sin * sin],
         point3: [cos * sin, cos, +sin * sin]
     };
-    const mat: Mat<4> = [
+    const mat: ether.Mat<4> = [
         [points.point0[0], points.point0[1], points.point0[2], 1],
         [points.point1[0], points.point1[1], points.point1[2], 1],
         [points.point2[0], points.point2[1], points.point2[2], 1],
         [points.point3[0], points.point3[1], points.point3[2], 1]
     ];
-    const matInv = mat4.inverse(mat);
-    const gradient = vec3.swizzle(vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
+    const matInv = ether.mat4.inverse(mat);
+    const gradient = ether.vec3.swizzle(ether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
     const gradients: TetrahedronGradients = {
         gradient0: gradient,
         gradient1: gradient,
@@ -299,12 +290,12 @@ function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Flo
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): Vec<4> {
+function fieldColor(fieldValue: number, alpha: number = 0.4): ether.Vec<4> {
     return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }
 
-function normalFrom(p1: Vec<3>, p2: Vec<3>, p3: Vec<3>) {
-    const v12 = vec3.sub(p2, p1);
-    const v23 = vec3.sub(p3, p2);
-    return vec3.unit(vec3.cross(v12, v23));
+function normalFrom(p1: ether.Vec<3>, p2: ether.Vec<3>, p3: ether.Vec<3>) {
+    const v12 = ether.vec3.sub(p2, p1);
+    const v23 = ether.vec3.sub(p3, p2);
+    return ether.vec3.unit(ether.vec3.cross(v12, v23));
 }

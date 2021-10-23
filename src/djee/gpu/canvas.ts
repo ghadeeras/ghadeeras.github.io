@@ -1,4 +1,4 @@
-import { required } from "./utils.js"
+import { required } from "../../utils/misc.js"
 
 export class Canvas {
 
