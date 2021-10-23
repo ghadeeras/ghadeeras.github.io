@@ -1,8 +1,8 @@
-import * as Djee from "../djee/all.js";
+import * as gear from "../../gear/latest/index.js";
+import * as djee from "../djee/all.js";
 import { values } from "../djee/utils.js";
-import * as Gear from "../gear/all.js";
 export class View {
-    constructor(canvasId, samples) {
+    constructor(canvasId, samples, inputs) {
         this.program = null;
         this.lod = 50;
         this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
@@ -11,58 +11,50 @@ export class View {
         this.xScalar = null;
         this.yScalar = null;
         setOptions("shader-sample", options(samples));
-        this.context = Djee.Context.of(canvasId);
+        this.context = djee.Context.of(canvasId);
         this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
-    }
-    get mesh() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+        inputs.mesh
             .defaultsTo(false)
-            .then(Gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
-            .producer(mode => {
+            .then(gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
+            .attach(mode => {
             this.mode = mode;
             this.draw();
-        })));
-    }
-    get levelOfDetail() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+        });
+        gear.text("lod").value = inputs.levelOfDetails
             .defaultsTo(this.lod)
             .filter(lod => lod > 0 && lod <= 100)
-            .branch(flow => flow.to(Gear.sink(lod => this.resetBuffer(lod))), flow => flow.map(lod => (lod + 1000).toString().substring(1)).to(Gear.text("lod")))));
-    }
-    get compiler() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+            .attach(lod => this.resetBuffer(lod))
+            .map(lod => (lod + 1000).toString().substring(1));
+        inputs.program
             .defaultsTo(this.defaultSample)
             .map(shaders => this.recompile(shaders))
             .map(program => this.reflectOn(program))
             .map(reflection => this.programScalars = this.toScalars(reflection))
-            .branch(flow => flow.producer(scalars => this.draw()), flow => flow.producer(scalars => setOptions("mouse-x", [noneOption(), ...options(scalars)])), flow => flow.producer(scalars => setOptions("mouse-y", [noneOption(), ...options(scalars)])))));
-    }
-    get editor() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
-            .defaultsTo(this.defaultSample)
-            .branch(flow => flow.map(template => template.vertexShader).to(Gear.writeableValue("vertex-shader")), flow => flow.map(template => template.fragmentShader).to(Gear.writeableValue("fragment-shader")))));
-    }
-    get xBinding() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+            .attach(scalars => {
+            this.draw();
+            setOptions("mouse-x", [noneOption(), ...options(scalars)]);
+            setOptions("mouse-y", [noneOption(), ...options(scalars)]);
+        });
+        const programSample = inputs.programSample.defaultsTo(this.defaultSample);
+        gear.writeableValue("vertex-shader").value = programSample.map(template => template.vertexShader);
+        gear.writeableValue("fragment-shader").value = programSample.map(template => template.fragmentShader);
+        const mouseXY = inputs.mouseXY.defaultsTo([0, 0]);
+        gear.text("mouse-x-val").value = gear.Value.from(inputs.mouseXBinding
             .defaultsTo(0)
             .map(index => this.xScalar = index >= 0 ? this.programScalars[index] : null)
-            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : "")
-            .to(Gear.text("mouse-x-val"))));
-    }
-    get yBinding() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+            .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY
+            .map(([x, y]) => this.xScalar != null ? x.toPrecision(3) : ""));
+        gear.text("mouse-y-val").value = gear.Value.from(inputs.mouseYBinding
             .defaultsTo(0)
             .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
-            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : "")
-            .to(Gear.text("mouse-y-val"))));
-    }
-    get xy() {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
-            this.setValue("mouse-x-val", this.xScalar, x);
-            this.setValue("mouse-y-val", this.yScalar, y);
+            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : ""), mouseXY
+            .map(([x, y]) => this.yScalar != null ? y.toPrecision(3) : ""));
+        mouseXY.attach(([x, y]) => {
+            this.setValue(this.xScalar, x);
+            this.setValue(this.yScalar, y);
             this.draw();
-        })));
+        });
     }
     recompile(shaders) {
         if (this.program != null) {
@@ -72,15 +64,11 @@ export class View {
         this.program.use();
         return this.program;
     }
-    setValue(boundElement, scalar, value) {
+    setValue(scalar, value) {
         if (scalar != null) {
             const data = scalar.uniform.data;
             data[scalar.index] = value;
             scalar.uniform.data = data;
-            Gear.text(boundElement).consumer(round3(value).toString());
-        }
-        else {
-            Gear.text(boundElement).consumer("");
         }
     }
     reflectOn(program) {

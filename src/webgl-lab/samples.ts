@@ -1,4 +1,4 @@
-import * as Gear  from "../gear/all.js";
+import * as gear from "../../gear/latest/index.js";
 
 export type ProgramSample = {
     name: string;
@@ -45,7 +45,7 @@ export const samples: ProgramSample[] = [
     }
 ];
 
-export function loadShaders(sample: ProgramSample, consumer: Gear.Consumer<ProgramSample>) {
+export function loadShaders(sample: ProgramSample, consumer: gear.Consumer<ProgramSample>) {
     fetchShader(sample.vertexShader, shader => {
         sample.vertexShader = shader;
         if (!isFile(sample.fragmentShader)) {
@@ -93,7 +93,7 @@ function trimMargin(code: string): string {
         .trim();
 }
 
-function fetchShader(shader: string, consumer: Gear.Consumer<string>) {
+function fetchShader(shader: string, consumer: gear.Consumer<string>) {
     if (isFile(shader)) {
         fetchFile(locationOf(shader), consumer);
     } else {
@@ -101,7 +101,7 @@ function fetchShader(shader: string, consumer: Gear.Consumer<string>) {
     }
 }
 
-function fetchFile(url: string, consumer: Gear.Consumer<string>) {
+function fetchFile(url: string, consumer: gear.Consumer<string>) {
     fetch(url, { method : "get", mode : "no-cors", cache : "no-cache" }).then(response => response.text().then(consumer));
 }
 

@@ -8,15 +8,15 @@ export function init() {
 
 function doInit() {
     const controller = new Controller();
-    const view = new View("canvas-gl", samples);
-    controller.levelOfDetails().to(view.levelOfDetail());
-    controller.programSample()
-        .map(index => samples[index])
-        .then(loadShaders)
-        .to(view.editor());
-    controller.program().to(view.compiler());
-    controller.mesh().to(view.mesh());
-    controller.mouseXBinding().to(view.xBinding());
-    controller.mouseYBinding().to(view.yBinding());
-    controller.mouseXY().to(view.xy());
+    const view = new View("canvas-gl", samples, {
+        levelOfDetails: controller.levelOfDetails(),
+        programSample: controller.programSample()
+            .map(index => samples[index])
+            .then(loadShaders),
+        program: controller.program(),
+        mesh: controller.mesh(),
+        mouseXBinding: controller.mouseXBinding(),
+        mouseYBinding: controller.mouseYBinding(),
+        mouseXY: controller.mouseXY()
+    });
 }

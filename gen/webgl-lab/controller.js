@@ -1,30 +1,33 @@
-import * as Gear from "../gear/all.js";
+import * as gear from "../../gear/latest/index.js";
+import { positionDragging } from "../utils/dragging.js";
 export class Controller {
     get program() {
-        return Gear.lazy(() => programFlow());
+        return gear.lazy(() => programFlow());
     }
     get mesh() {
-        return Gear.lazy(() => Gear.checkbox("mesh"));
+        return gear.lazy(() => gear.checkbox("mesh"));
     }
     get levelOfDetails() {
-        return Gear.lazy(() => levelOfDetailsFlow());
+        return gear.lazy(() => levelOfDetailsFlow());
     }
     get programSample() {
-        return Gear.lazy(() => programSampleFlow());
+        return gear.lazy(() => programSampleFlow());
     }
     get mouseXBinding() {
-        return Gear.lazy(() => mouseXBindingFlow());
+        return gear.lazy(() => mouseXBindingFlow());
     }
     get mouseYBinding() {
-        return Gear.lazy(() => mouseYBindingFlow());
+        return gear.lazy(() => mouseYBindingFlow());
     }
     get mouseXY() {
-        return Gear.lazy(() => mouseXYFlow());
+        return gear.lazy(() => mouseXYFlow());
     }
 }
 function programFlow() {
-    const compileBtn = Gear.ElementEvents.create("compile-button");
-    return compileBtn.clickPos.map(pos => program());
+    const compileBtn = gear.ElementEvents.create("compile-button");
+    return compileBtn.clickPos.value
+        .map(pos => program())
+        .filter(program => program && program.vertexShader && program.fragmentShader ? true : false);
 }
 function program() {
     const vertexShaderElement = document.getElementById("vertex-shader");
@@ -36,32 +39,27 @@ function program() {
     };
 }
 function levelOfDetailsFlow() {
-    const inc = Gear.elementEvents("lod-inc").mouseButtons
-        .map(([l, m, r]) => l)
-        .map((pressed) => pressed ? +1 : 0);
-    const dec = Gear.elementEvents("lod-dec").mouseButtons
-        .map(([l, m, r]) => l)
-        .map((pressed) => pressed ? -1 : 0);
-    return Gear.Flow.from(inc, dec)
-        .then(Gear.repeater(128, 0))
+    const inc = gear.elementEvents("lod-inc").pointerButtons.value.map(([l, m, r]) => l ? +1 : 0);
+    const dec = gear.elementEvents("lod-dec").pointerButtons.value.map(([l, m, r]) => l ? -1 : 0);
+    return gear.Value.from(inc, dec)
+        .then(gear.repeater(128, 0))
         .reduce((i, lod) => clamp(lod + i, 0, 100), 50);
 }
 function programSampleFlow() {
-    return Gear.readableValue("shader-sample")
+    return gear.readableValue("shader-sample")
         .map(value => parseInt(value));
 }
 function mouseXBindingFlow() {
-    return Gear.readableValue("mouse-x")
+    return gear.readableValue("mouse-x")
         .map(value => parseInt(value));
 }
 function mouseYBindingFlow() {
-    return Gear.readableValue("mouse-y")
+    return gear.readableValue("mouse-y")
         .map(value => parseInt(value));
 }
 function mouseXYFlow() {
-    const canvas = Gear.ElementEvents.create("canvas-gl");
-    const dragEnabled = canvas.mouseButtons.map(([l, m, r]) => l).defaultsTo(false);
-    return Gear.Flow.from(canvas.mousePos.then(Gear.flowSwitch(dragEnabled)), canvas.touchPos.map(pos => pos[0])).map(([x, y]) => Gear.pos(2 * x / canvas.element.clientWidth - 1, 1 - 2 * y / canvas.element.clientHeight));
+    const canvas = gear.ElementEvents.create("canvas-gl");
+    return canvas.dragging.value.then(gear.drag(positionDragging));
 }
 function clamp(n, min, max) {
     return n < min ? min : (n > max ? max : n);

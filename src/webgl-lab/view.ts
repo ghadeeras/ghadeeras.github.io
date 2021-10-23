@@ -1,6 +1,7 @@
-import * as Djee  from "../djee/all.js";
+import * as ether  from "../../ether/latest/index.js";
+import * as gear  from "../../gear/latest/index.js";
+import * as djee  from "../djee/all.js";
 import { values } from "../djee/utils.js";
-import * as Gear  from "../gear/all.js";
 import { ProgramSample } from "./samples.js";
 
 export type Named = {
@@ -8,22 +9,35 @@ export type Named = {
 }
 
 type Reflection = {
-    program: Djee.Program;
-    attributes: Djee.VariableInfo[];
-    uniforms: Djee.VariableInfo[];
+    program: djee.Program;
+    attributes: djee.VariableInfo[];
+    uniforms: djee.VariableInfo[];
 };
 
 type Scalar = {
-    uniform: Djee.Uniform;
+    uniform: djee.Uniform;
     index: number;
     name: string;
 }
 
+export type ViewInputs = {
+
+    readonly program: gear.Value<ProgramSample>
+    readonly mesh: gear.Value<boolean> 
+    readonly levelOfDetails: gear.Value<number>
+    readonly programSample: gear.Value<ProgramSample>
+    readonly mouseXBinding: gear.Value<number>
+    readonly mouseYBinding: gear.Value<number>
+    readonly mouseXY: gear.Value<ether.Vec<2>>
+
+}
+
+
 export class View {
 
-    private context: Djee.Context;
-    private buffer: Djee.AttributesBuffer;
-    private program: Djee.Program | null = null;
+    private context: djee.Context;
+    private buffer: djee.AttributesBuffer;
+    private program: djee.Program | null = null;
     private defaultSample: ProgramSample;
     
     private lod = 50;
@@ -33,86 +47,69 @@ export class View {
     private xScalar: Scalar | null = null;
     private yScalar: Scalar | null = null;
     
-    constructor(canvasId: string, samples: ProgramSample[]) {
+    constructor(canvasId: string, samples: ProgramSample[], inputs: ViewInputs) {
         setOptions("shader-sample", options(samples));
-        this.context = Djee.Context.of(canvasId);
+        this.context = djee.Context.of(canvasId);
         this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
-    }
 
-    get mesh(): Gear.Supplier<Gear.Sink<boolean>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+        inputs.mesh
             .defaultsTo(false)
-            .then(Gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
-            .producer(mode => {
+            .then(gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
+            .attach(mode => {
                 this.mode = mode;
                 this.draw()
             })
-        ))
-    }
 
-    get levelOfDetail(): Gear.Supplier<Gear.Sink<number>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+        gear.text("lod").value = inputs.levelOfDetails
             .defaultsTo(this.lod)
             .filter(lod => lod > 0 && lod <= 100)
-            .branch(
-                flow => flow.to(Gear.sink(lod => this.resetBuffer(lod))),
-                flow => flow.map(lod => (lod + 1000).toString().substring(1)).to(Gear.text("lod"))
-            )
-        ));
-    }
+            .attach(lod => this.resetBuffer(lod))
+            .map(lod => (lod + 1000).toString().substring(1))
 
-    get compiler(): Gear.Supplier<Gear.Sink<ProgramSample>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
+        inputs.program
             .defaultsTo(this.defaultSample)
             .map(shaders => this.recompile(shaders))
             .map(program => this.reflectOn(program))
             .map(reflection => this.programScalars = this.toScalars(reflection))
-            .branch(
-                flow => flow.producer(scalars => this.draw()),
-                flow => flow.producer(scalars => setOptions("mouse-x", [noneOption(), ...options(scalars)])),
-                flow => flow.producer(scalars => setOptions("mouse-y", [noneOption(), ...options(scalars)]))
-            )
-        ));
-    }
+            .attach(scalars => {
+                this.draw()
+                setOptions("mouse-x", [noneOption(), ...options(scalars)])
+                setOptions("mouse-y", [noneOption(), ...options(scalars)])
+            })
+            
+        const programSample = inputs.programSample.defaultsTo(this.defaultSample)
+        gear.writeableValue("vertex-shader").value = programSample.map(template => template.vertexShader)
+        gear.writeableValue("fragment-shader").value = programSample.map(template => template.fragmentShader)
 
-    get editor(): Gear.Supplier<Gear.Sink<ProgramSample>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
-            .defaultsTo(this.defaultSample)
-            .branch(
-                flow => flow.map(template => template.vertexShader).to(Gear.writeableValue("vertex-shader")),
-                flow => flow.map(template => template.fragmentShader).to(Gear.writeableValue("fragment-shader"))
-            )
-        ));
-    }
+        const mouseXY = inputs.mouseXY.defaultsTo([0, 0]);
 
-    get xBinding(): Gear.Supplier<Gear.Sink<number>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
-            .defaultsTo(0)
-            .map(index => this.xScalar = index >= 0 ? this.programScalars[index] : null)
-            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : "")
-            .to(Gear.text("mouse-x-val"))
-        ));            
-    }
+        gear.text("mouse-x-val").value = gear.Value.from(
+            inputs.mouseXBinding
+                .defaultsTo(0)
+                .map(index => this.xScalar = index >= 0 ? this.programScalars[index] : null)
+                .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""),
+            mouseXY
+                .map(([x, y]) => this.xScalar != null ? x.toPrecision(3) : "")
+        )
+
+        gear.text("mouse-y-val").value = gear.Value.from(
+            inputs.mouseYBinding
+                .defaultsTo(0)
+                .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
+                .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""),
+            mouseXY
+                .map(([x, y]) => this.yScalar != null ? y.toPrecision(3) : "")
+        )
         
-    get yBinding(): Gear.Supplier<Gear.Sink<number>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow
-            .defaultsTo(0)
-            .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
-            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : "")
-            .to(Gear.text("mouse-y-val"))
-        ));            
-    }
-
-    get xy(): Gear.Supplier<Gear.Sink<[number, number]>> {
-        return Gear.lazy(() => Gear.sinkFlow(flow => flow.defaultsTo([0, 0]).producer(([x, y]) => {
-            this.setValue("mouse-x-val", this.xScalar, x);            
-            this.setValue("mouse-y-val", this.yScalar, y);            
+        mouseXY.attach(([x, y]) => {
+            this.setValue(this.xScalar, x);            
+            this.setValue(this.yScalar, y);            
             this.draw();
-        })));
+        });
     }
         
-    private recompile(shaders: ProgramSample): Djee.Program {
+    private recompile(shaders: ProgramSample): djee.Program {
         if (this.program != null) {
             this.program.delete();
         }
@@ -124,18 +121,15 @@ export class View {
         return this.program;
     }
 
-    private setValue(boundElement: string, scalar: Scalar | null, value: number) {
+    private setValue(scalar: Scalar | null, value: number) {
         if (scalar != null) {
             const data = scalar.uniform.data;
             data[scalar.index] = value;
             scalar.uniform.data = data;    
-            Gear.text(boundElement).consumer(round3(value).toString());
-        } else{
-            Gear.text(boundElement).consumer("");
         }
     }
 
-    private reflectOn(program: Djee.Program): Reflection {
+    private reflectOn(program: djee.Program): Reflection {
         return {
             program: program,
             attributes: values(program.attributeInfos).filter(attribute => attribute.itemCount == 1),
@@ -218,8 +212,4 @@ function options(values: Named[]): HTMLOptionElement[] {
 
 function noneOption() {
     return new Option("NONE", "-1");
-}
-
-function round3(n: number) {
-    return Math.round(n * 1000) / 1000;
 }
