@@ -26,8 +26,8 @@ function rendererInputs(modelMatrix: ether.Mat<4>[], projView: ether.Mat<4>) {
     const depthDec = gear.elementEvents("depth-dec");
 
     const depth = gear.Value.from(
-        depthInc.clickPos.value.map(() => +1),
-        depthDec.clickPos.value.map(() => -1)
+        depthInc.click.value.map(() => +1),
+        depthDec.click.value.map(() => -1)
     ).reduce((inc, depth) => Math.max(Math.min(8, inc + depth), 1), 5);
 
     const mouseBinding = gear.readableValue("mouse-binding").defaultsTo("rotation");

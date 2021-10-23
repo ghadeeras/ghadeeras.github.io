@@ -1,5 +1,5 @@
-import * as Gear from "../gear/all.js"
-import * as Djee from "../djee/all.js"
+import * as gear from "../../gear/latest/index.js"
+import * as djee from "../djee/all.js"
 import { FlattenedSierpinski } from "./model.js"
 
 var vertexShader = `
@@ -26,43 +26,46 @@ var fragmentShader = `
     }
 `
 
-var ST = Djee.ShaderType;
+var ST = djee.ShaderType;
 
 function round(value: number) {
     return Math.round(1000 * value) / 1000;
 }
 
+export type ViewInputs = {
+    readonly sierpinsky: gear.Value<FlattenedSierpinski>;
+    readonly showCorners: gear.Value<boolean>;
+    readonly showCenters: gear.Value<boolean>;
+    readonly depth: gear.Value<number>;
+    readonly twist: gear.Value<number>;
+    readonly scale: gear.Value<number>;        
+}
+
 export class View {
     
-    private readonly context: Djee.Context;
-    private readonly vertexShader: Djee.Shader;
-    private readonly fragmentShader: Djee.Shader;
-    private readonly program: Djee.Program;
+    private readonly context: djee.Context;
+    private readonly vertexShader: djee.Shader;
+    private readonly fragmentShader: djee.Shader;
+    private readonly program: djee.Program;
 
-    private readonly shaderPosition: Djee.Attribute;
-    private readonly shaderTwist: Djee.Uniform;
-    private readonly shaderScale: Djee.Uniform;
-    private readonly cornersBuffer: Djee.AttributesBuffer;
-    private readonly centersBuffer: Djee.AttributesBuffer;
+    private readonly shaderPosition: djee.Attribute;
+    private readonly shaderTwist: djee.Uniform;
+    private readonly shaderScale: djee.Uniform;
+    private readonly cornersBuffer: djee.AttributesBuffer;
+    private readonly centersBuffer: djee.AttributesBuffer;
 
     private mustShowCorners: boolean = true;
     private mustShowCenters: boolean = true;
     private stride: number = 0;
-
-    readonly sierpinsky: Gear.Sink<FlattenedSierpinski>;
-    readonly showCorners: Gear.Sink<boolean>;
-    readonly showCenters: Gear.Sink<boolean>;
-    readonly depth: Gear.Sink<number>;
-    readonly twist: Gear.Sink<number>;
-    readonly scale: Gear.Sink<number>;        
 
     constructor(
         canvasId: string, 
         depthId: string, 
         twistId: string, 
         scaleId: string,
+        inputs: ViewInputs
     ) {
-        this.context = Djee.Context.of(canvasId);
+        this.context = djee.Context.of(canvasId);
 
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
@@ -78,12 +81,18 @@ export class View {
 
         this.context.gl.clearColor(1, 1, 1, 1);
 
-        this.sierpinsky = Gear.sink(s => this.setSierpinski(s));
-        this.depth = Gear.sinkFlow(flow => flow.defaultsTo(5).map(v => v + "").to(Gear.text(depthId)));
-        this.twist = Gear.sinkFlow(flow => flow.defaultsTo(0).branch(flow => flow.to(Gear.sink(t => this.setTwist(t)))).map(v => v + "").to(Gear.text(twistId)));
-        this.scale = Gear.sinkFlow(flow => flow.defaultsTo(1).branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
-        this.showCorners = Gear.sink(show => this.setShowCorners(show));
-        this.showCenters = Gear.sink(show => this.setShowCenters(show));
+        const twist = inputs.twist.defaultsTo(0);
+        const scale = inputs.scale.defaultsTo(1);
+
+        gear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "")
+        gear.text(twistId).value = twist.map(v => round(v) + "")
+        gear.text(scaleId).value = twist.map(v => round(v) + "")
+
+        twist.attach(t => this.setTwist(t))
+        scale.attach(s => this.setScale(s))
+        inputs.sierpinsky.attach(s => this.setSierpinski(s));
+        inputs.showCorners.defaultsTo(true).attach(show => this.setShowCorners(show));
+        inputs.showCenters.defaultsTo(true).attach(show => this.setShowCenters(show));
     }
 
     private setSierpinski(flattenedSierpinski: FlattenedSierpinski) {

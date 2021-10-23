@@ -1,4 +1,4 @@
-import * as Gear from "../gear/all.js";
+import * as gear from "../../gear/latest/index.js";
 import { vec2 } from "../../ether/latest/index.js";
 const defaultSierpinski = {
     depth: 5,
@@ -6,12 +6,12 @@ const defaultSierpinski = {
     b: vec(210),
     c: vec(330)
 };
-export function sierpinski(depth = new Gear.Value(), a = new Gear.Value(), b = new Gear.Value(), c = new Gear.Value()) {
+export function sierpinski(depth = new gear.Value(), a = new gear.Value(), b = new gear.Value(), c = new gear.Value()) {
     const sierpinski = Object.assign({}, defaultSierpinski);
-    return from(from(depth).reduce((d, s) => s = Object.assign(Object.assign({}, s), { depth: d }), sierpinski), from(a).reduce((a, s) => s = Object.assign(Object.assign({}, s), { a: a }), sierpinski), from(b).reduce((b, s) => s = Object.assign(Object.assign({}, s), { b: b }), sierpinski), from(c).reduce((c, s) => s = Object.assign(Object.assign({}, s), { c: c }), sierpinski)).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
+    return gear.Value.from(depth.reduce((s, d) => s = Object.assign(Object.assign({}, s), { depth: d }), sierpinski), a.reduce((s, a) => s = Object.assign(Object.assign({}, s), { a: a }), sierpinski), b.reduce((s, b) => s = Object.assign(Object.assign({}, s), { b: b }), sierpinski), c.reduce((s, c) => s = Object.assign(Object.assign({}, s), { c: c }), sierpinski)).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
 }
 function from(...sources) {
-    return Gear.Flow.from(...sources);
+    return gear.Value.from(...sources);
 }
 function vec(angleInDegrees) {
     const angle = Math.PI * angleInDegrees / 180;

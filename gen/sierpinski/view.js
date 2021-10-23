@@ -1,5 +1,5 @@
-import * as Gear from "../gear/all.js";
-import * as Djee from "../djee/all.js";
+import * as gear from "../../gear/latest/index.js";
+import * as djee from "../djee/all.js";
 var vertexShader = `
     attribute vec2 vPosition;
     
@@ -22,16 +22,16 @@ var fragmentShader = `
     gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `;
-var ST = Djee.ShaderType;
+var ST = djee.ShaderType;
 function round(value) {
     return Math.round(1000 * value) / 1000;
 }
 export class View {
-    constructor(canvasId, depthId, twistId, scaleId) {
+    constructor(canvasId, depthId, twistId, scaleId, inputs) {
         this.mustShowCorners = true;
         this.mustShowCenters = true;
         this.stride = 0;
-        this.context = Djee.Context.of(canvasId);
+        this.context = djee.Context.of(canvasId);
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
         this.program = this.context.link(this.vertexShader, this.fragmentShader);
@@ -42,12 +42,16 @@ export class View {
         this.cornersBuffer = this.context.newAttributesBuffer();
         this.centersBuffer = this.context.newAttributesBuffer();
         this.context.gl.clearColor(1, 1, 1, 1);
-        this.sierpinsky = Gear.sink(s => this.setSierpinski(s));
-        this.depth = Gear.sinkFlow(flow => flow.defaultsTo(5).map(v => v + "").to(Gear.text(depthId)));
-        this.twist = Gear.sinkFlow(flow => flow.defaultsTo(0).branch(flow => flow.to(Gear.sink(t => this.setTwist(t)))).map(v => v + "").to(Gear.text(twistId)));
-        this.scale = Gear.sinkFlow(flow => flow.defaultsTo(1).branch(flow => flow.to(Gear.sink(s => this.setScale(s)))).map(v => v + "").to(Gear.text(scaleId)));
-        this.showCorners = Gear.sink(show => this.setShowCorners(show));
-        this.showCenters = Gear.sink(show => this.setShowCenters(show));
+        const twist = inputs.twist.defaultsTo(0);
+        const scale = inputs.scale.defaultsTo(1);
+        gear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "");
+        gear.text(twistId).value = twist.map(v => round(v) + "");
+        gear.text(scaleId).value = twist.map(v => round(v) + "");
+        twist.attach(t => this.setTwist(t));
+        scale.attach(s => this.setScale(s));
+        inputs.sierpinsky.attach(s => this.setSierpinski(s));
+        inputs.showCorners.defaultsTo(true).attach(show => this.setShowCorners(show));
+        inputs.showCenters.defaultsTo(true).attach(show => this.setShowCenters(show));
     }
     setSierpinski(flattenedSierpinski) {
         this.cornersBuffer.float32Data = flattenedSierpinski.corners;

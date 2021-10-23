@@ -1,5 +1,4 @@
-import * as Gear from "../gear/all.js"
-import * as Ether from "../../ether/latest/index.js"
+import * as gear from "../../gear/latest/index.js"
 import { Vec, vec2 } from "../../ether/latest/index.js";
 
 export interface FlattenedSierpinski {
@@ -23,22 +22,22 @@ const defaultSierpinski: Sierpinski = {
 }
 
 export function sierpinski(
-    depth: Gear.Source<number> = new Gear.Value(),
-    a: Gear.Source<Vec<2>> = new Gear.Value(), 
-    b: Gear.Source<Vec<2>> = new Gear.Value(), 
-    c: Gear.Source<Vec<2>> = new Gear.Value(),
-): Gear.Source<FlattenedSierpinski> {
+    depth: gear.Value<number> = new gear.Value(),
+    a: gear.Value<Vec<2>> = new gear.Value(), 
+    b: gear.Value<Vec<2>> = new gear.Value(), 
+    c: gear.Value<Vec<2>> = new gear.Value(),
+): gear.Value<FlattenedSierpinski> {
     const sierpinski: Sierpinski = { ...defaultSierpinski }
-    return from<Sierpinski>(
-        from(depth).reduce((d, s) => s = {...s, depth :d}, sierpinski), 
-        from(a).reduce((a, s) => s = {...s, a :a}, sierpinski), 
-        from(b).reduce((b, s) => s = {...s, b :b}, sierpinski), 
-        from(c).reduce((c, s) => s = {...s, c :c}, sierpinski) 
+    return gear.Value.from<Sierpinski>(
+        depth.reduce((s, d) => s = {...s, depth :d}, sierpinski), 
+        a.reduce((s, a) => s = {...s, a :a}, sierpinski), 
+        b.reduce((s, b) => s = {...s, b :b}, sierpinski), 
+        c.reduce((s, c) => s = {...s, c :c}, sierpinski) 
     ).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
 }
 
-function from<T>(...sources: Gear.Source<T>[]): Gear.Flow<T> {
-    return Gear.Flow.from(...sources);
+function from<T>(...sources: gear.Value<T>[]): gear.Value<T> {
+    return gear.Value.from(...sources);
 }
 
 function vec(angleInDegrees: number): Vec<2> {

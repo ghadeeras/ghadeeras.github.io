@@ -29,7 +29,7 @@ function rendererInputs(modelMatrix, projView) {
     const canvas = gear.elementEvents("canvas-gl");
     const depthInc = gear.elementEvents("depth-inc");
     const depthDec = gear.elementEvents("depth-dec");
-    const depth = gear.Value.from(depthInc.clickPos.value.map(() => +1), depthDec.clickPos.value.map(() => -1)).reduce((inc, depth) => Math.max(Math.min(8, inc + depth), 1), 5);
+    const depth = gear.Value.from(depthInc.click.value.map(() => +1), depthDec.click.value.map(() => -1)).reduce((inc, depth) => Math.max(Math.min(8, inc + depth), 1), 5);
     const mouseBinding = gear.readableValue("mouse-binding").defaultsTo("rotation");
     const cases = {
         rotation: new gear.Value(),
