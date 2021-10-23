@@ -48,7 +48,7 @@ export class View {
         gear.text("mouse-y-val").value = gear.Value.from(inputs.mouseYBinding
             .defaultsTo(0)
             .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
-            .map(scalar => scalar != null ? round3(scalar.uniform.data[scalar.index]).toString() : ""), mouseXY
+            .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY
             .map(([x, y]) => this.yScalar != null ? y.toPrecision(3) : ""));
         mouseXY.attach(([x, y]) => {
             this.setValue(this.xScalar, x);
@@ -146,8 +146,5 @@ function options(values) {
 }
 function noneOption() {
     return new Option("NONE", "-1");
-}
-function round3(n) {
-    return Math.round(n * 1000) / 1000;
 }
 //# sourceMappingURL=view.js.map
