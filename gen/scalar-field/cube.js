@@ -26,6 +26,7 @@ let cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue = 0;
 const viewMatrix = ether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
 const projectionMatrix = ether.mat4.projection(2);
+let scalarFieldInstance;
 export function initCubeDemo() {
     window.onload = () => doInit();
 }
@@ -35,7 +36,8 @@ function doInit() {
             vertexShaderCode: "vertexColors.vert",
             fragmentShaderCode: "vertexColors.frag"
         }, "/shaders");
-        yield ether.initWaModules();
+        const scalarFieldModule = yield ether.loadScalarFieldModule();
+        scalarFieldInstance = scalarFieldModule.newInstance();
         context = djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
         program.use();
@@ -242,9 +244,9 @@ function cubeData(cube) {
     return vertexes.reduce((a, v) => a.concat(...v), []);
 }
 function contourSurfaceData(cube, contourValue) {
-    const stack = ether.modules.mem.exports;
-    const space = ether.modules.space.exports;
-    const scalarField = ether.modules.scalarField.exports;
+    const stack = scalarFieldInstance.mem;
+    const space = scalarFieldInstance.space;
+    const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!");
     }

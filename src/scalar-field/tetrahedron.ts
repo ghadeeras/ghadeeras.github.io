@@ -3,6 +3,7 @@ import * as ether from "../../ether/latest/index.js"
 import * as etherX from "../utils/ether.js"
 import * as gear from "../../gear/latest/index.js"
 import * as dragging from "../utils/dragging.js"
+import * as wa from "../../vibrato.js/latest/js/wa.js"
 
 let context: djee.Context;
 
@@ -20,6 +21,8 @@ let contourSurfaceBuffer: djee.AttributesBuffer;
 
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue: number = 0;
+
+let scalarFieldInstance: ether.ScalarFieldInstance 
 
 type Tetrahedron = TetrahedronPoints & TetrahedronGradients & TetrahedronValues
 
@@ -57,7 +60,9 @@ async function doInit() {
         fragmentShaderCode: "vertexColors.frag"
     }, "/shaders")
 
-    await ether.initWaModules()
+    const scalarFieldModule = await ether.loadScalarFieldModule()
+    scalarFieldInstance = scalarFieldModule.newInstance()
+    
     context = djee.Context.of("canvas-gl");
 
     const program = context.link(
@@ -268,9 +273,9 @@ function tetrahedronData(tetrahedron: Tetrahedron): number[] {
 }
 
 function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Float32Array {
-    const stack = ether.modules.mem.exports;
-    const space = ether.modules.space.exports;
-    const scalarField = ether.modules.scalarField.exports;
+    const stack = scalarFieldInstance.mem;
+    const space = scalarFieldInstance.space;
+    const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
         throw new Error("Failed to initialize Web Assembly Ether modules!")
     }
