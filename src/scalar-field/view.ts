@@ -53,7 +53,7 @@ export type ViewInputs = {
 }
 
 export function wire(view: View, inputs: ViewInputs, primitives: GLenum = WebGLRenderingContext.TRIANGLES) {
-    inputs.matModel.attach(mat => view.setMatModel(mat))
+    inputs.matModel.attach(mat => view.setMatModel(mat, mat))
     inputs.matView.attach(mat => view.matView = mat)
     inputs.matProjection.attach(mat => view.matProjection = mat)
     inputs.color.attach(c => view.color = c)

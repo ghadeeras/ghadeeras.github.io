@@ -26,14 +26,12 @@ export class GPUView {
             // padding
             0
         ]);
-        this._frame = null;
-        this._next = null;
-        this._nextCount = 0;
         this._matPositions = ether.mat4.identity();
         this._matNormals = ether.mat4.identity();
         this._matView = ether.mat4.identity();
-        this._globalLightPosition = [2, 2, 2, 1];
-        this._verticesCount = 0;
+        this._lightPosition = [2, 2, 2, 1];
+        this.verticesCount = 0;
+        this.maxVerticesCount = 0;
         this.uniforms = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsData);
         this.vertices = gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, new Float32Array([]));
         this.canvas = new Canvas(canvasId, device, adapter);
@@ -75,6 +73,11 @@ export class GPUView {
             }
         });
         this.uniformsGroup = gputils.createBindGroup(device, this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.frame = () => {
+            this.draw();
+            requestAnimationFrame(this.frame);
+        };
+        this.frame();
     }
     get matPositions() {
         return this._matPositions;
@@ -87,7 +90,7 @@ export class GPUView {
     }
     set matView(m) {
         this._matView = m;
-        this.lightPosition = this._globalLightPosition;
+        this.lightPosition = this._lightPosition;
     }
     setMatModel(modelPositions, modelNormals = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
@@ -115,10 +118,10 @@ export class GPUView {
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 48);
     }
     get lightPosition() {
-        return this._globalLightPosition;
+        return this._lightPosition;
     }
     set lightPosition(p) {
-        this._globalLightPosition = p;
+        this._lightPosition = p;
         const vp = ether.mat4.apply(this._matView, p);
         this.uniformsData.set(vp, 52);
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 52);
@@ -145,30 +148,17 @@ export class GPUView {
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 58);
     }
     setMesh(primitives, vertices) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this._next) {
-                this._next.destroy();
-            }
-            this._next = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices);
-            this._nextCount = vertices.length / 6;
-            if (!this._frame) {
-                this._frame = () => {
-                    this.draw();
-                    if (this._frame) {
-                        requestAnimationFrame(this._frame);
-                    }
-                };
-                this._frame();
-            }
-        });
+        this.verticesCount = vertices.length / 6;
+        if (this.verticesCount > this.maxVerticesCount) {
+            this.vertices.destroy();
+            this.vertices = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices);
+            this.maxVerticesCount = this.verticesCount;
+        }
+        else {
+            this.device.queue.writeBuffer(this.vertices, 0, vertices);
+        }
     }
     draw() {
-        if (this._next) {
-            this.vertices.destroy();
-            this.vertices = this._next;
-            this._next = null;
-            this._verticesCount = this._nextCount;
-        }
         const command = gputils.encodeCommand(this.device, encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
@@ -178,7 +168,7 @@ export class GPUView {
                 pass.setPipeline(this.pipeline);
                 pass.setVertexBuffer(0, this.vertices);
                 pass.setBindGroup(0, this.uniformsGroup);
-                pass.draw(this._verticesCount);
+                pass.draw(this.verticesCount);
             });
         });
         this.device.queue.submit([command]);

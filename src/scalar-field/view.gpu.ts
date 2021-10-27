@@ -9,7 +9,6 @@ export class GPUView implements v.View {
     private canvas: Canvas
     private depthTexture: GPUTexture
     private uniforms: GPUBuffer
-    private vertices: GPUBuffer
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
@@ -26,15 +25,16 @@ export class GPUView implements v.View {
         0
     ])
 
-    private _frame: null | (() => void) = null
-    private _next: null | GPUBuffer = null
-    private _nextCount: number = 0
+    private frame: () => void
 
     private _matPositions: ether.Mat<4> = ether.mat4.identity()
     private _matNormals: ether.Mat<4> = ether.mat4.identity()
     private _matView: ether.Mat<4> = ether.mat4.identity()
-    private _globalLightPosition: ether.Vec<4> = [2, 2, 2, 1]
-    private _verticesCount: number = 0
+    private _lightPosition: ether.Vec<4> = [2, 2, 2, 1]
+
+    private vertices: GPUBuffer
+    private verticesCount: number = 0
+    private maxVerticesCount: number = 0
 
     constructor(
         private device: GPUDevice,
@@ -86,6 +86,12 @@ export class GPUView implements v.View {
         })
 
         this.uniformsGroup = gputils.createBindGroup(device, this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+
+        this.frame = () => {
+            this.draw()
+            requestAnimationFrame(this.frame)
+        }
+        this.frame()
     }
 
     get matPositions(): ether.Mat<4> {
@@ -102,7 +108,7 @@ export class GPUView implements v.View {
 
     set matView(m: ether.Mat<4>) {
         this._matView = m
-        this.lightPosition = this._globalLightPosition
+        this.lightPosition = this._lightPosition
     }    
 
     setMatModel(modelPositions: ether.Mat<4>, modelNormals: ether.Mat<4> = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
@@ -138,11 +144,11 @@ export class GPUView implements v.View {
     }
 
     get lightPosition(): ether.Vec<4> {
-        return this._globalLightPosition
+        return this._lightPosition
     }
 
     set lightPosition(p: ether.Vec<4>) {
-        this._globalLightPosition = p
+        this._lightPosition = p
         const vp = ether.mat4.apply(this._matView, p)
         this.uniformsData.set(vp, 52)
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 52)
@@ -175,30 +181,18 @@ export class GPUView implements v.View {
         gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 58)
     }
 
-    async setMesh(primitives: GLenum, vertices: Float32Array) {
-        if (this._next) {
-            this._next.destroy()
-        }
-        this._next = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices)
-        this._nextCount = vertices.length / 6
-        if (!this._frame) {
-            this._frame = () => {
-                this.draw()
-                if (this._frame) {
-                    requestAnimationFrame(this._frame)
-                }
-            }
-            this._frame()
+    setMesh(primitives: GLenum, vertices: Float32Array) {
+        this.verticesCount = vertices.length / 6
+        if (this.verticesCount > this.maxVerticesCount) {
+            this.vertices.destroy()
+            this.vertices = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices)
+            this.maxVerticesCount = this.verticesCount
+        } else {
+            this.device.queue.writeBuffer(this.vertices, 0, vertices)
         }
     }
 
     private draw() {
-        if (this._next) {
-            this.vertices.destroy()
-            this.vertices = this._next
-            this._next = null
-            this._verticesCount = this._nextCount
-        }
         const command = gputils.encodeCommand(this.device, encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
@@ -208,7 +202,7 @@ export class GPUView implements v.View {
                 pass.setPipeline(this.pipeline)
                 pass.setVertexBuffer(0, this.vertices)
                 pass.setBindGroup(0, this.uniformsGroup)
-                pass.draw(this._verticesCount)
+                pass.draw(this.verticesCount)
             })
         })
         this.device.queue.submit([command])
