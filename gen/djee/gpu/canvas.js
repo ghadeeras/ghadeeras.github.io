@@ -1,6 +1,6 @@
 import { required } from "../../utils/misc.js";
 export class Canvas {
-    constructor(canvas, device, adapter) {
+    constructor(device, canvas) {
         var _a;
         this.device = device;
         this.element = typeof canvas === 'string' ?
@@ -13,14 +13,14 @@ export class Canvas {
             width: Math.round(this.element.clientWidth * pixelRatio),
             height: Math.round(this.element.clientHeight * pixelRatio),
         };
-        this.format = this.context.getPreferredFormat(adapter);
+        this.format = this.context.getPreferredFormat(device.adapter);
         this.context.configure({
             size: this.size,
             format: this.format,
-            device: device,
+            device: device.device,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
-        this.colorView = device.createTexture({
+        this.colorTexture = device.texture({
             size: this.size,
             format: this.format,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -29,14 +29,14 @@ export class Canvas {
     }
     attachment(clearColor) {
         return {
-            view: this.colorView.createView(),
+            view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
             loadValue: clearColor,
             storeOp: "discard",
         };
     }
     depthTexture() {
-        return this.device.createTexture({
+        return this.device.texture({
             size: this.size,
             format: "depth32float",
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -44,7 +44,7 @@ export class Canvas {
         });
     }
     destroy() {
-        this.colorView.destroy();
+        this.colorTexture.destroy();
         this.context.unconfigure();
     }
 }

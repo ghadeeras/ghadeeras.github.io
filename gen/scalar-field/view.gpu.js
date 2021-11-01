@@ -7,12 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import * as gpu from "../djee/gpu/index.js";
 import * as ether from "../../ether/latest/index.js";
 import * as etherX from "../utils/ether.js";
-import * as gputils from "../djee/gpu/utils.js";
-import { Canvas } from "../djee/gpu/canvas.js";
 export class GPUView {
-    constructor(device, adapter, canvasId, shaderModule) {
+    constructor(device, canvasId, shaderModule) {
         this.device = device;
         this.uniformsData = new Float32Array([
             ...ether.mat4.columnMajorArray(ether.mat4.identity()),
@@ -30,15 +29,13 @@ export class GPUView {
         this._matNormals = ether.mat4.identity();
         this._matView = ether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
-        this.verticesCount = 0;
-        this.maxVerticesCount = 0;
-        this.uniforms = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsData);
-        this.vertices = gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, new Float32Array([]));
-        this.canvas = new Canvas(canvasId, device, adapter);
+        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, 6 * 4, new Float32Array([]));
+        this.canvas = device.canvas(canvasId);
         this.depthTexture = this.canvas.depthTexture();
-        this.pipeline = device.createRenderPipeline({
+        this.pipeline = device.device.createRenderPipeline({
             vertex: {
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 entryPoint: "v_main",
                 buffers: [{
                         arrayStride: 6 * 4,
@@ -54,7 +51,7 @@ export class GPUView {
                     }]
             },
             fragment: {
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 entryPoint: "f_main",
                 targets: [{
                         format: this.canvas.format
@@ -72,7 +69,7 @@ export class GPUView {
                 count: this.canvas.sampleCount
             }
         });
-        this.uniformsGroup = gputils.createBindGroup(device, this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
         this.frame = () => {
             this.draw();
             requestAnimationFrame(this.frame);
@@ -101,21 +98,21 @@ export class GPUView {
             ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelNormals));
         this.uniformsData.set(matPositions, 0);
         this.uniformsData.set(matNormals, 16);
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 32, 0);
+        this.uniforms.writeAt(0, this.uniformsData, 0, 32);
     }
     get matProjection() {
         return etherX.asMat(this.uniformsData, 32);
     }
     set matProjection(m) {
         this.uniformsData.set(ether.mat4.columnMajorArray(m), 32);
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 16, 32);
+        this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16);
     }
     get color() {
         return etherX.asVec(this.uniformsData, 48);
     }
     set color(c) {
         this.uniformsData.set(c, 48);
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 48);
+        this.uniforms.writeAt(48 * 4, this.uniformsData, 48, 4);
     }
     get lightPosition() {
         return this._lightPosition;
@@ -124,61 +121,53 @@ export class GPUView {
         this._lightPosition = p;
         const vp = ether.mat4.apply(this._matView, p);
         this.uniformsData.set(vp, 52);
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 52);
+        this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4);
     }
     get shininess() {
         return this.uniformsData[56];
     }
     set shininess(s) {
         this.uniformsData[56] = s;
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 56);
+        this.uniforms.writeAt(56 * 4, this.uniformsData, 56, 1);
     }
     get lightRadius() {
         return this.uniformsData[57];
     }
     set lightRadius(s) {
         this.uniformsData[57] = s;
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 57);
+        this.uniforms.writeAt(57 * 4, this.uniformsData, 57, 1);
     }
     get fogginess() {
         return this.uniformsData[58];
     }
     set fogginess(f) {
         this.uniformsData[58] = f;
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 58);
+        this.uniforms.writeAt(58 * 4, this.uniformsData, 58, 1);
     }
     setMesh(primitives, vertices) {
-        this.verticesCount = vertices.length / 6;
-        if (this.verticesCount > this.maxVerticesCount) {
-            this.vertices.destroy();
-            this.vertices = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices);
-            this.maxVerticesCount = this.verticesCount;
-        }
-        else {
-            this.device.queue.writeBuffer(this.vertices, 0, vertices);
-        }
+        this.vertices.setData(vertices);
     }
     draw() {
-        const command = gputils.encodeCommand(this.device, encoder => {
+        const command = this.device.encodeCommand(encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: gputils.depthAttachment(this.depthTexture)
+                depthStencilAttachment: this.depthTexture.depthAttachment()
             };
-            gputils.renderPass(encoder, passDescriptor, pass => {
+            encoder.renderPass(passDescriptor, pass => {
                 pass.setPipeline(this.pipeline);
-                pass.setVertexBuffer(0, this.vertices);
+                pass.setVertexBuffer(0, this.vertices.buffer);
                 pass.setBindGroup(0, this.uniformsGroup);
-                pass.draw(this.verticesCount);
+                pass.draw(this.vertices.stridesCount);
             });
         });
-        this.device.queue.submit([command]);
+        this.device.device.queue.submit([command]);
     }
 }
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
-        const [device, adapter] = yield gputils.gpuObjects();
-        const shaderModule = yield gputils.loadShaderModule(device, "generic.wgsl");
-        return new GPUView(device, adapter, canvasId, shaderModule);
+        const device = yield gpu.Device.instance();
+        const shaderModule = yield device.loadShaderModule("generic.wgsl");
+        return new GPUView(device, canvasId, shaderModule);
     });
 }
 //# sourceMappingURL=view.gpu.js.map

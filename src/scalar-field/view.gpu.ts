@@ -1,14 +1,14 @@
+import * as gpu from "../djee/gpu/index.js"
 import * as ether from "../../ether/latest/index.js"
 import * as etherX from "../utils/ether.js"
 import * as v from "./view.js"
-import * as gputils from "../djee/gpu/utils.js"
-import { Canvas } from "../djee/gpu/canvas.js"
 
 export class GPUView implements v.View {
 
-    private canvas: Canvas
-    private depthTexture: GPUTexture
-    private uniforms: GPUBuffer
+    private canvas: gpu.Canvas
+    private depthTexture: gpu.Texture
+    private uniforms: gpu.Buffer
+    private vertices: gpu.Buffer
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
@@ -32,25 +32,20 @@ export class GPUView implements v.View {
     private _matView: ether.Mat<4> = ether.mat4.identity()
     private _lightPosition: ether.Vec<4> = [2, 2, 2, 1]
 
-    private vertices: GPUBuffer
-    private verticesCount: number = 0
-    private maxVerticesCount: number = 0
-
     constructor(
-        private device: GPUDevice,
-        adapter: GPUAdapter,
+        private device: gpu.Device,
         canvasId: string,
-        shaderModule: GPUShaderModule,
+        shaderModule: gpu.ShaderModule,
     ) {
-        this.uniforms = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsData);
-        this.vertices = gputils.createBuffer(device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, new Float32Array([]))
+        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, 6 * 4, new Float32Array([]))
 
-        this.canvas = new Canvas(canvasId, device, adapter)
+        this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
 
-        this.pipeline = device.createRenderPipeline({
+        this.pipeline = device.device.createRenderPipeline({
             vertex: {
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 entryPoint: "v_main",
                 buffers: [{
                     arrayStride: 6 * 4,
@@ -66,7 +61,7 @@ export class GPUView implements v.View {
                 }]
             },
             fragment: {
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 entryPoint: "f_main",
                 targets: [{
                     format: this.canvas.format
@@ -85,7 +80,7 @@ export class GPUView implements v.View {
             }
         })
 
-        this.uniformsGroup = gputils.createBindGroup(device, this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
 
         this.frame = () => {
             this.draw()
@@ -122,7 +117,7 @@ export class GPUView implements v.View {
 
         this.uniformsData.set(matPositions, 0)
         this.uniformsData.set(matNormals, 16)
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 32, 0)
+        this.uniforms.writeAt(0, this.uniformsData, 0, 32)
     }
 
     get matProjection(): ether.Mat<4> {
@@ -131,7 +126,7 @@ export class GPUView implements v.View {
 
     set matProjection(m: ether.Mat<4>) {
         this.uniformsData.set(ether.mat4.columnMajorArray(m), 32)
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 16, 32)
+        this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16)
     }
 
     get color(): ether.Vec<4> {
@@ -140,7 +135,7 @@ export class GPUView implements v.View {
 
     set color(c: ether.Vec<4>) {
         this.uniformsData.set(c, 48)
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 48)
+        this.uniforms.writeAt(48 * 4, this.uniformsData, 48, 4)
     }
 
     get lightPosition(): ether.Vec<4> {
@@ -151,7 +146,7 @@ export class GPUView implements v.View {
         this._lightPosition = p
         const vp = ether.mat4.apply(this._matView, p)
         this.uniformsData.set(vp, 52)
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 4, 52)
+        this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4)
     }
 
     get shininess(): number {
@@ -160,7 +155,7 @@ export class GPUView implements v.View {
 
     set shininess(s: number) {
         this.uniformsData[56] = s
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 56)
+        this.uniforms.writeAt(56 * 4, this.uniformsData, 56, 1)
     }
 
     get lightRadius(): number {
@@ -169,7 +164,7 @@ export class GPUView implements v.View {
 
     set lightRadius(s: number) {
         this.uniformsData[57] = s
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 57)
+        this.uniforms.writeAt(57 * 4, this.uniformsData, 57, 1)
     }
 
     get fogginess(): number {
@@ -178,40 +173,33 @@ export class GPUView implements v.View {
 
     set fogginess(f: number) {
         this.uniformsData[58] = f
-        gputils.writeToBuffer(this.device, this.uniforms, this.uniformsData, 1, 58)
+        this.uniforms.writeAt(58 * 4, this.uniformsData, 58, 1)
     }
 
     setMesh(primitives: GLenum, vertices: Float32Array) {
-        this.verticesCount = vertices.length / 6
-        if (this.verticesCount > this.maxVerticesCount) {
-            this.vertices.destroy()
-            this.vertices = gputils.createBuffer(this.device, GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, vertices)
-            this.maxVerticesCount = this.verticesCount
-        } else {
-            this.device.queue.writeBuffer(this.vertices, 0, vertices)
-        }
+        this.vertices.setData(vertices)
     }
 
     private draw() {
-        const command = gputils.encodeCommand(this.device, encoder => {
+        const command = this.device.encodeCommand(encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: gputils.depthAttachment(this.depthTexture)
+                depthStencilAttachment: this.depthTexture.depthAttachment()
             };
-            gputils.renderPass(encoder, passDescriptor, pass => {
+            encoder.renderPass(passDescriptor, pass => {
                 pass.setPipeline(this.pipeline)
-                pass.setVertexBuffer(0, this.vertices)
+                pass.setVertexBuffer(0, this.vertices.buffer)
                 pass.setBindGroup(0, this.uniformsGroup)
-                pass.draw(this.verticesCount)
+                pass.draw(this.vertices.stridesCount)
             })
         })
-        this.device.queue.submit([command])
+        this.device.device.queue.submit([command])
     }
 
 }
 
 export async function newView(canvasId: string): Promise<v.View> {
-    const [device, adapter] = await gputils.gpuObjects()
-    const shaderModule = await gputils.loadShaderModule(device, "generic.wgsl")
-    return new GPUView(device, adapter, canvasId, shaderModule)
+    const device = await gpu.Device.instance()
+    const shaderModule = await device.loadShaderModule("generic.wgsl")
+    return new GPUView(device, canvasId, shaderModule)
 }

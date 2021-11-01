@@ -1,15 +1,17 @@
 import { required } from "../../utils/misc.js"
+import { Device } from "./device.js"
+import { Texture } from "./texture.js"
 
 export class Canvas {
 
     readonly element: HTMLCanvasElement
     readonly context: GPUCanvasContext
-    readonly colorView: GPUTexture
-    readonly size: GPUExtent3D
+    readonly colorTexture: Texture
+    readonly size: GPUExtent3DDict
     readonly sampleCount: number
     readonly format: GPUTextureFormat
 
-    constructor(canvas: HTMLCanvasElement | string,  private device: GPUDevice, adapter: GPUAdapter) {
+    constructor(readonly device: Device, canvas: HTMLCanvasElement | string) {
         this.element = typeof canvas === 'string' ? 
             required(document.getElementById(canvas)) as HTMLCanvasElement : 
             canvas
@@ -22,14 +24,14 @@ export class Canvas {
             height: Math.round(this.element.clientHeight * pixelRatio),
         }
 
-        this.format = this.context.getPreferredFormat(adapter)
+        this.format = this.context.getPreferredFormat(device.adapter)
         this.context.configure({
             size: this.size,
             format: this.format,
-            device: device,
+            device: device.device,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         })
-        this.colorView = device.createTexture({
+        this.colorTexture = device.texture({
             size: this.size,
             format: this.format,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -39,15 +41,15 @@ export class Canvas {
 
     attachment(clearColor: GPUColor): GPURenderPassColorAttachment {
         return {
-            view: this.colorView.createView(),
+            view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
             loadValue: clearColor,
             storeOp: "discard",
         }
     }
 
-    depthTexture(): GPUTexture {
-        return this.device.createTexture({
+    depthTexture(): Texture {
+        return this.device.texture({
             size: this.size,
             format: "depth32float",
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
@@ -56,7 +58,7 @@ export class Canvas {
     }
 
     destroy() {
-        this.colorView.destroy()
+        this.colorTexture.destroy()
         this.context.unconfigure()
     }
 

@@ -1,8 +1,7 @@
 import * as ether from '../../ether/latest/index.js' 
-import { DeferredComputation } from '../../gear/latest/scheduling.js'
-import { Canvas } from '../djee/gpu/canvas.js'
-import * as gputils from '../djee/gpu/utils.js'
+import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
+import { DeferredComputation } from '../../gear/latest/scheduling.js'
 import { Universe } from './universe.js'
 
 export class Renderer {
@@ -12,9 +11,9 @@ export class Renderer {
     private readonly meshIndexFormat: GPUIndexFormat
     private readonly meshSize: number
 
-    private readonly renderingUniformsBuffer: GPUBuffer
-    private readonly meshIndicesBuffer: GPUBuffer
-    private readonly meshVertexBuffer: GPUBuffer
+    private readonly renderingUniformsBuffer: gpu.Buffer
+    private readonly meshIndicesBuffer: gpu.Buffer
+    private readonly meshVertexBuffer: gpu.Buffer
 
     private readonly renderBindGroup: GPUBindGroup
 
@@ -34,25 +33,25 @@ export class Renderer {
     ]
 
     private updateRenderingUniformsData = new DeferredComputation(() => {
-        this.device.queue.writeBuffer(this.renderingUniformsBuffer, 0, new Float32Array(this.renderingUniformsData))
+        this.renderingUniformsBuffer.writeAt(0, new Float32Array(this.renderingUniformsData))
     })
 
-    constructor(private device: GPUDevice, renderShader: GPUShaderModule, canvas: Canvas) {
+    constructor(private device: gpu.Device, renderShader: gpu.ShaderModule, canvas: gpu.Canvas) {
         const mesh = geo.sphere(18, 9)
         this.meshIndexFormat = mesh.indexFormat ?? "uint16"
         this.meshSize = mesh.indices.length
 
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(device, renderShader, canvas.format, mesh, canvas.sampleCount)
+        this.renderPipeline = this.createPipeline(device.device, renderShader.shaderModule, canvas.format, mesh, canvas.sampleCount)
         const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.renderingUniformsBuffer = gputils.createBuffer(device, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, new Float32Array(this.renderingUniformsData))
-        this.meshIndicesBuffer = gputils.createBuffer(device, GPUBufferUsage.INDEX, new Uint16Array(mesh.indices))
-        this.meshVertexBuffer = gputils.createBuffer(device, GPUBufferUsage.VERTEX, new Float32Array(mesh.positions))
+        this.renderingUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.renderingUniformsData))
+        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, 1, new Uint16Array(mesh.indices))
+        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, 1, new Float32Array(mesh.positions))
 
         /* Bind Groups */
-        this.renderBindGroup = gputils.createBindGroup(this.device, renderBindGroupLayout, [this.renderingUniformsBuffer]) 
+        this.renderBindGroup = this.device.createBindGroup(renderBindGroupLayout, [this.renderingUniformsBuffer]) 
     }
 
     get projectionViewMatrix() {
@@ -170,15 +169,15 @@ export class Renderer {
     }
 
     render(universe: Universe, descriptor: GPURenderPassDescriptor) {
-        this.device.queue.submit([
-            gputils.encodeCommand(this.device, encoder => {
-                gputils.renderPass(encoder, descriptor, pass => {
+        this.device.device.queue.submit([
+            this.device.encodeCommand(encoder => {
+                encoder.renderPass(descriptor, pass => {
                     pass.setPipeline(this.renderPipeline)
                     pass.setBindGroup(0, this.renderBindGroup)
-                    pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer)
-                    pass.setVertexBuffer(1, universe.currentState)
-                    pass.setVertexBuffer(2, this.meshVertexBuffer)
-                    pass.setIndexBuffer(this.meshIndicesBuffer, this.meshIndexFormat)
+                    pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer)
+                    pass.setVertexBuffer(1, universe.currentState.buffer)
+                    pass.setVertexBuffer(2, this.meshVertexBuffer.buffer)
+                    pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat)
                     pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0)
                 })
             })
@@ -187,7 +186,7 @@ export class Renderer {
 
 }
 
-export async function newRenderer(device: GPUDevice, canvas: Canvas) {
-    const shaderModule = await gputils.loadShaderModule(device, "gravity-render.wgsl")
+export async function newRenderer(device: gpu.Device, canvas: gpu.Canvas) {
+    const shaderModule = await device.loadShaderModule("gravity-render.wgsl")
     return new Renderer(device, shaderModule, canvas)
 }

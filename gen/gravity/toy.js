@@ -10,8 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as gear from '../../gear/latest/index.js';
 import * as ether from '../../ether/latest/index.js';
 import * as dragging from '../utils/dragging.js';
-import * as gputils from '../djee/gpu/utils.js';
-import { Canvas } from '../djee/gpu/canvas.js';
+import * as gpu from '../djee/gpu/index.js';
 import { newUniverse } from './universe.js';
 import { newRenderer } from './renderer.js';
 import { required } from '../utils/misc.js';
@@ -20,8 +19,8 @@ export function init() {
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const [device, adapter] = yield gpuObjects();
-        const canvas = new Canvas("canvas-gl", device, adapter);
+        const device = yield gpuDevice();
+        const canvas = device.canvas("canvas-gl");
         const universe = yield newUniverse(device);
         const renderer = yield newRenderer(device, canvas);
         const pauseResumeAction = animation(canvas, universe, renderer);
@@ -111,7 +110,7 @@ function animation(canvas, universe, renderer) {
     const rendering = throttled(60, () => {
         renderer.render(universe, {
             colorAttachments: [canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-            depthStencilAttachment: gputils.depthAttachment(depthTexture)
+            depthStencilAttachment: depthTexture.depthAttachment()
         });
     });
     animate(rendering);
@@ -146,13 +145,13 @@ function throttled(freqInHz, logic) {
         }
     };
 }
-function gpuObjects() {
+function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
         const gpuStatus = required(document.getElementById("gpu-status"));
         try {
-            const objects = yield gputils.gpuObjects();
+            const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
-            return objects;
+            return device;
         }
         catch (e) {
             gpuStatus.innerHTML = "\u{1F62D} Not Supported!";

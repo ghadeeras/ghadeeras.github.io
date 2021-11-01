@@ -1,8 +1,7 @@
 import * as gear from '../../gear/latest/index.js'
 import * as ether from '../../ether/latest/index.js'
 import * as dragging from '../utils/dragging.js'
-import * as gputils from '../djee/gpu/utils.js'
-import { Canvas } from '../djee/gpu/canvas.js'
+import * as gpu from '../djee/gpu/index.js'
 import { newUniverse, Universe } from './universe.js'
 import { newRenderer, Renderer } from './renderer.js'
 import { required } from '../utils/misc.js'
@@ -12,9 +11,9 @@ export function init() {
 }
 
 async function doInit() {
-    const [device, adapter] = await gpuObjects()
+    const device = await gpuDevice()
 
-    const canvas = new Canvas("canvas-gl", device, adapter)
+    const canvas = device.canvas("canvas-gl")
     
     const universe = await newUniverse(device)
     const renderer = await newRenderer(device, canvas)
@@ -24,7 +23,7 @@ async function doInit() {
     setupActions(universe, renderer, pauseResumeAction)
 }
 
-function setupControls(canvas: Canvas, universe: Universe, renderer: Renderer) {
+function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Renderer) {
     const universeRotation = new gear.Value<gear.Dragging>()
     const observerPosition = new gear.Value<gear.Dragging>()
     const bodyPointedness = new gear.Value<gear.Dragging>()
@@ -117,12 +116,12 @@ function action(previous: string) {
     return required(document.getElementById(`action-${previous}`))
 }
 
-function animation(canvas: Canvas, universe: Universe, renderer: Renderer) {
+function animation(canvas: gpu.Canvas, universe: Universe, renderer: Renderer) {
     const depthTexture = canvas.depthTexture()
     const rendering = throttled(60, () => {
         renderer.render(universe, {
             colorAttachments: [canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-            depthStencilAttachment: gputils.depthAttachment(depthTexture)
+            depthStencilAttachment: depthTexture.depthAttachment()
         })
     })
 
@@ -161,12 +160,12 @@ function throttled(freqInHz: number, logic: () => void): (time?: number) => void
     }
 }
 
-async function gpuObjects() {
+async function gpuDevice() {
     const gpuStatus = required(document.getElementById("gpu-status"))
     try {
-        const objects = await gputils.gpuObjects()
+        const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"
-        return objects    
+        return device    
     } catch (e) {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!"
         throw e
