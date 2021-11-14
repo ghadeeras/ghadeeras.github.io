@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="origin-trial" content="Ar2WeznfiWX5A5KwU5XHxqYHAszues0yCu43kut+rarQ8TOcwof17SvUnD2nO/Qc0U0f67xW8wfEUi+8PeaxDQQAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY0MzE1NTE5OX0=">
+    <title>Sculpting</title>
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
+    <script type="module">
+        import * as Sculpting from "../gen/sculpting/toy.js"
+        Sculpting.init();
+    </script>
+</head>
+
+<body>
+
+    <div id="head">
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
+    </div>
+
+    <div id="content">
+
+        <div id="side">
+
+            <div class="section">
+                <strong>Sculpting</strong>
+            </div>
+
+            <div>
+                <p>
+                    Graphics API: <span id="graphics-api">...</span>
+                </p>
+                <p>
+                    <span>LOD: </span>
+                    <button id="lod-inc">+</button>
+                    <span id="lod">64</span>
+                    <button id="lod-dec">-</button>
+                </p>
+                <p>
+                    <div>Mouse Binding: 
+                        <select id="mouse-binding" name="mouse-binding">
+                            <option value="rotation" selected>Rotation</option>
+                            <option value="focalRatio">Focal Ratio</option>
+                            <option value="contourValue">Contour Value (Mouse Y)</option>
+                            <option value="carving">Carving (Mouse Y)</option>
+                            <option value="shininess">Shininess (Mouse Y)</option>
+                            <option value="lightPosition">Light Position</option>
+                            <option value="lightRadius">Light Radius (Mouse Y)</option>
+                            <option value="fogginess">Fogginess (Mouse Y)</option>
+                        </select>
+                    </div>
+                </p>
+                <p>
+                    <button id="save">Save as:</button>
+                    <input id="file-name" type="text" value="Model" />    
+                </p>
+                <p>
+                    <button id="undo" style="width: 100%;">Undo / Redo</button>
+                </p>
+                <p>
+                    <button id="reset-contour" style="width: 100%;">Reset Contour Value</button>
+                </p>
+            </div>
+
+        </div>
+
+        <div id="main">
+            <div class="view">
+                <canvas id="canvas-gl" width="640" height="640">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+            </div>
+        </div>
+
+        <div id="other-side">
+
+            <div class="section">
+                <strong>Description</strong>
+            </div>
+
+            <div>
+                <p>
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+</body>
+
+</html>

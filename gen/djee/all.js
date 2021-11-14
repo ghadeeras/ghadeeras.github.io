@@ -9,4 +9,5 @@ export * from "./reflection.js";
 export * from "./attribute.js";
 export * from "./uniform.js";
 export * from "./gltf.js";
+export * from "./gltf.gen.js";
 //# sourceMappingURL=all.js.map

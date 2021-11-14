@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as gpu from "../djee/gpu/index.js";
 import * as ether from "../../ether/latest/index.js";
-import * as etherX from "../utils/ether.js";
+import { picker } from "./picker.gpu.js";
 export class GPUView {
     constructor(device, canvasId, shaderModule) {
         this.device = device;
@@ -101,14 +101,14 @@ export class GPUView {
         this.uniforms.writeAt(0, this.uniformsData, 0, 32);
     }
     get matProjection() {
-        return etherX.asMat(this.uniformsData, 32);
+        return ether.mat4.from(this.uniformsData, 32);
     }
     set matProjection(m) {
         this.uniformsData.set(ether.mat4.columnMajorArray(m), 32);
         this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16);
     }
     get color() {
-        return etherX.asVec(this.uniformsData, 48);
+        return ether.vec4.from(this.uniformsData, 48);
     }
     set color(c) {
         this.uniformsData.set(c, 48);
@@ -119,8 +119,7 @@ export class GPUView {
     }
     set lightPosition(p) {
         this._lightPosition = p;
-        const vp = ether.mat4.apply(this._matView, p);
-        this.uniformsData.set(vp, 52);
+        this.uniformsData.set(ether.vec4.add(this._matView[3], p), 52);
         this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4);
     }
     get shininess() {
@@ -146,6 +145,11 @@ export class GPUView {
     }
     setMesh(primitives, vertices) {
         this.vertices.setData(vertices);
+    }
+    picker() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield picker(this.canvas, () => this.vertices);
+        });
     }
     draw() {
         const command = this.device.encodeCommand(encoder => {

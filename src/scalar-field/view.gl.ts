@@ -1,13 +1,13 @@
 import * as ether from "../../ether/latest/index.js"
-import * as etherX from "../utils/ether.js"
 import * as djee from "../djee/all.js"
 import * as gear from "../../gear/latest/files.js"
 import * as v from "./view.js"
+import { picker } from "./picker.gl.js"
 
 export class GLView implements v.View {
 
-    private context: djee.Context
-    private program: djee.Program
+    readonly context: djee.Context
+    readonly program: djee.Program
 
     private position: djee.Attribute
     private normal: djee.Attribute
@@ -80,6 +80,16 @@ export class GLView implements v.View {
         this.position.pointTo(this._vertices)
         this.normal.pointTo(this._vertices, 3 * 4)
 
+        this.bind()
+    }
+
+    picker(): Promise<v.Picker> {
+        return picker(this, () => this._vertices)
+    }
+
+    bind() {
+        this.program.use()
+        const gl = this.context.gl
         gl.enable(gl.DEPTH_TEST)
         gl.clearDepth(1)
         gl.clearColor(1, 1, 1, 1)
@@ -113,7 +123,7 @@ export class GLView implements v.View {
     }    
 
     get matProjection(): ether.Mat<4> {
-        return etherX.asMat(this._matProjection.data)
+        return ether.mat4.from(this._matProjection.data)
     }
 
     set matProjection(m: ether.Mat<4>) {
@@ -121,7 +131,7 @@ export class GLView implements v.View {
     }
 
     get color(): ether.Vec<4> {
-        return etherX.asVec(this._color.data)
+        return ether.vec4.from(this._color.data)
     }
 
     set color(c: ether.Vec<4>) {
@@ -142,7 +152,7 @@ export class GLView implements v.View {
 
     set lightPosition(p: ether.Vec<4>) {
         this._globalLightPosition = p
-        this._lightPosition.data = ether.mat4.apply(this._matView, p).slice(0, 3)
+        this._lightPosition.data = ether.vec4.add(this._matView[3], p).slice(0, 3)
     }
 
     get lightRadius(): number {

@@ -16,6 +16,10 @@ export class FrameBuffer {
         const gl = this.context.gl;
         gl.bindFramebuffer(this.target, this.glFrameBuffer);
     }
+    unbind() {
+        const gl = this.context.gl;
+        gl.bindFramebuffer(this.target, null);
+    }
     check() {
         this.bind();
         const result = this.context.gl.checkFramebufferStatus(this.target);

@@ -28,6 +28,14 @@ export interface View {
 
     setMesh(primitives: GLenum, vertices: Float32Array): void
 
+    picker(): Promise<Picker>
+
+}
+
+export interface Picker {
+
+    pick(matModelViewProjection: ether.Mat<4>, x: number, y: number): Promise<ether.Vec4>
+
 }
 
 export type ViewInputs = {

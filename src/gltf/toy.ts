@@ -130,6 +130,7 @@ async function doInit() {
 
     lightPositionTarget().value = cases.lightPosition
         .then(gear.drag(dragging.positionDragging))
+        .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
         .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
         .defaultsTo(ether.vec2.of(0, 0))
 
@@ -194,6 +195,8 @@ function getModelUri(modelId: string) {
         case "ScalarFieldIn": return new URL('/models/ScalarFieldIn.gltf', window.location.href).href;
         case "ScalarField": return new URL('/models/ScalarField.gltf', window.location.href).href;
         case "ScalarFieldOut": return new URL('/models/ScalarFieldOut.gltf', window.location.href).href;
+        case "SculptTorso": return new URL('/models/SculptTorso.gltf', window.location.href).href;
+        case "SculptHead": return new URL('/models/SculptHead.gltf', window.location.href).href;
         default:
             const modelIndexEntry = modelIndex.find(entry => entry.name === modelId);
             return `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry?.variants.glTF}`;
@@ -202,7 +205,8 @@ function getModelUri(modelId: string) {
 
 function lightPositionTarget(): gear.Target<gear.PointerPosition> {
     return new gear.Target(([x, y]) => {
-        lightPosition = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y) - 2]
+        const p: ether.Vec4 = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1]
+        lightPosition = ether.vec3.from(ether.vec4.add(viewMatrix[3], p))
         uLightPosition.data = lightPosition
         draw();
     })

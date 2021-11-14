@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 export class Buffer {
-    constructor(device, usage, stride, dataOrSize = 1) {
+    constructor(device, usage, stride, dataOrSize = stride) {
         this.device = device;
         this.usage = usage;
         this.stride = stride;

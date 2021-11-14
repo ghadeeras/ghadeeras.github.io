@@ -4,6 +4,13 @@ export class Texture {
         this.descriptor = descriptor;
         this.texture = this.device.device.createTexture(descriptor);
         this.view = this.texture.createView();
+        if ('width' in descriptor.size) {
+            this.size = descriptor.size;
+        }
+        else {
+            const [width, height] = descriptor.size;
+            this.size = { width, height };
+        }
     }
     destroy() {
         this.texture.destroy();
@@ -15,6 +22,13 @@ export class Texture {
             depthStoreOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
             stencilStoreOp: "discard",
             stencilLoadValue: 0,
+        };
+    }
+    colorAttachment(loadValue = "load") {
+        return {
+            view: this.view,
+            loadValue: loadValue,
+            storeOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
         };
     }
     createView() {

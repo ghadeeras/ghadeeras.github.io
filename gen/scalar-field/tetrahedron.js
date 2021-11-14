@@ -9,7 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as djee from "../djee/all.js";
 import * as ether from "../../ether/latest/index.js";
-import * as etherX from "../utils/ether.js";
 import * as gear from "../../gear/latest/index.js";
 import * as dragging from "../utils/dragging.js";
 let context;
@@ -63,7 +62,7 @@ function doInit() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
         const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => etherX.asMat(matModel.data), () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const transformer = new dragging.RotationDragging(() => ether.mat4.from(matModel.data), () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const cases = {
             rotation: new gear.Value(),
             lightPosition: new gear.Value(),

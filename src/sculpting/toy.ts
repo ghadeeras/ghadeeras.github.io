@@ -1,37 +1,54 @@
+import * as djee from "../djee/all.js"
 import * as ether from "../../ether/latest/index.js"
 import * as gear from "../../gear/latest/index.js"
-import * as v from "./view.js"
+import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
 import { save } from "../utils/misc.js"
-import { createModel } from "../djee/gltf.gen.js"
+import { Carving } from "./carving.js"
 
 const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = ether.mat4.projection(Math.pow(2, 1.5))
+const projectionMatrix = ether.mat4.projection(4)
 
 export function init() {
-    window.onload = () => doInit()
+    window.onload = doInit
 }
 
 async function doInit() {
-    const scalarFieldModule = await ether.loadScalarFieldModule()
-    const scalarFieldInstance = scalarFieldModule.newInstance()
     const view = await v.newView("canvas-gl")
     view.matView = viewMatrix
     view.matProjection = projectionMatrix
-    const toy = new Toy(view, scalarFieldInstance)
+
+    const picker = await view.picker()
+
+    const scalarFieldModule = await ether.loadScalarFieldModule()
+    const stone = scalarFieldModule.newInstance()
+    stone.resolution = 64
+    stone.sampler = field
+    stone.contourValue = 0.5
+
+    const toy = new Toy(stone, scalarFieldModule, view, picker)
 }
 
 class Toy {
 
-    private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.scalarFieldInstance.vertices)
+    private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
 
-    constructor(view: v.View, private scalarFieldInstance: ether.ScalarFieldInstance) {
+    constructor(private stone: ether.ScalarFieldInstance, scalarFieldModule: ether.ScalarFieldModule, view: v.View, picker: v.Picker) {
         const canvas = gear.elementEvents("canvas-gl")
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
 
+        const carving = new Carving(
+            () => this.stone,
+            () => modelViewProjectionMatrixOf(view),
+            picker,
+            scalarFieldModule, 
+            brush
+        )    
+
         const cases = {
             contourValue: gear.Value.from<gear.Dragging>(),
+            carving: gear.Value.from<gear.Dragging>(),
             rotation: gear.Value.from<gear.Dragging>(),
             focalRatio: gear.Value.from<gear.Dragging>(),
             shininess: gear.Value.from<gear.Dragging>(),
@@ -42,11 +59,19 @@ class Toy {
         
         canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases) 
 
-        const contourValue = cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => y)
-            .defaultsTo(0.01)
+        const contourValue = gear.Value.from(
+            cases.contourValue
+                .then(gear.drag(dragging.positionDragging))
+                .map(([x, y]) => this.clamp((y + 1) / 2, 0, 1))
+                .defaultsTo(this.stone.contourValue),
+            gear.elementEvents("reset-contour").click.value.map(() => 0.5)
+        )
+
         const resolution = this.levelOfDetails()
+
+        const carvedStone = cases.carving
+            .then(gear.drag(carving))
+            .defaultsTo(this.stone)
 
         v.wire(view, {
             matModel: cases.rotation
@@ -89,7 +114,10 @@ class Toy {
             vertices: gear.Value.from(
                 resolution.then((r, c) => this.contourSurfaceDataForResolution(r, c)),
                 contourValue.then((v, c) => this.contourSurfaceDataForValue(v, c)),
-                gear.readableValue("function").defaultsTo("xyz").then((f, c) => this.contourSurfaceDataForFunction(f, c))
+                gear.Value.from(
+                    carvedStone, 
+                    gear.elementEvents("undo").click.value.map(() => carving.undo())
+                ).then((s, c) => this.contourSurfaceDataForStone(s, c)),
             )
         })
         
@@ -100,7 +128,7 @@ class Toy {
     levelOfDetails() {
         const inc = gear.elementEvents("lod-inc").click.value.map(() => +8)
         const dec = gear.elementEvents("lod-dec").click.value.map(() => -8)
-        const flow = gear.Value.from(inc, dec).reduce((i, lod) => this.clamp(lod + i, 32, 96), 64)
+        const flow = gear.Value.from(inc, dec).reduce((i, lod) => this.clamp(lod + i, 32, 96), this.stone.resolution)
         return flow
     }
 
@@ -108,87 +136,80 @@ class Toy {
         return n < min ? min : (n > max ? max : n)
     }
 
-    fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): ether.Vec<4> {
+    fieldColor(contourValue: number = this.stone.contourValue): ether.Vec<4> {
         return contourValue > 0 ?
             [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
             [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
     }
 
-    getFieldFunction(functionName: string) {
-        switch (functionName) {
-            case "xyz": return xyz
-            case "envelopedCosine": return envelopedCosine
-            default: return xyz
-        }
+    contourSurfaceDataForStone(stone: ether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
+        this.stone = stone
+        this.meshComputer.perform().then(meshConsumer)
     }
 
     contourSurfaceDataForValue(value: number, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.contourValue = value
+        this.stone.contourValue = value
         this.meshComputer.perform().then(meshConsumer)
     }
 
     contourSurfaceDataForResolution(resolution: number, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.resolution = resolution
-        this.meshComputer.perform().then(meshConsumer)
-    }
-
-    contourSurfaceDataForFunction(functionName: string, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.sampler = this.getFieldFunction(functionName)
+        this.stone.resolution = resolution
         this.meshComputer.perform().then(meshConsumer)
     }
 
     saveModel() {
-        const model = createModel("ScalarField", this.scalarFieldInstance.vertices)
+        const fileName = document.getElementById("file-name") as HTMLInputElement
+
+        const model = djee.createModel(fileName.value, this.stone.vertices)
         const canvas = document.getElementById("canvas-gl") as HTMLCanvasElement
 
-        save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf')
-        save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin')
-        save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
+        save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
+        save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)
+        save(canvas.toDataURL("image/png"), 'image/png', `${fileName.value}.png`)
     }
 
 }
 
 const twoPi = 2 * Math.PI
 
-function xyz(x: number, y: number, z: number): ether.Vec<4> {
+function modelViewProjectionMatrixOf(view: v.View): ether.Mat4 {
+    return ether.mat4.mul(
+        view.matProjection,
+        ether.mat4.mul(
+            view.matView,
+            view.matPositions
+        )
+    )
+}
+
+function field(x: number, y: number, z: number): ether.Vec<4> {
+    const l = ether.vec3.length([x, y, z])
+    const f = l <= 1 ? 
+        l >= 0.5 ? (1 - Math.cos(twoPi * l)) / 2 : 1 : 
+        0
+    const g = l <= 1 ? 
+        l >= 0.5 ? Math.PI * Math.sin(twoPi * l) / l : 0 : 
+        0
     return [
-        y * z,
-        z * x,
-        x * y,
-        x * y * z
+        x * g,
+        y * g,
+        z * g,
+        f
     ]
 }
 
-function envelopedCosine(x: number, y: number, z: number): ether.Vec<4> {
-    const x2 = x * x
-    const y2 = y * y
-    const z2 = z * z
-    if (x2 <= 1 && y2 <= 1 && z2 <= 1) {
-        const piX2 = Math.PI * x2
-        const piY2 = Math.PI * y2
-        const piZ2 = Math.PI * z2
-        const envelope = (Math.cos(piX2) + 1) * (Math.cos(piY2) + 1) * (Math.cos(piZ2) + 1) / 8
-
-        const piX = Math.PI * x
-        const piY = Math.PI * y
-        const piZ = Math.PI * z
-        const value = Math.cos(2 * piX) + Math.cos(2 * piY) + Math.cos(2 * piZ)
-
-        const dEnvelopeDX = -piX * Math.sin(piX2) * (Math.cos(piY2) + 1) * (Math.cos(piZ2) + 1) / 4 
-        const dEnvelopeDY = -piY * Math.sin(piY2) * (Math.cos(piX2) + 1) * (Math.cos(piZ2) + 1) / 4 
-        const dEnvelopeDZ = -piZ * Math.sin(piZ2) * (Math.cos(piX2) + 1) * (Math.cos(piY2) + 1) / 4 
-
-        const dValueDX = -twoPi * Math.sin(2 * piX)
-        const dValueDY = -twoPi * Math.sin(2 * piY)
-        const dValueDZ = -twoPi * Math.sin(2 * piZ)
-
-        return [
-            dEnvelopeDX * value + envelope * dValueDX,
-            dEnvelopeDY * value + envelope * dValueDY,
-            dEnvelopeDZ * value + envelope * dValueDZ,
-            envelope * value / 3
-        ]
-    } else {
-        return [0, 0, 0, 0]
-    }
+function brush(x: number, y: number, z: number): ether.Vec<4> {
+    const l = ether.vec3.length([x, y, z])
+    const f = l <= 1 ? (1 + Math.cos(Math.PI * l)) / 2 : 0
+    const g = l <= 1 ? 
+        l > Math.sqrt(Number.EPSILON) ? 
+            (-Math.PI / 2) * Math.sin(Math.PI * l) / l : 
+            -Math.PI * Math.PI / 2 : 
+        0
+    return [
+        x * g,
+        y * g,
+        z * g,
+        f
+    ]
 }

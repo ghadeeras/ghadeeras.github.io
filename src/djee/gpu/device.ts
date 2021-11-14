@@ -40,7 +40,7 @@ export class Device {
         return new Texture(this, descriptor)
     }
 
-    buffer(usage: GPUBufferUsageFlags, stride: number, dataOrSize: TypedArray | number = 1): Buffer {
+    buffer(usage: GPUBufferUsageFlags, stride: number, dataOrSize: TypedArray | number = stride): Buffer {
         return new Buffer(this, usage, stride, dataOrSize)
     }
 

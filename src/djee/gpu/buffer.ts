@@ -22,7 +22,7 @@ export class Buffer {
     private writer: Writer
     private reader: Reader
 
-    constructor(readonly device: Device, readonly usage: GPUBufferUsageFlags, readonly stride: number, dataOrSize: TypedArray | number = 1) {
+    constructor(readonly device: Device, readonly usage: GPUBufferUsageFlags, readonly stride: number, dataOrSize: TypedArray | number = stride) {
         [this._buffer, this._size] = typeof dataOrSize === 'number' ?
             [this.newBlankBuffer(dataOrSize), dataOrSize] :
             [this.newBuffer(dataOrSize), dataOrSize.byteLength]

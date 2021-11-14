@@ -1,7 +1,7 @@
 import * as gpu from "../djee/gpu/index.js"
 import * as ether from "../../ether/latest/index.js"
-import * as etherX from "../utils/ether.js"
 import * as v from "./view.js"
+import { picker } from "./picker.gpu.js"
 
 export class GPUView implements v.View {
 
@@ -121,7 +121,7 @@ export class GPUView implements v.View {
     }
 
     get matProjection(): ether.Mat<4> {
-        return etherX.asMat(this.uniformsData, 32)
+        return ether.mat4.from(this.uniformsData, 32)
     }
 
     set matProjection(m: ether.Mat<4>) {
@@ -130,7 +130,7 @@ export class GPUView implements v.View {
     }
 
     get color(): ether.Vec<4> {
-        return etherX.asVec(this.uniformsData, 48)
+        return ether.vec4.from(this.uniformsData, 48)
     }
 
     set color(c: ether.Vec<4>) {
@@ -144,8 +144,7 @@ export class GPUView implements v.View {
 
     set lightPosition(p: ether.Vec<4>) {
         this._lightPosition = p
-        const vp = ether.mat4.apply(this._matView, p)
-        this.uniformsData.set(vp, 52)
+        this.uniformsData.set(ether.vec4.add(this._matView[3], p), 52)
         this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4)
     }
 
@@ -178,6 +177,10 @@ export class GPUView implements v.View {
 
     setMesh(primitives: GLenum, vertices: Float32Array) {
         this.vertices.setData(vertices)
+    }
+
+    async picker(): Promise<v.Picker> {
+        return await picker(this.canvas, () => this.vertices)  
     }
 
     private draw() {

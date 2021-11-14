@@ -1,9 +1,7 @@
 import * as djee from "../djee/all.js"
 import * as ether from "../../ether/latest/index.js"
-import * as etherX from "../utils/ether.js"
 import * as gear from "../../gear/latest/index.js"
 import * as dragging from "../utils/dragging.js"
-import * as wa from "../../vibrato.js/latest/js/wa.js"
 
 let context: djee.Context;
 
@@ -101,7 +99,7 @@ async function doInit() {
 
     const canvas = gear.elementEvents("canvas-gl");
     const transformer = new dragging.RotationDragging(
-        () => etherX.asMat(matModel.data), 
+        () => ether.mat4.from(matModel.data), 
         () => ether.mat4.mul(projectionMatrix, viewMatrix),
         4
     )

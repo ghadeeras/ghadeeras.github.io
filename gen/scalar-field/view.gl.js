@@ -8,9 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as ether from "../../ether/latest/index.js";
-import * as etherX from "../utils/ether.js";
 import * as djee from "../djee/all.js";
 import * as gear from "../../gear/latest/files.js";
+import { picker } from "./picker.gl.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this._frame = null;
@@ -46,6 +46,14 @@ export class GLView {
         this._primitives = gl.TRIANGLES;
         this.position.pointTo(this._vertices);
         this.normal.pointTo(this._vertices, 3 * 4);
+        this.bind();
+    }
+    picker() {
+        return picker(this, () => this._vertices);
+    }
+    bind() {
+        this.program.use();
+        const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
@@ -72,13 +80,13 @@ export class GLView {
         this.lightPosition = this._globalLightPosition;
     }
     get matProjection() {
-        return etherX.asMat(this._matProjection.data);
+        return ether.mat4.from(this._matProjection.data);
     }
     set matProjection(m) {
         this._matProjection.data = ether.mat4.columnMajorArray(m);
     }
     get color() {
-        return etherX.asVec(this._color.data);
+        return ether.vec4.from(this._color.data);
     }
     set color(c) {
         this._color.data = c;
@@ -94,7 +102,7 @@ export class GLView {
     }
     set lightPosition(p) {
         this._globalLightPosition = p;
-        this._lightPosition.data = ether.mat4.apply(this._matView, p).slice(0, 3);
+        this._lightPosition.data = ether.vec4.add(this._matView[3], p).slice(0, 3);
     }
     get lightRadius() {
         return this._lightRadius.data[0];
