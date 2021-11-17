@@ -11,6 +11,8 @@ export class Renderer {
     private readonly meshIndexFormat: GPUIndexFormat
     private readonly meshSize: number
 
+    private readonly depthTexture: gpu.Texture
+
     private readonly renderingUniformsBuffer: gpu.Buffer
     private readonly meshIndicesBuffer: gpu.Buffer
     private readonly meshVertexBuffer: gpu.Buffer
@@ -36,13 +38,15 @@ export class Renderer {
         this.renderingUniformsBuffer.writeAt(0, new Float32Array(this.renderingUniformsData))
     })
 
-    constructor(private device: gpu.Device, renderShader: gpu.ShaderModule, canvas: gpu.Canvas) {
+    constructor(private device: gpu.Device, private canvas: gpu.Canvas, renderShader: gpu.ShaderModule) {
         const mesh = geo.sphere(18, 9)
         this.meshIndexFormat = mesh.indexFormat ?? "uint16"
         this.meshSize = mesh.indices.length
 
+        this.depthTexture = canvas.depthTexture()
+
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(device.device, renderShader.shaderModule, canvas.format, mesh, canvas.sampleCount)
+        this.renderPipeline = this.createPipeline(device.device, renderShader, canvas, mesh, canvas.sampleCount)
         const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0)
 
         /* Buffers */
@@ -109,11 +113,11 @@ export class Renderer {
         ))
     }
 
-    private createPipeline(device: GPUDevice, shaderModule: GPUShaderModule, colorFormat: GPUTextureFormat, mesh: geo.Mesh, sampleCount: number | undefined): GPURenderPipeline {
+    private createPipeline(device: GPUDevice, shaderModule: gpu.ShaderModule, colorFormat: gpu.TextureFormatSource, mesh: geo.Mesh, sampleCount: number | undefined): GPURenderPipeline {
         return device.createRenderPipeline({
             vertex: {
                 entryPoint: "v_main",
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 buffers: [
                     {
                         arrayStride: 2 * 4,
@@ -144,20 +148,8 @@ export class Renderer {
                     }
                 ]
             },
-            fragment: {
-                entryPoint: "f_main",
-                module: shaderModule,
-                targets: [
-                    {
-                        format: colorFormat
-                    }
-                ],
-            },
-            depthStencil: {
-                format: "depth32float",
-                depthCompare: 'less',
-                depthWriteEnabled: true,
-            },
+            fragment: shaderModule.fragmentState("f_main", [colorFormat]),
+            depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: mesh.topology,
                 stripIndexFormat: mesh.indexFormat,
@@ -168,25 +160,27 @@ export class Renderer {
         })
     }
 
-    render(universe: Universe, descriptor: GPURenderPassDescriptor) {
-        this.device.device.queue.submit([
-            this.device.encodeCommand(encoder => {
-                encoder.renderPass(descriptor, pass => {
-                    pass.setPipeline(this.renderPipeline)
-                    pass.setBindGroup(0, this.renderBindGroup)
-                    pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer)
-                    pass.setVertexBuffer(1, universe.currentState.buffer)
-                    pass.setVertexBuffer(2, this.meshVertexBuffer.buffer)
-                    pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat)
-                    pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0)
-                })
+    render(universe: Universe) {
+        const descriptor: GPURenderPassDescriptor = {
+            colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+            depthStencilAttachment: this.depthTexture.depthAttachment()
+        }
+        this.device.enqueueCommand(encoder => {
+            encoder.renderPass(descriptor, pass => {
+                pass.setPipeline(this.renderPipeline)
+                pass.setBindGroup(0, this.renderBindGroup)
+                pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer)
+                pass.setVertexBuffer(1, universe.currentState.buffer)
+                pass.setVertexBuffer(2, this.meshVertexBuffer.buffer)
+                pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat)
+                pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0)
             })
-        ])
+        })
     }
 
 }
 
 export async function newRenderer(device: gpu.Device, canvas: gpu.Canvas) {
     const shaderModule = await device.loadShaderModule("gravity-render.wgsl")
-    return new Renderer(device, shaderModule, canvas)
+    return new Renderer(device, canvas, shaderModule)
 }

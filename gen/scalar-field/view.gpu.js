@@ -50,18 +50,8 @@ export class GPUView {
                             }]
                     }]
             },
-            fragment: {
-                module: shaderModule.shaderModule,
-                entryPoint: "f_main",
-                targets: [{
-                        format: this.canvas.format
-                    }]
-            },
-            depthStencil: {
-                format: "depth32float",
-                depthWriteEnabled: true,
-                depthCompare: "less"
-            },
+            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
+            depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
             },
@@ -152,7 +142,7 @@ export class GPUView {
         });
     }
     draw() {
-        const command = this.device.encodeCommand(encoder => {
+        this.device.enqueueCommand(encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
                 depthStencilAttachment: this.depthTexture.depthAttachment()
@@ -164,7 +154,6 @@ export class GPUView {
                 pass.draw(this.vertices.stridesCount);
             });
         });
-        this.device.device.queue.submit([command]);
     }
 }
 export function newView(canvasId) {

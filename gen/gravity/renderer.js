@@ -11,9 +11,10 @@ import * as ether from '../../ether/latest/index.js';
 import * as geo from './geo.js';
 import { DeferredComputation } from '../../gear/latest/scheduling.js';
 export class Renderer {
-    constructor(device, renderShader, canvas) {
+    constructor(device, canvas, renderShader) {
         var _a;
         this.device = device;
+        this.canvas = canvas;
         this._projectionMatrix = ether.mat4.projection(1);
         this._viewMatrix = ether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = ether.mat4.identity();
@@ -33,8 +34,9 @@ export class Renderer {
         const mesh = geo.sphere(18, 9);
         this.meshIndexFormat = (_a = mesh.indexFormat) !== null && _a !== void 0 ? _a : "uint16";
         this.meshSize = mesh.indices.length;
+        this.depthTexture = canvas.depthTexture();
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(device.device, renderShader.shaderModule, canvas.format, mesh, canvas.sampleCount);
+        this.renderPipeline = this.createPipeline(device.device, renderShader, canvas, mesh, canvas.sampleCount);
         const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0);
         /* Buffers */
         this.renderingUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.renderingUniformsData));
@@ -85,7 +87,7 @@ export class Renderer {
         return device.createRenderPipeline({
             vertex: {
                 entryPoint: "v_main",
-                module: shaderModule,
+                module: shaderModule.shaderModule,
                 buffers: [
                     {
                         arrayStride: 2 * 4,
@@ -116,20 +118,8 @@ export class Renderer {
                     }
                 ]
             },
-            fragment: {
-                entryPoint: "f_main",
-                module: shaderModule,
-                targets: [
-                    {
-                        format: colorFormat
-                    }
-                ],
-            },
-            depthStencil: {
-                format: "depth32float",
-                depthCompare: 'less',
-                depthWriteEnabled: true,
-            },
+            fragment: shaderModule.fragmentState("f_main", [colorFormat]),
+            depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: mesh.topology,
                 stripIndexFormat: mesh.indexFormat,
@@ -139,26 +129,28 @@ export class Renderer {
             }
         });
     }
-    render(universe, descriptor) {
-        this.device.device.queue.submit([
-            this.device.encodeCommand(encoder => {
-                encoder.renderPass(descriptor, pass => {
-                    pass.setPipeline(this.renderPipeline);
-                    pass.setBindGroup(0, this.renderBindGroup);
-                    pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
-                    pass.setVertexBuffer(1, universe.currentState.buffer);
-                    pass.setVertexBuffer(2, this.meshVertexBuffer.buffer);
-                    pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat);
-                    pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0);
-                });
-            })
-        ]);
+    render(universe) {
+        const descriptor = {
+            colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+            depthStencilAttachment: this.depthTexture.depthAttachment()
+        };
+        this.device.enqueueCommand(encoder => {
+            encoder.renderPass(descriptor, pass => {
+                pass.setPipeline(this.renderPipeline);
+                pass.setBindGroup(0, this.renderBindGroup);
+                pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
+                pass.setVertexBuffer(1, universe.currentState.buffer);
+                pass.setVertexBuffer(2, this.meshVertexBuffer.buffer);
+                pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat);
+                pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0);
+            });
+        });
     }
 }
 export function newRenderer(device, canvas) {
     return __awaiter(this, void 0, void 0, function* () {
         const shaderModule = yield device.loadShaderModule("gravity-render.wgsl");
-        return new Renderer(device, shaderModule, canvas);
+        return new Renderer(device, canvas, shaderModule);
     });
 }
 //# sourceMappingURL=renderer.js.map

@@ -89,15 +89,13 @@ export class Universe {
         return [descriptions, initialState];
     }
     tick() {
-        this.device.device.queue.submit([
-            this.device.encodeCommand(encoder => {
-                encoder.computePass(pass => {
-                    pass.setPipeline(this.computePipeline);
-                    pass.setBindGroup(0, this.computeBindGroups[this.currentBuffer]);
-                    pass.dispatch(this.workGroupsCount);
-                });
-            })
-        ]);
+        this.device.enqueueCommand(encoder => {
+            encoder.computePass(pass => {
+                pass.setPipeline(this.computePipeline);
+                pass.setBindGroup(0, this.computeBindGroups[this.currentBuffer]);
+                pass.dispatch(this.workGroupsCount);
+            });
+        });
         this.currentBuffer ^= 1;
     }
 }

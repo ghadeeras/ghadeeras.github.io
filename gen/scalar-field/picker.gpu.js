@@ -40,18 +40,8 @@ export class GPUPicker {
                             }]
                     }]
             },
-            fragment: {
-                module: shaderModule.shaderModule,
-                entryPoint: "f_main",
-                targets: [{
-                        format: this.colorTexture.descriptor.format
-                    }]
-            },
-            depthStencil: {
-                format: this.depthTexture.descriptor.format,
-                depthWriteEnabled: true,
-                depthCompare: "less"
-            },
+            fragment: shaderModule.fragmentState("f_main", [this.colorTexture]),
+            depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
             }
@@ -61,7 +51,7 @@ export class GPUPicker {
     pick(matModelViewProjection, x, y) {
         return __awaiter(this, void 0, void 0, function* () {
             this.uniforms.writeAt(0, new Float32Array(ether.mat4.columnMajorArray(matModelViewProjection)));
-            const command = this.device.encodeCommand(encoder => {
+            this.device.enqueueCommand(encoder => {
                 var _a;
                 const passDescriptor = {
                     colorAttachments: [this.colorTexture.colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
@@ -87,7 +77,6 @@ export class GPUPicker {
                     height: 1
                 });
             });
-            this.device.device.queue.submit([command]);
             const array = yield this.pickDestination.readAt(0, new Float32Array(4));
             return ether.vec4.sub(ether.vec4.scale(ether.vec4.from(array), 2), [1, 1, 1, 1]);
         });

@@ -1,4 +1,5 @@
 import { Device } from "./device.js";
+import { formatOf, TextureFormatSource } from "./types.js";
 
 export class ShaderModule {
 
@@ -31,10 +32,18 @@ export class ShaderModule {
     createComputePipeline(entryPoint: string) {
         return this.device.device.createComputePipeline({
             compute: { 
+                module: this.shaderModule,
                 entryPoint: entryPoint, 
-                module: this.shaderModule
             }
         })
+    }
+
+    fragmentState(entryPoint: string, targets: TextureFormatSource[]): GPUFragmentState {
+        return {
+            module: this.shaderModule,
+            entryPoint: entryPoint,
+            targets: targets.map(formatOf).map(format => ({ format }))
+        }
     }
 
 }

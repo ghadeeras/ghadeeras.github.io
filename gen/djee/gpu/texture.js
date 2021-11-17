@@ -1,3 +1,4 @@
+import { formatOf } from "./types.js";
 export class Texture {
     constructor(device, descriptor) {
         this.device = device;
@@ -14,6 +15,12 @@ export class Texture {
     }
     destroy() {
         this.texture.destroy();
+    }
+    depthState(state = {
+        depthCompare: "less",
+        depthWriteEnabled: true,
+    }) {
+        return Object.assign(Object.assign({}, state), { format: formatOf(this.descriptor.format) });
     }
     depthAttachment(loadValue = 1) {
         return {

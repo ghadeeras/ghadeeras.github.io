@@ -31,6 +31,18 @@ export class Device {
             return encoder.finish()
         }
     }
+
+    enqueueCommand(encoding: (encoder: CommandEncoder) => void) {
+        this.enqueue(this.encodeCommand(encoding))
+    }
+
+    enqueueCommands(...encodings: ((encoder: CommandEncoder) => void)[]) {
+        this.enqueue(...encodings.map(encoding => this.encodeCommand(encoding)))
+    }
+    
+    enqueue(...commands: GPUCommandBuffer[]) {
+        this.device.queue.submit(commands)
+    }
     
     canvas(element: HTMLCanvasElement | string): Canvas {
         return new Canvas(this, element)

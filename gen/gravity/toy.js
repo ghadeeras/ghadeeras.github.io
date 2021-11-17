@@ -23,7 +23,7 @@ function doInit() {
         const canvas = device.canvas("canvas-gl");
         const universe = yield newUniverse(device);
         const renderer = yield newRenderer(device, canvas);
-        const pauseResumeAction = animation(canvas, universe, renderer);
+        const pauseResumeAction = animation(universe, renderer);
         setupControls(canvas, universe, renderer);
         setupActions(universe, renderer, pauseResumeAction);
     });
@@ -105,14 +105,8 @@ function control(previous) {
 function action(previous) {
     return required(document.getElementById(`action-${previous}`));
 }
-function animation(canvas, universe, renderer) {
-    const depthTexture = canvas.depthTexture();
-    const rendering = throttled(60, () => {
-        renderer.render(universe, {
-            colorAttachments: [canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-            depthStencilAttachment: depthTexture.depthAttachment()
-        });
-    });
+function animation(universe, renderer) {
+    const rendering = throttled(60, () => renderer.render(universe));
     animate(rendering);
     const pauseResumeAction = animate(() => universe.tick());
     return pauseResumeAction;

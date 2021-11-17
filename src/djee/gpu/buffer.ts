@@ -60,12 +60,9 @@ export class Buffer {
             throw new Error("Copying between unaligned buffers is not possible!")
         }
         const validSize = upperMultipleOf(4, size + thisOffsetCorrection)
-        const device = this.device.device
-        device.queue.submit([
-            this.device.encodeCommand(encoder => {
-                encoder.encoder.copyBufferToBuffer(that.buffer, thatValidOffset, this.buffer, thisValidOffset, validSize)
-            })
-        ])
+        this.device.enqueueCommand(encoder => {
+            encoder.encoder.copyBufferToBuffer(that.buffer, thatValidOffset, this.buffer, thisValidOffset, validSize)
+        })
     }
     
     private newBlankBuffer(size: number): GPUBuffer {

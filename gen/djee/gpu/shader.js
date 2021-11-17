@@ -7,6 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { formatOf } from "./types.js";
 export class ShaderModule {
     constructor(device, code) {
         this.device = device;
@@ -42,10 +43,17 @@ export class ShaderModule {
     createComputePipeline(entryPoint) {
         return this.device.device.createComputePipeline({
             compute: {
+                module: this.shaderModule,
                 entryPoint: entryPoint,
-                module: this.shaderModule
             }
         });
+    }
+    fragmentState(entryPoint, targets) {
+        return {
+            module: this.shaderModule,
+            entryPoint: entryPoint,
+            targets: targets.map(formatOf).map(format => ({ format }))
+        };
     }
 }
 //# sourceMappingURL=shader.js.map

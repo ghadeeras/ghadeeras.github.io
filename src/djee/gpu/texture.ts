@@ -1,4 +1,5 @@
 import { Device } from "./device.js"
+import { formatOf } from "./types.js"
 
 export class Texture {
 
@@ -19,6 +20,16 @@ export class Texture {
 
     destroy() {
         this.texture.destroy()
+    }
+
+    depthState(state: Partial<GPUDepthStencilState> = {
+        depthCompare: "less",
+        depthWriteEnabled: true,
+    }): GPUDepthStencilState {
+        return {
+            ...state,
+            format: formatOf(this.descriptor.format)
+        }
     }
 
     depthAttachment(loadValue: number | "load" = 1): GPURenderPassDepthStencilAttachment {

@@ -18,7 +18,7 @@ async function doInit() {
     const universe = await newUniverse(device)
     const renderer = await newRenderer(device, canvas)
 
-    const pauseResumeAction = animation(canvas, universe, renderer)
+    const pauseResumeAction = animation(universe, renderer)
     setupControls(canvas, universe, renderer)
     setupActions(universe, renderer, pauseResumeAction)
 }
@@ -116,14 +116,8 @@ function action(previous: string) {
     return required(document.getElementById(`action-${previous}`))
 }
 
-function animation(canvas: gpu.Canvas, universe: Universe, renderer: Renderer) {
-    const depthTexture = canvas.depthTexture()
-    const rendering = throttled(60, () => {
-        renderer.render(universe, {
-            colorAttachments: [canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-            depthStencilAttachment: depthTexture.depthAttachment()
-        })
-    })
+function animation(universe: Universe, renderer: Renderer) {
+    const rendering = throttled(60, () => renderer.render(universe))
 
     animate(rendering)
     const pauseResumeAction = animate(() => universe.tick())

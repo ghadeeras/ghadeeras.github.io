@@ -38,6 +38,15 @@ export class Device {
             return encoder.finish();
         }
     }
+    enqueueCommand(encoding) {
+        this.enqueue(this.encodeCommand(encoding));
+    }
+    enqueueCommands(...encodings) {
+        this.enqueue(...encodings.map(encoding => this.encodeCommand(encoding)));
+    }
+    enqueue(...commands) {
+        this.device.queue.submit(commands);
+    }
     canvas(element) {
         return new Canvas(this, element);
     }

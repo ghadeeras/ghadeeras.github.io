@@ -45,13 +45,7 @@ export class ViewGPU {
                             }]
                     }]
             },
-            fragment: {
-                module: shaderModule.shaderModule,
-                entryPoint: "f_main",
-                targets: [{
-                        format: this.canvas.format
-                    }]
-            },
+            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             primitive: {
                 stripIndexFormat: "uint16",
                 topology: "triangle-strip"
@@ -121,7 +115,7 @@ export class ViewGPU {
         this.params.writeAt(8 * 4, this.paramsData, 8, 1);
     }
     draw() {
-        const command = this.device.encodeCommand(encoder => {
+        this.device.enqueueCommand(encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
             };
@@ -132,7 +126,6 @@ export class ViewGPU {
                 pass.draw(4);
             });
         });
-        this.device.device.queue.submit([command]);
     }
 }
 export function viewGPU(julia, canvasId, center, scale) {
