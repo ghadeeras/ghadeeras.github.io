@@ -12,18 +12,19 @@ export class GPUView implements v.View {
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
-    private uniformsData: Float32Array = new Float32Array([
-        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
-        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
-        ...ether.mat4.columnMajorArray(ether.mat4.identity()),
-        1, 1, 1, 1,
-        2, 2, 2, 1,
-        0,
-        0.1,
-        0,
-        // padding
-        0
-    ])
+    private uniformsStruct = gpu.struct({
+        positionsMat: gpu.mat4x4,
+        normalsMat: gpu.mat4x4,
+        projectionMat: gpu.mat4x4,
+        color: gpu.f32.x4,
+        lightPos: gpu.f32.x4,
+        shininess: gpu.f32,
+        lightRadius: gpu.f32,
+        fogginess: gpu.f32,
+    })
+
+    private uniformsData: Float32Array = new Float32Array(this.uniformsStruct.paddedSize / Float32Array.BYTES_PER_ELEMENT)
+    private uniformsView: DataView = new DataView(this.uniformsData.buffer)
 
     private frame: () => void
 
@@ -100,31 +101,31 @@ export class GPUView implements v.View {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        const matPositions = ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelPositions))
+        const matPositions = ether.mat4.mul(this.matView, modelPositions)
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            ether.mat4.columnMajorArray(ether.mat4.mul(this.matView, modelNormals))
+            ether.mat4.mul(this.matView, modelNormals)
 
-        this.uniformsData.set(matPositions, 0)
-        this.uniformsData.set(matNormals, 16)
+        this.uniformsStruct.members.positionsMat.write(this.uniformsView, 0, matPositions)
+        this.uniformsStruct.members.normalsMat.write(this.uniformsView, 0, matNormals)
         this.uniforms.writeAt(0, this.uniformsData, 0, 32)
     }
 
     get matProjection(): ether.Mat<4> {
-        return ether.mat4.from(this.uniformsData, 32)
+        return this.uniformsStruct.members.projectionMat.read(this.uniformsView, 0)
     }
 
     set matProjection(m: ether.Mat<4>) {
-        this.uniformsData.set(ether.mat4.columnMajorArray(m), 32)
+        this.uniformsStruct.members.projectionMat.write(this.uniformsView, 0, m)
         this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16)
     }
 
     get color(): ether.Vec<4> {
-        return ether.vec4.from(this.uniformsData, 48)
+        return this.uniformsStruct.members.color.read(this.uniformsView, 0)
     }
 
     set color(c: ether.Vec<4>) {
-        this.uniformsData.set(c, 48)
+        this.uniformsStruct.members.color.write(this.uniformsView, 0, c)
         this.uniforms.writeAt(48 * 4, this.uniformsData, 48, 4)
     }
 
@@ -134,34 +135,34 @@ export class GPUView implements v.View {
 
     set lightPosition(p: ether.Vec<4>) {
         this._lightPosition = p
-        this.uniformsData.set(ether.vec4.add(this._matView[3], p), 52)
+        this.uniformsStruct.members.lightPos.write(this.uniformsView, 0, ether.vec4.add(this._matView[3], p))
         this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4)
     }
 
     get shininess(): number {
-        return this.uniformsData[56]
+        return this.uniformsStruct.members.shininess.read(this.uniformsView, 0)
     }
 
     set shininess(s: number) {
-        this.uniformsData[56] = s
+        this.uniformsStruct.members.shininess.write(this.uniformsView, 0, s)
         this.uniforms.writeAt(56 * 4, this.uniformsData, 56, 1)
     }
 
     get lightRadius(): number {
-        return this.uniformsData[57]
+        return this.uniformsStruct.members.lightRadius.read(this.uniformsView, 0)
     }
 
-    set lightRadius(s: number) {
-        this.uniformsData[57] = s
+    set lightRadius(r: number) {
+        this.uniformsStruct.members.lightRadius.write(this.uniformsView, 0, r)
         this.uniforms.writeAt(57 * 4, this.uniformsData, 57, 1)
     }
 
     get fogginess(): number {
-        return this.uniformsData[58]
+        return this.uniformsStruct.members.fogginess.read(this.uniformsView, 0)
     }
 
     set fogginess(f: number) {
-        this.uniformsData[58] = f
+        this.uniformsStruct.members.fogginess.write(this.uniformsView, 0, f)
         this.uniforms.writeAt(58 * 4, this.uniformsData, 58, 1)
     }
 

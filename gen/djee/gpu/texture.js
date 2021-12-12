@@ -1,4 +1,4 @@
-import { formatOf } from "./types.js";
+import { formatOf } from "./utils.js";
 export class Texture {
     constructor(device, descriptor) {
         this.device = device;

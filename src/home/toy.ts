@@ -1,5 +1,6 @@
 import * as djee from "../djee/all.js"
 import * as gear from "../../gear/latest/index.js"
+import { required } from "../utils/misc.js"
 
 const mySketch = new Image()
 
@@ -123,7 +124,7 @@ async function loadImage(e: DragEvent, effect: djee.Uniform) {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
         if (item.kind == 'file') {
-            const url = URL.createObjectURL(item.getAsFile())
+            const url = URL.createObjectURL(required(item.getAsFile()))
             mySketch.src = url
         } else {
             item.getAsString(url => {

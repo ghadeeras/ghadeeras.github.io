@@ -1,5 +1,5 @@
 import { Device } from "./device.js";
-import { formatOf, TextureFormatSource } from "./types.js";
+import { formatOf, TextureFormatSource } from "./utils.js";
 
 export class ShaderModule {
 

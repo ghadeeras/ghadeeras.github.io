@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as djee from "../djee/all.js";
 import * as gear from "../../gear/latest/index.js";
+import { required } from "../utils/misc.js";
 const mySketch = new Image();
 const square = [
     -1, +1,
@@ -116,7 +117,7 @@ function loadImage(e, effect) {
         if (e.dataTransfer) {
             const item = e.dataTransfer.items[0];
             if (item.kind == 'file') {
-                const url = URL.createObjectURL(item.getAsFile());
+                const url = URL.createObjectURL(required(item.getAsFile()));
                 mySketch.src = url;
             }
             else {

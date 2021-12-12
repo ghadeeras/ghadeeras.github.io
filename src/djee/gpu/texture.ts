@@ -1,5 +1,5 @@
 import { Device } from "./device.js"
-import { formatOf } from "./types.js"
+import { formatOf } from "./utils.js"
 
 export class Texture {
 
