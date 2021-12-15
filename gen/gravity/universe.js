@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { DeferredComputation } from 'gear';
 import * as gpu from '../djee/gpu/index.js';
-import { DeferredComputation } from '../../gear/latest/scheduling.js';
 const WORKGROUP_SIZE = 256;
 export class Universe {
     constructor(device, computeShader) {

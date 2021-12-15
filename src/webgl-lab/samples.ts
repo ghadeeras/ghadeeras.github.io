@@ -1,4 +1,4 @@
-import * as gear from "../../gear/latest/index.js";
+import * as gear from "gear";
 
 export type ProgramSample = {
     name: string;

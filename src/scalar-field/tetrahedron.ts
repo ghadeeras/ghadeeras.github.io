@@ -1,6 +1,6 @@
+import * as ether from "ether"
+import * as gear from "gear"
 import * as djee from "../djee/all.js"
-import * as ether from "../../ether/latest/index.js"
-import * as gear from "../../gear/latest/index.js"
 import * as dragging from "../utils/dragging.js"
 
 let context: djee.Context;

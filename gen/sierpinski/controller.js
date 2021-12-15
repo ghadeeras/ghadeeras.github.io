@@ -1,4 +1,4 @@
-import * as gear from "../../gear/latest/index.js";
+import * as gear from "gear";
 import { positionDragging } from "../utils/dragging.js";
 export class Controller {
     constructor(canvasId, cornersCheckboxId, centersCheckboxId, twistCheckboxId, scaleCheckboxId, depthIncButtonId, depthDecButtonId) {

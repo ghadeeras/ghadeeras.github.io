@@ -1,4 +1,4 @@
-import * as gear from "../../gear/latest/index.js"
+import * as gear from "gear"
 import * as djee from "../djee/all.js"
 import { FlattenedSierpinski } from "./model.js"
 

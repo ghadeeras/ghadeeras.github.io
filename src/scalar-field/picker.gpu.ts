@@ -1,5 +1,5 @@
+import * as ether from "ether"
 import * as gpu from "../djee/gpu/index.js"
-import * as ether from "../../ether/latest/index.js"
 import { Picker } from "./view.js"
 import { GPUView } from "./view.gpu.js"
 

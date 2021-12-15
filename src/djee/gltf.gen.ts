@@ -1,4 +1,4 @@
-import * as ether from "../../ether/latest/index.js"
+import * as ether from "ether"
 import * as gltf from "./gltf.js"
 
 type VerticesMap = {

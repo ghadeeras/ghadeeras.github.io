@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import * as ether from "ether";
 import * as gpu from "../djee/gpu/index.js";
-import * as ether from "../../ether/latest/index.js";
 import { picker } from "./picker.gpu.js";
 export class GPUView {
     constructor(device, canvasId, shaderModule) {

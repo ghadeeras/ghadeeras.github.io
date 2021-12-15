@@ -1,4 +1,4 @@
-import * as ether from "../../ether/latest/index.js";
+import * as ether from "ether";
 const weights = [0.5, 1, 0.5];
 export class Carving {
     constructor(stone, mvpMat, picker, scalarFieldModule, brushSampler) {

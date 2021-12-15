@@ -1,6 +1,6 @@
+import * as gear from "gear"
+import * as ether from "ether";
 import * as djee from "../djee/all.js"
-import * as gear from "../../gear/latest/index.js"
-import * as ether from "../../ether/latest/index.js";
 
 type RendererInputs = {
     matrices: gear.Value<ether.Mat<4>[]>

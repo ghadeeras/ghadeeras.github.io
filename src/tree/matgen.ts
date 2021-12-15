@@ -1,4 +1,4 @@
-import { Mat, mat4, Vec } from "../../ether/latest/index.js";
+import { Mat, mat4, Vec } from "ether";
 
 export class MatricesGenerator {
 

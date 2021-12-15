@@ -1,4 +1,4 @@
-import { mat4 } from "../../ether/latest/index.js";
+import { mat4 } from "ether";
 export class MatricesGenerator {
     constructor() {
         this._angle = Math.PI / 4;

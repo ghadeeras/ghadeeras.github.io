@@ -1,4 +1,4 @@
-import * as ether from "../../ether/latest/index.js";
+import * as ether from "ether";
 export function createModel(name, vertices) {
     const indexedVertices = indexVertices(vertices);
     return {

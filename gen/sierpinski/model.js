@@ -1,5 +1,5 @@
-import * as gear from "../../gear/latest/index.js";
-import { vec2 } from "../../ether/latest/index.js";
+import * as gear from "gear";
+import { vec2 } from "ether";
 const defaultSierpinski = {
     depth: 5,
     a: vec(90),

@@ -1,4 +1,4 @@
-import { Mat, mat4, quat, Vec, vec3, vec4 } from "../../ether/latest/index.js"
+import { Mat, mat4, quat, Vec, vec3, vec4 } from "ether"
 import { Attribute } from "./attribute.js"
 import { AttributesBuffer, Buffer, IndicesBuffer } from "./buffer.js"
 import { Context } from "./context.js"

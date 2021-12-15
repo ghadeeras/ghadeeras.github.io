@@ -1,20 +1,19 @@
-import * as Djee from "../djee/all.js"
-import * as Gear from "../../gear/latest/index.js"
-import { Vec } from "../../ether/latest/index.js"
+import * as gear from "gear"
+import { Vec } from "ether"
+import * as djee from "../djee/all.js"
 import { View } from "./view.js"
-import { fetchTextFiles } from "../../gear/latest/files.js"
 
 export class ViewGL implements View {
 
-    private context: Djee.Context
-    private uniformCenter: Djee.Uniform
-    private uniformScale: Djee.Uniform
-    private uniformColor: Djee.Uniform
-    private uniformIntensity: Djee.Uniform
-    private uniformPalette: Djee.Uniform
-    private uniformJuliaNumber: Djee.Uniform
+    private context: djee.Context
+    private uniformCenter: djee.Uniform
+    private uniformScale: djee.Uniform
+    private uniformColor: djee.Uniform
+    private uniformIntensity: djee.Uniform
+    private uniformPalette: djee.Uniform
+    private uniformJuliaNumber: djee.Uniform
 
-    private drawCall: Gear.DeferredComputation<void> = new Gear.DeferredComputation(() => this.doDraw())
+    private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
 
     constructor(
         private julia: boolean,
@@ -24,7 +23,7 @@ export class ViewGL implements View {
         _center: Vec<2> = [-0.75, 0],
         _scale = 2.0
     ) {
-        this.context = Djee.Context.of(_canvasId)
+        this.context = djee.Context.of(_canvasId)
 
         const program = this.context.link(
             this.context.vertexShader(_vertexShaderCode),
@@ -137,7 +136,7 @@ export class ViewGL implements View {
 } 
 
 export async function viewGL(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
-    const shaders = await fetchTextFiles({ 
+    const shaders = await gear.fetchTextFiles({ 
         vertexShaderCode: "mandelbrot.vert", 
         fragmentShaderCode: "mandelbrot.frag"
     }, "/shaders")
