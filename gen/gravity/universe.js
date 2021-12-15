@@ -7,6 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import * as gpu from '../djee/gpu/index.js';
 import { DeferredComputation } from '../../gear/latest/scheduling.js';
 const WORKGROUP_SIZE = 256;
 export class Universe {
@@ -99,6 +100,14 @@ export class Universe {
         this.currentBuffer ^= 1;
     }
 }
+Universe.bodyDescription = gpu.struct({
+    mass: gpu.f32,
+    radius: gpu.f32,
+});
+Universe.bodyState = gpu.struct({
+    position: gpu.f32.x3,
+    velocity: gpu.f32.x3,
+});
 function randomVector(radius) {
     const ya = Math.PI * (Math.random() + Math.random()) / 2;
     const xa = 2 * Math.PI * Math.random();

@@ -32,6 +32,10 @@ export type StructTypeOf<T  extends Record<string, Element<any>>> = {
     [K in keyof T]: DataTypeOf<T[K]>
 }
 
+export type VertexStructTypeOf<T  extends Record<string, Element<any>>> = {
+    [K in keyof T]: DataTypeOf<T[K]>
+}
+
 abstract class BaseElement<T> implements Element<T> {
     
     readonly alignment: number
@@ -82,16 +86,40 @@ abstract class BaseElement<T> implements Element<T> {
     
 }
 
-abstract class Primitive32 extends BaseElement<number> {
+export abstract class VertexElement<T> extends BaseElement<T> {
+
+    constructor(
+        readonly format: GPUVertexFormat,
+        alignment: number,
+        size: number,
+        offset: number,
+        stride: number,
+        packed: boolean,
+    ) {
+        super(alignment, size, offset, stride, packed)
+    }
+
+    atLocation(location: number): GPUVertexAttribute {
+        return {
+            format: this.format,
+            offset: this.offset,
+            shaderLocation: location
+        }
+    }
+
+}
+
+abstract class Primitive32 extends VertexElement<number> {
     
     constructor(
+        format: GPUVertexFormat,
         offset: number,
         stride: number,
         packed: boolean,
         private getter: (view: DataView, offset: number) => number, 
         private setter: (view: DataView, offset: number, value: number) => void
     ) {
-        super(4, 4, offset, stride, packed)
+        super(format, 4, 4, offset, stride, packed)
     }
 
     read(view: DataView, index: number): number {
@@ -121,7 +149,7 @@ abstract class Primitive32 extends BaseElement<number> {
 export class U32 extends Primitive32 {
     
     constructor(offset: number, stride: number, packed: boolean) {
-        super(offset, stride, packed, 
+        super("uint32", offset, stride, packed, 
             (view, offset) => view.getUint32(offset, true), 
             (view, offset, value) => view.setUint32(offset, value, true)
         )
@@ -136,7 +164,7 @@ export class U32 extends Primitive32 {
 export class I32 extends Primitive32 {
     
     constructor(offset: number, stride: number, packed: boolean) {
-        super(offset, stride, packed, 
+        super("sint32", offset, stride, packed, 
             (view, offset) => view.getInt32(offset, true), 
             (view, offset, value) => view.setInt32(offset, value, true)
         )
@@ -151,7 +179,7 @@ export class I32 extends Primitive32 {
 export class F32 extends Primitive32 {
     
     constructor(offset: number, stride: number, packed: boolean) {
-        super(offset, stride, packed, 
+        super("float32", offset, stride, packed, 
             (view, offset) => view.getFloat32(offset, true), 
             (view, offset, value) => view.setFloat32(offset, value, true)
         )
@@ -163,10 +191,10 @@ export class F32 extends Primitive32 {
     
 }
 
-export abstract class VecN<C extends number[]> extends BaseElement<C> {
+export abstract class VecN<C extends number[]> extends VertexElement<C> {
 
-    constructor(alignment: number, size: number, offset: number, stride: number, packed: boolean) {
-        super(alignment, size, offset, stride, packed)
+    constructor(format: GPUVertexFormat, alignment: number, size: number, offset: number, stride: number, packed: boolean) {
+        super(format, alignment, size, offset, stride, packed)
     }
 
     get x2(): Mat2<C, this> {
@@ -189,7 +217,7 @@ export class Vec2<T extends Primitive32> extends VecN<[number, number]> {
     readonly y: T
 
     constructor(readonly component: T, offset: number, stride: number, packed: boolean) {
-        super(8, 8, offset, stride, packed)
+        super("float32x2", 8, 8, offset, stride, packed)
         this.x = clone(component, this.offset, this.stride, packed)
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed)
     }
@@ -219,7 +247,7 @@ export class Vec3<T extends Primitive32> extends VecN<[number, number, number]> 
     readonly z: T
 
     constructor(readonly component: T, offset: number, stride: number, packed: boolean) {
-        super(16, 12, offset, stride, packed)
+        super("float32x3", 16, 12, offset, stride, packed)
         this.x = clone(component, this.offset, this.stride, packed)
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed)
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed)
@@ -253,7 +281,7 @@ export class Vec4<T extends Primitive32> extends VecN<[number, number, number, n
     readonly w: T
 
     constructor(readonly component: T, offset: number, stride: number, packed: boolean) {
-        super(16, 16, offset, stride, packed)
+        super("float32x4", 16, 16, offset, stride, packed)
         this.x = clone(component, this.offset, this.stride, packed)
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed)
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed)
@@ -433,8 +461,37 @@ export class Struct<T extends Record<string, Element<any>>> extends BaseElement<
         return result as StructTypeOf<T>
     }
 
-    clone(offset: number, stride: number, packed: boolean): Element<StructTypeOf<T>> {
+    clone(offset: number, stride: number, packed: boolean): Struct<T> {
         return new Struct(this.membersOrder, this.members, offset, stride, packed)
+    }
+
+    asVertex(attributes: (keyof T)[] = this.membersOrder): Vertex<T> {
+        return new Vertex(attributes, this)
+    }
+
+}
+
+export class Vertex<T extends Record<string, Element<any>>> {
+
+    constructor(readonly attributes: (keyof T)[], readonly struct: Struct<T>) {
+    }
+
+    asBufferLayout(stepMode: GPUVertexStepMode = "vertex", baseIndex: number = 0): GPUVertexBufferLayout {
+        return {
+            arrayStride: this.struct.stride,
+            attributes: this.attributes.map((name, index) => {
+                const member = this.struct.members[name]
+                if (!(member instanceof VertexElement)) {
+                    throw new Error('Only vertex element can be attributes of a vertex.')
+                }
+                return member.atLocation(baseIndex + index)
+            }),
+            stepMode: stepMode
+        }
+    }
+
+    sub(attributes: (keyof T)[] = this.attributes): Vertex<T> {
+        return this.struct.asVertex(attributes)
     }
 
 }
@@ -457,8 +514,9 @@ function cloneItems<T, I extends Element<T>>(item: I, length: number, offset: nu
 function structAlignment<T extends Record<string, Element<any>>>(membersOrder: (keyof T)[], struct: T): number {
     let result = 4
     for (const key of membersOrder) {
-        if (struct[key].alignment > result) {
-            result = struct[key].alignment
+        const member = struct[key]
+        if (member.alignment > result) {
+            result = member.alignment
         }
     }
     return result
@@ -467,8 +525,9 @@ function structAlignment<T extends Record<string, Element<any>>>(membersOrder: (
 function structSize<T extends Record<string, Element<any>>>(membersOrder: (keyof T)[], struct: T, packed: boolean): number {
     let result = 0
     for (const key of membersOrder) {
-        result = Math.ceil(result / struct[key].alignment) * struct[key].alignment 
-        result += packed ? struct[key].size : struct[key].paddedSize
+        const member = struct[key]
+        result = packed ? result : Math.ceil(result / member.alignment) * member.alignment 
+        result += packed ? member.size : member.paddedSize
     }
     return result
 }
@@ -519,4 +578,12 @@ export const mat4x4 = vec4(f32).x4
 
 export function struct<T extends Record<string, Element<any>>>(members: T, membersOrder: (keyof T)[] = Object.keys(members)): Struct<T> {
     return new Struct(membersOrder, members, 0, 0, false)
+}
+
+export function packed<T extends Record<string, VertexElement<any>>>(membersOrder: (keyof T)[], members: T): Struct<T> {
+    return new Struct(membersOrder, members, 0, 0, true)
+}
+
+export function vertex<T extends Record<string, VertexElement<any>>>(members: T, membersOrder: (keyof T)[] = Object.keys(members)): Vertex<T> {
+    return new Vertex(membersOrder, packed<T>(membersOrder, members))
 }

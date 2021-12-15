@@ -7,15 +7,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import * as gpu from "../djee/gpu/index.js";
 import * as ether from "../../ether/latest/index.js";
+import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
     constructor(canvas, shaderModule, vertices) {
         this.vertices = vertices;
-        this.uniformsData = new Float32Array([
-            ...ether.mat4.columnMajorArray(ether.mat4.identity())
-        ]);
+        this.vertex = GPUView.vertex.sub(['position']);
+        this.uniformsStruct = gpu.struct({
+            mvpMat: gpu.mat4x4
+        });
         this.device = canvas.device;
-        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
+        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.pickDestination = this.device.buffer(GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16);
         this.colorTexture = this.device.texture({
             format: "rgba32float",
@@ -28,18 +31,7 @@ export class GPUPicker {
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         });
         this.pipeline = this.device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                        arrayStride: 6 * 4,
-                        attributes: [{
-                                shaderLocation: 0,
-                                format: "float32x3",
-                                offset: 0
-                            }]
-                    }]
-            },
+            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.colorTexture]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {

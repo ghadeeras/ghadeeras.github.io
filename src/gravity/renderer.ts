@@ -6,6 +6,16 @@ import { Universe } from './universe.js'
 
 export class Renderer {
 
+    private bodyDesc = gpu.vertex({
+        massAndRadius: gpu.f32.x2
+    })  
+
+    private bodyPosition = Universe.bodyState.asVertex(['position'])
+
+    private bodySurfaceVertex = gpu.vertex({
+        position: gpu.f32.x3
+    })
+
     private readonly renderPipeline: GPURenderPipeline
     
     private readonly meshIndexFormat: GPUIndexFormat
@@ -46,7 +56,7 @@ export class Renderer {
         this.depthTexture = canvas.depthTexture()
 
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(device.device, renderShader, canvas, mesh, canvas.sampleCount)
+        this.renderPipeline = this.createPipeline(renderShader, canvas, mesh)
         const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0)
 
         /* Buffers */
@@ -113,49 +123,21 @@ export class Renderer {
         ))
     }
 
-    private createPipeline(device: GPUDevice, shaderModule: gpu.ShaderModule, colorFormat: gpu.TextureFormatSource, mesh: geo.Mesh, sampleCount: number | undefined): GPURenderPipeline {
-        return device.createRenderPipeline({
-            vertex: {
-                entryPoint: "v_main",
-                module: shaderModule.shaderModule,
-                buffers: [
-                    {
-                        arrayStride: 2 * 4,
-                        attributes: [{
-                            offset: 0,
-                            format: 'float32x2',
-                            shaderLocation: 0,
-                        }],
-                        stepMode: 'instance',
-                    },
-                    {
-                        arrayStride: 8 * 4,
-                        attributes: [{
-                            offset: 0,
-                            format: 'float32x3',
-                            shaderLocation: 1,
-                        }],
-                        stepMode: 'instance',
-                    },
-                    {
-                        arrayStride: 3 * 4,
-                        attributes: [{
-                            offset: 0,
-                            format: 'float32x3',
-                            shaderLocation: 2,
-                        }],
-                        stepMode: 'vertex',
-                    }
-                ]
-            },
-            fragment: shaderModule.fragmentState("f_main", [colorFormat]),
+    private createPipeline(shaderModule: gpu.ShaderModule, canvas: gpu.Canvas, mesh: geo.Mesh): GPURenderPipeline {
+        return shaderModule.device.device.createRenderPipeline({
+            vertex: shaderModule.vertexState("v_main", [
+                this.bodyDesc.asBufferLayout('instance'),
+                this.bodyPosition.asBufferLayout('instance'),
+                this.bodySurfaceVertex.asBufferLayout('vertex')
+            ]),
+            fragment: shaderModule.fragmentState("f_main", [canvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: mesh.topology,
                 stripIndexFormat: mesh.indexFormat,
             },
             multisample: {
-                count: sampleCount
+                count: canvas.sampleCount
             }
         })
     }

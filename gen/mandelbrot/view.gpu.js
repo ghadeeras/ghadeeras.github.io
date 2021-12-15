@@ -12,6 +12,9 @@ export class ViewGPU {
     constructor(julia, device, canvasId, shaderModule, center, scale) {
         this.julia = julia;
         this.device = device;
+        this.vertex = gpu.vertex({
+            position: gpu.f32.x2
+        });
         this.paramsData = new Float32Array([
             0, 0,
             5 / 4, Math.sqrt(2) / 2,
@@ -25,7 +28,7 @@ export class ViewGPU {
         this.paramsData[6] = scale;
         this.paramsData[9] = julia ? 1 : 0;
         this.params = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.paramsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX, 2 * 4, new Float32Array([
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX, this.vertex.struct.stride, new Float32Array([
             -1, +1,
             -1, -1,
             +1, +1,
@@ -33,18 +36,7 @@ export class ViewGPU {
         ]));
         this.canvas = device.canvas(canvasId);
         this.pipeline = device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                        arrayStride: 2 * 4,
-                        attributes: [{
-                                shaderLocation: 0,
-                                format: "float32x2",
-                                offset: 0
-                            }]
-                    }]
-            },
+            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             primitive: {
                 stripIndexFormat: "uint16",

@@ -4,6 +4,10 @@ import { View } from "./view.js";
 
 export class ViewGPU implements View {
 
+    private vertex = gpu.vertex({
+        position: gpu.f32.x2
+    })
+
     private canvas: gpu.Canvas
     private params: gpu.Buffer
     private vertices: gpu.Buffer
@@ -33,7 +37,7 @@ export class ViewGPU implements View {
         this.paramsData[9] = julia ? 1 : 0 
 
         this.params = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.paramsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX, 2 * 4, new Float32Array([
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX, this.vertex.struct.stride, new Float32Array([
             -1, +1,
             -1, -1,
             +1, +1,
@@ -43,18 +47,7 @@ export class ViewGPU implements View {
         this.canvas = device.canvas(canvasId)
 
         this.pipeline = device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                    arrayStride: 2 * 4,
-                    attributes: [{
-                        shaderLocation: 0,
-                        format: "float32x2",
-                        offset: 0
-                    }]
-                }]
-            },
+            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             primitive: {
                 stripIndexFormat: "uint16",

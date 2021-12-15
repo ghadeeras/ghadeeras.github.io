@@ -38,6 +38,21 @@ export class ShaderModule {
         })
     }
 
+    vertexState(entryPoint: string, buffers: GPUVertexBufferLayout[], rewriteLocations: boolean = true): GPUVertexState {
+        const index = [0]
+        return {
+            module: this.shaderModule,
+            entryPoint: entryPoint,
+            buffers: rewriteLocations ? buffers.map(buffer => ({
+                ...buffer, 
+                attributes: [...buffer.attributes].map(attribute => ({
+                    ...attribute,
+                    shaderLocation: index[0]++ 
+                }))
+            })) : buffers
+        }
+    }
+
     fragmentState(entryPoint: string, targets: TextureFormatSource[]): GPUFragmentState {
         return {
             module: this.shaderModule,

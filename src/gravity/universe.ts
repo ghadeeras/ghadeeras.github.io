@@ -5,6 +5,16 @@ const WORKGROUP_SIZE = 256
 
 export class Universe {
 
+    static readonly bodyDescription = gpu.struct({
+        mass: gpu.f32,
+        radius: gpu.f32,
+    }) 
+
+    static readonly bodyState = gpu.struct({
+        position: gpu.f32.x3,
+        velocity: gpu.f32.x3,
+    })
+
     readonly bodiesCount: number = 16384
     
     private readonly workGroupsCount: number = Math.ceil(this.bodiesCount / WORKGROUP_SIZE)

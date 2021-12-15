@@ -12,6 +12,11 @@ export class GPUView implements v.View {
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
+    static readonly vertex = gpu.vertex({
+        position: gpu.f32.x3,
+        normal: gpu.f32.x3,
+    })
+
     private uniformsStruct = gpu.struct({
         positionsMat: gpu.mat4x4,
         normalsMat: gpu.mat4x4,
@@ -39,28 +44,13 @@ export class GPUView implements v.View {
         shaderModule: gpu.ShaderModule,
     ) {
         this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, 6 * 4, new Float32Array([]))
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride, new Float32Array([]))
 
         this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
 
         this.pipeline = device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                    arrayStride: 6 * 4,
-                    attributes: [{
-                        shaderLocation: 0,
-                        format: "float32x3",
-                        offset: 0
-                    }, {
-                        shaderLocation: 1,
-                        format: "float32x3",
-                        offset: 12
-                    }]
-                }]
-            },
+            vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             depthStencil : this.depthTexture.depthState(),
             primitive: {

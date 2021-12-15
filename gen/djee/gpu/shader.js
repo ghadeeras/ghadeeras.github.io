@@ -48,6 +48,14 @@ export class ShaderModule {
             }
         });
     }
+    vertexState(entryPoint, buffers, rewriteLocations = true) {
+        const index = [0];
+        return {
+            module: this.shaderModule,
+            entryPoint: entryPoint,
+            buffers: rewriteLocations ? buffers.map(buffer => (Object.assign(Object.assign({}, buffer), { attributes: [...buffer.attributes].map(attribute => (Object.assign(Object.assign({}, attribute), { shaderLocation: index[0]++ }))) }))) : buffers
+        };
+    }
     fragmentState(entryPoint, targets) {
         return {
             module: this.shaderModule,

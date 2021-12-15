@@ -8,13 +8,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as ether from '../../ether/latest/index.js';
+import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { DeferredComputation } from '../../gear/latest/scheduling.js';
+import { Universe } from './universe.js';
 export class Renderer {
     constructor(device, canvas, renderShader) {
         var _a;
         this.device = device;
         this.canvas = canvas;
+        this.bodyDesc = gpu.vertex({
+            massAndRadius: gpu.f32.x2
+        });
+        this.bodyPosition = Universe.bodyState.asVertex(['position']);
+        this.bodySurfaceVertex = gpu.vertex({
+            position: gpu.f32.x3
+        });
         this._projectionMatrix = ether.mat4.projection(1);
         this._viewMatrix = ether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = ether.mat4.identity();
@@ -36,7 +45,7 @@ export class Renderer {
         this.meshSize = mesh.indices.length;
         this.depthTexture = canvas.depthTexture();
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(device.device, renderShader, canvas, mesh, canvas.sampleCount);
+        this.renderPipeline = this.createPipeline(renderShader, canvas, mesh);
         const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0);
         /* Buffers */
         this.renderingUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.renderingUniformsData));
@@ -83,49 +92,21 @@ export class Renderer {
     mvpMatrix() {
         return ether.mat4.columnMajorArray(ether.mat4.mul(ether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix));
     }
-    createPipeline(device, shaderModule, colorFormat, mesh, sampleCount) {
-        return device.createRenderPipeline({
-            vertex: {
-                entryPoint: "v_main",
-                module: shaderModule.shaderModule,
-                buffers: [
-                    {
-                        arrayStride: 2 * 4,
-                        attributes: [{
-                                offset: 0,
-                                format: 'float32x2',
-                                shaderLocation: 0,
-                            }],
-                        stepMode: 'instance',
-                    },
-                    {
-                        arrayStride: 8 * 4,
-                        attributes: [{
-                                offset: 0,
-                                format: 'float32x3',
-                                shaderLocation: 1,
-                            }],
-                        stepMode: 'instance',
-                    },
-                    {
-                        arrayStride: 3 * 4,
-                        attributes: [{
-                                offset: 0,
-                                format: 'float32x3',
-                                shaderLocation: 2,
-                            }],
-                        stepMode: 'vertex',
-                    }
-                ]
-            },
-            fragment: shaderModule.fragmentState("f_main", [colorFormat]),
+    createPipeline(shaderModule, canvas, mesh) {
+        return shaderModule.device.device.createRenderPipeline({
+            vertex: shaderModule.vertexState("v_main", [
+                this.bodyDesc.asBufferLayout('instance'),
+                this.bodyPosition.asBufferLayout('instance'),
+                this.bodySurfaceVertex.asBufferLayout('vertex')
+            ]),
+            fragment: shaderModule.fragmentState("f_main", [canvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: mesh.topology,
                 stripIndexFormat: mesh.indexFormat,
             },
             multisample: {
-                count: sampleCount
+                count: canvas.sampleCount
             }
         });
     }

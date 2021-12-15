@@ -23,9 +23,22 @@ class BaseElement {
         return new StaticArray(this, length, 0, 0, false);
     }
 }
-class Primitive32 extends BaseElement {
-    constructor(offset, stride, packed, getter, setter) {
-        super(4, 4, offset, stride, packed);
+export class VertexElement extends BaseElement {
+    constructor(format, alignment, size, offset, stride, packed) {
+        super(alignment, size, offset, stride, packed);
+        this.format = format;
+    }
+    atLocation(location) {
+        return {
+            format: this.format,
+            offset: this.offset,
+            shaderLocation: location
+        };
+    }
+}
+class Primitive32 extends VertexElement {
+    constructor(format, offset, stride, packed, getter, setter) {
+        super(format, 4, 4, offset, stride, packed);
         this.getter = getter;
         this.setter = setter;
     }
@@ -47,7 +60,7 @@ class Primitive32 extends BaseElement {
 }
 export class U32 extends Primitive32 {
     constructor(offset, stride, packed) {
-        super(offset, stride, packed, (view, offset) => view.getUint32(offset, true), (view, offset, value) => view.setUint32(offset, value, true));
+        super("uint32", offset, stride, packed, (view, offset) => view.getUint32(offset, true), (view, offset, value) => view.setUint32(offset, value, true));
     }
     clone(offset, stride, packed) {
         return new U32(offset, stride, packed);
@@ -55,7 +68,7 @@ export class U32 extends Primitive32 {
 }
 export class I32 extends Primitive32 {
     constructor(offset, stride, packed) {
-        super(offset, stride, packed, (view, offset) => view.getInt32(offset, true), (view, offset, value) => view.setInt32(offset, value, true));
+        super("sint32", offset, stride, packed, (view, offset) => view.getInt32(offset, true), (view, offset, value) => view.setInt32(offset, value, true));
     }
     clone(offset, stride, packed) {
         return new I32(offset, stride, packed);
@@ -63,15 +76,15 @@ export class I32 extends Primitive32 {
 }
 export class F32 extends Primitive32 {
     constructor(offset, stride, packed) {
-        super(offset, stride, packed, (view, offset) => view.getFloat32(offset, true), (view, offset, value) => view.setFloat32(offset, value, true));
+        super("float32", offset, stride, packed, (view, offset) => view.getFloat32(offset, true), (view, offset, value) => view.setFloat32(offset, value, true));
     }
     clone(offset, stride, packed) {
         return new F32(offset, stride, packed);
     }
 }
-export class VecN extends BaseElement {
-    constructor(alignment, size, offset, stride, packed) {
-        super(alignment, size, offset, stride, packed);
+export class VecN extends VertexElement {
+    constructor(format, alignment, size, offset, stride, packed) {
+        super(format, alignment, size, offset, stride, packed);
     }
     get x2() {
         return new Mat2(this, 0, 0, false);
@@ -85,7 +98,7 @@ export class VecN extends BaseElement {
 }
 export class Vec2 extends VecN {
     constructor(component, offset, stride, packed) {
-        super(8, 8, offset, stride, packed);
+        super("float32x2", 8, 8, offset, stride, packed);
         this.component = component;
         this.x = clone(component, this.offset, this.stride, packed);
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
@@ -106,7 +119,7 @@ export class Vec2 extends VecN {
 }
 export class Vec3 extends VecN {
     constructor(component, offset, stride, packed) {
-        super(16, 12, offset, stride, packed);
+        super("float32x3", 16, 12, offset, stride, packed);
         this.component = component;
         this.x = clone(component, this.offset, this.stride, packed);
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
@@ -130,7 +143,7 @@ export class Vec3 extends VecN {
 }
 export class Vec4 extends VecN {
     constructor(component, offset, stride, packed) {
-        super(16, 16, offset, stride, packed);
+        super("float32x4", 16, 16, offset, stride, packed);
         this.component = component;
         this.x = clone(component, this.offset, this.stride, packed);
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
@@ -270,6 +283,31 @@ export class Struct extends BaseElement {
     clone(offset, stride, packed) {
         return new Struct(this.membersOrder, this.members, offset, stride, packed);
     }
+    asVertex(attributes = this.membersOrder) {
+        return new Vertex(attributes, this);
+    }
+}
+export class Vertex {
+    constructor(attributes, struct) {
+        this.attributes = attributes;
+        this.struct = struct;
+    }
+    asBufferLayout(stepMode = "vertex", baseIndex = 0) {
+        return {
+            arrayStride: this.struct.stride,
+            attributes: this.attributes.map((name, index) => {
+                const member = this.struct.members[name];
+                if (!(member instanceof VertexElement)) {
+                    throw new Error('Only vertex element can be attributes of a vertex.');
+                }
+                return member.atLocation(baseIndex + index);
+            }),
+            stepMode: stepMode
+        };
+    }
+    sub(attributes = this.attributes) {
+        return this.struct.asVertex(attributes);
+    }
 }
 function arraySize(item, length, packed) {
     return (packed ? item.size : item.paddedSize) * length;
@@ -287,8 +325,9 @@ function cloneItems(item, length, offset, stride, packed) {
 function structAlignment(membersOrder, struct) {
     let result = 4;
     for (const key of membersOrder) {
-        if (struct[key].alignment > result) {
-            result = struct[key].alignment;
+        const member = struct[key];
+        if (member.alignment > result) {
+            result = member.alignment;
         }
     }
     return result;
@@ -296,8 +335,9 @@ function structAlignment(membersOrder, struct) {
 function structSize(membersOrder, struct, packed) {
     let result = 0;
     for (const key of membersOrder) {
-        result = Math.ceil(result / struct[key].alignment) * struct[key].alignment;
-        result += packed ? struct[key].size : struct[key].paddedSize;
+        const member = struct[key];
+        result = packed ? result : Math.ceil(result / member.alignment) * member.alignment;
+        result += packed ? member.size : member.paddedSize;
     }
     return result;
 }
@@ -340,5 +380,11 @@ export const mat4x3 = vec3(f32).x4;
 export const mat4x4 = vec4(f32).x4;
 export function struct(members, membersOrder = Object.keys(members)) {
     return new Struct(membersOrder, members, 0, 0, false);
+}
+export function packed(membersOrder, members) {
+    return new Struct(membersOrder, members, 0, 0, true);
+}
+export function vertex(members, membersOrder = Object.keys(members)) {
+    return new Vertex(membersOrder, packed(membersOrder, members));
 }
 //# sourceMappingURL=types.js.map

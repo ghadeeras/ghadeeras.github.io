@@ -30,26 +30,11 @@ export class GPUView {
         this._matView = ether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
         this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, 6 * 4, new Float32Array([]));
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride, new Float32Array([]));
         this.canvas = device.canvas(canvasId);
         this.depthTexture = this.canvas.depthTexture();
         this.pipeline = device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                        arrayStride: 6 * 4,
-                        attributes: [{
-                                shaderLocation: 0,
-                                format: "float32x3",
-                                offset: 0
-                            }, {
-                                shaderLocation: 1,
-                                format: "float32x3",
-                                offset: 12
-                            }]
-                    }]
-            },
+            vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
@@ -156,6 +141,10 @@ export class GPUView {
         });
     }
 }
+GPUView.vertex = gpu.vertex({
+    position: gpu.f32.x3,
+    normal: gpu.f32.x3,
+});
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();

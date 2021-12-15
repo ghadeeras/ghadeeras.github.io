@@ -1,6 +1,7 @@
 import * as gpu from "../djee/gpu/index.js"
 import * as ether from "../../ether/latest/index.js"
 import { Picker } from "./view.js"
+import { GPUView } from "./view.gpu.js"
 
 export class GPUPicker implements Picker {
 
@@ -12,9 +13,11 @@ export class GPUPicker implements Picker {
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
-    private uniformsData: Float32Array = new Float32Array([
-        ...ether.mat4.columnMajorArray(ether.mat4.identity())
-    ])
+    private vertex = GPUView.vertex.sub(['position'])
+
+    private uniformsStruct = gpu.struct({
+        mvpMat: gpu.mat4x4
+    })
 
     constructor(
         canvas: gpu.Canvas,
@@ -22,7 +25,7 @@ export class GPUPicker implements Picker {
         private vertices: () => gpu.Buffer,
     ) {
         this.device = canvas.device
-        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
+        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.pickDestination = this.device.buffer(GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16)
 
         this.colorTexture = this.device.texture({
@@ -37,18 +40,7 @@ export class GPUPicker implements Picker {
         })
 
         this.pipeline = this.device.device.createRenderPipeline({
-            vertex: {
-                module: shaderModule.shaderModule,
-                entryPoint: "v_main",
-                buffers: [{
-                    arrayStride: 6 * 4,
-                    attributes: [{
-                        shaderLocation: 0,
-                        format: "float32x3",
-                        offset: 0
-                    }]
-                }]
-            },
+            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.colorTexture]),
             depthStencil : this.depthTexture.depthState(),
             primitive: {
