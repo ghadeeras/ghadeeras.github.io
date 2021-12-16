@@ -105,9 +105,7 @@ class Toy {
         return n < min ? min : (n > max ? max : n);
     }
     fieldColor(contourValue = this.stone.contourValue) {
-        return contourValue > 0 ?
-            [1, 0, (1 - contourValue) / (1 + contourValue), 1] :
-            [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1];
+        return [0.5, contourValue, 0.5, 1];
     }
     contourSurfaceDataForStone(stone, meshConsumer) {
         this.stone = stone;
@@ -124,10 +122,8 @@ class Toy {
     saveModel() {
         const fileName = document.getElementById("file-name");
         const model = djee.createModel(fileName.value, this.stone.vertices);
-        const canvas = document.getElementById("canvas-gl");
         save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`);
         save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`);
-        save(canvas.toDataURL("image/png"), 'image/png', `${fileName.value}.png`);
     }
 }
 const twoPi = 2 * Math.PI;

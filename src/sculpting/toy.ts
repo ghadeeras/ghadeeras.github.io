@@ -137,9 +137,7 @@ class Toy {
     }
 
     fieldColor(contourValue: number = this.stone.contourValue): ether.Vec<4> {
-        return contourValue > 0 ?
-            [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
-            [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
+        return [0.5, contourValue, 0.5, 1] 
     }
 
     contourSurfaceDataForStone(stone: ether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
@@ -161,11 +159,9 @@ class Toy {
         const fileName = document.getElementById("file-name") as HTMLInputElement
 
         const model = djee.createModel(fileName.value, this.stone.vertices)
-        const canvas = document.getElementById("canvas-gl") as HTMLCanvasElement
 
         save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
         save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)
-        save(canvas.toDataURL("image/png"), 'image/png', `${fileName.value}.png`)
     }
 
 }
