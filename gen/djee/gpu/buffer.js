@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 export class Buffer {
-    constructor(device, usage, stride, dataOrSize = stride) {
+    constructor(device, usage, dataOrSize, stride = size(dataOrSize)) {
         this.device = device;
         this.usage = usage;
         this.stride = stride;
@@ -27,12 +27,24 @@ export class Buffer {
     destroy() {
         this._buffer.destroy();
     }
-    writeAt(bufferOffset, data, dataOffset = 0, size = data.length) {
+    syncFrom(data, element, index = 0, count = 1) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const [from, to] = element.range(index, count);
+            return yield this.writeAt(from, data, from, to - from);
+        });
+    }
+    syncTo(data, element, index = 0, count = 1) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const [from, to] = element.range(index, count);
+            return yield this.readAt(from, data, from, to - from);
+        });
+    }
+    writeAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
         return __awaiter(this, void 0, void 0, function* () {
             return yield this.writer(bufferOffset, data, dataOffset, size);
         });
     }
-    readAt(bufferOffset, data, dataOffset = 0, size = data.length) {
+    readAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
         return __awaiter(this, void 0, void 0, function* () {
             return yield this.reader(bufferOffset, data, dataOffset, size);
         });
@@ -72,16 +84,14 @@ export class Buffer {
     }
     writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) {
         return __awaiter(this, void 0, void 0, function* () {
-            const bpe = data.BYTES_PER_ELEMENT;
-            const sizeInBytes = size * bpe;
-            const dataOffsetInBytes = data.byteOffset + dataOffset * bpe;
+            const dataOffsetInBytes = data.byteOffset + dataOffset;
             const validBufferOffset = lowerMultipleOf(8, bufferOffset);
             const offsetCorrection = bufferOffset - validBufferOffset;
-            const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection);
+            const validSize = upperMultipleOf(4, size + offsetCorrection);
             return yield this._buffer.mapAsync(GPUMapMode.WRITE, validBufferOffset, validSize).then(() => {
                 const range = this._buffer.getMappedRange(validBufferOffset, validSize);
-                const src = new Uint8Array(data.buffer, dataOffsetInBytes, sizeInBytes);
-                const dst = new Uint8Array(range, offsetCorrection, sizeInBytes);
+                const src = new Uint8Array(data.buffer, dataOffsetInBytes, size);
+                const dst = new Uint8Array(range, offsetCorrection, size);
                 dst.set(src);
                 this._buffer.unmap();
                 return this;
@@ -90,16 +100,14 @@ export class Buffer {
     }
     readFromMapReadBuffer(bufferOffset, data, dataOffset, size) {
         return __awaiter(this, void 0, void 0, function* () {
-            const bpe = data.BYTES_PER_ELEMENT;
-            const sizeInBytes = size * bpe;
-            const dataOffsetInBytes = data.byteOffset + dataOffset * bpe;
+            const dataOffsetInBytes = data.byteOffset + dataOffset;
             const validBufferOffset = lowerMultipleOf(8, bufferOffset);
             const offsetCorrection = bufferOffset - validBufferOffset;
-            const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection);
+            const validSize = upperMultipleOf(4, size + offsetCorrection);
             return yield this.buffer.mapAsync(GPUMapMode.READ, validBufferOffset, validSize).then(() => {
                 const range = this._buffer.getMappedRange(validBufferOffset, validSize);
-                const src = new Uint8Array(range, offsetCorrection, sizeInBytes);
-                const dst = new Uint8Array(data.buffer, dataOffsetInBytes, sizeInBytes);
+                const src = new Uint8Array(range, offsetCorrection, size);
+                const dst = new Uint8Array(data.buffer, dataOffsetInBytes, size);
                 dst.set(src);
                 this._buffer.unmap();
                 return data;
@@ -107,13 +115,11 @@ export class Buffer {
         });
     }
     writeToCopyDstBuffer(bufferOffset, data, dataOffset, size) {
-        const bpe = data.BYTES_PER_ELEMENT;
-        const sizeInBytes = size * bpe;
-        const dataOffsetInBytes = data.byteOffset + dataOffset * bpe;
+        const dataOffsetInBytes = data.byteOffset + dataOffset;
         const validBufferOffset = lowerMultipleOf(4, bufferOffset);
         const offsetCorrection = bufferOffset - validBufferOffset;
         const validDataOffset = dataOffsetInBytes - offsetCorrection;
-        const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection);
+        const validSize = upperMultipleOf(4, size + offsetCorrection);
         this.device.device.queue.writeBuffer(this._buffer, validBufferOffset, data.buffer, validDataOffset, validSize);
         return Promise.resolve(this);
     }
@@ -147,6 +153,9 @@ export class Buffer {
             this.writeAt(0, data);
         }
     }
+}
+function size(dataOrSize) {
+    return typeof dataOrSize === 'number' ? dataOrSize : dataOrSize.byteLength;
 }
 function positiveInteger(n) {
     if (!Number.isSafeInteger(n) || n < 0) {

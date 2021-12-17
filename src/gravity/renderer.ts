@@ -16,36 +16,35 @@ export class Renderer {
         position: gpu.f32.x3
     })
 
-    private readonly renderPipeline: GPURenderPipeline
+    private readonly pipeline: GPURenderPipeline
     
     private readonly meshIndexFormat: GPUIndexFormat
     private readonly meshSize: number
 
     private readonly depthTexture: gpu.Texture
 
-    private readonly renderingUniformsBuffer: gpu.Buffer
+    private readonly uniformsBuffer: gpu.Buffer
     private readonly meshIndicesBuffer: gpu.Buffer
     private readonly meshVertexBuffer: gpu.Buffer
 
-    private readonly renderBindGroup: GPUBindGroup
+    private readonly bindGroup: GPUBindGroup
 
     private _projectionMatrix = ether.mat4.projection(1)
     private _viewMatrix = ether.mat4.lookAt([0, 0, -24])
     private _modelMatrix = ether.mat4.identity()
 
-    private readonly renderingUniformsData: number[] = [
-        // mpvMatrix: mat4x4<f32>;
-        ...this.mvpMatrix(), 
-        // radiusScale: f32;
-        0.05,
-        // padding
-        0,
-        0,
-        0,
-    ]
+    private readonly uniformsStruct = gpu.struct({
+        mvpMatrix: gpu.f32.x4.x4,
+        radiusScale: gpu.f32,
+    })
 
-    private updateRenderingUniformsData = new DeferredComputation(() => {
-        this.renderingUniformsBuffer.writeAt(0, new Float32Array(this.renderingUniformsData))
+    private readonly uniformsView = this.uniformsStruct.view([{
+        mvpMatrix: this.mvpMatrix(),
+        radiusScale: 0.05
+    }])
+
+    private updateUniformsData = new DeferredComputation(() => {
+        this.uniformsBuffer.writeAt(0, this.uniformsView)
     })
 
     constructor(private device: gpu.Device, private canvas: gpu.Canvas, renderShader: gpu.ShaderModule) {
@@ -56,16 +55,16 @@ export class Renderer {
         this.depthTexture = canvas.depthTexture()
 
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(renderShader, canvas, mesh)
-        const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0)
+        this.pipeline = this.createPipeline(renderShader, canvas, mesh)
+        const bindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.renderingUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.renderingUniformsData))
-        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, 1, new Uint16Array(mesh.indices))
-        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, 1, new Float32Array(mesh.positions))
+        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
+        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)))
+        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
 
         /* Bind Groups */
-        this.renderBindGroup = this.device.createBindGroup(renderBindGroupLayout, [this.renderingUniformsBuffer]) 
+        this.bindGroup = this.device.createBindGroup(bindGroupLayout, [this.uniformsBuffer])
     }
 
     get projectionViewMatrix() {
@@ -103,24 +102,31 @@ export class Renderer {
     }
 
     get radiusScale() {
-        return this.renderingUniformsData[16]
+        return this.getMember(this.uniformsStruct.members.radiusScale)
     }
 
     set radiusScale(v: number) {
-        this.renderingUniformsData[16] = v
-        this.updateRenderingUniformsData.perform()
+        this.setMember(this.uniformsStruct.members.radiusScale, v)
     }
 
     private updateMvpMatrix() {
-        this.renderingUniformsData.splice(0, 16, ...this.mvpMatrix())
-        this.updateRenderingUniformsData.perform()
+        this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix())
+    }
+
+    private getMember<T>(member: gpu.Element<T>): T {
+        return member.read(this.uniformsView)
+    }
+
+    private setMember<T>(member: gpu.Element<T>, value: T) {
+        member.write(this.uniformsView, value)
+        this.updateUniformsData.perform()
     }
 
     private mvpMatrix() {
-        return ether.mat4.columnMajorArray(ether.mat4.mul(
+        return ether.mat4.mul(
             ether.mat4.mul(this._projectionMatrix, this._viewMatrix),
             this._modelMatrix
-        ))
+        )
     }
 
     private createPipeline(shaderModule: gpu.ShaderModule, canvas: gpu.Canvas, mesh: geo.Mesh): GPURenderPipeline {
@@ -149,8 +155,8 @@ export class Renderer {
         }
         this.device.enqueueCommand(encoder => {
             encoder.renderPass(descriptor, pass => {
-                pass.setPipeline(this.renderPipeline)
-                pass.setBindGroup(0, this.renderBindGroup)
+                pass.setPipeline(this.pipeline)
+                pass.setBindGroup(0, this.bindGroup)
                 pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer)
                 pass.setVertexBuffer(1, universe.currentState.buffer)
                 pass.setVertexBuffer(2, this.meshVertexBuffer.buffer)

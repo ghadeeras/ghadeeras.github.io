@@ -1,6 +1,6 @@
 import { fetchTextFiles } from "gear"
 import { required } from "../../utils/misc.js"
-import { Buffer, TypedArray } from "./buffer.js"
+import { Buffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
@@ -52,8 +52,10 @@ export class Device {
         return new Texture(this, descriptor)
     }
 
-    buffer(usage: GPUBufferUsageFlags, stride: number, dataOrSize: TypedArray | number = stride): Buffer {
-        return new Buffer(this, usage, stride, dataOrSize)
+    buffer(usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride: number = 0): Buffer {
+        return stride > 0 ? 
+            new Buffer(this, usage, dataOrSize, stride) : 
+            new Buffer(this, usage, dataOrSize) 
     }
 
     createBindGroup(bindGroupLayout: GPUBindGroupLayout, buffers: Buffer[]) {

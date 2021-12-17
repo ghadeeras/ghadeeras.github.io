@@ -14,8 +14,10 @@ export class GPUView {
     constructor(device, canvasId, shaderModule) {
         this.device = device;
         this.uniformsStruct = gpu.struct({
-            positionsMat: gpu.mat4x4,
-            normalsMat: gpu.mat4x4,
+            mat: gpu.struct({
+                positions: gpu.mat4x4,
+                normals: gpu.mat4x4,
+            }),
             projectionMat: gpu.mat4x4,
             color: gpu.f32.x4,
             lightPos: gpu.f32.x4,
@@ -23,14 +25,13 @@ export class GPUView {
             lightRadius: gpu.f32,
             fogginess: gpu.f32,
         });
-        this.uniformsData = new Float32Array(this.uniformsStruct.paddedSize / Float32Array.BYTES_PER_ELEMENT);
-        this.uniformsView = new DataView(this.uniformsData.buffer);
+        this.uniformsView = this.uniformsStruct.view();
         this._matPositions = ether.mat4.identity();
         this._matNormals = ether.mat4.identity();
         this._matView = ether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride, new Float32Array([]));
+        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride);
         this.canvas = device.canvas(canvasId);
         this.depthTexture = this.canvas.depthTexture();
         this.pipeline = device.device.createRenderPipeline({
@@ -71,55 +72,57 @@ export class GPUView {
         const matNormals = modelPositions === modelNormals ?
             matPositions :
             ether.mat4.mul(this.matView, modelNormals);
-        this.uniformsStruct.members.positionsMat.write(this.uniformsView, 0, matPositions);
-        this.uniformsStruct.members.normalsMat.write(this.uniformsView, 0, matNormals);
-        this.uniforms.writeAt(0, this.uniformsData, 0, 32);
+        this.setMember(this.uniformsStruct.members.mat, {
+            positions: matPositions,
+            normals: matNormals
+        });
     }
     get matProjection() {
-        return this.uniformsStruct.members.projectionMat.read(this.uniformsView, 0);
+        return this.getMember(this.uniformsStruct.members.projectionMat);
     }
     set matProjection(m) {
-        this.uniformsStruct.members.projectionMat.write(this.uniformsView, 0, m);
-        this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16);
+        this.setMember(this.uniformsStruct.members.projectionMat, m);
     }
     get color() {
-        return this.uniformsStruct.members.color.read(this.uniformsView, 0);
+        return this.getMember(this.uniformsStruct.members.color);
     }
     set color(c) {
-        this.uniformsStruct.members.color.write(this.uniformsView, 0, c);
-        this.uniforms.writeAt(48 * 4, this.uniformsData, 48, 4);
+        this.setMember(this.uniformsStruct.members.color, c);
     }
     get lightPosition() {
         return this._lightPosition;
     }
     set lightPosition(p) {
         this._lightPosition = p;
-        this.uniformsStruct.members.lightPos.write(this.uniformsView, 0, ether.vec4.add(this._matView[3], p));
-        this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4);
+        this.setMember(this.uniformsStruct.members.lightPos, ether.vec4.add(this._matView[3], p));
     }
     get shininess() {
-        return this.uniformsStruct.members.shininess.read(this.uniformsView, 0);
+        return this.getMember(this.uniformsStruct.members.shininess);
     }
     set shininess(s) {
-        this.uniformsStruct.members.shininess.write(this.uniformsView, 0, s);
-        this.uniforms.writeAt(56 * 4, this.uniformsData, 56, 1);
+        this.setMember(this.uniformsStruct.members.shininess, s);
     }
     get lightRadius() {
-        return this.uniformsStruct.members.lightRadius.read(this.uniformsView, 0);
+        return this.getMember(this.uniformsStruct.members.lightRadius);
     }
     set lightRadius(r) {
-        this.uniformsStruct.members.lightRadius.write(this.uniformsView, 0, r);
-        this.uniforms.writeAt(57 * 4, this.uniformsData, 57, 1);
+        this.setMember(this.uniformsStruct.members.lightRadius, r);
     }
     get fogginess() {
-        return this.uniformsStruct.members.fogginess.read(this.uniformsView, 0);
+        return this.getMember(this.uniformsStruct.members.fogginess);
     }
     set fogginess(f) {
-        this.uniformsStruct.members.fogginess.write(this.uniformsView, 0, f);
-        this.uniforms.writeAt(58 * 4, this.uniformsData, 58, 1);
+        this.setMember(this.uniformsStruct.members.fogginess, f);
+    }
+    getMember(member) {
+        return member.read(this.uniformsView);
+    }
+    setMember(member, value) {
+        member.write(this.uniformsView, value);
+        this.uniforms.syncFrom(this.uniformsView, member);
     }
     setMesh(primitives, vertices) {
-        this.vertices.setData(vertices);
+        this.vertices.setData(gpu.dataView(vertices));
     }
     picker() {
         return __awaiter(this, void 0, void 0, function* () {

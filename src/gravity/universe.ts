@@ -19,53 +19,55 @@ export class Universe {
     
     private readonly workGroupsCount: number = Math.ceil(this.bodiesCount / WORKGROUP_SIZE)
 
-    private readonly computePipeline: GPUComputePipeline
+    private readonly pipeline: GPUComputePipeline
     
     readonly bodyDescriptionsBuffer: gpu.Buffer
-    private readonly universeUniformsBuffer: gpu.Buffer
+    private readonly uniformsBuffer: gpu.Buffer
     private readonly stateBuffers: [gpu.Buffer, gpu.Buffer]
 
-    private readonly computeBindGroups: [GPUBindGroup, GPUBindGroup]
+    private readonly bindGroups: [GPUBindGroup, GPUBindGroup]
 
     private currentBuffer: number
 
-    private readonly universeUniformsData: number[] = [
-        // bodyPointedness: f32;
-        0.1,
-        // gravityConstant: f32;
-        1000,
-        // dT: f32;
-        0.0001,
-        // padding
-        0
-    ]
+    private readonly uniformsStruct = gpu.struct({
+        bodyPointedness: gpu.f32,
+        gravityConstant: gpu.f32,
+        dT: gpu.f32,
+    })
+    
+    private readonly uniformsView = this.uniformsStruct.view([{
+        bodyPointedness: 0.1,
+        gravityConstant: 1000,
+        dT: 0.0001
+    }])
 
-    private updateUniverseUniformsData = new DeferredComputation(() => {
-        this.universeUniformsBuffer.writeAt(0, new Float32Array(this.universeUniformsData))
+    private updateUniformsData = new DeferredComputation(() => {
+        this.uniformsBuffer.writeAt(0, this.uniformsView)
     })
 
     constructor(private device: gpu.Device, computeShader: gpu.ShaderModule) {
         const [bodyDescriptions, initialState] = this.createUniverse()
+        const initialStateView = Universe.bodyState.view(initialState)
         
         /* Pipeline */
-        this.computePipeline = computeShader.createComputePipeline("c_main")
-        const computeBindGroupLayout = this.computePipeline.getBindGroupLayout(0)
+        this.pipeline = computeShader.createComputePipeline("c_main")
+        const computeBindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.bodyDescriptionsBuffer = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, 1, new Float32Array(bodyDescriptions))
-        this.universeUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.universeUniformsData))
+        this.bodyDescriptionsBuffer = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, Universe.bodyDescription.view(bodyDescriptions))
+        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
         this.stateBuffers = [
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, 1, new Float32Array(initialState)),
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, 1, initialState.length * Float32Array.BYTES_PER_ELEMENT),
+            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView),
+            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView.byteLength),
         ]
 
         /* Bind Groups */
-        this.computeBindGroups = [
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.universeUniformsBuffer]),
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.universeUniformsBuffer]),
+        this.bindGroups = [
+            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.uniformsBuffer]),
+            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.uniformsBuffer]),
         ]
         
-        this.currentBuffer = 0  
+        this.currentBuffer = 0
     }
 
     get currentState() {
@@ -73,50 +75,57 @@ export class Universe {
     }
 
     get bodyPointedness() {
-        return this.universeUniformsData[0]
+        return this.getMember(this.uniformsStruct.members.bodyPointedness)
     }
 
     set bodyPointedness(v: number) {
-        this.universeUniformsData[0] = v
-        this.updateUniverseUniformsData.perform()
+        this.setMember(this.uniformsStruct.members.bodyPointedness, v)
     }
 
     get gravityConstant() {
-        return this.universeUniformsData[1]
+        return this.getMember(this.uniformsStruct.members.gravityConstant)
     }
 
     set gravityConstant(v: number) {
-        this.universeUniformsData[1] = v
-        this.updateUniverseUniformsData.perform()
+        this.setMember(this.uniformsStruct.members.gravityConstant, v)
     }
 
     get dT() {
-        return this.universeUniformsData[2]
+        return this.getMember(this.uniformsStruct.members.dT)
     }
 
     set dT(v: number) {
-        this.universeUniformsData[2] = v
-        this.updateUniverseUniformsData.perform()
+        this.setMember(this.uniformsStruct.members.dT, v)
+    }
+
+    private getMember<T>(member: gpu.Element<T>): T {
+        return member.read(this.uniformsView)
+    }
+
+    private setMember<T>(member: gpu.Element<T>, value: T) {
+        member.write(this.uniformsView, value)
+        this.updateUniformsData.perform()
     }
 
     recreateUniverse(universeRadius: number = 12) {
         const [bodyDescriptions, initialState] = this.createUniverse(universeRadius)
-        this.bodyDescriptionsBuffer.writeAt(0, new Float32Array(bodyDescriptions))
-        this.stateBuffers[0].writeAt(0, new Float32Array(initialState))
-        this.stateBuffers[1].writeAt(0, new Float32Array(initialState))
+        const initialStateView = Universe.bodyState.view(initialState)
+        this.bodyDescriptionsBuffer.writeAt(0, Universe.bodyDescription.view(bodyDescriptions))
+        this.stateBuffers[0].writeAt(0, initialStateView)
+        this.stateBuffers[1].writeAt(0, initialStateView)
     }
 
-    private createUniverse(universeRadius: number = 12): [number[], number[]] {
-        const descriptions: number[] = []
-        const initialState: number[] = []
+    private createUniverse(universeRadius: number = 12): [gpu.DataTypeOf<typeof Universe.bodyDescription>[], gpu.DataTypeOf<typeof Universe.bodyState>[]] {
+        const descriptions: gpu.DataTypeOf<typeof Universe.bodyDescription>[] = []
+        const initialState: gpu.DataTypeOf<typeof Universe.bodyState>[] = []
 
         for (let i = 0; i < this.bodiesCount; i++) {
             const mass = skewDown(Math.random(), 10, 0.1)
             const radius = mass ** (1 / 3)
             const p = randomVector(universeRadius) 
             const v = randomVector(0.001 / mass)
-            descriptions.push(100 * mass, radius)
-            initialState.push(...p, 1, ...v, 0)
+            descriptions.push({ mass : 100 * mass, radius })
+            initialState.push({ position : p, velocity: v })
         }
 
         return [descriptions, initialState]
@@ -125,8 +134,8 @@ export class Universe {
     tick() {
         this.device.enqueueCommand(encoder => {
             encoder.computePass(pass => {
-                pass.setPipeline(this.computePipeline)
-                pass.setBindGroup(0, this.computeBindGroups[this.currentBuffer])
+                pass.setPipeline(this.pipeline)
+                pass.setBindGroup(0, this.bindGroups[this.currentBuffer])
                 pass.dispatch(this.workGroupsCount)
             })
         })

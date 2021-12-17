@@ -17,9 +17,11 @@ export class GPUView implements v.View {
         normal: gpu.f32.x3,
     })
 
-    private uniformsStruct = gpu.struct({
-        positionsMat: gpu.mat4x4,
-        normalsMat: gpu.mat4x4,
+    private readonly uniformsStruct = gpu.struct({
+        mat: gpu.struct({
+            positions: gpu.mat4x4,
+            normals: gpu.mat4x4,
+        }),
         projectionMat: gpu.mat4x4,
         color: gpu.f32.x4,
         lightPos: gpu.f32.x4,
@@ -28,8 +30,7 @@ export class GPUView implements v.View {
         fogginess: gpu.f32,
     })
 
-    private uniformsData: Float32Array = new Float32Array(this.uniformsStruct.paddedSize / Float32Array.BYTES_PER_ELEMENT)
-    private uniformsView: DataView = new DataView(this.uniformsData.buffer)
+    private uniformsView: DataView = this.uniformsStruct.view()
 
     private frame: () => void
 
@@ -43,8 +44,8 @@ export class GPUView implements v.View {
         canvasId: string,
         shaderModule: gpu.ShaderModule,
     ) {
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, this.uniformsData);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride, new Float32Array([]))
+        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
 
         this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
@@ -96,27 +97,26 @@ export class GPUView implements v.View {
             matPositions :
             ether.mat4.mul(this.matView, modelNormals)
 
-        this.uniformsStruct.members.positionsMat.write(this.uniformsView, 0, matPositions)
-        this.uniformsStruct.members.normalsMat.write(this.uniformsView, 0, matNormals)
-        this.uniforms.writeAt(0, this.uniformsData, 0, 32)
+        this.setMember(this.uniformsStruct.members.mat, {
+            positions: matPositions,
+            normals: matNormals
+        })
     }
 
     get matProjection(): ether.Mat<4> {
-        return this.uniformsStruct.members.projectionMat.read(this.uniformsView, 0)
+        return this.getMember(this.uniformsStruct.members.projectionMat)
     }
 
     set matProjection(m: ether.Mat<4>) {
-        this.uniformsStruct.members.projectionMat.write(this.uniformsView, 0, m)
-        this.uniforms.writeAt(32 * 4, this.uniformsData, 32, 16)
+        this.setMember(this.uniformsStruct.members.projectionMat, m)
     }
 
     get color(): ether.Vec<4> {
-        return this.uniformsStruct.members.color.read(this.uniformsView, 0)
+        return this.getMember(this.uniformsStruct.members.color)
     }
 
     set color(c: ether.Vec<4>) {
-        this.uniformsStruct.members.color.write(this.uniformsView, 0, c)
-        this.uniforms.writeAt(48 * 4, this.uniformsData, 48, 4)
+        this.setMember(this.uniformsStruct.members.color, c)
     }
 
     get lightPosition(): ether.Vec<4> {
@@ -125,39 +125,44 @@ export class GPUView implements v.View {
 
     set lightPosition(p: ether.Vec<4>) {
         this._lightPosition = p
-        this.uniformsStruct.members.lightPos.write(this.uniformsView, 0, ether.vec4.add(this._matView[3], p))
-        this.uniforms.writeAt(52 * 4, this.uniformsData, 52, 4)
+        this.setMember(this.uniformsStruct.members.lightPos, ether.vec4.add(this._matView[3], p))
     }
 
     get shininess(): number {
-        return this.uniformsStruct.members.shininess.read(this.uniformsView, 0)
+        return this.getMember(this.uniformsStruct.members.shininess)
     }
 
     set shininess(s: number) {
-        this.uniformsStruct.members.shininess.write(this.uniformsView, 0, s)
-        this.uniforms.writeAt(56 * 4, this.uniformsData, 56, 1)
+        this.setMember(this.uniformsStruct.members.shininess, s)
     }
 
     get lightRadius(): number {
-        return this.uniformsStruct.members.lightRadius.read(this.uniformsView, 0)
+        return this.getMember(this.uniformsStruct.members.lightRadius)
     }
 
     set lightRadius(r: number) {
-        this.uniformsStruct.members.lightRadius.write(this.uniformsView, 0, r)
-        this.uniforms.writeAt(57 * 4, this.uniformsData, 57, 1)
+        this.setMember(this.uniformsStruct.members.lightRadius, r)
     }
 
     get fogginess(): number {
-        return this.uniformsStruct.members.fogginess.read(this.uniformsView, 0)
+        return this.getMember(this.uniformsStruct.members.fogginess)
     }
 
     set fogginess(f: number) {
-        this.uniformsStruct.members.fogginess.write(this.uniformsView, 0, f)
-        this.uniforms.writeAt(58 * 4, this.uniformsData, 58, 1)
+        this.setMember(this.uniformsStruct.members.fogginess, f)
+    }
+
+    private getMember<T>(member: gpu.Element<T>): T {
+        return member.read(this.uniformsView)
+    }
+
+    private setMember<T>(member: gpu.Element<T>, value: T) {
+        member.write(this.uniformsView, value)
+        this.uniforms.syncFrom(this.uniformsView, member)
     }
 
     setMesh(primitives: GLenum, vertices: Float32Array) {
-        this.vertices.setData(vertices)
+        this.vertices.setData(gpu.dataView(vertices))
     }
 
     async picker(): Promise<v.Picker> {

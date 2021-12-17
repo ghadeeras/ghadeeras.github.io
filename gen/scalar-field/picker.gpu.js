@@ -42,7 +42,7 @@ export class GPUPicker {
     }
     pick(matModelViewProjection, x, y) {
         return __awaiter(this, void 0, void 0, function* () {
-            this.uniforms.writeAt(0, new Float32Array(ether.mat4.columnMajorArray(matModelViewProjection)));
+            this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));
             this.device.enqueueCommand(encoder => {
                 var _a;
                 const passDescriptor = {
@@ -69,8 +69,8 @@ export class GPUPicker {
                     height: 1
                 });
             });
-            const array = yield this.pickDestination.readAt(0, new Float32Array(4));
-            return ether.vec4.sub(ether.vec4.scale(ether.vec4.from(array), 2), [1, 1, 1, 1]);
+            const view = yield this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view());
+            return ether.vec4.sub(ether.vec4.scale(ether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
         });
     }
 }

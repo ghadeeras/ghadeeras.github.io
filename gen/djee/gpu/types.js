@@ -7,16 +7,38 @@ class BaseElement {
         this.packed = packed;
         this.stride = stride == 0 ? this.paddedSize : stride;
     }
+    view(dataOrSize = 1) {
+        if (typeof dataOrSize == 'number') {
+            return new DataView(new ArrayBuffer(dataOrSize * this.stride));
+        }
+        else {
+            const result = new DataView(new ArrayBuffer(dataOrSize.length * this.stride));
+            this.writeMulti(result, 0, dataOrSize);
+            return result;
+        }
+    }
+    range(index = 0, count = 1) {
+        return [
+            this.offset + index * this.paddedSize,
+            this.offset + (index + count) * this.paddedSize
+        ];
+    }
+    read(view) {
+        return this.readOne(view, 0);
+    }
+    write(view, value) {
+        this.writeOne(view, 0, value);
+    }
     readMulti(view, index, count) {
         const values = new Array(count);
         for (let i = 0; i < count; i++) {
-            values[i] = this.read(view, index + i);
+            values[i] = this.readOne(view, index + i);
         }
         return values;
     }
     writeMulti(view, index, values) {
         for (let i = 0; i < values.length; i++) {
-            this.write(view, index + i, values[i]);
+            this.writeOne(view, index + i, values[i]);
         }
     }
     times(length) {
@@ -42,10 +64,10 @@ class Primitive32 extends VertexElement {
         this.getter = getter;
         this.setter = setter;
     }
-    read(view, index) {
+    readOne(view, index) {
         return this.getter(view, this.offset + this.stride * index);
     }
-    write(view, index, value) {
+    writeOne(view, index, value) {
         this.setter(view, this.offset + this.stride * index, value);
     }
     get x2() {
@@ -103,15 +125,15 @@ export class Vec2 extends VecN {
         this.x = clone(component, this.offset, this.stride, packed);
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
     }
     clone(offset, stride, packed) {
         return new Vec2(this.component, offset, stride, packed);
@@ -125,17 +147,17 @@ export class Vec3 extends VecN {
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
-            this.z.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
+            this.z.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
-        this.z.write(view, index, value[2]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
+        this.z.writeOne(view, index, value[2]);
     }
     clone(offset, stride, packed) {
         return new Vec3(this.component, offset, stride, packed);
@@ -150,19 +172,19 @@ export class Vec4 extends VecN {
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed);
         this.w = clone(component, this.z.offset + this.z.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
-            this.z.read(view, index),
-            this.w.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
+            this.z.readOne(view, index),
+            this.w.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
-        this.z.write(view, index, value[2]);
-        this.w.write(view, index, value[3]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
+        this.z.writeOne(view, index, value[2]);
+        this.w.writeOne(view, index, value[3]);
     }
     clone(offset, stride, packed) {
         return new Vec4(this.component, offset, stride, packed);
@@ -175,15 +197,15 @@ export class Mat2 extends BaseElement {
         this.x = clone(component, this.offset, this.stride, packed);
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
     }
     clone(offset, stride, packed) {
         return new Mat2(this.component, offset, stride, packed);
@@ -197,17 +219,17 @@ export class Mat3 extends BaseElement {
         this.y = clone(component, this.x.offset + this.x.paddedSize, this.stride, packed);
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
-            this.z.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
+            this.z.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
-        this.z.write(view, index, value[2]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
+        this.z.writeOne(view, index, value[2]);
     }
     clone(offset, stride, packed) {
         return new Mat3(this.component, offset, stride, packed);
@@ -222,19 +244,19 @@ export class Mat4 extends BaseElement {
         this.z = clone(component, this.y.offset + this.y.paddedSize, this.stride, packed);
         this.w = clone(component, this.z.offset + this.z.paddedSize, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         return [
-            this.x.read(view, index),
-            this.y.read(view, index),
-            this.z.read(view, index),
-            this.w.read(view, index),
+            this.x.readOne(view, index),
+            this.y.readOne(view, index),
+            this.z.readOne(view, index),
+            this.w.readOne(view, index),
         ];
     }
-    write(view, index, value) {
-        this.x.write(view, index, value[0]);
-        this.y.write(view, index, value[1]);
-        this.z.write(view, index, value[2]);
-        this.w.write(view, index, value[3]);
+    writeOne(view, index, value) {
+        this.x.writeOne(view, index, value[0]);
+        this.y.writeOne(view, index, value[1]);
+        this.z.writeOne(view, index, value[2]);
+        this.w.writeOne(view, index, value[3]);
     }
     clone(offset, stride, packed) {
         return new Mat4(this.component, offset, stride, packed);
@@ -246,16 +268,16 @@ export class StaticArray extends BaseElement {
         this.item = item;
         this.items = cloneItems(item, length, this.offset, this.stride, packed);
     }
-    read(view, index) {
+    readOne(view, index) {
         const result = new Array(this.items.length);
         for (let i = 0; i < this.items.length; i++) {
-            result[i] = this.items[i].read(view, index);
+            result[i] = this.items[i].readOne(view, index);
         }
         return result;
     }
-    write(view, index, value) {
+    writeOne(view, index, value) {
         for (let i = 0; i < this.items.length; i++) {
-            this.items[i].write(view, index, value[i]);
+            this.items[i].writeOne(view, index, value[i]);
         }
     }
     clone(offset, stride, packed) {
@@ -268,15 +290,15 @@ export class Struct extends BaseElement {
         this.membersOrder = membersOrder;
         this.members = cloneStruct(membersOrder, members, this.offset, this.stride, packed);
     }
-    write(view, index, value) {
+    writeOne(view, index, value) {
         for (const key of this.membersOrder) {
-            this.members[key].write(view, index, value[key]);
+            this.members[key].writeOne(view, index, value[key]);
         }
     }
-    read(view, index) {
+    readOne(view, index) {
         const result = {};
         for (const key of this.membersOrder) {
-            result[key] = this.members[key].read(view, index);
+            result[key] = this.members[key].readOne(view, index);
         }
         return result;
     }

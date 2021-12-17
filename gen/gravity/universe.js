@@ -15,34 +15,35 @@ export class Universe {
         this.device = device;
         this.bodiesCount = 16384;
         this.workGroupsCount = Math.ceil(this.bodiesCount / WORKGROUP_SIZE);
-        this.universeUniformsData = [
-            // bodyPointedness: f32;
-            0.1,
-            // gravityConstant: f32;
-            1000,
-            // dT: f32;
-            0.0001,
-            // padding
-            0
-        ];
-        this.updateUniverseUniformsData = new DeferredComputation(() => {
-            this.universeUniformsBuffer.writeAt(0, new Float32Array(this.universeUniformsData));
+        this.uniformsStruct = gpu.struct({
+            bodyPointedness: gpu.f32,
+            gravityConstant: gpu.f32,
+            dT: gpu.f32,
+        });
+        this.uniformsView = this.uniformsStruct.view([{
+                bodyPointedness: 0.1,
+                gravityConstant: 1000,
+                dT: 0.0001
+            }]);
+        this.updateUniformsData = new DeferredComputation(() => {
+            this.uniformsBuffer.writeAt(0, this.uniformsView);
         });
         const [bodyDescriptions, initialState] = this.createUniverse();
+        const initialStateView = Universe.bodyState.view(initialState);
         /* Pipeline */
-        this.computePipeline = computeShader.createComputePipeline("c_main");
-        const computeBindGroupLayout = this.computePipeline.getBindGroupLayout(0);
+        this.pipeline = computeShader.createComputePipeline("c_main");
+        const computeBindGroupLayout = this.pipeline.getBindGroupLayout(0);
         /* Buffers */
-        this.bodyDescriptionsBuffer = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, 1, new Float32Array(bodyDescriptions));
-        this.universeUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.universeUniformsData));
+        this.bodyDescriptionsBuffer = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, Universe.bodyDescription.view(bodyDescriptions));
+        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
         this.stateBuffers = [
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, 1, new Float32Array(initialState)),
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, 1, initialState.length * Float32Array.BYTES_PER_ELEMENT),
+            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView),
+            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView.byteLength),
         ];
         /* Bind Groups */
-        this.computeBindGroups = [
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.universeUniformsBuffer]),
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.universeUniformsBuffer]),
+        this.bindGroups = [
+            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.uniformsBuffer]),
+            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.uniformsBuffer]),
         ];
         this.currentBuffer = 0;
     }
@@ -50,31 +51,36 @@ export class Universe {
         return this.stateBuffers[this.currentBuffer];
     }
     get bodyPointedness() {
-        return this.universeUniformsData[0];
+        return this.getMember(this.uniformsStruct.members.bodyPointedness);
     }
     set bodyPointedness(v) {
-        this.universeUniformsData[0] = v;
-        this.updateUniverseUniformsData.perform();
+        this.setMember(this.uniformsStruct.members.bodyPointedness, v);
     }
     get gravityConstant() {
-        return this.universeUniformsData[1];
+        return this.getMember(this.uniformsStruct.members.gravityConstant);
     }
     set gravityConstant(v) {
-        this.universeUniformsData[1] = v;
-        this.updateUniverseUniformsData.perform();
+        this.setMember(this.uniformsStruct.members.gravityConstant, v);
     }
     get dT() {
-        return this.universeUniformsData[2];
+        return this.getMember(this.uniformsStruct.members.dT);
     }
     set dT(v) {
-        this.universeUniformsData[2] = v;
-        this.updateUniverseUniformsData.perform();
+        this.setMember(this.uniformsStruct.members.dT, v);
+    }
+    getMember(member) {
+        return member.read(this.uniformsView);
+    }
+    setMember(member, value) {
+        member.write(this.uniformsView, value);
+        this.updateUniformsData.perform();
     }
     recreateUniverse(universeRadius = 12) {
         const [bodyDescriptions, initialState] = this.createUniverse(universeRadius);
-        this.bodyDescriptionsBuffer.writeAt(0, new Float32Array(bodyDescriptions));
-        this.stateBuffers[0].writeAt(0, new Float32Array(initialState));
-        this.stateBuffers[1].writeAt(0, new Float32Array(initialState));
+        const initialStateView = Universe.bodyState.view(initialState);
+        this.bodyDescriptionsBuffer.writeAt(0, Universe.bodyDescription.view(bodyDescriptions));
+        this.stateBuffers[0].writeAt(0, initialStateView);
+        this.stateBuffers[1].writeAt(0, initialStateView);
     }
     createUniverse(universeRadius = 12) {
         const descriptions = [];
@@ -84,16 +90,16 @@ export class Universe {
             const radius = Math.pow(mass, (1 / 3));
             const p = randomVector(universeRadius);
             const v = randomVector(0.001 / mass);
-            descriptions.push(100 * mass, radius);
-            initialState.push(...p, 1, ...v, 0);
+            descriptions.push({ mass: 100 * mass, radius });
+            initialState.push({ position: p, velocity: v });
         }
         return [descriptions, initialState];
     }
     tick() {
         this.device.enqueueCommand(encoder => {
             encoder.computePass(pass => {
-                pass.setPipeline(this.computePipeline);
-                pass.setBindGroup(0, this.computeBindGroups[this.currentBuffer]);
+                pass.setPipeline(this.pipeline);
+                pass.setBindGroup(0, this.bindGroups[this.currentBuffer]);
                 pass.dispatch(this.workGroupsCount);
             });
         });

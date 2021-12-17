@@ -53,8 +53,10 @@ export class Device {
     texture(descriptor) {
         return new Texture(this, descriptor);
     }
-    buffer(usage, stride, dataOrSize = stride) {
-        return new Buffer(this, usage, stride, dataOrSize);
+    buffer(usage, dataOrSize, stride = 0) {
+        return stride > 0 ?
+            new Buffer(this, usage, dataOrSize, stride) :
+            new Buffer(this, usage, dataOrSize);
     }
     createBindGroup(bindGroupLayout, buffers) {
         return this.device.createBindGroup({

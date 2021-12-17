@@ -1,16 +1,8 @@
 import { Device } from "./device.js"
+import { Element } from "./types.js"
 
-export type TypedArray = 
-    Float32Array |
-    Int32Array |
-    Int16Array |
-    Int8Array |
-    Uint32Array |
-    Uint16Array |
-    Uint8Array
-
-type Writer = (bufferOffset: number, data: TypedArray, dataOffset: number, size: number) => Promise<Buffer>
-type Reader = (bufferOffset: number, data: TypedArray, dataOffset: number, size: number) => Promise<TypedArray>
+type Writer = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<Buffer>
+type Reader = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<DataView>
 
 export class Buffer {
 
@@ -22,7 +14,7 @@ export class Buffer {
     private writer: Writer
     private reader: Reader
 
-    constructor(readonly device: Device, readonly usage: GPUBufferUsageFlags, readonly stride: number, dataOrSize: TypedArray | number = stride) {
+    constructor(readonly device: Device, readonly usage: GPUBufferUsageFlags, dataOrSize: DataView | number, readonly stride: number = size(dataOrSize)) {
         [this._buffer, this._size] = typeof dataOrSize === 'number' ?
             [this.newBlankBuffer(dataOrSize), dataOrSize] :
             [this.newBuffer(dataOrSize), dataOrSize.byteLength]
@@ -43,11 +35,21 @@ export class Buffer {
         this._buffer.destroy()
     }
 
-    async writeAt(bufferOffset: number, data: TypedArray, dataOffset: number = 0, size: number = data.length): Promise<Buffer> {
+    async syncFrom(data: DataView, element: Element<any>, index: number = 0, count: number = 1): Promise<Buffer> {
+        const [from, to] = element.range(index, count)
+        return await this.writeAt(from, data, from, to - from)
+    }
+
+    async syncTo(data: DataView, element: Element<any>, index: number = 0, count: number = 1): Promise<DataView> {
+        const [from, to] = element.range(index, count)
+        return await this.readAt(from, data, from, to - from)
+    }
+
+    async writeAt(bufferOffset: number, data: DataView, dataOffset: number = 0, size: number = data.byteLength): Promise<Buffer> {
         return await this.writer(bufferOffset, data, dataOffset, size)
     }
 
-    async readAt(bufferOffset: number, data: TypedArray, dataOffset: number = 0, size: number = data.length): Promise<TypedArray> {
+    async readAt(bufferOffset: number, data: DataView, dataOffset: number = 0, size: number = data.byteLength): Promise<DataView> {
         return await this.reader(bufferOffset, data, dataOffset, size)
     }
 
@@ -72,7 +74,7 @@ export class Buffer {
         })
     }
 
-    private newBuffer(data: TypedArray) {
+    private newBuffer(data: DataView) {
         const validSize = upperMultipleOf(4, data.byteLength)
         const buffer = this.device.device.createBuffer({
             usage: this.usage,
@@ -87,53 +89,47 @@ export class Buffer {
         return buffer
     }
 
-    private async writeToMapWriteBuffer(bufferOffset: number, data: TypedArray, dataOffset: number, size: number) {
-        const bpe = data.BYTES_PER_ELEMENT
-        const sizeInBytes = size * bpe
-        const dataOffsetInBytes = data.byteOffset + dataOffset * bpe
+    private async writeToMapWriteBuffer(bufferOffset: number, data: DataView, dataOffset: number, size: number) {
+        const dataOffsetInBytes = data.byteOffset + dataOffset
         const validBufferOffset = lowerMultipleOf(8, bufferOffset)
         const offsetCorrection = bufferOffset - validBufferOffset
-        const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection)
+        const validSize = upperMultipleOf(4, size + offsetCorrection)
         return await this._buffer.mapAsync(GPUMapMode.WRITE, validBufferOffset, validSize).then(() => {
             const range = this._buffer.getMappedRange(validBufferOffset, validSize)
-            const src = new Uint8Array(data.buffer, dataOffsetInBytes, sizeInBytes)
-            const dst = new Uint8Array(range, offsetCorrection, sizeInBytes)
+            const src = new Uint8Array(data.buffer, dataOffsetInBytes, size)
+            const dst = new Uint8Array(range, offsetCorrection, size)
             dst.set(src)
             this._buffer.unmap()
             return this
         })
     }
 
-    private async readFromMapReadBuffer(bufferOffset: number, data: TypedArray, dataOffset: number, size: number): Promise<TypedArray> {
-        const bpe = data.BYTES_PER_ELEMENT
-        const sizeInBytes = size * bpe
-        const dataOffsetInBytes = data.byteOffset + dataOffset * bpe
+    private async readFromMapReadBuffer(bufferOffset: number, data: DataView, dataOffset: number, size: number): Promise<DataView> {
+        const dataOffsetInBytes = data.byteOffset + dataOffset
         const validBufferOffset = lowerMultipleOf(8, bufferOffset)
         const offsetCorrection = bufferOffset - validBufferOffset
-        const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection)
+        const validSize = upperMultipleOf(4, size + offsetCorrection)
         return await this.buffer.mapAsync(GPUMapMode.READ, validBufferOffset, validSize).then(() => {
             const range = this._buffer.getMappedRange(validBufferOffset, validSize)
-            const src = new Uint8Array(range, offsetCorrection, sizeInBytes)
-            const dst = new Uint8Array(data.buffer, dataOffsetInBytes, sizeInBytes)
+            const src = new Uint8Array(range, offsetCorrection, size)
+            const dst = new Uint8Array(data.buffer, dataOffsetInBytes, size)
             dst.set(src)
             this._buffer.unmap()
             return data
         })
     }
     
-    private writeToCopyDstBuffer(bufferOffset: number, data: TypedArray, dataOffset: number, size: number): Promise<Buffer> {
-        const bpe = data.BYTES_PER_ELEMENT
-        const sizeInBytes = size * bpe
-        const dataOffsetInBytes = data.byteOffset + dataOffset * bpe
+    private writeToCopyDstBuffer(bufferOffset: number, data: DataView, dataOffset: number, size: number): Promise<Buffer> {
+        const dataOffsetInBytes = data.byteOffset + dataOffset
         const validBufferOffset = lowerMultipleOf(4, bufferOffset)
         const offsetCorrection = bufferOffset - validBufferOffset
         const validDataOffset = dataOffsetInBytes - offsetCorrection
-        const validSize = upperMultipleOf(4, sizeInBytes + offsetCorrection)
+        const validSize = upperMultipleOf(4, size + offsetCorrection)
         this.device.device.queue.writeBuffer(this._buffer, validBufferOffset, data.buffer, validDataOffset, validSize)
         return Promise.resolve(this)
     }
 
-    private async readFromCopySrcBuffer(bufferOffset: number, data: TypedArray, dataOffset: number, size: number): Promise<TypedArray> {
+    private async readFromCopySrcBuffer(bufferOffset: number, data: DataView, dataOffset: number, size: number): Promise<DataView> {
         const temp = this.device.buffer(GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, size)
         try {
             temp.copyAt(0, this, bufferOffset, size)
@@ -151,7 +147,7 @@ export class Buffer {
         return this._strideCount
     }
 
-    setData(data: TypedArray) {
+    setData(data: DataView) {
         this._size = data.byteLength
         this._strideCount = positiveInteger(this._size / this.stride)
         if (this._size > this._capacity) {
@@ -163,6 +159,10 @@ export class Buffer {
         }
     }
 
+}
+
+function size(dataOrSize: number | DataView): number {
+    return typeof dataOrSize === 'number' ? dataOrSize : dataOrSize.byteLength
 }
 
 function positiveInteger(n: number) {

@@ -27,32 +27,30 @@ export class Renderer {
         this._projectionMatrix = ether.mat4.projection(1);
         this._viewMatrix = ether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = ether.mat4.identity();
-        this.renderingUniformsData = [
-            // mpvMatrix: mat4x4<f32>;
-            ...this.mvpMatrix(),
-            // radiusScale: f32;
-            0.05,
-            // padding
-            0,
-            0,
-            0,
-        ];
-        this.updateRenderingUniformsData = new DeferredComputation(() => {
-            this.renderingUniformsBuffer.writeAt(0, new Float32Array(this.renderingUniformsData));
+        this.uniformsStruct = gpu.struct({
+            mvpMatrix: gpu.f32.x4.x4,
+            radiusScale: gpu.f32,
+        });
+        this.uniformsView = this.uniformsStruct.view([{
+                mvpMatrix: this.mvpMatrix(),
+                radiusScale: 0.05
+            }]);
+        this.updateUniformsData = new DeferredComputation(() => {
+            this.uniformsBuffer.writeAt(0, this.uniformsView);
         });
         const mesh = geo.sphere(18, 9);
         this.meshIndexFormat = (_a = mesh.indexFormat) !== null && _a !== void 0 ? _a : "uint16";
         this.meshSize = mesh.indices.length;
         this.depthTexture = canvas.depthTexture();
         /* Pipeline */
-        this.renderPipeline = this.createPipeline(renderShader, canvas, mesh);
-        const renderBindGroupLayout = this.renderPipeline.getBindGroupLayout(0);
+        this.pipeline = this.createPipeline(renderShader, canvas, mesh);
+        const bindGroupLayout = this.pipeline.getBindGroupLayout(0);
         /* Buffers */
-        this.renderingUniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, 1, new Float32Array(this.renderingUniformsData));
-        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, 1, new Uint16Array(mesh.indices));
-        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, 1, new Float32Array(mesh.positions));
+        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)));
+        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)));
         /* Bind Groups */
-        this.renderBindGroup = this.device.createBindGroup(renderBindGroupLayout, [this.renderingUniformsBuffer]);
+        this.bindGroup = this.device.createBindGroup(bindGroupLayout, [this.uniformsBuffer]);
     }
     get projectionViewMatrix() {
         return ether.mat4.mul(this.projectionMatrix, this.viewMatrix);
@@ -79,18 +77,23 @@ export class Renderer {
         this.updateMvpMatrix();
     }
     get radiusScale() {
-        return this.renderingUniformsData[16];
+        return this.getMember(this.uniformsStruct.members.radiusScale);
     }
     set radiusScale(v) {
-        this.renderingUniformsData[16] = v;
-        this.updateRenderingUniformsData.perform();
+        this.setMember(this.uniformsStruct.members.radiusScale, v);
     }
     updateMvpMatrix() {
-        this.renderingUniformsData.splice(0, 16, ...this.mvpMatrix());
-        this.updateRenderingUniformsData.perform();
+        this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix());
+    }
+    getMember(member) {
+        return member.read(this.uniformsView);
+    }
+    setMember(member, value) {
+        member.write(this.uniformsView, value);
+        this.updateUniformsData.perform();
     }
     mvpMatrix() {
-        return ether.mat4.columnMajorArray(ether.mat4.mul(ether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix));
+        return ether.mat4.mul(ether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
     }
     createPipeline(shaderModule, canvas, mesh) {
         return shaderModule.device.device.createRenderPipeline({
@@ -117,8 +120,8 @@ export class Renderer {
         };
         this.device.enqueueCommand(encoder => {
             encoder.renderPass(descriptor, pass => {
-                pass.setPipeline(this.renderPipeline);
-                pass.setBindGroup(0, this.renderBindGroup);
+                pass.setPipeline(this.pipeline);
+                pass.setBindGroup(0, this.bindGroup);
                 pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
                 pass.setVertexBuffer(1, universe.currentState.buffer);
                 pass.setVertexBuffer(2, this.meshVertexBuffer.buffer);
