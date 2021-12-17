@@ -1,4 +1,4 @@
-import { fetchTextFiles } from "gear"
+import { fetchTextFiles } from "../../../gear/latest/index.js"
 import { required } from "../../utils/misc.js"
 import { Buffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"

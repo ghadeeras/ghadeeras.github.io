@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { mat4, quat, vec3, vec4 } from "ether";
+import { mat4, quat, vec3, vec4 } from "../../ether/latest/index.js";
 import { AttributesBuffer } from "./buffer.js";
 import { asVariableInfo } from "./reflection.js";
 import { failure, lazily } from "./utils.js";

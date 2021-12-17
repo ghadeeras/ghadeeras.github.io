@@ -1,5 +1,5 @@
-import * as gear from 'gear'
-import * as ether from 'ether'
+import * as gear from '../../gear/latest/index.js'
+import * as ether from '../../ether/latest/index.js'
 import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
 import { newUniverse, Universe } from './universe.js'

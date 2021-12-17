@@ -1,5 +1,5 @@
-import * as gear from "gear"
 import * as djee from "../djee/all.js"
+import * as gear from "../../gear/latest/index.js"
 import { required } from "../utils/misc.js"
 
 const mySketch = new Image()

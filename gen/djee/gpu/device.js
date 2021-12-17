@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { fetchTextFiles } from "gear";
+import { fetchTextFiles } from "../../../gear/latest/index.js";
 import { required } from "../../utils/misc.js";
 import { Buffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";

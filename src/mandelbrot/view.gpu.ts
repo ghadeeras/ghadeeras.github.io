@@ -1,5 +1,5 @@
-import { Vec } from "ether";
 import * as gpu from "../djee/gpu/index.js";
+import { Vec } from "../../ether/latest/index.js";
 import { View } from "./view.js";
 
 export class ViewGPU implements View {

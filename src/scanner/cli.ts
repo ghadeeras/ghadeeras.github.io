@@ -2,7 +2,7 @@ import { MyScanner } from './my-scanner.js'
 
 const scanner = new MyScanner()
 console.log(scanner.tokenize(`
-import * as Ether from "ether"
+import * as Ether from "../../ether/latest/index.js"
 import { View } from "./view.js"
 import * as Gear from "../gear/all.js"
 

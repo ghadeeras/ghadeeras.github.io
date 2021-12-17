@@ -1,5 +1,5 @@
-import { DeferredComputation } from 'gear'
 import * as gpu from '../djee/gpu/index.js'
+import { DeferredComputation } from '../../gear/latest/scheduling.js'
 
 const WORKGROUP_SIZE = 256
 

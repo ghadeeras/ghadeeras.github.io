@@ -1,4 +1,4 @@
-import { Vec } from "ether"
+import { Vec } from "../../ether/latest/index.js"
 import { viewGL } from "./view.gl.js"
 import { required, viewGPU } from "./view.gpu.js"
 

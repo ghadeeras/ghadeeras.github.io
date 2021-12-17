@@ -7,10 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as ether from 'ether';
-import { DeferredComputation } from 'gear';
+import * as ether from '../../ether/latest/index.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
+import { DeferredComputation } from '../../gear/latest/scheduling.js';
 import { Universe } from './universe.js';
 export class Renderer {
     constructor(device, canvas, renderShader) {

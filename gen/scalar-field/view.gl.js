@@ -7,9 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as ether from "ether";
-import * as gear from "gear";
+import * as ether from "../../ether/latest/index.js";
 import * as djee from "../djee/all.js";
+import * as gear from "../../gear/latest/files.js";
 import { picker } from "./picker.gl.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
