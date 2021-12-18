@@ -1,6 +1,5 @@
+import { ether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
-import * as ether from "../../ether/latest/index.js"
-import * as gear from "../../gear/latest/index.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
 import { save } from "../utils/misc.js"
@@ -122,7 +121,7 @@ class Toy {
         })
         
         gear.text("lod").value = resolution.map(lod => lod.toString())
-        gear.elementEvents("save").click.value.attach(() => this.saveModel())
+        gear.elementEvents("export").click.value.attach(() => this.saveModel())
     }
 
     levelOfDetails() {

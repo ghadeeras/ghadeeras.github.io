@@ -1,4 +1,4 @@
-import * as L from "../../languasaurus/latest/index.js"
+import { languasaurus as L } from "/gen/libs.js"
 
 export class MyScanner extends L.Scanner {
 

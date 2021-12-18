@@ -1,5 +1,4 @@
-import * as gear from "../../gear/latest/index.js";
-import { vec2 } from "../../ether/latest/index.js";
+import { ether, gear } from "/gen/libs.js";
 const defaultSierpinski = {
     depth: 5,
     a: vec(90),
@@ -31,9 +30,9 @@ function doTesselateTriangle(a, b, c, depth, corners, centers) {
         corners.push(...a, ...b, ...c);
     }
     else {
-        const ab = vec2.mix(0.5, a, b);
-        const bc = vec2.mix(0.5, b, c);
-        const ca = vec2.mix(0.5, c, a);
+        const ab = ether.vec2.mix(0.5, a, b);
+        const bc = ether.vec2.mix(0.5, b, c);
+        const ca = ether.vec2.mix(0.5, c, a);
         const newDepth = depth - 1;
         doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
         doTesselateTriangle(ab, b, bc, newDepth, corners, centers);

@@ -1,5 +1,5 @@
+import { ether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
-import { Vec } from "../../ether/latest/index.js";
 import { View } from "./view.js";
 
 export class ViewGPU implements View {
@@ -30,7 +30,7 @@ export class ViewGPU implements View {
         private device: gpu.Device,
         canvasId: string,
         shaderModule: gpu.ShaderModule,
-        center: Vec<2>,
+        center: ether.Vec<2>,
         scale: number
     ) {
         this.uniformsView = this.uniformsStruct.view([{
@@ -74,11 +74,11 @@ export class ViewGPU implements View {
         frame()
     }
     
-    get center(): Vec<2> {
+    get center(): ether.Vec<2> {
         return this.getMember(this.uniformsStruct.members.center)
     }
 
-    set center(c: Vec<2>) {
+    set center(c: ether.Vec<2>) {
         this.setMember(this.uniformsStruct.members.center, c)
     }
 
@@ -102,11 +102,11 @@ export class ViewGPU implements View {
         this.setMember(this.uniformsStruct.members.color.y, s)
     }
 
-    get juliaNumber(): Vec<2> {
+    get juliaNumber(): ether.Vec<2> {
         return this.getMember(this.uniformsStruct.members.juliaNumber)
     }
     
-    set juliaNumber(j: Vec<2>) {
+    set juliaNumber(j: ether.Vec<2>) {
         this.setMember(this.uniformsStruct.members.juliaNumber, j)
     }
     
@@ -159,7 +159,7 @@ export class ViewGPU implements View {
 
 }
 
-export async function viewGPU(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
+export async function viewGPU(julia: boolean, canvasId: string, center: ether.Vec<2>, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
     const shaderModule = await device.loadShaderModule("mandelbrot.wgsl")
     return new ViewGPU(julia, device, canvasId, shaderModule, center, scale)

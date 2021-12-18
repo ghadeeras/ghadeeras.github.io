@@ -1,5 +1,5 @@
+import { ether } from "/gen/libs.js"
 import * as gpu from "../djee/gpu/index.js"
-import * as ether from "../../ether/latest/index.js"
 import { Picker } from "./view.js"
 import { GPUView } from "./view.gpu.js"
 
@@ -71,13 +71,14 @@ export class GPUPicker implements Picker {
                     texture: this.colorTexture.texture,
                     origin : { 
                         x: Math.round(this.colorTexture.size.width * (x + 1) / 2), 
-                        y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2)
+                        y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2),
                     }
                 }, {
                     buffer: this.pickDestination.buffer,
+                    bytesPerRow: 256,
                 }, {
                     width: 1,
-                    height: 1
+                    height: 1,
                 }
             )
         })

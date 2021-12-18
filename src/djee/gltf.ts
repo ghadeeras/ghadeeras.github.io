@@ -1,4 +1,4 @@
-import { Mat, mat4, quat, Vec, vec3, vec4 } from "../../ether/latest/index.js"
+import { ether } from "/gen/libs.js"
 import { Attribute } from "./attribute.js"
 import { AttributesBuffer, Buffer, IndicesBuffer } from "./buffer.js"
 import { Context } from "./context.js"
@@ -144,9 +144,9 @@ export interface Renderer<I, A> {
 
     drawIndexed(mode: GLenum, count: number, byteOffset: number): void
 
-    positionsMat: Mat<4>
+    positionsMat: ether.Mat<4>
 
-    normalsMat: Mat<4>
+    normalsMat: ether.Mat<4>
 
 }
 
@@ -211,20 +211,20 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
         this.context.gl.drawArrays(mode, byteOffset, count)
     }
 
-    get positionsMat(): Mat<4> {
+    get positionsMat(): ether.Mat<4> {
         return asMat(this.positionsMatUniform.data)
     }
 
-    set positionsMat(mat: Mat<4>) {
-        this.positionsMatUniform.data = mat4.columnMajorArray(mat)
+    set positionsMat(mat: ether.Mat<4>) {
+        this.positionsMatUniform.data = ether.mat4.columnMajorArray(mat)
     }
 
-    get normalsMat(): Mat<4> {
+    get normalsMat(): ether.Mat<4> {
         return asMat(this.normalsMatUniform.data)
     }
 
-    set normalsMat(mat: Mat<4>) {
-        this.normalsMatUniform.data = mat4.columnMajorArray(mat)
+    set normalsMat(mat: ether.Mat<4>) {
+        this.normalsMatUniform.data = ether.mat4.columnMajorArray(mat)
     }
 
 } 
@@ -279,10 +279,10 @@ class ActiveAccessor<I, A> {
 
 export interface RenderSubject {
 
-    render(matrix: Mat<4>, normalsMatrix?: Mat<4>): void
+    render(matrix: ether.Mat<4>, normalsMatrix?: ether.Mat<4>): void
 
-    readonly min: Vec<3>
-    readonly max: Vec<3>
+    readonly min: ether.Vec<3>
+    readonly max: ether.Vec<3>
 
     readonly hasMesh: boolean
 
@@ -293,8 +293,8 @@ export class ActiveModel<I, A> implements RenderSubject {
     readonly bufferViews: ActiveBufferView<I, A>[]
     readonly scenes: ActiveScene<I, A>[]
     readonly defaultScene: ActiveScene<I, A>
-    readonly min: Vec<3>
-    readonly max: Vec<3>
+    readonly min: ether.Vec<3>
+    readonly max: ether.Vec<3>
     readonly hasMesh: boolean
 
     private constructor(model: Model, buffers: ArrayBufferLike[], renderer: Renderer<I, A>) {
@@ -327,7 +327,7 @@ export class ActiveModel<I, A> implements RenderSubject {
         return new ActiveModel(model, buffers, renderer)
     }
 
-    render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix): void {
+    render(positionsMatrix: ether.Mat<4>, normalsMatrix: ether.Mat<4> = positionsMatrix): void {
         this.defaultScene.render(positionsMatrix, normalsMatrix)
     }
 
@@ -340,28 +340,28 @@ export class ActiveModel<I, A> implements RenderSubject {
 export class ActiveScene<I, A> implements RenderSubject {
 
     private nodes: ActiveNode<I, A>[]
-    readonly min: Vec<3>
-    readonly max: Vec<3>
+    readonly min: ether.Vec<3>
+    readonly max: ether.Vec<3>
     readonly hasMesh: boolean
 
-    readonly positionsMat: Mat<4>
-    readonly normalsMat: Mat<4>
+    readonly positionsMat: ether.Mat<4>
+    readonly normalsMat: ether.Mat<4>
 
     constructor(scene: Scene, nodes: ActiveNode<I, A>[]) {
         this.nodes = scene.nodes.map(child => nodes[child])
         const nodesWithMeshes = this.nodes.filter(node => node.hasMesh)
         this.hasMesh = nodesWithMeshes.length > 0
-        this.min = this.hasMesh ? nodesWithMeshes.map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) : [-1, -1, -1]
-        this.max = this.hasMesh ? nodesWithMeshes.map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) : [+1, +1, +1]
+        this.min = this.hasMesh ? nodesWithMeshes.map(node => node.min).reduce((prev, curr) => ether.vec3.min(prev, curr)) : [-1, -1, -1]
+        this.max = this.hasMesh ? nodesWithMeshes.map(node => node.max).reduce((prev, curr) => ether.vec3.max(prev, curr)) : [+1, +1, +1]
 
         const s = [
             2 / Math.abs(this.max[0] - this.min[0]),
             2 / Math.abs(this.max[1] - this.min[1]),
             2 / Math.abs(this.max[2] - this.min[2]),
         ].reduce((a, b) => Math.min(a, b))
-        this.positionsMat = mat4.mul(
-            mat4.scaling(s, s, s), 
-            mat4.translation([
+        this.positionsMat = ether.mat4.mul(
+            ether.mat4.scaling(s, s, s), 
+            ether.mat4.translation([
                 -(this.min[0] + this.max[0]) / 2,
                 -(this.min[1] + this.max[1]) / 2,
                 -(this.min[2] + this.max[2]) / 2,
@@ -370,9 +370,9 @@ export class ActiveScene<I, A> implements RenderSubject {
         this.normalsMat = this.positionsMat; // mat4.transpose(mat4.inverse(this.positionsMat))
     }
 
-    render(positionsMatrix: Mat<4>, normalsMatrix: Mat<4> = positionsMatrix) {
-        const positionsMat = mat4.mul(positionsMatrix, this.positionsMat)
-        const normalsMat = mat4.mul(normalsMatrix, this.normalsMat)
+    render(positionsMatrix: ether.Mat<4>, normalsMatrix: ether.Mat<4> = positionsMatrix) {
+        const positionsMat = ether.mat4.mul(positionsMatrix, this.positionsMat)
+        const normalsMat = ether.mat4.mul(normalsMatrix, this.normalsMat)
         for (let node of this.nodes) {
             node.render(positionsMat, normalsMat)
         }
@@ -383,11 +383,11 @@ export class ActiveScene<I, A> implements RenderSubject {
 class ActiveNode<I, A> implements RenderSubject {
 
     private children: Supplier<RenderSubject[]>
-    private positionsMatrix: Mat<4> 
-    private normalsMatrix: Mat<4> 
+    private positionsMatrix: ether.Mat<4> 
+    private normalsMatrix: ether.Mat<4> 
 
-    readonly _min: Supplier<Vec<3>>
-    readonly _max: Supplier<Vec<3>>
+    readonly _min: Supplier<ether.Vec<3>>
+    readonly _max: Supplier<ether.Vec<3>>
     readonly hasMesh: boolean
 
     constructor(node: Node, meshes: ActiveMesh<I, A>[], nodes: RenderSubject[]) {
@@ -401,24 +401,24 @@ class ActiveNode<I, A> implements RenderSubject {
         })
         this.positionsMatrix = node.matrix !== undefined ? 
             asMat(node.matrix) : 
-            mat4.identity()
+            ether.mat4.identity()
         this.positionsMatrix = node.translation !== undefined ? 
-            mat4.mul(this.positionsMatrix, mat4.translation(node.translation)) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.translation(node.translation)) :
             this.positionsMatrix 
         this.positionsMatrix = node.rotation !== undefined ? 
-            mat4.mul(this.positionsMatrix, mat4.cast(quat.toMatrix(node.rotation))) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.cast(ether.quat.toMatrix(node.rotation))) :
             this.positionsMatrix 
         this.positionsMatrix = node.scale !== undefined ? 
-            mat4.mul(this.positionsMatrix, mat4.scaling(...node.scale)) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.scaling(...node.scale)) :
             this.positionsMatrix
         this.normalsMatrix = this.positionsMatrix // mat4.transpose(mat4.inverse(this.matrix)) 
-        const minMax: Supplier<[Vec<3>, Vec<3>]> = lazily(() => minMaxPos(
+        const minMax: Supplier<[ether.Vec<3>, ether.Vec<3>]> = lazily(() => minMaxPos(
             this.positionsMatrix,
             this.hasMesh ? 
-                this.children().filter(node => node.hasMesh).map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) : 
+                this.children().filter(node => node.hasMesh).map(node => node.min).reduce((prev, curr) => ether.vec3.min(prev, curr)) : 
                 [-1, -1, -1],
             this.hasMesh ? 
-                this.children().filter(node => node.hasMesh).map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) :
+                this.children().filter(node => node.hasMesh).map(node => node.max).reduce((prev, curr) => ether.vec3.max(prev, curr)) :
                 [+1, +1, +1] 
         ))
         this._min = lazily(() => minMax()[0])
@@ -426,17 +426,17 @@ class ActiveNode<I, A> implements RenderSubject {
         nodes.push(this)
     }
 
-    get min(): Vec<3> {
+    get min(): ether.Vec<3> {
         return this._min()
     }
 
-    get max(): Vec<3> {
+    get max(): ether.Vec<3> {
         return this._max()
     }
 
-    render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
-        const positionsMatrix = mat4.mul(parentPositionsMatrix, this.positionsMatrix)
-        const normalsMatrix = mat4.mul(parentNormalsMatrix, this.normalsMatrix)
+    render(parentPositionsMatrix: ether.Mat<4>, parentNormalsMatrix: ether.Mat<4> = parentPositionsMatrix) {
+        const positionsMatrix = ether.mat4.mul(parentPositionsMatrix, this.positionsMatrix)
+        const normalsMatrix = ether.mat4.mul(parentNormalsMatrix, this.normalsMatrix)
         for (let child of this.children()) {
             child.render(positionsMatrix, normalsMatrix)
         }
@@ -444,8 +444,8 @@ class ActiveNode<I, A> implements RenderSubject {
 
 }
 
-function minMaxPos(mat: Mat<4>, min: Vec<3>, max: Vec<3>): [Vec<3>, Vec<3>] {
-    let positions: Vec<4>[] = [
+function minMaxPos(mat: ether.Mat<4>, min: ether.Vec<3>, max: ether.Vec<3>): [ether.Vec<3>, ether.Vec<3>] {
+    let positions: ether.Vec<4>[] = [
         [min[0], min[1], min[2], 1],
         [min[0], min[1], max[2], 1],
         [min[0], max[1], min[2], 1],
@@ -455,9 +455,9 @@ function minMaxPos(mat: Mat<4>, min: Vec<3>, max: Vec<3>): [Vec<3>, Vec<3>] {
         [max[0], max[1], min[2], 1],
         [max[0], max[1], max[2], 1],
     ]
-    positions = positions.map(p => mat4.apply(mat, p))
-    const minPos = positions.reduce((prev, curr) => vec4.min(prev, curr))
-    const maxPos = positions.reduce((prev, curr) => vec4.max(prev, curr))
+    positions = positions.map(p => ether.mat4.apply(mat, p))
+    const minPos = positions.reduce((prev, curr) => ether.vec4.min(prev, curr))
+    const maxPos = positions.reduce((prev, curr) => ether.vec4.max(prev, curr))
     return [
         [minPos[0], minPos[1], minPos[2]],
         [maxPos[0], maxPos[1], maxPos[2]],
@@ -467,8 +467,8 @@ function minMaxPos(mat: Mat<4>, min: Vec<3>, max: Vec<3>): [Vec<3>, Vec<3>] {
 class ActiveMesh<I, A> implements RenderSubject {
 
     private primitives: ActiveMeshPrimitive<I, A>[]
-    readonly min: Vec<3>
-    readonly max: Vec<3>
+    readonly min: ether.Vec<3>
+    readonly max: ether.Vec<3>
     readonly hasMesh = true
 
     constructor(
@@ -477,11 +477,11 @@ class ActiveMesh<I, A> implements RenderSubject {
         private renderer: Renderer<I, A>
     ) {
         this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, renderer))
-        this.min = this.primitives.map(primitive => primitive.min).reduce((prev, curr) => vec3.min(prev, curr))
-        this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => vec3.max(prev, curr))
+        this.min = this.primitives.map(primitive => primitive.min).reduce((prev, curr) => ether.vec3.min(prev, curr))
+        this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => ether.vec3.max(prev, curr))
     }
 
-    render(parentPositionsMatrix: Mat<4>, parentNormalsMatrix: Mat<4> = parentPositionsMatrix) {
+    render(parentPositionsMatrix: ether.Mat<4>, parentNormalsMatrix: ether.Mat<4> = parentPositionsMatrix) {
         this.renderer.positionsMat = parentPositionsMatrix
         this.renderer.normalsMat = parentNormalsMatrix
         for (const primitive of this.primitives) {
@@ -494,8 +494,8 @@ class ActiveMesh<I, A> implements RenderSubject {
 class ActiveMeshPrimitive<I, A> {
 
     private sideEffects: SideEffect[] = []
-    readonly min: Vec<3>
-    readonly max: Vec<3>
+    readonly min: ether.Vec<3>
+    readonly max: ether.Vec<3>
 
     constructor(
         meshPrimitive: MeshPrimitive, 
@@ -556,11 +556,11 @@ function glTypeOf(accessor: Accessor) {
     }
 }
 
-function asVec(array: number[] | Float32Array | Float64Array, offset: number = 0): Vec<4> {
-    return [...array.slice(offset, offset + 4)] as Vec<4>
+function asVec(array: number[] | Float32Array | Float64Array, offset: number = 0): ether.Vec<4> {
+    return [...array.slice(offset, offset + 4)] as ether.Vec<4>
 }
 
-function asMat(array: number[] | Float32Array | Float64Array, offset: number = 0): Mat<4> {
+function asMat(array: number[] | Float32Array | Float64Array, offset: number = 0): ether.Mat<4> {
     return [
         asVec(array, offset +  0),
         asVec(array, offset +  4),

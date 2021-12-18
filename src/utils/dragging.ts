@@ -1,5 +1,4 @@
-import * as ether from "../../ether/latest/index.js";
-import * as gear from "../../gear/latest/index.js";
+import { ether, gear } from "/gen/libs.js";
 
 export abstract class ModelMatrixDragging implements gear.DraggingHandler<ether.Mat<4>> {
 

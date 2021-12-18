@@ -1,4 +1,4 @@
-import { fetchTextFiles } from "../../../gear/latest/index.js"
+import { gear } from '/gen/libs.js'
 import { required } from "../../utils/misc.js"
 import { Buffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
@@ -12,7 +12,7 @@ export class Device {
     }
 
     async loadShaderModule(shaderName: string, basePath: string = "/shaders"): Promise<ShaderModule> {
-        const shaderCodes = await fetchTextFiles({ shader: shaderName }, basePath)
+        const shaderCodes = await gear.fetchTextFiles({ shader: shaderName }, basePath)
         
         const shaderModule = new ShaderModule(this, shaderCodes["shader"])
     
@@ -76,7 +76,7 @@ export class Device {
             return expression()
         } finally {
             const error = await this.device.popErrorScope()
-            if (error !== null) {
+            if (error) {
                 throw error
             }
         }

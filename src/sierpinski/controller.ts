@@ -1,4 +1,4 @@
-import * as gear from "../../gear/latest/index.js"
+import { gear } from "/gen/libs.js"
 import { positionDragging } from "../utils/dragging.js";
 
 export class Controller {

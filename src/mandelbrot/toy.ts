@@ -1,5 +1,4 @@
-import * as gear from "../../gear/latest/index.js"
-import { Vec, vec2 } from "../../ether/latest/index.js"
+import { ether, gear } from "/gen/libs.js"
 import { view, View } from "./view.js"
 import { positionDragging } from "../utils/dragging.js"
 
@@ -12,7 +11,7 @@ export function init() {
 async function doInit() {
     const mandelbrotView = await view(false, "canvas-gl", [-0.75, 0], 2)
     const juliaView = await view(true, "julia-gl", [0, 0], 4)
-    const toComplexNumber = (p: gear.PointerPosition) => vec2.add(vec2.scale(p, mandelbrotView.scale), mandelbrotView.center)
+    const toComplexNumber = (p: gear.PointerPosition) => ether.vec2.add(ether.vec2.scale(p, mandelbrotView.scale), mandelbrotView.center)
 
     const transformation = transformationTarget(mandelbrotView)
     const color = colorTarget(mandelbrotView, juliaView)
@@ -40,7 +39,7 @@ async function doInit() {
 
     color.value = cases.color
         .then(gear.drag(positionDragging))
-        .map(([x, y]) => vec2.of(x + 1, (y + 1) / 2))
+        .map(([x, y]) => ether.vec2.of(x + 1, (y + 1) / 2))
         .defaultsTo([mandelbrotView.hue, mandelbrotView.saturation])
 
     intensity.value = cases.intensity
@@ -71,7 +70,7 @@ async function doInit() {
 }
 
 function juliaTarget(juliaView: View) {
-    return new gear.Target<Vec<2>>(c => {
+    return new gear.Target<ether.Vec<2>>(c => {
         juliaView.juliaNumber = c
     })
 }
@@ -100,7 +99,7 @@ function intensityTarget(mandelbrotView: View, juliaView: View) {
 function colorTarget(mandelbrotView: View, juliaView: View) {
     const hueWatch = text("hue")
     const saturationWatch = text("saturation")
-    const color = new gear.Target<Vec<2>>(color => {
+    const color = new gear.Target<ether.Vec<2>>(color => {
         const [hue, saturation] = color
         mandelbrotView.setColor(hue, saturation)
         juliaView.setColor(hue, saturation)
@@ -156,12 +155,12 @@ function text(elementId: string): gear.Consumer<string> {
     }
 }
 
-function toString(v: Vec<2>, precision: number = 3) {
+function toString(v: ether.Vec<2>, precision: number = 3) {
     const [x, y] = v.map(c => c.toPrecision(precision))
     return `(${x}, ${y})`
 }
 
-function play(c: Vec<2>) {
+function play(c: ether.Vec<2>) {
     if (audioContext == null) {
         audioContext = new window.AudioContext({sampleRate: 9450})
     }
@@ -171,16 +170,16 @@ function play(c: Vec<2>) {
     const channel2 = audioBuffer.getChannelData(1)
     let sum1 = 0
     let sum2 = 0
-    let z: Vec<2> = [0, 0]
-    for (let i = 0; i < audioBuffer.length && vec2.length(z) < 2.0; i++) {
+    let z: ether.Vec<2> = [0, 0]
+    for (let i = 0; i < audioBuffer.length && ether.vec2.length(z) < 2.0; i++) {
         const [x, y] = z
-        z = vec2.add([x * x - y * y, 2 * x * y], c)
+        z = ether.vec2.add([x * x - y * y, 2 * x * y], c)
         channel1[i] = z[0] / 2
         channel2[i] = z[1] / 2
         sum1 += channel1[i]
         sum2 += channel2[i]
     }
-    if (vec2.length(z) < 2.0) {
+    if (ether.vec2.length(z) < 2.0) {
         const avg1 = sum1 / channel1.length
         const avg2 = sum2 / channel2.length
         for (let i = 0; i < audioBuffer.length; i++) {
@@ -215,7 +214,7 @@ function action(key: string) {
 
 type Transformation = {
     scale: number,
-    center: Vec<2>
+    center: ether.Vec<2>
 }
 
 class Zoom implements gear.DraggingHandler<Transformation> {
@@ -237,9 +236,9 @@ class Zoom implements gear.DraggingHandler<Transformation> {
             const factor = 16 ** power
             return power == 0 ? value : {
                 scale: value.scale * factor,
-                center: vec2.sub(
+                center: ether.vec2.sub(
                     value.center, 
-                    vec2.scale(
+                    ether.vec2.scale(
                         calculateDelta([0, 0], from, value.scale), 
                         factor - 1
                     )
@@ -271,9 +270,9 @@ class Move implements gear.DraggingHandler<Transformation> {
             const delta = calculateDelta(from, to, value.scale)
             return {
                 scale: value.scale,
-                center: vec2.max(
-                    vec2.min(
-                        vec2.sub(value.center, delta),
+                center: ether.vec2.max(
+                    ether.vec2.min(
+                        ether.vec2.sub(value.center, delta),
                         [+4, +4]
                     ),
                     [-4, -4]
@@ -289,8 +288,8 @@ class Move implements gear.DraggingHandler<Transformation> {
 }
 
 function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, scale: number = 1) {
-    return vec2.scale(
-        vec2.sub(pos2, pos1), 
+    return ether.vec2.scale(
+        ether.vec2.sub(pos2, pos1), 
         scale
     )
 }

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { mat4, quat, vec3, vec4 } from "../../ether/latest/index.js";
+import { ether } from "/gen/libs.js";
 import { AttributesBuffer } from "./buffer.js";
 import { asVariableInfo } from "./reflection.js";
 import { failure, lazily } from "./utils.js";
@@ -64,13 +64,13 @@ export class GLRenderer {
         return asMat(this.positionsMatUniform.data);
     }
     set positionsMat(mat) {
-        this.positionsMatUniform.data = mat4.columnMajorArray(mat);
+        this.positionsMatUniform.data = ether.mat4.columnMajorArray(mat);
     }
     get normalsMat() {
         return asMat(this.normalsMatUniform.data);
     }
     set normalsMat(mat) {
-        this.normalsMatUniform.data = mat4.columnMajorArray(mat);
+        this.normalsMatUniform.data = ether.mat4.columnMajorArray(mat);
     }
 }
 function fetchBuffer(bufferRef, baseUri) {
@@ -156,14 +156,14 @@ export class ActiveScene {
         this.nodes = scene.nodes.map(child => nodes[child]);
         const nodesWithMeshes = this.nodes.filter(node => node.hasMesh);
         this.hasMesh = nodesWithMeshes.length > 0;
-        this.min = this.hasMesh ? nodesWithMeshes.map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) : [-1, -1, -1];
-        this.max = this.hasMesh ? nodesWithMeshes.map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) : [+1, +1, +1];
+        this.min = this.hasMesh ? nodesWithMeshes.map(node => node.min).reduce((prev, curr) => ether.vec3.min(prev, curr)) : [-1, -1, -1];
+        this.max = this.hasMesh ? nodesWithMeshes.map(node => node.max).reduce((prev, curr) => ether.vec3.max(prev, curr)) : [+1, +1, +1];
         const s = [
             2 / Math.abs(this.max[0] - this.min[0]),
             2 / Math.abs(this.max[1] - this.min[1]),
             2 / Math.abs(this.max[2] - this.min[2]),
         ].reduce((a, b) => Math.min(a, b));
-        this.positionsMat = mat4.mul(mat4.scaling(s, s, s), mat4.translation([
+        this.positionsMat = ether.mat4.mul(ether.mat4.scaling(s, s, s), ether.mat4.translation([
             -(this.min[0] + this.max[0]) / 2,
             -(this.min[1] + this.max[1]) / 2,
             -(this.min[2] + this.max[2]) / 2,
@@ -171,8 +171,8 @@ export class ActiveScene {
         this.normalsMat = this.positionsMat; // mat4.transpose(mat4.inverse(this.positionsMat))
     }
     render(positionsMatrix, normalsMatrix = positionsMatrix) {
-        const positionsMat = mat4.mul(positionsMatrix, this.positionsMat);
-        const normalsMat = mat4.mul(normalsMatrix, this.normalsMat);
+        const positionsMat = ether.mat4.mul(positionsMatrix, this.positionsMat);
+        const normalsMat = ether.mat4.mul(normalsMatrix, this.normalsMat);
         for (let node of this.nodes) {
             node.render(positionsMat, normalsMat);
         }
@@ -190,21 +190,21 @@ class ActiveNode {
         });
         this.positionsMatrix = node.matrix !== undefined ?
             asMat(node.matrix) :
-            mat4.identity();
+            ether.mat4.identity();
         this.positionsMatrix = node.translation !== undefined ?
-            mat4.mul(this.positionsMatrix, mat4.translation(node.translation)) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.translation(node.translation)) :
             this.positionsMatrix;
         this.positionsMatrix = node.rotation !== undefined ?
-            mat4.mul(this.positionsMatrix, mat4.cast(quat.toMatrix(node.rotation))) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.cast(ether.quat.toMatrix(node.rotation))) :
             this.positionsMatrix;
         this.positionsMatrix = node.scale !== undefined ?
-            mat4.mul(this.positionsMatrix, mat4.scaling(...node.scale)) :
+            ether.mat4.mul(this.positionsMatrix, ether.mat4.scaling(...node.scale)) :
             this.positionsMatrix;
         this.normalsMatrix = this.positionsMatrix; // mat4.transpose(mat4.inverse(this.matrix)) 
         const minMax = lazily(() => minMaxPos(this.positionsMatrix, this.hasMesh ?
-            this.children().filter(node => node.hasMesh).map(node => node.min).reduce((prev, curr) => vec3.min(prev, curr)) :
+            this.children().filter(node => node.hasMesh).map(node => node.min).reduce((prev, curr) => ether.vec3.min(prev, curr)) :
             [-1, -1, -1], this.hasMesh ?
-            this.children().filter(node => node.hasMesh).map(node => node.max).reduce((prev, curr) => vec3.max(prev, curr)) :
+            this.children().filter(node => node.hasMesh).map(node => node.max).reduce((prev, curr) => ether.vec3.max(prev, curr)) :
             [+1, +1, +1]));
         this._min = lazily(() => minMax()[0]);
         this._max = lazily(() => minMax()[1]);
@@ -217,8 +217,8 @@ class ActiveNode {
         return this._max();
     }
     render(parentPositionsMatrix, parentNormalsMatrix = parentPositionsMatrix) {
-        const positionsMatrix = mat4.mul(parentPositionsMatrix, this.positionsMatrix);
-        const normalsMatrix = mat4.mul(parentNormalsMatrix, this.normalsMatrix);
+        const positionsMatrix = ether.mat4.mul(parentPositionsMatrix, this.positionsMatrix);
+        const normalsMatrix = ether.mat4.mul(parentNormalsMatrix, this.normalsMatrix);
         for (let child of this.children()) {
             child.render(positionsMatrix, normalsMatrix);
         }
@@ -235,9 +235,9 @@ function minMaxPos(mat, min, max) {
         [max[0], max[1], min[2], 1],
         [max[0], max[1], max[2], 1],
     ];
-    positions = positions.map(p => mat4.apply(mat, p));
-    const minPos = positions.reduce((prev, curr) => vec4.min(prev, curr));
-    const maxPos = positions.reduce((prev, curr) => vec4.max(prev, curr));
+    positions = positions.map(p => ether.mat4.apply(mat, p));
+    const minPos = positions.reduce((prev, curr) => ether.vec4.min(prev, curr));
+    const maxPos = positions.reduce((prev, curr) => ether.vec4.max(prev, curr));
     return [
         [minPos[0], minPos[1], minPos[2]],
         [maxPos[0], maxPos[1], maxPos[2]],
@@ -248,8 +248,8 @@ class ActiveMesh {
         this.renderer = renderer;
         this.hasMesh = true;
         this.primitives = mesh.primitives.map(primitive => new ActiveMeshPrimitive(primitive, accessors, renderer));
-        this.min = this.primitives.map(primitive => primitive.min).reduce((prev, curr) => vec3.min(prev, curr));
-        this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => vec3.max(prev, curr));
+        this.min = this.primitives.map(primitive => primitive.min).reduce((prev, curr) => ether.vec3.min(prev, curr));
+        this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => ether.vec3.max(prev, curr));
     }
     render(parentPositionsMatrix, parentNormalsMatrix = parentPositionsMatrix) {
         this.renderer.positionsMat = parentPositionsMatrix;

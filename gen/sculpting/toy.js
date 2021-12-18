@@ -7,9 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { ether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
-import * as ether from "../../ether/latest/index.js";
-import * as gear from "../../gear/latest/index.js";
 import * as v from "../scalar-field/view.js";
 import * as dragging from "../utils/dragging.js";
 import { save } from "../utils/misc.js";
@@ -93,7 +92,7 @@ class Toy {
             vertices: gear.Value.from(resolution.then((r, c) => this.contourSurfaceDataForResolution(r, c)), contourValue.then((v, c) => this.contourSurfaceDataForValue(v, c)), gear.Value.from(carvedStone, gear.elementEvents("undo").click.value.map(() => carving.undo())).then((s, c) => this.contourSurfaceDataForStone(s, c)))
         });
         gear.text("lod").value = resolution.map(lod => lod.toString());
-        gear.elementEvents("save").click.value.attach(() => this.saveModel());
+        gear.elementEvents("export").click.value.attach(() => this.saveModel());
     }
     levelOfDetails() {
         const inc = gear.elementEvents("lod-inc").click.value.map(() => +8);

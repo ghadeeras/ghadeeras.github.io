@@ -1,6 +1,5 @@
-import * as ether from "../../ether/latest/index.js"
+import { ether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
-import * as gear from "../../gear/latest/files.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gl.js"
 

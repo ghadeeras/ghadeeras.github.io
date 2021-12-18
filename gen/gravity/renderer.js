@@ -7,10 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as ether from '../../ether/latest/index.js';
+import { ether, gear } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
-import { DeferredComputation } from '../../gear/latest/scheduling.js';
 import { Universe } from './universe.js';
 export class Renderer {
     constructor(device, canvas, renderShader) {
@@ -35,7 +34,7 @@ export class Renderer {
                 mvpMatrix: this.mvpMatrix(),
                 radiusScale: 0.05
             }]);
-        this.updateUniformsData = new DeferredComputation(() => {
+        this.updateUniformsData = new gear.DeferredComputation(() => {
             this.uniformsBuffer.writeAt(0, this.uniformsView);
         });
         const mesh = geo.sphere(18, 9);

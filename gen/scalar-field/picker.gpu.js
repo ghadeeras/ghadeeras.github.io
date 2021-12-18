@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { ether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
-import * as ether from "../../ether/latest/index.js";
 import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
     constructor(canvas, shaderModule, vertices) {
@@ -60,13 +60,14 @@ export class GPUPicker {
                     texture: this.colorTexture.texture,
                     origin: {
                         x: Math.round(this.colorTexture.size.width * (x + 1) / 2),
-                        y: Math.round(((_a = this.colorTexture.size.height) !== null && _a !== void 0 ? _a : 1) * (1 - y) / 2)
+                        y: Math.round(((_a = this.colorTexture.size.height) !== null && _a !== void 0 ? _a : 1) * (1 - y) / 2),
                     }
                 }, {
                     buffer: this.pickDestination.buffer,
+                    bytesPerRow: 256,
                 }, {
                     width: 1,
-                    height: 1
+                    height: 1,
                 });
             });
             const view = yield this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view());

@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { gear } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
-import { DeferredComputation } from '../../gear/latest/scheduling.js';
 const WORKGROUP_SIZE = 256;
 export class Universe {
     constructor(device, computeShader) {
@@ -25,7 +25,7 @@ export class Universe {
                 gravityConstant: 1000,
                 dT: 0.0001
             }]);
-        this.updateUniformsData = new DeferredComputation(() => {
+        this.updateUniformsData = new gear.DeferredComputation(() => {
             this.uniformsBuffer.writeAt(0, this.uniformsView);
         });
         const [bodyDescriptions, initialState] = this.createUniverse();

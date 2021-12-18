@@ -1,10 +1,10 @@
-import { Vec } from "../../ether/latest/index.js"
+import { ether } from "/gen/libs.js"
 import { viewGL } from "./view.gl.js"
 import { required, viewGPU } from "./view.gpu.js"
 
 export interface View {
 
-    center: Vec<2>
+    center: ether.Vec<2>
 
     scale: number
 
@@ -18,11 +18,11 @@ export interface View {
 
     palette: number
 
-    juliaNumber: Vec<2>
+    juliaNumber: ether.Vec<2>
     
 }
 
-export async function view(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
+export async function view(julia: boolean, canvasId: string, center: ether.Vec<2>, scale: number): Promise<View> {
     const apiElement = required(document.getElementById("graphics-api"))
     try {
         const view = await viewGPU(julia, canvasId, center, scale)

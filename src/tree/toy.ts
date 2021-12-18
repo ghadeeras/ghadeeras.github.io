@@ -1,5 +1,4 @@
-import * as ether from "../../ether/latest/index.js";
-import * as gear from "../../gear/latest/index.js"
+import { ether, gear } from "/gen/libs.js"
 import * as dragging from "../utils/dragging.js"
 import { MatricesGenerator } from "./matgen.js";
 import { renderer } from "./renderer.js";

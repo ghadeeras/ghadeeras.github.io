@@ -1,6 +1,5 @@
+import { ether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js"
-import * as ether from "../../ether/latest/index.js";
-import * as gear from "../../gear/latest/index.js"
 import * as gltf from "../djee/gltf.js";
 import * as dragging from "../utils/dragging.js";
 

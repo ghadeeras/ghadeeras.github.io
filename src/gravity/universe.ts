@@ -1,5 +1,5 @@
+import { gear } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
-import { DeferredComputation } from '../../gear/latest/scheduling.js'
 
 const WORKGROUP_SIZE = 256
 
@@ -41,7 +41,7 @@ export class Universe {
         dT: 0.0001
     }])
 
-    private updateUniformsData = new DeferredComputation(() => {
+    private updateUniformsData = new gear.DeferredComputation(() => {
         this.uniformsBuffer.writeAt(0, this.uniformsView)
     })
 

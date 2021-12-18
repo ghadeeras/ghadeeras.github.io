@@ -1,7 +1,6 @@
-import * as ether from '../../ether/latest/index.js' 
+import { ether, gear } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
-import { DeferredComputation } from '../../gear/latest/scheduling.js'
 import { Universe } from './universe.js'
 
 export class Renderer {
@@ -43,7 +42,7 @@ export class Renderer {
         radiusScale: 0.05
     }])
 
-    private updateUniformsData = new DeferredComputation(() => {
+    private updateUniformsData = new gear.DeferredComputation(() => {
         this.uniformsBuffer.writeAt(0, this.uniformsView)
     })
 

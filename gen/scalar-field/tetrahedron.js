@@ -7,9 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { ether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
-import * as ether from "../../ether/latest/index.js";
-import * as gear from "../../gear/latest/index.js";
 import * as dragging from "../utils/dragging.js";
 let context;
 let position;

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { fetchTextFiles } from "../../../gear/latest/index.js";
+import { gear } from '/gen/libs.js';
 import { required } from "../../utils/misc.js";
 import { Buffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";
@@ -21,7 +21,7 @@ export class Device {
     }
     loadShaderModule(shaderName, basePath = "/shaders") {
         return __awaiter(this, void 0, void 0, function* () {
-            const shaderCodes = yield fetchTextFiles({ shader: shaderName }, basePath);
+            const shaderCodes = yield gear.fetchTextFiles({ shader: shaderName }, basePath);
             const shaderModule = new ShaderModule(this, shaderCodes["shader"]);
             if (yield shaderModule.hasCompilationErrors()) {
                 throw new Error("Module compilation failed!");
@@ -77,7 +77,7 @@ export class Device {
             }
             finally {
                 const error = yield this.device.popErrorScope();
-                if (error !== null) {
+                if (error) {
                     throw error;
                 }
             }

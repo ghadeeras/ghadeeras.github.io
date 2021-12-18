@@ -1,5 +1,4 @@
-import * as gear from "../../gear/latest/index.js"
-import * as ether from "../../ether/latest/index.js"
+import { ether, gear } from "/gen/libs.js"
 import * as glView from './view.gl.js' 
 import * as gpuView from './view.gpu.js' 
 import { required } from "../utils/misc.js"

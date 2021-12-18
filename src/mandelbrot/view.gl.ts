@@ -1,8 +1,6 @@
+import { ether, gear } from "/gen/libs.js"
 import * as Djee from "../djee/all.js"
-import * as Gear from "../../gear/latest/index.js"
-import { Vec } from "../../ether/latest/index.js"
 import { View } from "./view.js"
-import { fetchTextFiles } from "../../gear/latest/files.js"
 
 export class ViewGL implements View {
 
@@ -14,14 +12,14 @@ export class ViewGL implements View {
     private uniformPalette: Djee.Uniform
     private uniformJuliaNumber: Djee.Uniform
 
-    private drawCall: Gear.DeferredComputation<void> = new Gear.DeferredComputation(() => this.doDraw())
+    private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
 
     constructor(
         private julia: boolean,
         _canvasId: string,
         _vertexShaderCode: string,
         _fragmentShaderCode: string,
-        _center: Vec<2> = [-0.75, 0],
+        _center: ether.Vec<2> = [-0.75, 0],
         _scale = 2.0
     ) {
         this.context = Djee.Context.of(_canvasId)
@@ -63,7 +61,7 @@ export class ViewGL implements View {
         return [this.uniformCenter.data[0], this.uniformCenter.data[1]]
     }
 
-    set center(c: Vec<2>) {
+    set center(c: ether.Vec<2>) {
         this.uniformCenter.data = c
         this.draw()
     }
@@ -120,7 +118,7 @@ export class ViewGL implements View {
         return [this.uniformJuliaNumber.data[0], this.uniformJuliaNumber.data[1]]
     }
     
-    set juliaNumber(j: Vec<2>) {
+    set juliaNumber(j: ether.Vec<2>) {
         this.uniformJuliaNumber.data = [...j, this.julia ? 1 : 0]
         this.draw()
     }
@@ -136,8 +134,8 @@ export class ViewGL implements View {
 
 } 
 
-export async function viewGL(julia: boolean, canvasId: string, center: Vec<2>, scale: number): Promise<View> {
-    const shaders = await fetchTextFiles({ 
+export async function viewGL(julia: boolean, canvasId: string, center: ether.Vec<2>, scale: number): Promise<View> {
+    const shaders = await gear.fetchTextFiles({ 
         vertexShaderCode: "mandelbrot.vert", 
         fragmentShaderCode: "mandelbrot.frag"
     }, "/shaders")
