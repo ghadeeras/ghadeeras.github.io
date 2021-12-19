@@ -1,29 +1,28 @@
 import { ether, gear } from "/gen/libs.js"
 import { Picker } from "../scalar-field/view.js";
+import { samples } from "../webgl-lab/samples.js";
 
 const weights = [0.5, 1, 0.5]
 
 export class Carving implements gear.DraggingHandler<ether.ScalarFieldInstance> {
 
-    private currentStone: ether.ScalarFieldInstance
-    private draftStone: ether.ScalarFieldInstance
-    private brushes: ether.ScalarFieldInstance[] = []
-    private carving: boolean = false 
+    private prevStone: ether.ScalarFieldInstance
+    private nextStone: ether.ScalarFieldInstance
+    private readonly brushes: ether.ScalarFieldInstance[] = []
 
     constructor(
-        private stone: () => ether.ScalarFieldInstance,
+        private currentStone: () => ether.ScalarFieldInstance,
         private mvpMat: () => ether.Mat4,
         private picker: Picker, 
         private scalarFieldModule: ether.ScalarFieldModule,
         private brushSampler: ether.ScalarFieldSampler,
     ) {
-        this.currentStone = stone()
-        const resolution = this.currentStone.resolution
+        const stone = currentStone()
 
-        this.draftStone = scalarFieldModule.newInstance()
-        this.draftStone.resolution = resolution
+        this.prevStone = recycle(scalarFieldModule.newInstance(), stone);
+        this.nextStone = stone;
 
-        for (let brushResolution = resolution / 4; brushResolution >= 2; brushResolution /= 2) {
+        for (let brushResolution = stone.resolution / 4; brushResolution >= 2; brushResolution /= 2) {
             const brush = this.generateBrush(brushResolution);
             this.brushes.push(brush) 
         }
@@ -62,31 +61,15 @@ export class Carving implements gear.DraggingHandler<ether.ScalarFieldInstance> 
     }
 
     undo(): ether.ScalarFieldInstance {
-        const stone = this.currentStone
-        this.currentStone = this.draftStone
-        return this.draftStone = stone
+        const currentStone = this.prevStone
+        this.prevStone = this.currentStone()
+        return currentStone
     }
 
     currentValue(): ether.ScalarFieldInstance {
-        if (this.carving) {
-            return this.draftStone
-        }
-
-        const stone = this.stone()
-        if (this.draftStone === stone) {
-            this.draftStone = this.currentStone
-        }
-        this.currentStone = stone
-        ensureSamplingOf(stone);
-
-        this.draftStone.sampler = (x, y, z) => stone.get(x, y, z)
-        this.draftStone.contourValue = stone.contourValue
-        if (this.draftStone.resolution != stone.resolution) {
-            this.draftStone.resolution = stone.resolution
-        }
-
-        this.carving = true
-        return stone
+        const currentStone = this.currentStone()
+        this.nextStone = recycle(this.prevStone, currentStone)
+        return this.prevStone = currentStone
     }
 
     mapper(stone: ether.ScalarFieldInstance, from: gear.PointerPosition): gear.DraggingPositionMapper<ether.ScalarFieldInstance> {
@@ -125,9 +108,8 @@ export class Carving implements gear.DraggingHandler<ether.ScalarFieldInstance> 
                 const depthLevel = -Math.log2(depth)
                 const brush = this.brushes[Math.floor(Math.max(widthLevel, depthLevel, 0))]
 
-                ensureSamplingOf(stone);
-                this.draftStone.sampler = (x, y, z) => {
-                    const stoneSample = this.carving ? stone.getNearest(x, y, z) : stone.get(x, y, z)
+                this.nextStone.sampler = (x, y, z) => {
+                    const stoneSample = stone.get(x, y, z)
                     const brushPosition = ether.mat3.apply(mat, [x - x0, y - y0, z - z0])
                     const brushSample = brush.get(...brushPosition)
                     const brushGradient = ether.mat3.apply(mat, ether.vec3.from(brushSample))
@@ -136,15 +118,14 @@ export class Carving implements gear.DraggingHandler<ether.ScalarFieldInstance> 
                     return mouseY > mouseY0 ?
                         ether.vec4.add(stoneSample, distortedBrush) :
                         ether.vec4.sub(stoneSample, distortedBrush)
-                } 
+                }
             }
-            return this.draftStone
+            return this.nextStone
         }
     }
 
-    finalize(value: ether.ScalarFieldInstance): ether.ScalarFieldInstance {
-        this.carving = false
-        return value
+    finalize(stone: ether.ScalarFieldInstance): ether.ScalarFieldInstance {
+        return stone
     }
 
 }
@@ -153,6 +134,17 @@ function sat(v: number, min: number, max: number) {
     return Math.min(Math.max(v, min), max)
 }
 
-function ensureSamplingOf(stone: ether.ScalarFieldInstance) {
+function recycle(recyclableStone: ether.ScalarFieldInstance, exampleStone: ether.ScalarFieldInstance) {
+    ensureSamplingOf(exampleStone)
+    recyclableStone.sampler = (x, y, z) => exampleStone.get(x, y, z);
+    recyclableStone.contourValue = exampleStone.contourValue;
+    if (recyclableStone.resolution != exampleStone.resolution) { // To avoid unnecessary reallocation of memory
+        recyclableStone.resolution = exampleStone.resolution;
+    }
+    return recyclableStone
+}
+
+function ensureSamplingOf(stone: ether.ScalarFieldInstance): ether.ScalarFieldInstance {
     stone.get(0, 0, 0);
+    return stone
 }

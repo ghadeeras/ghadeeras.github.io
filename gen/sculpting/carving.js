@@ -1,19 +1,17 @@
 import { ether } from "/gen/libs.js";
 const weights = [0.5, 1, 0.5];
 export class Carving {
-    constructor(stone, mvpMat, picker, scalarFieldModule, brushSampler) {
-        this.stone = stone;
+    constructor(currentStone, mvpMat, picker, scalarFieldModule, brushSampler) {
+        this.currentStone = currentStone;
         this.mvpMat = mvpMat;
         this.picker = picker;
         this.scalarFieldModule = scalarFieldModule;
         this.brushSampler = brushSampler;
         this.brushes = [];
-        this.carving = false;
-        this.currentStone = stone();
-        const resolution = this.currentStone.resolution;
-        this.draftStone = scalarFieldModule.newInstance();
-        this.draftStone.resolution = resolution;
-        for (let brushResolution = resolution / 4; brushResolution >= 2; brushResolution /= 2) {
+        const stone = currentStone();
+        this.prevStone = recycle(scalarFieldModule.newInstance(), stone);
+        this.nextStone = stone;
+        for (let brushResolution = stone.resolution / 4; brushResolution >= 2; brushResolution /= 2) {
             const brush = this.generateBrush(brushResolution);
             this.brushes.push(brush);
         }
@@ -47,27 +45,14 @@ export class Carving {
         return ether.mutVec4.scale(result, 1 / weightsSum);
     }
     undo() {
-        const stone = this.currentStone;
-        this.currentStone = this.draftStone;
-        return this.draftStone = stone;
+        const currentStone = this.prevStone;
+        this.prevStone = this.currentStone();
+        return currentStone;
     }
     currentValue() {
-        if (this.carving) {
-            return this.draftStone;
-        }
-        const stone = this.stone();
-        if (this.draftStone === stone) {
-            this.draftStone = this.currentStone;
-        }
-        this.currentStone = stone;
-        ensureSamplingOf(stone);
-        this.draftStone.sampler = (x, y, z) => stone.get(x, y, z);
-        this.draftStone.contourValue = stone.contourValue;
-        if (this.draftStone.resolution != stone.resolution) {
-            this.draftStone.resolution = stone.resolution;
-        }
-        this.carving = true;
-        return stone;
+        const currentStone = this.currentStone();
+        this.nextStone = recycle(this.prevStone, currentStone);
+        return this.prevStone = currentStone;
     }
     mapper(stone, from) {
         const [mouseX0, mouseY0] = from;
@@ -98,9 +83,8 @@ export class Carving {
                 const widthLevel = -Math.log2(width);
                 const depthLevel = -Math.log2(depth);
                 const brush = this.brushes[Math.floor(Math.max(widthLevel, depthLevel, 0))];
-                ensureSamplingOf(stone);
-                this.draftStone.sampler = (x, y, z) => {
-                    const stoneSample = this.carving ? stone.getNearest(x, y, z) : stone.get(x, y, z);
+                this.nextStone.sampler = (x, y, z) => {
+                    const stoneSample = stone.get(x, y, z);
                     const brushPosition = ether.mat3.apply(mat, [x - x0, y - y0, z - z0]);
                     const brushSample = brush.get(...brushPosition);
                     const brushGradient = ether.mat3.apply(mat, ether.vec3.from(brushSample));
@@ -111,18 +95,27 @@ export class Carving {
                         ether.vec4.sub(stoneSample, distortedBrush);
                 };
             }
-            return this.draftStone;
+            return this.nextStone;
         };
     }
-    finalize(value) {
-        this.carving = false;
-        return value;
+    finalize(stone) {
+        return stone;
     }
 }
 function sat(v, min, max) {
     return Math.min(Math.max(v, min), max);
 }
+function recycle(recyclableStone, exampleStone) {
+    ensureSamplingOf(exampleStone);
+    recyclableStone.sampler = (x, y, z) => exampleStone.get(x, y, z);
+    recyclableStone.contourValue = exampleStone.contourValue;
+    if (recyclableStone.resolution != exampleStone.resolution) { // To avoid unnecessary reallocation of memory
+        recyclableStone.resolution = exampleStone.resolution;
+    }
+    return recyclableStone;
+}
 function ensureSamplingOf(stone) {
     stone.get(0, 0, 0);
+    return stone;
 }
 //# sourceMappingURL=carving.js.map

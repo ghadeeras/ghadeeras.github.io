@@ -2,7 +2,7 @@ import { ether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
-import { save } from "../utils/misc.js"
+import * as misc from "../utils/misc.js"
 import { Carving } from "./carving.js"
 
 const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
@@ -31,13 +31,14 @@ async function doInit() {
 class Toy {
 
     private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
+    private carving: Carving
 
-    constructor(private stone: ether.ScalarFieldInstance, scalarFieldModule: ether.ScalarFieldModule, view: v.View, picker: v.Picker) {
+    constructor(private stone: ether.ScalarFieldInstance, private scalarFieldModule: ether.ScalarFieldModule, view: v.View, picker: v.Picker) {
         const canvas = gear.elementEvents("canvas-gl")
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
 
-        const carving = new Carving(
+        this.carving = new Carving(
             () => this.stone,
             () => modelViewProjectionMatrixOf(view),
             picker,
@@ -68,9 +69,16 @@ class Toy {
 
         const resolution = this.levelOfDetails()
 
-        const carvedStone = cases.carving
-            .then(gear.drag(carving))
-            .defaultsTo(this.stone)
+        const stoneValue = gear.Value.from(
+            cases.carving.then(gear.drag(this.carving)),
+            resolution.map(r => this.stoneWithResolution(r)),
+            contourValue.map(v => this.stoneWithContourValue(v)),
+            gear.elementEvents("undo").click.value.map(() => this.carving.undo()),
+            dropOn(canvas.element)
+                .filter(e => e.dataTransfer != null)
+                .then(asyncEffect(data))
+                .map(buffer => this.deserializeStone(buffer))
+        ).defaultsTo(this.stone)
 
         v.wire(view, {
             matModel: cases.rotation
@@ -110,24 +118,21 @@ class Toy {
                 .map(([x, y]) => (y + 1) / 2)
                 .defaultsTo(0.1),
             
-            vertices: gear.Value.from(
-                resolution.then((r, c) => this.contourSurfaceDataForResolution(r, c)),
-                contourValue.then((v, c) => this.contourSurfaceDataForValue(v, c)),
-                gear.Value.from(
-                    carvedStone, 
-                    gear.elementEvents("undo").click.value.map(() => carving.undo())
-                ).then((s, c) => this.contourSurfaceDataForStone(s, c)),
-            )
+            vertices: stoneValue.then((s, c) => this.contourSurfaceDataForStone(s, c)),
         })
         
-        gear.text("lod").value = resolution.map(lod => lod.toString())
-        gear.elementEvents("export").click.value.attach(() => this.saveModel())
+        gear.text("lod").value = stoneValue.map(s => s.resolution).map(lod => lod.toString())
+        
+        gear.elementEvents("export").click.value.attach(() => this.exportModel())
+        gear.elementEvents("save").click.value.attach(() => this.saveModel())
     }
 
     levelOfDetails() {
         const inc = gear.elementEvents("lod-inc").click.value.map(() => +8)
         const dec = gear.elementEvents("lod-dec").click.value.map(() => -8)
-        const flow = gear.Value.from(inc, dec).reduce((i, lod) => this.clamp(lod + i, 32, 96), this.stone.resolution)
+        const flow = gear.Value.from(inc, dec)
+            .map(i => this.clamp(this.stone.resolution + i, 32, 96))
+            .defaultsTo(this.stone.resolution)
         return flow
     }
 
@@ -144,25 +149,129 @@ class Toy {
         this.meshComputer.perform().then(meshConsumer)
     }
 
-    contourSurfaceDataForValue(value: number, meshConsumer: gear.Consumer<Float32Array>) {
+    stoneWithContourValue(value: number) {
         this.stone.contourValue = value
-        this.meshComputer.perform().then(meshConsumer)
+        return this.stone
     }
 
-    contourSurfaceDataForResolution(resolution: number, meshConsumer: gear.Consumer<Float32Array>) {
+    stoneWithResolution(resolution: number) {
         this.stone.resolution = resolution
-        this.meshComputer.perform().then(meshConsumer)
+        return this.stone
     }
 
-    saveModel() {
+    exportModel() {
         const fileName = document.getElementById("file-name") as HTMLInputElement
 
         const model = djee.createModel(fileName.value, this.stone.vertices)
 
-        save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
-        save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)
+        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
+        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)
     }
 
+    saveModel() {
+        const fileName = document.getElementById("file-name") as HTMLInputElement
+        const buffer = this.serializeStone()
+        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `${fileName.value}.ssf`)
+    }
+
+    private serializeStone() {
+        const samplesCount = (this.stone.resolution + 1) ** 3
+        const vectorSize = 4
+        const headerSize = 4
+        const buffer = new ArrayBuffer(
+            headerSize * Uint16Array.BYTES_PER_ELEMENT +
+            samplesCount * vectorSize * Float64Array.BYTES_PER_ELEMENT
+        )
+        const header = new Uint16Array(buffer, 0, headerSize)
+        const samples = new Float64Array(buffer, header.byteLength)
+        header[0] = "SF".charCodeAt(0) + ("SF".charCodeAt(1) << 8)
+        header[1] = this.stone.resolution
+        header[2] = this.stone.resolution
+        header[3] = this.stone.resolution
+        for (let k = 0; k <= this.stone.resolution; k++) {
+            const z = 2 * k /  this.stone.resolution - 1
+            const jOffset = k * this.stone.resolution
+            for (let j = 0; j <= this.stone.resolution; j++) {
+                const y = 2 * j /  this.stone.resolution - 1
+                const iOffset = (jOffset + j) * this.stone.resolution
+                for (let i = 0; i <= this.stone.resolution; i ++) {
+                    const x = 2 * i /  this.stone.resolution - 1
+                    const offset = (iOffset + i) * vectorSize
+                    samples.set(this.stone.getNearest(x, y, z), offset)
+                }
+            }
+        }
+        return buffer
+    }
+
+    private deserializeStone(buffer: ArrayBuffer): ether.ScalarFieldInstance {
+        const vectorSize = 4
+        const headerSize = 4
+        const header = new Uint16Array(buffer, 0, headerSize)
+        const samples = new Float64Array(buffer, header.byteLength)
+        const s = String.fromCharCode(header[0] & 0xFF) + String.fromCharCode(header[0] >>> 8)
+        if (s !== "SF") {
+            alert("Invalid file format!")
+            return this.stone
+        }
+        const xRes = header[1]
+        const yRes = header[2]
+        const zRes = header[3]
+        const samplesCount = (xRes + 1) * (yRes + 1) * (zRes + 1)
+        if (samplesCount * vectorSize !== samples.length) {
+            alert("Invalid file format!")
+            return this.stone
+        }
+        const stone = this.scalarFieldModule.newInstance()
+        stone.resolution = Math.round((xRes * yRes * zRes) ** (1 / 3))
+        stone.sampler = (x, y, z) => {
+            const i = Math.round((x + 1) * xRes / 2)
+            const j = Math.round((y + 1) * yRes / 2)
+            const k = Math.round((z + 1) * zRes / 2)
+            const offset = ((k * yRes + j) * xRes + i) * vectorSize
+            return offset < samples.length ? 
+                ether.vec4.from(samples, offset) : 
+                ether.vec4.of(0, 0, 0, 0)
+        }
+        const newStone = this.carving.undo()
+        newStone.resolution = stone.resolution
+        newStone.sampler = (x, y, z) => stone.get(x, y, z)
+        return newStone
+    }
+
+}
+
+function dropOn(element: HTMLElement) {
+    element.ondragover = e => {
+        e.preventDefault()
+    }
+    return gear.Source.from((c: gear.Consumer<DragEvent>) => element.ondrop = c).value
+}
+
+async function data(e: DragEvent): Promise<ArrayBuffer> {
+    e.preventDefault()
+    if (e.dataTransfer) {
+        const item = e.dataTransfer.items[0]
+        return item.kind == 'file' ?
+            misc.required(item.getAsFile()).arrayBuffer() :
+            asURL(item).then(fetch).then(response => response.arrayBuffer())
+    } else {
+        return Promise.reject("Not a data transfer!")
+    }
+}
+
+async function asURL(transferItem: DataTransferItem): Promise<string> {
+    return await new Promise((resolve, reject) => {
+        try {
+            transferItem.getAsString(resolve)
+        } catch (e) {
+            reject(e)
+        }
+    })
+}
+
+function asyncEffect<A, B>(mapper: gear.Mapper<A, Promise<B>>): gear.Effect<A, B> {
+    return (v, c) => mapper(v).then(c)
 }
 
 const twoPi = 2 * Math.PI

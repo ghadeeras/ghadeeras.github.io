@@ -52,16 +52,24 @@
                     </div>
                 </p>
                 <p>
-                    <button id="export">Export as:</button>
-                    <input id="file-name" type="text" value="Model" />
-                    <br />
-                    The button above will attempt to save two files with the extensions "gltf" and "bin". 
+                    <button id="export" style="width: 100%;">Export</button>
+                    <span style="font-size: smaller;">The button above will attempt to save two files with the extensions "gltf" and "bin".</span> 
+                </p>
+                <p>
+                    <button id="save" style="width: 100%;">Save</button>
+                    <span style="font-size: smaller;">The button above will attempt to save one file with the extensions "ssf" (Sampled Scalar Field).</span>
+                </p>
+                <p>
+                    <span>File Name: </span><input id="file-name" type="text" value="Model" />
                 </p>
                 <p>
                     <button id="undo" style="width: 100%;">Undo / Redo</button>
                 </p>
                 <p>
                     <button id="reset-contour" style="width: 100%;">Reset Contour Value</button>
+                </p>
+                <p>
+                    You could drag and drop SSF files on the canvas (to the right of this panel) to load saved sculptures.  
                 </p>
             </div>
 
@@ -91,21 +99,22 @@
                     The idea is to start from a simple scalar field (such as <i>f<sub>base</sub>(x, y, z) = x<sup>2</sup> + 
                     y<sup>2</sup> + z<sup>2</sup></i>) which when tessellated for some contour value <i>v</i> would give a base 
                     geometric shape, like a sphere. This can be thought of as the base "stone" from which the sculpture would 
-                    be carved or even grown.
+                    be carved or modelled.
                 </p>
                 <p>
-                    The act of carving is done by adding/subtracting another scalar field <i>c(x, y, z)</i>, representing the 
-                    shape of the sculpting tool, to the current field at the point where the carving is performed. The 
-                    magnitude of carving is determined by how much the user drags the pointer vertically (height/depth) and 
-                    horizontally (breadth). The carving will be aligned with the surface normal at the carving point.
+                    The act of carving/modelling is done by adding/subtracting another scalar field <i>c(x, y, z)</i>, 
+                    representing the shape of the sculpting tool, to the current field around the point where the action is 
+                    performed. The magnitude of carving/modelling is determined by how much the user drags the pointer 
+                    vertically (height/depth) and horizontally (breadth). The change will be aligned with the surface normal 
+                    at the action point.
                 </p>
                 <p>
                     In the simplest case, if we do carve at a surface point <i>p<sub>c</sub> = (x<sub>c</sub>, y<sub>c</sub>, 
                     z<sub>c</sub>)</i>, the new scalar field would be:
                 </p>
                 <p><i>
-                    f<sub>after</sub>(x, y, z) = <br /> f<sub>before</sub>(x, y, z) - c(x / m - x<sub>c</sub>, y / m - 
-                    y<sub>c</sub>, z / m - z<sub>c</sub>)
+                    f<sub>after</sub>(x, y, z) = <br /><span style="margin-left: 32px;">f<sub>before</sub>(x, y, z) -</span> 
+                    <br /><span style="margin-left: 32px;">c(x / m - x<sub>c</sub>, y / m - y<sub>c</sub>, z / m - z<sub>c</sub>)</span>
                 </i></p>
                 <p>
                     where <i>m</i> is a value representing the magnitude of the carving. In a more general case, <i>x / m, 
@@ -121,18 +130,19 @@
                 </p>
                 <p>
                     A few interesting challenges were encountered in this experiment. For example, the scalar field of the
-                    sculpting tool should be sampled at high resolution, then down sampled for lower resolutions while applying 
-                    a filter to keep the carving as smooth as possible. Lower resolutions of the carving tool are used when the
-                    magnitude of the carving is small. Another challenge is how to deform the scalar field of the carving tool
-                    depending on the desired height/depth and breadth, which could be controlled independently.     
+                    sculpting tool should be sampled at different resolutions, while applying appropriate filtering at each 
+                    resolution to avoid aliasing. Lower resolutions of the carving tool are used when the magnitude of the 
+                    carving is small. Another challenge is how to deform the scalar field of the carving tool depending on 
+                    the desired height/depth and breadth, which could be controlled independently, while keeping the 
+                    deformation perpendicular on the sculpture surface.     
                 </p>
                 <p>
                     The end result is fun to play with, but I think it suffers from a few drawbacks that limit its 
                     practicality. For instance, the use of the marching cubes algorithm means one has only a limited space to 
                     work in. Once one grows the sculpture beyond that limit, its surface appears to rupture. In addition, it is 
-                    at times hard to predict how the surface will change. That is because there is no visual cue about the 
-                    scalar field value outside the surface of the sculpture. So, growing the sculpture at some places could 
-                    cause some surfaces to appear out of thin air. 
+                    at times hard to predict how the surface will change. That is because there is no visual cues about the 
+                    scalar field value outside the surface of the sculpture. So, modelling the sculpture at some places could 
+                    cause some surfaces to appear unexpectedly in surrounding spaces.
                 </p>
             </div>
 
