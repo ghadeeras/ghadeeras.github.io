@@ -1,28 +1,28 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gl.js"
 
 export class GLView implements v.View {
 
-    readonly context: djee.Context
-    readonly program: djee.Program
+    readonly context: wgl.Context
+    readonly program: wgl.Program
 
-    private position: djee.Attribute
-    private normal: djee.Attribute
+    private position: wgl.Attribute
+    private normal: wgl.Attribute
 
-    private _matModelPositions: djee.Uniform
-    private _matModelNormals: djee.Uniform
-    private _matProjection: djee.Uniform
+    private _matModelPositions: wgl.Uniform
+    private _matModelNormals: wgl.Uniform
+    private _matProjection: wgl.Uniform
 
-    private _color: djee.Uniform
-    private _shininess: djee.Uniform
+    private _color: wgl.Uniform
+    private _shininess: wgl.Uniform
 
-    private _lightPosition: djee.Uniform
-    private _lightRadius: djee.Uniform
-    private _fogginess: djee.Uniform
+    private _lightPosition: wgl.Uniform
+    private _lightRadius: wgl.Uniform
+    private _fogginess: wgl.Uniform
     
-    private _vertices: djee.AttributesBuffer
+    private _vertices: wgl.AttributesBuffer
     private _primitives: GLenum
 
     private _frame: null | (() => void) = null
@@ -37,7 +37,7 @@ export class GLView implements v.View {
         vertexShaderCode: string,
         fragmentShaderCode: string
     ) {
-        this.context = djee.Context.of(canvasId)
+        this.context = wgl.Context.of(canvasId)
         this.program = this.context.link(
             this.context.vertexShader(vertexShaderCode),
             this.context.fragmentShader(fragmentShaderCode)

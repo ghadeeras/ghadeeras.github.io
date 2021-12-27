@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 import { required } from "../utils/misc.js";
 const mySketch = new Image();
 const square = [
@@ -26,9 +26,9 @@ function doInit() {
             vertexShaderCode: "mandelbrot.vert",
             fragmentShaderCode: "home.frag"
         }, "/shaders");
-        const context = djee.Context.of("canvas");
-        const vertexShader = context.shader(djee.ShaderType.VertexShader, shaders.vertexShaderCode);
-        const fragmentShader = context.shader(djee.ShaderType.FragmentShader, shaders.fragmentShaderCode);
+        const context = wgl.Context.of("canvas");
+        const vertexShader = context.shader(wgl.ShaderType.VertexShader, shaders.vertexShaderCode);
+        const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, shaders.fragmentShaderCode);
         const program = vertexShader.linkTo(fragmentShader);
         program.use();
         const texture = context.newTexture2D();

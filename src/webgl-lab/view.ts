@@ -1,5 +1,5 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee  from "../djee/all.js";
+import { wgl } from "../djee/index.js"
 import { values } from "../djee/utils.js";
 import { ProgramSample } from "./samples.js";
 
@@ -8,13 +8,13 @@ export type Named = {
 }
 
 type Reflection = {
-    program: djee.Program;
-    attributes: djee.VariableInfo[];
-    uniforms: djee.VariableInfo[];
+    program: wgl.Program;
+    attributes: wgl.VariableInfo[];
+    uniforms: wgl.VariableInfo[];
 };
 
 type Scalar = {
-    uniform: djee.Uniform;
+    uniform: wgl.Uniform;
     index: number;
     name: string;
 }
@@ -34,9 +34,9 @@ export type ViewInputs = {
 
 export class View {
 
-    private context: djee.Context;
-    private buffer: djee.AttributesBuffer;
-    private program: djee.Program | null = null;
+    private context: wgl.Context;
+    private buffer: wgl.AttributesBuffer;
+    private program: wgl.Program | null = null;
     private defaultSample: ProgramSample;
     
     private lod = 50;
@@ -48,7 +48,7 @@ export class View {
     
     constructor(canvasId: string, samples: ProgramSample[], inputs: ViewInputs) {
         setOptions("shader-sample", options(samples));
-        this.context = djee.Context.of(canvasId);
+        this.context = wgl.Context.of(canvasId);
         this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
 
@@ -108,7 +108,7 @@ export class View {
         });
     }
         
-    private recompile(shaders: ProgramSample): djee.Program {
+    private recompile(shaders: ProgramSample): wgl.Program {
         if (this.program != null) {
             this.program.delete();
         }
@@ -128,7 +128,7 @@ export class View {
         }
     }
 
-    private reflectOn(program: djee.Program): Reflection {
+    private reflectOn(program: wgl.Program): Reflection {
         return {
             program: program,
             attributes: values(program.attributeInfos).filter(attribute => attribute.itemCount == 1),

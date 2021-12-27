@@ -8,10 +8,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
+import { gltf } from "../djee/index.js";
+import { save } from "../utils/misc.js";
 import * as v from "./view.js";
 import * as dragging from "../utils/dragging.js";
-import { save } from "../utils/misc.js";
-import { createModel } from "../djee/gltf.gen.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
 const projectionMatrix = aether.mat4.projection(Math.pow(2, 1.5));
 export function init() {
@@ -118,7 +118,7 @@ class Toy {
         this.meshComputer.perform().then(meshConsumer);
     }
     saveModel() {
-        const model = createModel("ScalarField", this.scalarFieldInstance.vertices);
+        const model = gltf.createModel("ScalarField", this.scalarFieldInstance.vertices);
         const canvas = document.getElementById("canvas-gl");
         save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf');
         save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin');

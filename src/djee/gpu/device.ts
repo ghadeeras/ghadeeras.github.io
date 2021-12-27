@@ -14,8 +14,9 @@ export class Device {
     async loadShaderModule(shaderName: string, basePath: string = "/shaders"): Promise<ShaderModule> {
         const shaderCodes = await gear.fetchTextFiles({ shader: shaderName }, basePath)
         
-        const shaderModule = new ShaderModule(this, shaderCodes["shader"])
-    
+        const shaderCode = shaderCodes["shader"] // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
+        const shaderModule = new ShaderModule(this, shaderCode)
+
         if (await shaderModule.hasCompilationErrors()) {
             throw new Error("Module compilation failed!")
         }

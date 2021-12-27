@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 export class Renderer {
     constructor(vertexShaderCode, fragmentShaderCode, proj, view, inputSuppliers) {
         this.proj = proj;
@@ -16,7 +16,7 @@ export class Renderer {
         this.lastTime = performance.now();
         this.translationDown = aether.mat4.translation([0, -2, 0]);
         const inputs = inputSuppliers();
-        this.context = djee.Context.of("canvas-gl");
+        this.context = wgl.Context.of("canvas-gl");
         this.buffer = this.context.newAttributesBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();
         const vertexShader = this.context.vertexShader(vertexShaderCode);

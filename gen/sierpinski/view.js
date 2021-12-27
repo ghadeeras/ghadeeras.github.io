@@ -1,5 +1,5 @@
 import { gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 var vertexShader = `
     attribute vec2 vPosition;
     
@@ -22,7 +22,7 @@ var fragmentShader = `
     gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `;
-var ST = djee.ShaderType;
+var ST = wgl.ShaderType;
 function round(value) {
     return Math.round(1000 * value) / 1000;
 }
@@ -31,7 +31,7 @@ export class View {
         this.mustShowCorners = true;
         this.mustShowCenters = true;
         this.stride = 0;
-        this.context = djee.Context.of(canvasId);
+        this.context = wgl.Context.of(canvasId);
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
         this.program = this.context.link(this.vertexShader, this.fragmentShader);

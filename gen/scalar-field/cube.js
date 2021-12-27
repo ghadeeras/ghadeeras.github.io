@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 import * as dragging from "../utils/dragging.js";
 let context;
 let position;
@@ -36,7 +36,7 @@ function doInit() {
         }, "/shaders");
         const scalarFieldModule = yield aether.loadScalarFieldModule();
         scalarFieldInstance = scalarFieldModule.newInstance();
-        context = djee.Context.of("canvas-gl");
+        context = wgl.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
         program.use();
         cubeBuffer = context.newAttributesBuffer(10 * 4);

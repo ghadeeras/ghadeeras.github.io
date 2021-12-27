@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 import { picker } from "./picker.gl.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
@@ -17,7 +17,7 @@ export class GLView {
         this._matNormals = aether.mat4.identity();
         this._matView = aether.mat4.identity();
         this._globalLightPosition = [2, 2, 2, 1];
-        this.context = djee.Context.of(canvasId);
+        this.context = wgl.Context.of(canvasId);
         this.program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         this.program.use();
         this.position = this.program.attribute("position");

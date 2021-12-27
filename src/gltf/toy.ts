@@ -1,6 +1,5 @@
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js"
-import * as gltf from "../djee/gltf.js";
+import { wgl, gltf } from "../djee/index.js"
 import * as dragging from "../utils/dragging.js";
 
 type ModelIndexEntry = {
@@ -14,22 +13,22 @@ type ModelIndexEntry = {
     }
 }
 
-let context: djee.Context;
+let context: wgl.Context;
 
-let position: djee.Attribute;
-let normal: djee.Attribute;
+let position: wgl.Attribute;
+let normal: wgl.Attribute;
 
-let uPositionsMat: djee.Uniform;
-let uNormalsMat: djee.Uniform;
-let uProjectionMat: djee.Uniform;
-let uLightPosition: djee.Uniform;
-let uLightRadius: djee.Uniform;
-let uColor: djee.Uniform;
-let uShininess: djee.Uniform;
-let uFogginess: djee.Uniform;
+let uPositionsMat: wgl.Uniform;
+let uNormalsMat: wgl.Uniform;
+let uProjectionMat: wgl.Uniform;
+let uLightPosition: wgl.Uniform;
+let uLightRadius: wgl.Uniform;
+let uColor: wgl.Uniform;
+let uShininess: wgl.Uniform;
+let uFogginess: wgl.Uniform;
 
 let modelIndex: ModelIndexEntry[]
-let model: gltf.ActiveModel<djee.IndicesBuffer, djee.AttributesBuffer>
+let model: gltf.ActiveModel<wgl.IndicesBuffer, wgl.AttributesBuffer>
 
 let lightPosition: aether.Vec<3> = [2, 2, 2]
 let viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
@@ -55,7 +54,7 @@ async function doInit() {
         modelElement.appendChild(new Option(entry.name, entry.name))
     }
 
-    context = djee.Context.of("canvas-gl");
+    context = wgl.Context.of("canvas-gl");
 
     const program = context.link(
         context.vertexShader(shaders.vertexShaderCode),
@@ -179,7 +178,7 @@ function viewMatrixTarget(): gear.Target<aether.Mat<4>> {
 function modelLoaderTarget(): gear.Target<string> {
     return new gear.Target(async (modelId) => {
         const modelUri = getModelUri(modelId)
-        const renderer = new gltf.GLRenderer(context, {
+        const renderer = new wgl.GLRenderer(context, {
             "POSITION" : position,
             "NORMAL" : normal,
         }, uPositionsMat, uNormalsMat)

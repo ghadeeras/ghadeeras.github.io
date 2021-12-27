@@ -8,8 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
-import * as gltf from "../djee/gltf.js";
+import { wgl, gltf } from "../djee/index.js";
 import * as dragging from "../utils/dragging.js";
 let context;
 let position;
@@ -43,7 +42,7 @@ function doInit() {
         for (let entry of modelIndex) {
             modelElement.appendChild(new Option(entry.name, entry.name));
         }
-        context = djee.Context.of("canvas-gl");
+        context = wgl.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
         program.use();
         position = program.attribute("position");
@@ -126,7 +125,7 @@ function viewMatrixTarget() {
 function modelLoaderTarget() {
     return new gear.Target((modelId) => __awaiter(this, void 0, void 0, function* () {
         const modelUri = getModelUri(modelId);
-        const renderer = new gltf.GLRenderer(context, {
+        const renderer = new wgl.GLRenderer(context, {
             "POSITION": position,
             "NORMAL": normal,
         }, uPositionsMat, uNormalsMat);

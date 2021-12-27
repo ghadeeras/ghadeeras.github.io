@@ -1,9 +1,9 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { gltf } from "../djee/index.js"
+import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
 import * as misc from "../utils/misc.js"
-import { Carving } from "./carving.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 const projectionMatrix = aether.mat4.projection(4)
@@ -162,7 +162,7 @@ class Toy {
     exportModel() {
         const fileName = document.getElementById("file-name") as HTMLInputElement
 
-        const model = djee.createModel(fileName.value, this.stone.vertices)
+        const model = gltf.createModel(fileName.value, this.stone.vertices)
 
         misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
         misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)

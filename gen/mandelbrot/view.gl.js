@@ -8,12 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { gear } from "/gen/libs.js";
-import * as Djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 export class ViewGL {
     constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
         this.julia = julia;
         this.drawCall = new gear.DeferredComputation(() => this.doDraw());
-        this.context = Djee.Context.of(_canvasId);
+        this.context = wgl.Context.of(_canvasId);
         const program = this.context.link(this.context.vertexShader(_vertexShaderCode), this.context.fragmentShader(_fragmentShaderCode));
         program.use();
         const buffer = this.context.newAttributesBuffer();

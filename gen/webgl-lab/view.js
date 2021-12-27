@@ -1,5 +1,5 @@
 import { gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 import { values } from "../djee/utils.js";
 export class View {
     constructor(canvasId, samples, inputs) {
@@ -11,7 +11,7 @@ export class View {
         this.xScalar = null;
         this.yScalar = null;
         setOptions("shader-sample", options(samples));
-        this.context = djee.Context.of(canvasId);
+        this.context = wgl.Context.of(canvasId);
         this.buffer = this.context.newAttributesBuffer();
         this.defaultSample = samples[0];
         inputs.mesh

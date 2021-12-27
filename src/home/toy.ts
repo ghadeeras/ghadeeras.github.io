@@ -1,5 +1,5 @@
 import { gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import { required } from "../utils/misc.js"
 
 const mySketch = new Image()
@@ -21,10 +21,10 @@ async function doInit() {
         fragmentShaderCode: "home.frag"
     }, "/shaders")
 
-    const context = djee.Context.of("canvas")
+    const context = wgl.Context.of("canvas")
 
-    const vertexShader = context.shader(djee.ShaderType.VertexShader, shaders.vertexShaderCode)
-    const fragmentShader = context.shader(djee.ShaderType.FragmentShader, shaders.fragmentShaderCode)
+    const vertexShader = context.shader(wgl.ShaderType.VertexShader, shaders.vertexShaderCode)
+    const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, shaders.fragmentShaderCode)
     const program = vertexShader.linkTo(fragmentShader)
     program.use()
 
@@ -68,14 +68,14 @@ async function doInit() {
     context.canvas.ondrop = event => loadImage(event, effect)
 }
 
-function draw(context: djee.Context) {
+function draw(context: wgl.Context) {
     const gl = context.gl
     gl.viewport(0, 0, context.canvas.width, context.canvas.height)
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     gl.flush()
 }
 
-async function updateTexture(texture: djee.Texture2D) {
+async function updateTexture(texture: wgl.Texture2D) {
     const context = texture.context
     const canvas = context.canvas
     const image = await createImageBitmap(mySketch, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight, {
@@ -86,30 +86,30 @@ async function updateTexture(texture: djee.Texture2D) {
     draw(context)
 }
 
-async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: djee.Uniform, texture: djee.Texture2D) {
+async function useCurrentImage(e: PointerEvent | MouseEvent, mousePos: wgl.Uniform, texture: wgl.Texture2D) {
     distortImage(e, mousePos)
     const image = await createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight)
     texture.setImageSource(image)
 }
 
-function distortImage(e: PointerEvent | MouseEvent, mousePos: djee.Uniform) {
+function distortImage(e: PointerEvent | MouseEvent, mousePos: wgl.Uniform) {
     e.preventDefault()
     mousePos.data = normalizePosition(e)
     draw(mousePos.program.context)
 }
 
-function restoreImage(mousePos: djee.Uniform, effect: djee.Uniform) {
+function restoreImage(mousePos: wgl.Uniform, effect: wgl.Uniform) {
     mousePos.data = [0x10000, 0x10000]
     effect.data = [(effect.data[0] + 1) % 3]
     draw(mousePos.program.context)
 }
 
-function restoreOriginalImage(e: MouseEvent,  texture: djee.Texture2D) {
+function restoreOriginalImage(e: MouseEvent,  texture: wgl.Texture2D) {
     e.preventDefault()
     updateTexture(texture)
 }
 
-function tearImage(e: DragEvent, mousePos: djee.Uniform, effect: djee.Uniform) {
+function tearImage(e: DragEvent, mousePos: wgl.Uniform, effect: wgl.Uniform) {
     e.preventDefault()
     mousePos.data = normalizePosition(e)
     if (effect.data[0] < 3) {
@@ -118,7 +118,7 @@ function tearImage(e: DragEvent, mousePos: djee.Uniform, effect: djee.Uniform) {
     draw(mousePos.program.context)
 }
 
-async function loadImage(e: DragEvent, effect: djee.Uniform) {
+async function loadImage(e: DragEvent, effect: wgl.Uniform) {
     e.preventDefault()
     effect.data = [effect.data[0] - 3]
     if (e.dataTransfer) {

@@ -1,20 +1,20 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import * as dragging from "../utils/dragging.js"
 
-let context: djee.Context;
+let context: wgl.Context;
 
-let position: djee.Attribute;
-let normal: djee.Attribute;
-let color: djee.Attribute;
+let position: wgl.Attribute;
+let normal: wgl.Attribute;
+let color: wgl.Attribute;
 
-let matModel: djee.Uniform;
-let lightPosition: djee.Uniform;
-let shininess: djee.Uniform;
-let fogginess: djee.Uniform;
+let matModel: wgl.Uniform;
+let lightPosition: wgl.Uniform;
+let shininess: wgl.Uniform;
+let fogginess: wgl.Uniform;
 
-let tetrahedronBuffer: djee.AttributesBuffer;
-let contourSurfaceBuffer: djee.AttributesBuffer;
+let tetrahedronBuffer: wgl.AttributesBuffer;
+let contourSurfaceBuffer: wgl.AttributesBuffer;
 
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue: number = 0;
@@ -60,7 +60,7 @@ async function doInit() {
     const scalarFieldModule = await aether.loadScalarFieldModule()
     scalarFieldInstance = scalarFieldModule.newInstance()
     
-    context = djee.Context.of("canvas-gl");
+    context = wgl.Context.of("canvas-gl");
 
     const program = context.link(
         context.vertexShader(shaders.vertexShaderCode),

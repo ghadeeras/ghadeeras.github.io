@@ -1,5 +1,5 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 
 type RendererInputs = {
     matrices: gear.Value<aether.Mat<4>[]>
@@ -13,19 +13,19 @@ type RendererInputs = {
 
 export class Renderer {
 
-    private context: djee.Context;
-    private buffer: djee.AttributesBuffer;
+    private context: wgl.Context;
+    private buffer: wgl.AttributesBuffer;
     
-    private matModel: djee.Uniform;
-    private matSubModel: djee.Uniform;
-    private matView: djee.Uniform;
-    private matProjection: djee.Uniform;
+    private matModel: wgl.Uniform;
+    private matSubModel: wgl.Uniform;
+    private matView: wgl.Uniform;
+    private matProjection: wgl.Uniform;
 
-    private lightPosition: djee.Uniform;
-    private color: djee.Uniform;
-    private shininess: djee.Uniform;
-    private fogginess: djee.Uniform;
-    private twist: djee.Uniform;
+    private lightPosition: wgl.Uniform;
+    private color: wgl.Uniform;
+    private shininess: wgl.Uniform;
+    private fogginess: wgl.Uniform;
+    private twist: wgl.Uniform;
 
     private matrices: number[][];
     private lastTime: number = performance.now()
@@ -34,7 +34,7 @@ export class Renderer {
 
     constructor(vertexShaderCode: string, fragmentShaderCode: string, readonly proj: aether.Mat<4>, readonly view: aether.Mat<4>, inputSuppliers: gear.Supplier<RendererInputs>) {
         const inputs = inputSuppliers()
-        this.context = djee.Context.of("canvas-gl");
+        this.context = wgl.Context.of("canvas-gl");
 
         this.buffer = this.context.newAttributesBuffer(6 * 4);
         this.buffer.float32Data = this.vertexData();

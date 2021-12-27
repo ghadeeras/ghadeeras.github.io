@@ -1,16 +1,16 @@
 import { aether, gear } from "/gen/libs.js"
-import * as Djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import { View } from "./view.js"
 
 export class ViewGL implements View {
 
-    private context: Djee.Context
-    private uniformCenter: Djee.Uniform
-    private uniformScale: Djee.Uniform
-    private uniformColor: Djee.Uniform
-    private uniformIntensity: Djee.Uniform
-    private uniformPalette: Djee.Uniform
-    private uniformJuliaNumber: Djee.Uniform
+    private context: wgl.Context
+    private uniformCenter: wgl.Uniform
+    private uniformScale: wgl.Uniform
+    private uniformColor: wgl.Uniform
+    private uniformIntensity: wgl.Uniform
+    private uniformPalette: wgl.Uniform
+    private uniformJuliaNumber: wgl.Uniform
 
     private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
 
@@ -22,7 +22,7 @@ export class ViewGL implements View {
         _center: aether.Vec<2> = [-0.75, 0],
         _scale = 2.0
     ) {
-        this.context = Djee.Context.of(_canvasId)
+        this.context = wgl.Context.of(_canvasId)
 
         const program = this.context.link(
             this.context.vertexShader(_vertexShaderCode),

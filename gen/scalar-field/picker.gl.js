@@ -8,13 +8,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as djee from "../djee/all.js";
+import { wgl } from "../djee/index.js";
 export class GLPicker {
     constructor(mainView, vertexShader, fragmentShader, vertices) {
         this.mainView = mainView;
         this.vertices = vertices;
         const context = mainView.context;
-        this.program = context.link(context.shader(djee.ShaderType.VertexShader, vertexShader), context.shader(djee.ShaderType.FragmentShader, fragmentShader));
+        this.program = context.link(context.shader(wgl.ShaderType.VertexShader, vertexShader), context.shader(wgl.ShaderType.FragmentShader, fragmentShader));
         this.program.use();
         this.posAttribute = this.program.attribute("aModelPos");
         this.mvpMatrixUniform = this.program.uniform("mvpMat");

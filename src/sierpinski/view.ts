@@ -1,5 +1,5 @@
 import { gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import { FlattenedSierpinski } from "./model.js"
 
 var vertexShader = `
@@ -26,7 +26,7 @@ var fragmentShader = `
     }
 `
 
-var ST = djee.ShaderType;
+var ST = wgl.ShaderType;
 
 function round(value: number) {
     return Math.round(1000 * value) / 1000;
@@ -43,16 +43,16 @@ export type ViewInputs = {
 
 export class View {
     
-    private readonly context: djee.Context;
-    private readonly vertexShader: djee.Shader;
-    private readonly fragmentShader: djee.Shader;
-    private readonly program: djee.Program;
+    private readonly context: wgl.Context;
+    private readonly vertexShader: wgl.Shader;
+    private readonly fragmentShader: wgl.Shader;
+    private readonly program: wgl.Program;
 
-    private readonly shaderPosition: djee.Attribute;
-    private readonly shaderTwist: djee.Uniform;
-    private readonly shaderScale: djee.Uniform;
-    private readonly cornersBuffer: djee.AttributesBuffer;
-    private readonly centersBuffer: djee.AttributesBuffer;
+    private readonly shaderPosition: wgl.Attribute;
+    private readonly shaderTwist: wgl.Uniform;
+    private readonly shaderScale: wgl.Uniform;
+    private readonly cornersBuffer: wgl.AttributesBuffer;
+    private readonly centersBuffer: wgl.AttributesBuffer;
 
     private mustShowCorners: boolean = true;
     private mustShowCenters: boolean = true;
@@ -65,7 +65,7 @@ export class View {
         scaleId: string,
         inputs: ViewInputs
     ) {
-        this.context = djee.Context.of(canvasId);
+        this.context = wgl.Context.of(canvasId);
 
         this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
         this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);

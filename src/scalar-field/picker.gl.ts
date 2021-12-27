@@ -1,26 +1,26 @@
 import { aether, gear } from "/gen/libs.js"
-import * as djee from "../djee/all.js"
+import { wgl } from "../djee/index.js"
 import { GLView } from "./view.gl.js"
 import { Picker } from "./view.js"
 
 export class GLPicker implements Picker {
 
-    private program: djee.Program
-    private frameBuffer: djee.FrameBuffer
-    private posAttribute: djee.Attribute
-    private mvpMatrixUniform: djee.Uniform
+    private program: wgl.Program
+    private frameBuffer: wgl.FrameBuffer
+    private posAttribute: wgl.Attribute
+    private mvpMatrixUniform: wgl.Uniform
 
     constructor(
         private mainView: GLView,
         vertexShader: string,
         fragmentShader: string,
-        private vertices: () => djee.AttributesBuffer,
+        private vertices: () => wgl.AttributesBuffer,
     ) {
         const context = mainView.context
 
         this.program = context.link(
-            context.shader(djee.ShaderType.VertexShader, vertexShader),
-            context.shader(djee.ShaderType.FragmentShader, fragmentShader),
+            context.shader(wgl.ShaderType.VertexShader, vertexShader),
+            context.shader(wgl.ShaderType.FragmentShader, fragmentShader),
         )
         this.program.use()
 
@@ -87,7 +87,7 @@ export class GLPicker implements Picker {
 
 }
 
-export async function picker(mainView: GLView, vertices: () => djee.AttributesBuffer): Promise<Picker> {
+export async function picker(mainView: GLView, vertices: () => wgl.AttributesBuffer): Promise<Picker> {
     const shaders = await gear.fetchTextFiles({
         vertexShader: "picker.vert", 
         fragmentShader: "picker.frag"

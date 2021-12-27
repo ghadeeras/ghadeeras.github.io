@@ -22,7 +22,8 @@ export class Device {
     loadShaderModule(shaderName, basePath = "/shaders") {
         return __awaiter(this, void 0, void 0, function* () {
             const shaderCodes = yield gear.fetchTextFiles({ shader: shaderName }, basePath);
-            const shaderModule = new ShaderModule(this, shaderCodes["shader"]);
+            const shaderCode = shaderCodes["shader"]; // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
+            const shaderModule = new ShaderModule(this, shaderCode);
             if (yield shaderModule.hasCompilationErrors()) {
                 throw new Error("Module compilation failed!");
             }
