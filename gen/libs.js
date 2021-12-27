@@ -1,5 +1,5 @@
-import * as ether_1 from "/ether/latest/index.js";
-export { ether_1 as ether };
+import * as aether_1 from "/aether/latest/index.js";
+export { aether_1 as aether };
 import * as gear_1 from "/gear/latest/index.js";
 export { gear_1 as gear };
 import * as languasaurus_1 from "/languasaurus/latest/index.js";

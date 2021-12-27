@@ -1,10 +1,10 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 
 type RendererInputs = {
-    matrices: gear.Value<ether.Mat<4>[]>
-    rotation: gear.Value<ether.Mat<4>>
-    lightPosition: gear.Value<ether.Vec<3>>
+    matrices: gear.Value<aether.Mat<4>[]>
+    rotation: gear.Value<aether.Mat<4>>
+    lightPosition: gear.Value<aether.Vec<3>>
     color: gear.Value<[hue: number, saturation: number]>
     shininess: gear.Value<number>
     fogginess: gear.Value<number>
@@ -30,9 +30,9 @@ export class Renderer {
     private matrices: number[][];
     private lastTime: number = performance.now()
 
-    private translationDown = ether.mat4.translation([0, -2, 0]);
+    private translationDown = aether.mat4.translation([0, -2, 0]);
 
-    constructor(vertexShaderCode: string, fragmentShaderCode: string, readonly proj: ether.Mat<4>, readonly view: ether.Mat<4>, inputSuppliers: gear.Supplier<RendererInputs>) {
+    constructor(vertexShaderCode: string, fragmentShaderCode: string, readonly proj: aether.Mat<4>, readonly view: aether.Mat<4>, inputSuppliers: gear.Supplier<RendererInputs>) {
         const inputs = inputSuppliers()
         this.context = djee.Context.of("canvas-gl");
 
@@ -60,33 +60,33 @@ export class Renderer {
         this.fogginess = program.uniform("fogginess");
         this.twist = program.uniform("twist");
 
-        this.matView.data = ether.mat4.columnMajorArray(this.view);
-        this.matProjection.data = ether.mat4.columnMajorArray(this.proj);
+        this.matView.data = aether.mat4.columnMajorArray(this.view);
+        this.matProjection.data = aether.mat4.columnMajorArray(this.proj);
         this.matrices = [];
 
         inputs.matrices.attach(matrices => {
-            this.matrices = matrices.map(m => ether.mat4.columnMajorArray(m))
+            this.matrices = matrices.map(m => aether.mat4.columnMajorArray(m))
         })
 
-        inputs.rotation.map(toMat3).defaultsTo(ether.mat3.identity()).attach(matrix => {
-            this.matModel.data = ether.mat4.columnMajorArray(ether.mat4.translated(matrix, [0, +2, 0]))
+        inputs.rotation.map(toMat3).defaultsTo(aether.mat3.identity()).attach(matrix => {
+            this.matModel.data = aether.mat4.columnMajorArray(aether.mat4.translated(matrix, [0, +2, 0]))
         })
 
-        inputs.lightPosition.defaultsTo(ether.vec3.of(4, 4, 4)).attach(pos => {
+        inputs.lightPosition.defaultsTo(aether.vec3.of(4, 4, 4)).attach(pos => {
             this.lightPosition.data = pos
         })
 
-        const redVec: ether.Vec<2> = [1, 0];
-        const greenVec: ether.Vec<2> = [Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3)];
-        const blueVec: ether.Vec<2> = [Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3)];
+        const redVec: aether.Vec<2> = [1, 0];
+        const greenVec: aether.Vec<2> = [Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3)];
+        const blueVec: aether.Vec<2> = [Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3)];
         inputs.color.defaultsTo([0.55, 0.8]).attach(([hue, saturation]) => {
             const hueAngle = 2 * Math.PI * hue;
-            const hueVec = ether.vec2.of(Math.cos(hueAngle), Math.sin(hueAngle))
-            const red = (ether.vec2.dot(redVec, hueVec) + 1) / 2
-            const green = (ether.vec2.dot(greenVec, hueVec) + 1) / 2
-            const blue = (ether.vec2.dot(blueVec, hueVec) + 1) / 2
+            const hueVec = aether.vec2.of(Math.cos(hueAngle), Math.sin(hueAngle))
+            const red = (aether.vec2.dot(redVec, hueVec) + 1) / 2
+            const green = (aether.vec2.dot(greenVec, hueVec) + 1) / 2
+            const blue = (aether.vec2.dot(blueVec, hueVec) + 1) / 2
             const max = Math.max(red, green, blue)
-            this.color.data = ether.vec3.mix(saturation, [red / max, green / max, blue / max], [1, 1, 1])
+            this.color.data = aether.vec3.mix(saturation, [red / max, green / max, blue / max], [1, 1, 1])
         })
 
         inputs.shininess.defaultsTo(0).attach(shininess => {
@@ -142,9 +142,9 @@ export class Renderer {
     }
 
 }
-function toMat3(matrix: ether.Mat<4>) {
-    const vs = matrix.map(v => ether.vec3.swizzle(v, 0, 1, 2));
-    const m: ether.Mat<3> = [vs[0], vs[1], vs[2]];
+function toMat3(matrix: aether.Mat<4>) {
+    const vs = matrix.map(v => aether.vec3.swizzle(v, 0, 1, 2));
+    const m: aether.Mat<3> = [vs[0], vs[1], vs[2]];
     return m;
 }
 
@@ -160,7 +160,7 @@ function cone(radiusTop: number, radiusBottom: number, height: number, stacks: n
             const z = Math.cos(2 * Math.PI * j / slices);
             const x = Math.sin(2 * Math.PI * j / slices);
 
-            const n = ether.vec3.unit([x, slope, z]);
+            const n = aether.vec3.unit([x, slope, z]);
             result.push(
                 x * r2, y2, z * r2, ...n,
                 x * r1, y1, z * r1, ...n
@@ -170,7 +170,7 @@ function cone(radiusTop: number, radiusBottom: number, height: number, stacks: n
     return result;
 }
 
-export async function renderer(proj: ether.Mat<4>, view: ether.Mat<4>, inputSuppliers: gear.Supplier<RendererInputs>) {
+export async function renderer(proj: aether.Mat<4>, view: aether.Mat<4>, inputSuppliers: gear.Supplier<RendererInputs>) {
     const shaders = await gear.fetchTextFiles({
         vertexShaderCode: "tree.vert",
         fragmentShaderCode: "tree.frag"

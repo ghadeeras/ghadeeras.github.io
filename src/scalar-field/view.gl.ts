@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gl.js"
@@ -27,10 +27,10 @@ export class GLView implements v.View {
 
     private _frame: null | (() => void) = null
 
-    private _matPositions: ether.Mat<4> = ether.mat4.identity()
-    private _matNormals: ether.Mat<4> = ether.mat4.identity()
-    private _matView: ether.Mat<4> = ether.mat4.identity()
-    private _globalLightPosition: ether.Vec<4> = [2, 2, 2, 1]
+    private _matPositions: aether.Mat<4> = aether.mat4.identity()
+    private _matNormals: aether.Mat<4> = aether.mat4.identity()
+    private _matView: aether.Mat<4> = aether.mat4.identity()
+    private _globalLightPosition: aether.Vec<4> = [2, 2, 2, 1]
 
     constructor(
         canvasId: string,
@@ -58,10 +58,10 @@ export class GLView implements v.View {
         this._lightRadius = this.program.uniform("lightRadius")
         this._fogginess = this.program.uniform("fogginess")
 
-        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.identity())
-        this._matModelNormals.data = ether.mat4.columnMajorArray(ether.mat4.identity())
-        this._matView = ether.mat4.identity()
-        this._matProjection.data = ether.mat4.columnMajorArray(ether.mat4.identity())
+        this._matModelPositions.data = aether.mat4.columnMajorArray(aether.mat4.identity())
+        this._matModelNormals.data = aether.mat4.columnMajorArray(aether.mat4.identity())
+        this._matView = aether.mat4.identity()
+        this._matProjection.data = aether.mat4.columnMajorArray(aether.mat4.identity())
 
         this._color.data = [0.2, 0.4, 0.8, 1.0]
         this._shininess.data = [0.5]
@@ -94,46 +94,46 @@ export class GLView implements v.View {
         gl.clearColor(1, 1, 1, 1)
     }
 
-    setMatModel(modelPositions: ether.Mat<4>, modelNormals: ether.Mat<4> = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelPositions))
+        this._matModelPositions.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelPositions))
         this._matModelNormals.data = modelPositions === modelNormals ? 
             this._matModelPositions.data :
-            ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelNormals))
+            aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals))
     }
 
-    get matPositions(): ether.Mat<4> {
+    get matPositions(): aether.Mat<4> {
         return this._matPositions
     }
 
-    get matNormals(): ether.Mat<4> {
+    get matNormals(): aether.Mat<4> {
         return this._matNormals
     }
 
-    get matView(): ether.Mat<4> {
+    get matView(): aether.Mat<4> {
         return this._matView
     }    
 
-    set matView(m: ether.Mat<4>) {
+    set matView(m: aether.Mat<4>) {
         this._matView = m
         this.lightPosition = this._globalLightPosition
     }    
 
-    get matProjection(): ether.Mat<4> {
-        return ether.mat4.from(this._matProjection.data)
+    get matProjection(): aether.Mat<4> {
+        return aether.mat4.from(this._matProjection.data)
     }
 
-    set matProjection(m: ether.Mat<4>) {
-        this._matProjection.data = ether.mat4.columnMajorArray(m)
+    set matProjection(m: aether.Mat<4>) {
+        this._matProjection.data = aether.mat4.columnMajorArray(m)
     }
 
-    get color(): ether.Vec<4> {
-        return ether.vec4.from(this._color.data)
+    get color(): aether.Vec<4> {
+        return aether.vec4.from(this._color.data)
     }
 
-    set color(c: ether.Vec<4>) {
+    set color(c: aether.Vec<4>) {
         this._color.data = c
     }
 
@@ -145,13 +145,13 @@ export class GLView implements v.View {
         this._shininess.data = [s]
     }
 
-    get lightPosition(): ether.Vec<4> {
+    get lightPosition(): aether.Vec<4> {
         return this._globalLightPosition
     }
 
-    set lightPosition(p: ether.Vec<4>) {
+    set lightPosition(p: aether.Vec<4>) {
         this._globalLightPosition = p
-        this._lightPosition.data = ether.vec4.add(this._matView[3], p).slice(0, 3)
+        this._lightPosition.data = aether.vec4.add(this._matView[3], p).slice(0, 3)
     }
 
     get lightRadius(): number {

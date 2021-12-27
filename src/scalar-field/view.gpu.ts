@@ -1,4 +1,4 @@
-import { ether } from "/gen/libs.js"
+import { aether } from "/gen/libs.js"
 import * as gpu from "../djee/gpu/index.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gpu.js"
@@ -34,10 +34,10 @@ export class GPUView implements v.View {
 
     private frame: () => void
 
-    private _matPositions: ether.Mat<4> = ether.mat4.identity()
-    private _matNormals: ether.Mat<4> = ether.mat4.identity()
-    private _matView: ether.Mat<4> = ether.mat4.identity()
-    private _lightPosition: ether.Vec<4> = [2, 2, 2, 1]
+    private _matPositions: aether.Mat<4> = aether.mat4.identity()
+    private _matNormals: aether.Mat<4> = aether.mat4.identity()
+    private _matView: aether.Mat<4> = aether.mat4.identity()
+    private _lightPosition: aether.Vec<4> = [2, 2, 2, 1]
 
     constructor(
         private device: gpu.Device,
@@ -71,31 +71,31 @@ export class GPUView implements v.View {
         this.frame()
     }
 
-    get matPositions(): ether.Mat<4> {
+    get matPositions(): aether.Mat<4> {
         return this._matPositions
     }
 
-    get matNormals(): ether.Mat<4> {
+    get matNormals(): aether.Mat<4> {
         return this._matNormals
     }
 
-    get matView(): ether.Mat<4> {
+    get matView(): aether.Mat<4> {
         return this._matView
     }    
 
-    set matView(m: ether.Mat<4>) {
+    set matView(m: aether.Mat<4>) {
         this._matView = m
         this.lightPosition = this._lightPosition
     }    
 
-    setMatModel(modelPositions: ether.Mat<4>, modelNormals: ether.Mat<4> = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        const matPositions = ether.mat4.mul(this.matView, modelPositions)
+        const matPositions = aether.mat4.mul(this.matView, modelPositions)
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            ether.mat4.mul(this.matView, modelNormals)
+            aether.mat4.mul(this.matView, modelNormals)
 
         this.setMember(this.uniformsStruct.members.mat, {
             positions: matPositions,
@@ -103,29 +103,29 @@ export class GPUView implements v.View {
         })
     }
 
-    get matProjection(): ether.Mat<4> {
+    get matProjection(): aether.Mat<4> {
         return this.getMember(this.uniformsStruct.members.projectionMat)
     }
 
-    set matProjection(m: ether.Mat<4>) {
+    set matProjection(m: aether.Mat<4>) {
         this.setMember(this.uniformsStruct.members.projectionMat, m)
     }
 
-    get color(): ether.Vec<4> {
+    get color(): aether.Vec<4> {
         return this.getMember(this.uniformsStruct.members.color)
     }
 
-    set color(c: ether.Vec<4>) {
+    set color(c: aether.Vec<4>) {
         this.setMember(this.uniformsStruct.members.color, c)
     }
 
-    get lightPosition(): ether.Vec<4> {
+    get lightPosition(): aether.Vec<4> {
         return this._lightPosition
     }
 
-    set lightPosition(p: ether.Vec<4>) {
+    set lightPosition(p: aether.Vec<4>) {
         this._lightPosition = p
-        this.setMember(this.uniformsStruct.members.lightPos, ether.vec4.add(this._matView[3], p))
+        this.setMember(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p))
     }
 
     get shininess(): number {

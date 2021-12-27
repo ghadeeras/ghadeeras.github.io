@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 
 export interface FlattenedSierpinski {
     corners: number[];
@@ -8,9 +8,9 @@ export interface FlattenedSierpinski {
 
 interface Sierpinski {
     depth: number;
-    a: ether.Vec<2>;
-    b: ether.Vec<2>;
-    c: ether.Vec<2>;
+    a: aether.Vec<2>;
+    b: aether.Vec<2>;
+    c: aether.Vec<2>;
 }
 
 const defaultSierpinski: Sierpinski = {
@@ -22,9 +22,9 @@ const defaultSierpinski: Sierpinski = {
 
 export function sierpinski(
     depth: gear.Value<number> = new gear.Value(),
-    a: gear.Value<ether.Vec<2>> = new gear.Value(), 
-    b: gear.Value<ether.Vec<2>> = new gear.Value(), 
-    c: gear.Value<ether.Vec<2>> = new gear.Value(),
+    a: gear.Value<aether.Vec<2>> = new gear.Value(), 
+    b: gear.Value<aether.Vec<2>> = new gear.Value(), 
+    c: gear.Value<aether.Vec<2>> = new gear.Value(),
 ): gear.Value<FlattenedSierpinski> {
     const sierpinski: Sierpinski = { ...defaultSierpinski }
     return gear.Value.from<Sierpinski>(
@@ -39,12 +39,12 @@ function from<T>(...sources: gear.Value<T>[]): gear.Value<T> {
     return gear.Value.from(...sources);
 }
 
-function vec(angleInDegrees: number): ether.Vec<2> {
+function vec(angleInDegrees: number): aether.Vec<2> {
     const angle = Math.PI * angleInDegrees / 180
     return [Math.cos(angle), Math.sin(angle)];
 }
     
-export function tesselatedTriangle(a: ether.Vec<2>, b: ether.Vec<2>, c: ether.Vec<2>, depth: number) {
+export function tesselatedTriangle(a: aether.Vec<2>, b: aether.Vec<2>, c: aether.Vec<2>, depth: number) {
     const result: FlattenedSierpinski = {
         corners: [],
         centers: [],
@@ -55,9 +55,9 @@ export function tesselatedTriangle(a: ether.Vec<2>, b: ether.Vec<2>, c: ether.Ve
 }
 
 function doTesselateTriangle(
-    a: ether.Vec<2>, 
-    b: ether.Vec<2>, 
-    c: ether.Vec<2>, 
+    a: aether.Vec<2>, 
+    b: aether.Vec<2>, 
+    c: aether.Vec<2>, 
     depth: number, 
     corners: number[],
     centers: number[]
@@ -65,9 +65,9 @@ function doTesselateTriangle(
     if (depth < 1) {
         corners.push(...a, ...b, ...c);
     } else {
-        const ab = ether.vec2.mix(0.5, a, b);
-        const bc = ether.vec2.mix(0.5, b, c);
-        const ca = ether.vec2.mix(0.5, c, a);
+        const ab = aether.vec2.mix(0.5, a, b);
+        const bc = aether.vec2.mix(0.5, b, c);
+        const ca = aether.vec2.mix(0.5, c, a);
         const newDepth = depth - 1;
         doTesselateTriangle(a, ab, ca, newDepth, corners, centers);
         doTesselateTriangle(ab, b, bc, newDepth, corners, centers);

@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 export class ModelMatrixDragging {
     constructor(matrix, projViewMatrix, speed = 1) {
         this.matrix = matrix;
@@ -9,24 +9,24 @@ export class ModelMatrixDragging {
         return this.matrix();
     }
     mapper(matrix, from) {
-        const invProjViewMatrix = ether.mat4.inverse(this.projViewMatrix());
-        const actualFrom = ether.vec3.swizzle(ether.mat4.apply(invProjViewMatrix, [...from, -1, 1]), 0, 1, 2);
-        const speed = this.speed * ether.vec3.length(actualFrom);
+        const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix());
+        const actualFrom = aether.vec3.swizzle(aether.mat4.apply(invProjViewMatrix, [...from, -1, 1]), 0, 1, 2);
+        const speed = this.speed * aether.vec3.length(actualFrom);
         return to => {
-            const actualTo = ether.vec3.swizzle(ether.mat4.apply(invProjViewMatrix, [...to, -1, 1]), 0, 1, 2);
+            const actualTo = aether.vec3.swizzle(aether.mat4.apply(invProjViewMatrix, [...to, -1, 1]), 0, 1, 2);
             const delta = this.delta(actualFrom, actualTo, speed);
-            return ether.mat4.mul(delta, matrix);
+            return aether.mat4.mul(delta, matrix);
         };
     }
     finalize(matrix) {
-        const s = Math.pow(ether.mat4.determinant(matrix), (1 / 3));
-        const x = ether.vec4.unit(matrix[0]);
-        const y = ether.vec4.unit(ether.vec4.subAll(matrix[1], ether.vec4.project(matrix[1], x)));
-        const z = ether.vec4.unit(ether.vec4.subAll(matrix[2], ether.vec4.project(matrix[2], x), ether.vec4.project(matrix[2], y)));
+        const s = Math.pow(aether.mat4.determinant(matrix), (1 / 3));
+        const x = aether.vec4.unit(matrix[0]);
+        const y = aether.vec4.unit(aether.vec4.subAll(matrix[1], aether.vec4.project(matrix[1], x)));
+        const z = aether.vec4.unit(aether.vec4.subAll(matrix[2], aether.vec4.project(matrix[2], x), aether.vec4.project(matrix[2], y)));
         return [
-            ether.vec4.scale(x, s),
-            ether.vec4.scale(y, s),
-            ether.vec4.scale(z, s),
+            aether.vec4.scale(x, s),
+            aether.vec4.scale(y, s),
+            aether.vec4.scale(z, s),
             matrix[3]
         ];
     }
@@ -36,7 +36,7 @@ export class RotationDragging extends ModelMatrixDragging {
         super(matrix, projViewMatrix, speed);
     }
     delta(actualFrom, actualTo, speed) {
-        return ether.mat4.crossProdRotation(actualFrom, actualTo, speed);
+        return aether.mat4.crossProdRotation(actualFrom, actualTo, speed);
     }
 }
 export class TranslationDragging extends ModelMatrixDragging {
@@ -44,16 +44,16 @@ export class TranslationDragging extends ModelMatrixDragging {
         super(matrix, projViewMatrix, speed);
     }
     delta(actualFrom, actualTo, speed) {
-        return ether.mat4.translation(ether.vec3.scale(ether.vec3.sub(actualTo, actualFrom), speed));
+        return aether.mat4.translation(aether.vec3.scale(aether.vec3.sub(actualTo, actualFrom), speed));
     }
 }
 export class ScaleDragging extends ModelMatrixDragging {
     constructor(matrix, speed = 1) {
-        super(matrix, () => ether.mat4.identity(), speed);
+        super(matrix, () => aether.mat4.identity(), speed);
     }
     delta(actualFrom, actualTo, speed) {
         const s = Math.pow(2, speed * (actualTo[1] - actualFrom[1]));
-        return ether.mat4.scaling(s, s, s);
+        return aether.mat4.scaling(s, s, s);
     }
 }
 export class RatioDragging {

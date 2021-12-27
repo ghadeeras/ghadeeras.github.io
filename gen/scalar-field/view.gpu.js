@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { picker } from "./picker.gpu.js";
 export class GPUView {
@@ -26,9 +26,9 @@ export class GPUView {
             fogginess: gpu.f32,
         });
         this.uniformsView = this.uniformsStruct.view();
-        this._matPositions = ether.mat4.identity();
-        this._matNormals = ether.mat4.identity();
-        this._matView = ether.mat4.identity();
+        this._matPositions = aether.mat4.identity();
+        this._matNormals = aether.mat4.identity();
+        this._matView = aether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
         this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
         this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride);
@@ -65,13 +65,13 @@ export class GPUView {
         this._matView = m;
         this.lightPosition = this._lightPosition;
     }
-    setMatModel(modelPositions, modelNormals = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions, modelNormals = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
         this._matNormals = modelNormals;
-        const matPositions = ether.mat4.mul(this.matView, modelPositions);
+        const matPositions = aether.mat4.mul(this.matView, modelPositions);
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            ether.mat4.mul(this.matView, modelNormals);
+            aether.mat4.mul(this.matView, modelNormals);
         this.setMember(this.uniformsStruct.members.mat, {
             positions: matPositions,
             normals: matNormals
@@ -94,7 +94,7 @@ export class GPUView {
     }
     set lightPosition(p) {
         this._lightPosition = p;
-        this.setMember(this.uniformsStruct.members.lightPos, ether.vec4.add(this._matView[3], p));
+        this.setMember(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p));
     }
     get shininess() {
         return this.getMember(this.uniformsStruct.members.shininess);

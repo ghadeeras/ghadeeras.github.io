@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from '/gen/libs.js';
+import { aether, gear } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { Universe } from './universe.js';
@@ -23,9 +23,9 @@ export class Renderer {
         this.bodySurfaceVertex = gpu.vertex({
             position: gpu.f32.x3
         });
-        this._projectionMatrix = ether.mat4.projection(1);
-        this._viewMatrix = ether.mat4.lookAt([0, 0, -24]);
-        this._modelMatrix = ether.mat4.identity();
+        this._projectionMatrix = aether.mat4.projection(1);
+        this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
+        this._modelMatrix = aether.mat4.identity();
         this.uniformsStruct = gpu.struct({
             mvpMatrix: gpu.f32.x4.x4,
             radiusScale: gpu.f32,
@@ -52,7 +52,7 @@ export class Renderer {
         this.bindGroup = this.device.createBindGroup(bindGroupLayout, [this.uniformsBuffer]);
     }
     get projectionViewMatrix() {
-        return ether.mat4.mul(this.projectionMatrix, this.viewMatrix);
+        return aether.mat4.mul(this.projectionMatrix, this.viewMatrix);
     }
     get projectionMatrix() {
         return this._projectionMatrix;
@@ -92,7 +92,7 @@ export class Renderer {
         this.updateUniformsData.perform();
     }
     mvpMatrix() {
-        return ether.mat4.mul(ether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
+        return aether.mat4.mul(aether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
     }
     createPipeline(shaderModule, canvas, mesh) {
         return shaderModule.device.device.createRenderPipeline({

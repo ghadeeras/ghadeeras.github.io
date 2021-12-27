@@ -9,4 +9,4 @@ export function asMat(array, offset = 0) {
         asVec(array, offset + 12)
     ];
 }
-//# sourceMappingURL=ether.js.map
+//# sourceMappingURL=aether.js.map

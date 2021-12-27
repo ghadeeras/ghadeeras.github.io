@@ -7,15 +7,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 import { picker } from "./picker.gl.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this._frame = null;
-        this._matPositions = ether.mat4.identity();
-        this._matNormals = ether.mat4.identity();
-        this._matView = ether.mat4.identity();
+        this._matPositions = aether.mat4.identity();
+        this._matNormals = aether.mat4.identity();
+        this._matView = aether.mat4.identity();
         this._globalLightPosition = [2, 2, 2, 1];
         this.context = djee.Context.of(canvasId);
         this.program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
@@ -30,10 +30,10 @@ export class GLView {
         this._lightPosition = this.program.uniform("lightPosition");
         this._lightRadius = this.program.uniform("lightRadius");
         this._fogginess = this.program.uniform("fogginess");
-        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.identity());
-        this._matModelNormals.data = ether.mat4.columnMajorArray(ether.mat4.identity());
-        this._matView = ether.mat4.identity();
-        this._matProjection.data = ether.mat4.columnMajorArray(ether.mat4.identity());
+        this._matModelPositions.data = aether.mat4.columnMajorArray(aether.mat4.identity());
+        this._matModelNormals.data = aether.mat4.columnMajorArray(aether.mat4.identity());
+        this._matView = aether.mat4.identity();
+        this._matProjection.data = aether.mat4.columnMajorArray(aether.mat4.identity());
         this._color.data = [0.2, 0.4, 0.8, 1.0];
         this._shininess.data = [0.5];
         this._globalLightPosition = [2, 2, 2, 1];
@@ -57,13 +57,13 @@ export class GLView {
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
     }
-    setMatModel(modelPositions, modelNormals = ether.mat4.transpose(ether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions, modelNormals = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
         this._matNormals = modelNormals;
-        this._matModelPositions.data = ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelPositions));
+        this._matModelPositions.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelPositions));
         this._matModelNormals.data = modelPositions === modelNormals ?
             this._matModelPositions.data :
-            ether.mat4.columnMajorArray(ether.mat4.mul(this._matView, modelNormals));
+            aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals));
     }
     get matPositions() {
         return this._matPositions;
@@ -79,13 +79,13 @@ export class GLView {
         this.lightPosition = this._globalLightPosition;
     }
     get matProjection() {
-        return ether.mat4.from(this._matProjection.data);
+        return aether.mat4.from(this._matProjection.data);
     }
     set matProjection(m) {
-        this._matProjection.data = ether.mat4.columnMajorArray(m);
+        this._matProjection.data = aether.mat4.columnMajorArray(m);
     }
     get color() {
-        return ether.vec4.from(this._color.data);
+        return aether.vec4.from(this._color.data);
     }
     set color(c) {
         this._color.data = c;
@@ -101,7 +101,7 @@ export class GLView {
     }
     set lightPosition(p) {
         this._globalLightPosition = p;
-        this._lightPosition.data = ether.vec4.add(this._matView[3], p).slice(0, 3);
+        this._lightPosition.data = aether.vec4.add(this._matView[3], p).slice(0, 3);
     }
     get lightRadius() {
         return this._lightRadius.data[0];

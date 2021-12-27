@@ -1,4 +1,4 @@
-import { ether } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 const weights = [0.5, 1, 0.5];
 export class Carving {
     constructor(currentStone, mvpMat, picker, scalarFieldModule, brushSampler) {
@@ -37,12 +37,12 @@ export class Carving {
                 for (let k = -1; k <= 1; k++) {
                     const www = ww * weights[k + 1];
                     const sample = b.get(x + i * d, y + j * d, z + k * d);
-                    ether.mutVec4.add(result, ether.vec4.scale(sample, www));
+                    aether.mutVec4.add(result, aether.vec4.scale(sample, www));
                     weightsSum += www;
                 }
             }
         }
-        return ether.mutVec4.scale(result, 1 / weightsSum);
+        return aether.mutVec4.scale(result, 1 / weightsSum);
     }
     undo() {
         const currentStone = this.prevStone;
@@ -58,18 +58,18 @@ export class Carving {
         const [mouseX0, mouseY0] = from;
         const originalSample = {
             hit: false,
-            position: ether.vec3.of(0, 0, 0),
-            normal: ether.vec3.of(0, 0, 0),
-            projection: ether.mat3.identity(),
-            rejection: ether.mat3.identity(),
+            position: aether.vec3.of(0, 0, 0),
+            normal: aether.vec3.of(0, 0, 0),
+            projection: aether.mat3.identity(),
+            rejection: aether.mat3.identity(),
         };
         this.picker.pick(this.mvpMat(), mouseX0, mouseY0).then(pos => {
             originalSample.hit = pos[3] == 1;
-            originalSample.position = ether.vec3.from(pos);
-            const field = ether.vec3.from(stone.get(...originalSample.position));
-            originalSample.normal = ether.vec3.unit(ether.vec3.from(field));
-            originalSample.projection = ether.mat3.projectionOn(originalSample.normal);
-            originalSample.rejection = ether.mat3.sub(ether.mat3.identity(), originalSample.projection);
+            originalSample.position = aether.vec3.from(pos);
+            const field = aether.vec3.from(stone.get(...originalSample.position));
+            originalSample.normal = aether.vec3.unit(aether.vec3.from(field));
+            originalSample.projection = aether.mat3.projectionOn(originalSample.normal);
+            originalSample.rejection = aether.mat3.sub(aether.mat3.identity(), originalSample.projection);
         });
         const maxLevel = this.brushes.length - 1;
         const minScale = this.brushes[maxLevel].resolution / this.brushes[0].resolution;
@@ -79,20 +79,20 @@ export class Carving {
                 const [x0, y0, z0] = originalSample.position;
                 const depth = sat(8 * Math.abs(mouseY - mouseY0), minScale, maxScale);
                 const width = sat(8 * Math.abs(mouseX - mouseX0), minScale, maxScale);
-                const mat = ether.mat3.add(ether.mat3.scale(originalSample.projection, 4 / depth), ether.mat3.scale(originalSample.rejection, 4 / width));
+                const mat = aether.mat3.add(aether.mat3.scale(originalSample.projection, 4 / depth), aether.mat3.scale(originalSample.rejection, 4 / width));
                 const widthLevel = -Math.log2(width);
                 const depthLevel = -Math.log2(depth);
                 const brush = this.brushes[Math.floor(Math.max(widthLevel, depthLevel, 0))];
                 this.nextStone.sampler = (x, y, z) => {
                     const stoneSample = stone.get(x, y, z);
-                    const brushPosition = ether.mat3.apply(mat, [x - x0, y - y0, z - z0]);
+                    const brushPosition = aether.mat3.apply(mat, [x - x0, y - y0, z - z0]);
                     const brushSample = brush.get(...brushPosition);
-                    const brushGradient = ether.mat3.apply(mat, ether.vec3.from(brushSample));
+                    const brushGradient = aether.mat3.apply(mat, aether.vec3.from(brushSample));
                     const brushValue = brushSample[3];
                     const distortedBrush = [...brushGradient, brushValue];
                     return mouseY > mouseY0 ?
-                        ether.vec4.add(stoneSample, distortedBrush) :
-                        ether.vec4.sub(stoneSample, distortedBrush);
+                        aether.vec4.add(stoneSample, distortedBrush) :
+                        aether.vec4.sub(stoneSample, distortedBrush);
                 };
             }
             return this.nextStone;

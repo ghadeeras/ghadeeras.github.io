@@ -1,12 +1,12 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
 import * as misc from "../utils/misc.js"
 import { Carving } from "./carving.js"
 
-const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = ether.mat4.projection(4)
+const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+const projectionMatrix = aether.mat4.projection(4)
 
 export function init() {
     window.onload = doInit
@@ -19,7 +19,7 @@ async function doInit() {
 
     const picker = await view.picker()
 
-    const scalarFieldModule = await ether.loadScalarFieldModule()
+    const scalarFieldModule = await aether.loadScalarFieldModule()
     const stone = scalarFieldModule.newInstance()
     stone.resolution = 64
     stone.sampler = field
@@ -33,9 +33,9 @@ class Toy {
     private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
     private carving: Carving
 
-    constructor(private stone: ether.ScalarFieldInstance, private scalarFieldModule: ether.ScalarFieldModule, view: v.View, picker: v.Picker) {
+    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker) {
         const canvas = gear.elementEvents("canvas-gl")
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
 
         this.carving = new Carving(
@@ -85,13 +85,13 @@ class Toy {
                 .then(gear.drag(rotationDragging))
                 .defaultsTo(rotationDragging.currentValue()),
 
-            matView: gear.Value.from<ether.Mat<4>>()
+            matView: gear.Value.from<aether.Mat<4>>()
                 .defaultsTo(view.matView),
             
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => ether.mat4.projection(ratio)),
+                .map(ratio => aether.mat4.projection(ratio)),
 
             color: contourValue
                 .map(v => this.fieldColor(v)),
@@ -108,10 +108,10 @@ class Toy {
             
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
-                .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-                .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => ether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(ether.vec4.of(0, 0, 2, 1)),
+                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
+                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
+                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
             
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
@@ -140,11 +140,11 @@ class Toy {
         return n < min ? min : (n > max ? max : n)
     }
 
-    fieldColor(contourValue: number = this.stone.contourValue): ether.Vec<4> {
+    fieldColor(contourValue: number = this.stone.contourValue): aether.Vec<4> {
         return [0.5, contourValue, 0.5, 1] 
     }
 
-    contourSurfaceDataForStone(stone: ether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
+    contourSurfaceDataForStone(stone: aether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
         this.stone = stone
         this.meshComputer.perform().then(meshConsumer)
     }
@@ -204,7 +204,7 @@ class Toy {
         return buffer
     }
 
-    private deserializeStone(buffer: ArrayBuffer): ether.ScalarFieldInstance {
+    private deserializeStone(buffer: ArrayBuffer): aether.ScalarFieldInstance {
         const vectorSize = 4
         const headerSize = 4
         const header = new Uint16Array(buffer, 0, headerSize)
@@ -230,8 +230,8 @@ class Toy {
             const k = Math.round((z + 1) * zRes / 2)
             const offset = ((k * yRes + j) * xRes + i) * vectorSize
             return offset < samples.length ? 
-                ether.vec4.from(samples, offset) : 
-                ether.vec4.of(0, 0, 0, 0)
+                aether.vec4.from(samples, offset) : 
+                aether.vec4.of(0, 0, 0, 0)
         }
         const newStone = this.carving.undo()
         newStone.resolution = stone.resolution
@@ -276,18 +276,18 @@ function asyncEffect<A, B>(mapper: gear.Mapper<A, Promise<B>>): gear.Effect<A, B
 
 const twoPi = 2 * Math.PI
 
-function modelViewProjectionMatrixOf(view: v.View): ether.Mat4 {
-    return ether.mat4.mul(
+function modelViewProjectionMatrixOf(view: v.View): aether.Mat4 {
+    return aether.mat4.mul(
         view.matProjection,
-        ether.mat4.mul(
+        aether.mat4.mul(
             view.matView,
             view.matPositions
         )
     )
 }
 
-function field(x: number, y: number, z: number): ether.Vec<4> {
-    const l = ether.vec3.length([x, y, z])
+function field(x: number, y: number, z: number): aether.Vec<4> {
+    const l = aether.vec3.length([x, y, z])
     const f = l <= 1 ? 
         l >= 0.5 ? (1 - Math.cos(twoPi * l)) / 2 : 1 : 
         0
@@ -302,8 +302,8 @@ function field(x: number, y: number, z: number): ether.Vec<4> {
     ]
 }
 
-function brush(x: number, y: number, z: number): ether.Vec<4> {
-    const l = ether.vec3.length([x, y, z])
+function brush(x: number, y: number, z: number): aether.Vec<4> {
+    const l = aether.vec3.length([x, y, z])
     const f = l <= 1 ? (1 + Math.cos(Math.PI * l)) / 2 : 0
     const g = l <= 1 ? 
         l > Math.sqrt(Number.EPSILON) ? 

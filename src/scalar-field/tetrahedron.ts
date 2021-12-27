@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import * as dragging from "../utils/dragging.js"
 
@@ -19,22 +19,22 @@ let contourSurfaceBuffer: djee.AttributesBuffer;
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue: number = 0;
 
-let scalarFieldInstance: ether.ScalarFieldInstance 
+let scalarFieldInstance: aether.ScalarFieldInstance 
 
 type Tetrahedron = TetrahedronPoints & TetrahedronGradients & TetrahedronValues
 
 type TetrahedronPoints = {
-    point0: ether.Vec<3>;
-    point1: ether.Vec<3>;
-    point2: ether.Vec<3>;
-    point3: ether.Vec<3>;
+    point0: aether.Vec<3>;
+    point1: aether.Vec<3>;
+    point2: aether.Vec<3>;
+    point3: aether.Vec<3>;
 }
 
 type TetrahedronGradients = {
-    gradient0: ether.Vec<3>;
-    gradient1: ether.Vec<3>;
-    gradient2: ether.Vec<3>;
-    gradient3: ether.Vec<3>;
+    gradient0: aether.Vec<3>;
+    gradient1: aether.Vec<3>;
+    gradient2: aether.Vec<3>;
+    gradient3: aether.Vec<3>;
 }
 
 type TetrahedronValues = {
@@ -44,8 +44,8 @@ type TetrahedronValues = {
     value3: number;
 }
 
-const viewMatrix = ether.mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(2);
+const viewMatrix = aether.mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(2);
 
 export function initTetrahedronDemo() {
     window.onload = () => doInit();
@@ -57,7 +57,7 @@ async function doInit() {
         fragmentShaderCode: "vertexColors.frag"
     }, "/shaders")
 
-    const scalarFieldModule = await ether.loadScalarFieldModule()
+    const scalarFieldModule = await aether.loadScalarFieldModule()
     scalarFieldInstance = scalarFieldModule.newInstance()
     
     context = djee.Context.of("canvas-gl");
@@ -83,9 +83,9 @@ async function doInit() {
     shininess = program.uniform("shininess");
     fogginess = program.uniform("fogginess");
 
-    matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity())
-    matView.data = ether.mat4.columnMajorArray(viewMatrix);
-    matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
+    matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity())
+    matView.data = aether.mat4.columnMajorArray(viewMatrix);
+    matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
 
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
@@ -98,8 +98,8 @@ async function doInit() {
 
     const canvas = gear.elementEvents("canvas-gl");
     const transformer = new dragging.RotationDragging(
-        () => ether.mat4.from(matModel.data), 
-        () => ether.mat4.mul(projectionMatrix, viewMatrix),
+        () => aether.mat4.from(matModel.data), 
+        () => aether.mat4.mul(projectionMatrix, viewMatrix),
         4
     )
 
@@ -118,12 +118,12 @@ async function doInit() {
     
     cases.rotation
         .then(gear.drag(transformer))
-        .defaultsTo(ether.mat4.identity())
-        .attach(m => matModel.data = ether.mat4.columnMajorArray(m))
+        .defaultsTo(aether.mat4.identity())
+        .attach(m => matModel.data = aether.mat4.columnMajorArray(m))
 
     cases.lightPosition
         .then(gear.drag(dragging.positionDragging))
-        .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+        .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
         .defaultsTo([Math.PI / 4, Math.PI / 4])
         .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
         .attach(pos => lightPosition.data = pos)
@@ -170,7 +170,7 @@ async function doInit() {
 type TetrahedronCorner = 0 | 1 | 2 | 3
 type TetrahedronCornerValue = [TetrahedronCorner, number]
 
-function cornerValue(corner: TetrahedronCorner): (xy: ether.Vec<2>) => TetrahedronCornerValue {
+function cornerValue(corner: TetrahedronCorner): (xy: aether.Vec<2>) => TetrahedronCornerValue {
     return ([x, y]) => [corner, y]
 } 
 
@@ -216,14 +216,14 @@ function newTetrahedron(field0: number, field1: number, field2: number, field3: 
         point2: [cos * sin, cos, -sin * sin],
         point3: [cos * sin, cos, +sin * sin]
     };
-    const mat: ether.Mat<4> = [
+    const mat: aether.Mat<4> = [
         [points.point0[0], points.point0[1], points.point0[2], 1],
         [points.point1[0], points.point1[1], points.point1[2], 1],
         [points.point2[0], points.point2[1], points.point2[2], 1],
         [points.point3[0], points.point3[1], points.point3[2], 1]
     ];
-    const matInv = ether.mat4.inverse(mat);
-    const gradient = ether.vec3.swizzle(ether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
+    const matInv = aether.mat4.inverse(mat);
+    const gradient = aether.vec3.swizzle(aether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
     const gradients: TetrahedronGradients = {
         gradient0: gradient,
         gradient1: gradient,
@@ -274,7 +274,7 @@ function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Flo
     const space = scalarFieldInstance.space;
     const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!")
+        throw new Error("Failed to initialize Web Assembly Aether modules!")
     }
     stack.leave();
     stack.enter();
@@ -292,12 +292,12 @@ function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Flo
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): ether.Vec<4> {
+function fieldColor(fieldValue: number, alpha: number = 0.4): aether.Vec<4> {
     return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }
 
-function normalFrom(p1: ether.Vec<3>, p2: ether.Vec<3>, p3: ether.Vec<3>) {
-    const v12 = ether.vec3.sub(p2, p1);
-    const v23 = ether.vec3.sub(p3, p2);
-    return ether.vec3.unit(ether.vec3.cross(v12, v23));
+function normalFrom(p1: aether.Vec<3>, p2: aether.Vec<3>, p3: aether.Vec<3>) {
+    const v12 = aether.vec3.sub(p2, p1);
+    const v23 = aether.vec3.sub(p3, p2);
+    return aether.vec3.unit(aether.vec3.cross(v12, v23));
 }

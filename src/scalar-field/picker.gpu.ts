@@ -1,4 +1,4 @@
-import { ether } from "/gen/libs.js"
+import { aether } from "/gen/libs.js"
 import * as gpu from "../djee/gpu/index.js"
 import { Picker } from "./view.js"
 import { GPUView } from "./view.gpu.js"
@@ -51,7 +51,7 @@ export class GPUPicker implements Picker {
         this.uniformsGroup = this.device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
     }
 
-    async pick(matModelViewProjection: ether.Mat<4>, x: number, y: number): Promise<ether.Vec4> {
+    async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
         this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
 
         this.device.enqueueCommand(encoder => {
@@ -84,7 +84,7 @@ export class GPUPicker implements Picker {
         })
 
         const view = await this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view())
-        return ether.vec4.sub(ether.vec4.scale(ether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1])
+        return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1])
     }
 
 }

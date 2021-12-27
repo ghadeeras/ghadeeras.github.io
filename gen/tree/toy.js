@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { MatricesGenerator } from "./matgen.js";
 import { renderer } from "./renderer.js";
@@ -16,11 +16,11 @@ export function init() {
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const proj = ether.mat4.projection();
-        const view = ether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
-        const modelMatrix = [ether.mat4.identity()];
+        const proj = aether.mat4.projection();
+        const view = aether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
+        const modelMatrix = [aether.mat4.identity()];
         renderer(proj, view, () => {
-            return rendererInputs(modelMatrix, ether.mat4.mul(proj, view));
+            return rendererInputs(modelMatrix, aether.mat4.mul(proj, view));
         });
     });
 }
@@ -56,11 +56,11 @@ function rendererInputs(modelMatrix, projView) {
             .attach(m => modelMatrix[0] = m),
         lightPosition: cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of(Math.PI * (1 - x) / 2, Math.PI * (1 - y) / 2))
-            .map(([x, y]) => ether.vec3.of(4 * Math.cos(x) * Math.sin(y), 4 * Math.cos(y), 4 * Math.sin(x) * Math.sin(y))),
+            .map(([x, y]) => aether.vec2.of(Math.PI * (1 - x) / 2, Math.PI * (1 - y) / 2))
+            .map(([x, y]) => aether.vec3.of(4 * Math.cos(x) * Math.sin(y), 4 * Math.cos(y), 4 * Math.sin(x) * Math.sin(y))),
         color: cases.color
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of((x + 1) / 2, (y + 1) / 2)),
+            .map(([x, y]) => aether.vec2.of((x + 1) / 2, (y + 1) / 2)),
         shininess: cases.shininess
             .then(gear.drag(dragging.positionDragging))
             .map(([x, y]) => (y + 1) / 2),

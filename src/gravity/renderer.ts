@@ -1,4 +1,4 @@
-import { ether, gear } from '/gen/libs.js'
+import { aether, gear } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe } from './universe.js'
@@ -28,9 +28,9 @@ export class Renderer {
 
     private readonly bindGroup: GPUBindGroup
 
-    private _projectionMatrix = ether.mat4.projection(1)
-    private _viewMatrix = ether.mat4.lookAt([0, 0, -24])
-    private _modelMatrix = ether.mat4.identity()
+    private _projectionMatrix = aether.mat4.projection(1)
+    private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
+    private _modelMatrix = aether.mat4.identity()
 
     private readonly uniformsStruct = gpu.struct({
         mvpMatrix: gpu.f32.x4.x4,
@@ -67,7 +67,7 @@ export class Renderer {
     }
 
     get projectionViewMatrix() {
-        return ether.mat4.mul(
+        return aether.mat4.mul(
             this.projectionMatrix,
             this.viewMatrix
         )
@@ -77,7 +77,7 @@ export class Renderer {
         return this._projectionMatrix
     }
 
-    set projectionMatrix(m: ether.Mat<4>) {
+    set projectionMatrix(m: aether.Mat<4>) {
         this._projectionMatrix = m
         this.updateMvpMatrix()
     }
@@ -86,7 +86,7 @@ export class Renderer {
         return this._viewMatrix
     }
 
-    set viewMatrix(m: ether.Mat<4>) {
+    set viewMatrix(m: aether.Mat<4>) {
         this._viewMatrix = m
         this.updateMvpMatrix()
     }
@@ -95,7 +95,7 @@ export class Renderer {
         return this._modelMatrix
     }
 
-    set modelMatrix(m: ether.Mat<4>) {
+    set modelMatrix(m: aether.Mat<4>) {
         this._modelMatrix = m
         this.updateMvpMatrix()
     }
@@ -122,8 +122,8 @@ export class Renderer {
     }
 
     private mvpMatrix() {
-        return ether.mat4.mul(
-            ether.mat4.mul(this._projectionMatrix, this._viewMatrix),
+        return aether.mat4.mul(
+            aether.mat4.mul(this._projectionMatrix, this._viewMatrix),
             this._modelMatrix
         )
     }

@@ -7,19 +7,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as v from "./view.js";
 import * as dragging from "../utils/dragging.js";
 import { save } from "../utils/misc.js";
 import { createModel } from "../djee/gltf.gen.js";
-const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(Math.pow(2, 1.5));
+const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(Math.pow(2, 1.5));
 export function init() {
     window.onload = () => doInit();
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const scalarFieldModule = yield ether.loadScalarFieldModule();
+        const scalarFieldModule = yield aether.loadScalarFieldModule();
         const scalarFieldInstance = scalarFieldModule.newInstance();
         const view = yield v.newView("canvas-gl");
         view.matView = viewMatrix;
@@ -32,7 +32,7 @@ class Toy {
         this.scalarFieldInstance = scalarFieldInstance;
         this.meshComputer = new gear.DeferredComputation(() => this.scalarFieldInstance.vertices);
         const canvas = gear.elementEvents("canvas-gl");
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4);
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4);
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0]);
         const cases = {
             contourValue: gear.Value.from(),
@@ -58,7 +58,7 @@ class Toy {
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => ether.mat4.projection(ratio)),
+                .map(ratio => aether.mat4.projection(ratio)),
             color: contourValue
                 .map(v => this.fieldColor(v)),
             shininess: cases.shininess
@@ -71,10 +71,10 @@ class Toy {
                 .defaultsTo(view.fogginess),
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
-                .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-                .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => ether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(ether.vec4.of(0, 0, 2, 1)),
+                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
+                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
+                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
                 .map(([x, y]) => (y + 1) / 2)

@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee  from "../djee/all.js";
 import { values } from "../djee/utils.js";
 import { ProgramSample } from "./samples.js";
@@ -27,7 +27,7 @@ export type ViewInputs = {
     readonly programSample: gear.Value<ProgramSample>
     readonly mouseXBinding: gear.Value<number>
     readonly mouseYBinding: gear.Value<number>
-    readonly mouseXY: gear.Value<ether.Vec<2>>
+    readonly mouseXY: gear.Value<aether.Vec<2>>
 
 }
 

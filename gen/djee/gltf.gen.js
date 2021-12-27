@@ -1,4 +1,4 @@
-import { ether } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 export function createModel(name, vertices) {
     const indexedVertices = indexVertices(vertices);
     return {
@@ -97,7 +97,7 @@ function indexVertices(vertices) {
         const nextIndex = indexedVertices.vertices.length / stride;
         let index = lookUp(map, position, nextIndex);
         if (index == nextIndex) {
-            const unitNormal = ether.vec3.unit([normal[0], normal[1], normal[2]]);
+            const unitNormal = aether.vec3.unit([normal[0], normal[1], normal[2]]);
             indexedVertices.vertices.push(...position, ...unitNormal);
             indexedVertices.minPos = [
                 Math.min(position[0], indexedVertices.minPos[0]),

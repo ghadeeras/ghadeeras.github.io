@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
@@ -71,7 +71,7 @@ export class GPUPicker {
                 });
             });
             const view = yield this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view());
-            return ether.vec4.sub(ether.vec4.scale(ether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
+            return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
         });
     }
 }

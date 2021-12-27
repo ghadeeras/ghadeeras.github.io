@@ -1,18 +1,18 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
 import { save } from "../utils/misc.js"
 import { createModel } from "../djee/gltf.gen.js"
 
-const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = ether.mat4.projection(Math.pow(2, 1.5))
+const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+const projectionMatrix = aether.mat4.projection(Math.pow(2, 1.5))
 
 export function init() {
     window.onload = () => doInit()
 }
 
 async function doInit() {
-    const scalarFieldModule = await ether.loadScalarFieldModule()
+    const scalarFieldModule = await aether.loadScalarFieldModule()
     const scalarFieldInstance = scalarFieldModule.newInstance()
     const view = await v.newView("canvas-gl")
     view.matView = viewMatrix
@@ -24,9 +24,9 @@ class Toy {
 
     private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.scalarFieldInstance.vertices)
 
-    constructor(view: v.View, private scalarFieldInstance: ether.ScalarFieldInstance) {
+    constructor(view: v.View, private scalarFieldInstance: aether.ScalarFieldInstance) {
         const canvas = gear.elementEvents("canvas-gl")
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4)
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
 
         const cases = {
@@ -52,13 +52,13 @@ class Toy {
                 .then(gear.drag(rotationDragging))
                 .defaultsTo(rotationDragging.currentValue()),
 
-            matView: gear.Value.from<ether.Mat<4>>()
+            matView: gear.Value.from<aether.Mat<4>>()
                 .defaultsTo(view.matView),
             
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => ether.mat4.projection(ratio)),
+                .map(ratio => aether.mat4.projection(ratio)),
 
             color: contourValue
                 .map(v => this.fieldColor(v)),
@@ -75,10 +75,10 @@ class Toy {
             
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
-                .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-                .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => ether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(ether.vec4.of(0, 0, 2, 1)),
+                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
+                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
+                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
             
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
@@ -107,7 +107,7 @@ class Toy {
         return n < min ? min : (n > max ? max : n)
     }
 
-    fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): ether.Vec<4> {
+    fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): aether.Vec<4> {
         return contourValue > 0 ?
             [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
             [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
@@ -149,7 +149,7 @@ class Toy {
 
 const twoPi = 2 * Math.PI
 
-function xyz(x: number, y: number, z: number): ether.Vec<4> {
+function xyz(x: number, y: number, z: number): aether.Vec<4> {
     return [
         y * z,
         z * x,
@@ -158,7 +158,7 @@ function xyz(x: number, y: number, z: number): ether.Vec<4> {
     ]
 }
 
-function envelopedCosine(x: number, y: number, z: number): ether.Vec<4> {
+function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
     const x2 = x * x
     const y2 = y * y
     const z2 = z * z

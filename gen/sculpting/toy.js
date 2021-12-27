@@ -7,14 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 import * as v from "../scalar-field/view.js";
 import * as dragging from "../utils/dragging.js";
 import * as misc from "../utils/misc.js";
 import { Carving } from "./carving.js";
-const viewMatrix = ether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(4);
+const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(4);
 export function init() {
     window.onload = doInit;
 }
@@ -24,7 +24,7 @@ function doInit() {
         view.matView = viewMatrix;
         view.matProjection = projectionMatrix;
         const picker = yield view.picker();
-        const scalarFieldModule = yield ether.loadScalarFieldModule();
+        const scalarFieldModule = yield aether.loadScalarFieldModule();
         const stone = scalarFieldModule.newInstance();
         stone.resolution = 64;
         stone.sampler = field;
@@ -38,7 +38,7 @@ class Toy {
         this.scalarFieldModule = scalarFieldModule;
         this.meshComputer = new gear.DeferredComputation(() => this.stone.vertices);
         const canvas = gear.elementEvents("canvas-gl");
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => ether.mat4.mul(view.matProjection, view.matView), 4);
+        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4);
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0]);
         this.carving = new Carving(() => this.stone, () => modelViewProjectionMatrixOf(view), picker, scalarFieldModule, brush);
         const cases = {
@@ -70,7 +70,7 @@ class Toy {
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => ether.mat4.projection(ratio)),
+                .map(ratio => aether.mat4.projection(ratio)),
             color: contourValue
                 .map(v => this.fieldColor(v)),
             shininess: cases.shininess
@@ -83,10 +83,10 @@ class Toy {
                 .defaultsTo(view.fogginess),
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
-                .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-                .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => ether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(ether.vec4.of(0, 0, 2, 1)),
+                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
+                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
+                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
                 .map(([x, y]) => (y + 1) / 2)
@@ -187,8 +187,8 @@ class Toy {
             const k = Math.round((z + 1) * zRes / 2);
             const offset = ((k * yRes + j) * xRes + i) * vectorSize;
             return offset < samples.length ?
-                ether.vec4.from(samples, offset) :
-                ether.vec4.of(0, 0, 0, 0);
+                aether.vec4.from(samples, offset) :
+                aether.vec4.of(0, 0, 0, 0);
         };
         const newStone = this.carving.undo();
         newStone.resolution = stone.resolution;
@@ -233,10 +233,10 @@ function asyncEffect(mapper) {
 }
 const twoPi = 2 * Math.PI;
 function modelViewProjectionMatrixOf(view) {
-    return ether.mat4.mul(view.matProjection, ether.mat4.mul(view.matView, view.matPositions));
+    return aether.mat4.mul(view.matProjection, aether.mat4.mul(view.matView, view.matPositions));
 }
 function field(x, y, z) {
-    const l = ether.vec3.length([x, y, z]);
+    const l = aether.vec3.length([x, y, z]);
     const f = l <= 1 ?
         l >= 0.5 ? (1 - Math.cos(twoPi * l)) / 2 : 1 :
         0;
@@ -251,7 +251,7 @@ function field(x, y, z) {
     ];
 }
 function brush(x, y, z) {
-    const l = ether.vec3.length([x, y, z]);
+    const l = aether.vec3.length([x, y, z]);
     const f = l <= 1 ? (1 + Math.cos(Math.PI * l)) / 2 : 0;
     const g = l <= 1 ?
         l > Math.sqrt(Number.EPSILON) ?

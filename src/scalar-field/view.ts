@@ -1,25 +1,25 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as glView from './view.gl.js' 
 import * as gpuView from './view.gpu.js' 
 import { required } from "../utils/misc.js"
 
 export interface View {
 
-    setMatModel(modelPositions: ether.Mat<4>, modelNormals?: ether.Mat<4>): void
+    setMatModel(modelPositions: aether.Mat<4>, modelNormals?: aether.Mat<4>): void
 
-    readonly matPositions: ether.Mat<4>
+    readonly matPositions: aether.Mat<4>
 
-    readonly matNormals: ether.Mat<4>
+    readonly matNormals: aether.Mat<4>
 
-    matView: ether.Mat<4>
+    matView: aether.Mat<4>
 
-    matProjection: ether.Mat<4>
+    matProjection: aether.Mat<4>
 
-    color: ether.Vec<4>
+    color: aether.Vec<4>
 
     shininess: number
 
-    lightPosition: ether.Vec<4>
+    lightPosition: aether.Vec<4>
 
     lightRadius: number
 
@@ -33,23 +33,23 @@ export interface View {
 
 export interface Picker {
 
-    pick(matModelViewProjection: ether.Mat<4>, x: number, y: number): Promise<ether.Vec4>
+    pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4>
 
 }
 
 export type ViewInputs = {
 
-    matModel: gear.Value<ether.Mat<4>>
+    matModel: gear.Value<aether.Mat<4>>
 
-    matView: gear.Value<ether.Mat<4>>
+    matView: gear.Value<aether.Mat<4>>
 
-    matProjection: gear.Value<ether.Mat<4>>
+    matProjection: gear.Value<aether.Mat<4>>
 
-    color: gear.Value<ether.Vec<4>>
+    color: gear.Value<aether.Vec<4>>
 
     shininess: gear.Value<number>
 
-    lightPosition: gear.Value<ether.Vec<4>>
+    lightPosition: gear.Value<aether.Vec<4>>
 
     lightRadius: gear.Value<number>
 

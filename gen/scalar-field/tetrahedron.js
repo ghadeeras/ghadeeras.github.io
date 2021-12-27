@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 import * as dragging from "../utils/dragging.js";
 let context;
@@ -23,8 +23,8 @@ let contourSurfaceBuffer;
 let tetrahedron = newTetrahedron(1, -1, -1, -1);
 let contourValue = 0;
 let scalarFieldInstance;
-const viewMatrix = ether.mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(2);
+const viewMatrix = aether.mat4.lookAt([-1, 1, 2], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(2);
 export function initTetrahedronDemo() {
     window.onload = () => doInit();
 }
@@ -34,7 +34,7 @@ function doInit() {
             vertexShaderCode: "vertexColors.vert",
             fragmentShaderCode: "vertexColors.frag"
         }, "/shaders");
-        const scalarFieldModule = yield ether.loadScalarFieldModule();
+        const scalarFieldModule = yield aether.loadScalarFieldModule();
         scalarFieldInstance = scalarFieldModule.newInstance();
         context = djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
@@ -50,9 +50,9 @@ function doInit() {
         lightPosition = program.uniform("lightPosition");
         shininess = program.uniform("shininess");
         fogginess = program.uniform("fogginess");
-        matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity());
-        matView.data = ether.mat4.columnMajorArray(viewMatrix);
-        matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
+        matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity());
+        matView.data = aether.mat4.columnMajorArray(viewMatrix);
+        matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
         lightPosition.data = [2, 2, 2];
         shininess.data = [1];
         fogginess.data = [0];
@@ -61,7 +61,7 @@ function doInit() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
         const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => ether.mat4.from(matModel.data), () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const transformer = new dragging.RotationDragging(() => aether.mat4.from(matModel.data), () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const cases = {
             rotation: new gear.Value(),
             lightPosition: new gear.Value(),
@@ -76,11 +76,11 @@ function doInit() {
         canvas.dragging.value.switch(mouseBinding, cases);
         cases.rotation
             .then(gear.drag(transformer))
-            .defaultsTo(ether.mat4.identity())
-            .attach(m => matModel.data = ether.mat4.columnMajorArray(m));
+            .defaultsTo(aether.mat4.identity())
+            .attach(m => matModel.data = aether.mat4.columnMajorArray(m));
         cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
             .defaultsTo([Math.PI / 4, Math.PI / 4])
             .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
             .attach(pos => lightPosition.data = pos);
@@ -154,8 +154,8 @@ function newTetrahedron(field0, field1, field2, field3) {
         [points.point2[0], points.point2[1], points.point2[2], 1],
         [points.point3[0], points.point3[1], points.point3[2], 1]
     ];
-    const matInv = ether.mat4.inverse(mat);
-    const gradient = ether.vec3.swizzle(ether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
+    const matInv = aether.mat4.inverse(mat);
+    const gradient = aether.vec3.swizzle(aether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
     const gradients = {
         gradient0: gradient,
         gradient1: gradient,
@@ -204,7 +204,7 @@ function contourSurfaceData(tetrahedron, contourValue) {
     const space = scalarFieldInstance.space;
     const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!");
+        throw new Error("Failed to initialize Web Assembly Aether modules!");
     }
     stack.leave();
     stack.enter();
@@ -225,8 +225,8 @@ function fieldColor(fieldValue, alpha = 0.4) {
     return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }
 function normalFrom(p1, p2, p3) {
-    const v12 = ether.vec3.sub(p2, p1);
-    const v23 = ether.vec3.sub(p3, p2);
-    return ether.vec3.unit(ether.vec3.cross(v12, v23));
+    const v12 = aether.vec3.sub(p2, p1);
+    const v23 = aether.vec3.sub(p3, p2);
+    return aether.vec3.unit(aether.vec3.cross(v12, v23));
 }
 //# sourceMappingURL=tetrahedron.js.map

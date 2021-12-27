@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import * as dragging from "../utils/dragging.js"
 
@@ -22,25 +22,25 @@ let contourValue: number = 0;
 type Cube = CubePoints & CubeGradients & CubeValues
 
 type CubePoints = {
-    point0: ether.Vec<3>;
-    point1: ether.Vec<3>;
-    point2: ether.Vec<3>;
-    point3: ether.Vec<3>;
-    point4: ether.Vec<3>;
-    point5: ether.Vec<3>;
-    point6: ether.Vec<3>;
-    point7: ether.Vec<3>;
+    point0: aether.Vec<3>;
+    point1: aether.Vec<3>;
+    point2: aether.Vec<3>;
+    point3: aether.Vec<3>;
+    point4: aether.Vec<3>;
+    point5: aether.Vec<3>;
+    point6: aether.Vec<3>;
+    point7: aether.Vec<3>;
 }
 
 type CubeGradients = {
-    gradient0: ether.Vec<3>;
-    gradient1: ether.Vec<3>;
-    gradient2: ether.Vec<3>;
-    gradient3: ether.Vec<3>;
-    gradient4: ether.Vec<3>;
-    gradient5: ether.Vec<3>;
-    gradient6: ether.Vec<3>;
-    gradient7: ether.Vec<3>;
+    gradient0: aether.Vec<3>;
+    gradient1: aether.Vec<3>;
+    gradient2: aether.Vec<3>;
+    gradient3: aether.Vec<3>;
+    gradient4: aether.Vec<3>;
+    gradient5: aether.Vec<3>;
+    gradient6: aether.Vec<3>;
+    gradient7: aether.Vec<3>;
 }
 
 type CubeValues = {
@@ -54,10 +54,10 @@ type CubeValues = {
     value7: number;
 }
 
-const viewMatrix = ether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(2);
+const viewMatrix = aether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(2);
 
-let scalarFieldInstance: ether.ScalarFieldInstance 
+let scalarFieldInstance: aether.ScalarFieldInstance 
 
 export function initCubeDemo() {
     window.onload = () => doInit()
@@ -69,7 +69,7 @@ async function doInit() {
         fragmentShaderCode: "vertexColors.frag"
     }, "/shaders")
 
-    const scalarFieldModule = await ether.loadScalarFieldModule()
+    const scalarFieldModule = await aether.loadScalarFieldModule()
     scalarFieldInstance = scalarFieldModule.newInstance()
 
     context = djee.Context.of("canvas-gl");
@@ -95,9 +95,9 @@ async function doInit() {
     shininess = program.uniform("shininess");
     fogginess = program.uniform("fogginess");
 
-    matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity())
-    matView.data = ether.mat4.columnMajorArray(viewMatrix);
-    matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
+    matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity())
+    matView.data = aether.mat4.columnMajorArray(viewMatrix);
+    matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
 
     lightPosition.data = [2, 2, 2];
     shininess.data = [1];
@@ -110,8 +110,8 @@ async function doInit() {
 
     const canvas = gear.elementEvents("canvas-gl");
     const transformer = new dragging.RotationDragging(
-        () => ether.mat4.from(matModel.data), 
-        () => ether.mat4.mul(projectionMatrix, viewMatrix),
+        () => aether.mat4.from(matModel.data), 
+        () => aether.mat4.mul(projectionMatrix, viewMatrix),
         4
     )
 
@@ -135,11 +135,11 @@ async function doInit() {
     cases.rotation
         .then(gear.drag(transformer))
         .defaultsTo(transformer.currentValue())
-        .attach(m => matModel.data = ether.mat4.columnMajorArray(m))
+        .attach(m => matModel.data = aether.mat4.columnMajorArray(m))
 
     cases.lightPosition
         .then(gear.drag(dragging.positionDragging))
-        .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+        .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
         .defaultsTo([Math.PI / 4, Math.PI / 4])
         .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
         .attach(pos => lightPosition.data = pos)
@@ -192,7 +192,7 @@ async function doInit() {
 type CubeCorner = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 type CubeCornerValue = [CubeCorner, number]
 
-function cornerValue(corner: CubeCorner): (xy: ether.Vec<2>) => CubeCornerValue {
+function cornerValue(corner: CubeCorner): (xy: aether.Vec<2>) => CubeCornerValue {
     return ([x, y]) => [corner, y]
 } 
 
@@ -264,12 +264,12 @@ function newCube(field0: number, field1: number, field2: number, field3: number,
     return {...points, ...gradients, ...values};
 }
 
-function gradient(point: ether.Vec<3>, value: number, pointX: ether.Vec<3>, valueX: number, pointY: ether.Vec<3>, valueY: number, pointZ: ether.Vec<3>, valueZ: number) {
-    return ether.vec3.add(
-        ether.vec3.scale(ether.vec3.sub(point, pointX), value - valueX),
-        ether.vec3.add(
-            ether.vec3.scale(ether.vec3.sub(point, pointY), value - valueY),
-            ether.vec3.scale(ether.vec3.sub(point, pointZ), value - valueZ)
+function gradient(point: aether.Vec<3>, value: number, pointX: aether.Vec<3>, valueX: number, pointY: aether.Vec<3>, valueY: number, pointZ: aether.Vec<3>, valueZ: number) {
+    return aether.vec3.add(
+        aether.vec3.scale(aether.vec3.sub(point, pointX), value - valueX),
+        aether.vec3.add(
+            aether.vec3.scale(aether.vec3.sub(point, pointY), value - valueY),
+            aether.vec3.scale(aether.vec3.sub(point, pointZ), value - valueZ)
         )
     )
 }
@@ -344,7 +344,7 @@ function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
     const space = scalarFieldInstance.space;
     const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!")
+        throw new Error("Failed to initialize Web Assembly Aether modules!")
     }
     stack.leave();
     stack.enter();
@@ -370,6 +370,6 @@ function contourSurfaceData(cube: Cube, contourValue: number): Float32Array {
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): ether.Vec<4> {
+function fieldColor(fieldValue: number, alpha: number = 0.4): aether.Vec<4> {
     return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }

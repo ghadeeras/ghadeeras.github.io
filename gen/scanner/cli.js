@@ -1,14 +1,14 @@
 import { MyScanner } from './my-scanner.js';
 const scanner = new MyScanner();
 console.log(scanner.tokenize(`
-import * as Ether from "../../ether/latest/index.js"
+import * as Aether from "../../aether/latest/index.js"
 import { View } from "./view.js"
 import * as Gear from "../gear/all.js"
 
 const audioContext = new window.AudioContext({sampleRate: 9450})
 const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
 
-let center = Ether.vec(-0.75, 0)
+let center = Aether.vec(-0.75, 0)
 let scale = 2
 
 let vertexShaderCode: string
@@ -20,16 +20,16 @@ let canvas: Gear.ElementEvents
 let mandelbrotView: View
 let juliaView: View
 
-let centerSpan: Gear.Sink<Ether.Vector>
+let centerSpan: Gear.Sink<Aether.Vector>
 let scaleSpan: Gear.Sink<number>
 let hueSpan: Gear.Sink<number>
 let saturationSpan: Gear.Sink<number>
 let intensitySpan: Gear.Sink<number>
 let paletteSpan: Gear.Sink<number>
-let clickPosSpan: Gear.Sink<Ether.Vector>
+let clickPosSpan: Gear.Sink<Aether.Vector>
 
 export function init() {
-    window.onload = () => Gear.load("/shaders", () => Ether.initWaModules(() => doInit()),
+    window.onload = () => Gear.load("/shaders", () => Aether.initWaModules(() => doInit()),
         ["mandelbrot.vert", shader => vertexShaderCode = shader],
         ["mandelbrot.frag", shader => fragmentShaderCode = shader]
     )
@@ -49,7 +49,7 @@ function doInit() {
     }
 
     mandelbrotView = new View(false, "canvas-gl", vertexShaderCode, fragmentShaderCode, center, scale)
-    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, Ether.vec(0, 0), 4)
+    juliaView = new View(true, "julia-gl", vertexShaderCode, fragmentShaderCode, Aether.vec(0, 0), 4)
 
     centerSpan = Gear.sinkFlow(flow => flow
         .defaultsTo(center)
@@ -106,15 +106,15 @@ function doInit() {
         .producer(c => play(c))
 }
 
-function play(c: Ether.Vector) {
+function play(c: Aether.Vector) {
     const channel1 = audioBuffer.getChannelData(0)
     const channel2 = audioBuffer.getChannelData(1)
     let sum1 = 0
     let sum2 = 0
-    let z = Ether.vec(0, 0)
+    let z = Aether.vec(0, 0)
     for (let i = 0; i < audioBuffer.length && z.length < 2.0; i++) {
         const [x, y] = z.coordinates
-        z = Ether.vec(x * x - y * y, 2 * x * y).plus(c)
+        z = Aether.vec(x * x - y * y, 2 * x * y).plus(c)
         channel1[i] = z.coordinates[0] / 2
         channel2[i] = z.coordinates[1] / 2
         sum1 += channel1[i]
@@ -140,16 +140,16 @@ function playBuffer() {
     source.start()
 }
 
-function toComplexNumber(pos: Gear.PointerPosition): Ether.Vector {
+function toComplexNumber(pos: Gear.PointerPosition): Aether.Vector {
     return toVector(pos)
         .scale(scale)
         .plus(center)
 }
 
-function toVector(pos: Gear.PointerPosition): Ether.Vector {
-    return Ether.vec(...pos)
-        .divide(Ether.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
-        .plus(Ether.vec(-1, 1))
+function toVector(pos: Gear.PointerPosition): Aether.Vector {
+    return Aether.vec(...pos)
+        .divide(Aether.vec(canvas.element.clientWidth / 2, -canvas.element.clientHeight / 2))
+        .plus(Aether.vec(-1, 1))
 }
 
 function action(key: string) {
@@ -192,8 +192,8 @@ function move(dragging: Gear.Dragging) {
     const delta = calculateDelta(dragging.startPos, dragging.pos, scale)
     if (delta.length > 0) {
         const newCenter = center.minus(delta)
-            .combine(Ether.vec(+4, +4), Math.min)
-            .combine(Ether.vec(-4, -4), Math.max)
+            .combine(Aether.vec(+4, +4), Math.min)
+            .combine(Aether.vec(-4, -4), Math.max)
         if (dragging.end) {
             center = newCenter
         }
@@ -232,10 +232,10 @@ function julia(dragging: Gear.Dragging) {
 }
 
 function calculateDelta(pos1: Gear.PointerPosition, pos2: Gear.PointerPosition, scale: number = 1) {
-    return Ether.vec(...pos2)
-        .minus(Ether.vec(...pos1))
+    return Aether.vec(...pos2)
+        .minus(Aether.vec(...pos1))
         .scale(2 * scale)
-        .divide(Ether.vec(canvas.element.clientWidth, -canvas.element.clientHeight))
+        .divide(Aether.vec(canvas.element.clientWidth, -canvas.element.clientHeight))
 }
 `));
 //# sourceMappingURL=cli.js.map

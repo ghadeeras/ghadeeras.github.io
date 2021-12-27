@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import { view } from "./view.js";
 import { positionDragging } from "../utils/dragging.js";
 let audioContext;
@@ -18,7 +18,7 @@ function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const mandelbrotView = yield view(false, "canvas-gl", [-0.75, 0], 2);
         const juliaView = yield view(true, "julia-gl", [0, 0], 4);
-        const toComplexNumber = (p) => ether.vec2.add(ether.vec2.scale(p, mandelbrotView.scale), mandelbrotView.center);
+        const toComplexNumber = (p) => aether.vec2.add(aether.vec2.scale(p, mandelbrotView.scale), mandelbrotView.center);
         const transformation = transformationTarget(mandelbrotView);
         const color = colorTarget(mandelbrotView, juliaView);
         const intensity = intensityTarget(mandelbrotView, juliaView);
@@ -38,7 +38,7 @@ function doInit() {
         transformation.value = gear.Value.from(cases.move.then(gear.drag(new Move(mandelbrotView))), cases.zoom.then(gear.drag(new Zoom(mandelbrotView)))).defaultsTo(mandelbrotView);
         color.value = cases.color
             .then(gear.drag(positionDragging))
-            .map(([x, y]) => ether.vec2.of(x + 1, (y + 1) / 2))
+            .map(([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2))
             .defaultsTo([mandelbrotView.hue, mandelbrotView.saturation]);
         intensity.value = cases.intensity
             .then(gear.drag(positionDragging))
@@ -156,15 +156,15 @@ function play(c) {
     let sum1 = 0;
     let sum2 = 0;
     let z = [0, 0];
-    for (let i = 0; i < audioBuffer.length && ether.vec2.length(z) < 2.0; i++) {
+    for (let i = 0; i < audioBuffer.length && aether.vec2.length(z) < 2.0; i++) {
         const [x, y] = z;
-        z = ether.vec2.add([x * x - y * y, 2 * x * y], c);
+        z = aether.vec2.add([x * x - y * y, 2 * x * y], c);
         channel1[i] = z[0] / 2;
         channel2[i] = z[1] / 2;
         sum1 += channel1[i];
         sum2 += channel2[i];
     }
-    if (ether.vec2.length(z) < 2.0) {
+    if (aether.vec2.length(z) < 2.0) {
         const avg1 = sum1 / channel1.length;
         const avg2 = sum2 / channel2.length;
         for (let i = 0; i < audioBuffer.length; i++) {
@@ -211,7 +211,7 @@ class Zoom {
             const factor = Math.pow(16, power);
             return power == 0 ? value : {
                 scale: value.scale * factor,
-                center: ether.vec2.sub(value.center, ether.vec2.scale(calculateDelta([0, 0], from, value.scale), factor - 1))
+                center: aether.vec2.sub(value.center, aether.vec2.scale(calculateDelta([0, 0], from, value.scale), factor - 1))
             };
         };
     }
@@ -234,7 +234,7 @@ class Move {
             const delta = calculateDelta(from, to, value.scale);
             return {
                 scale: value.scale,
-                center: ether.vec2.max(ether.vec2.min(ether.vec2.sub(value.center, delta), [+4, +4]), [-4, -4])
+                center: aether.vec2.max(aether.vec2.min(aether.vec2.sub(value.center, delta), [+4, +4]), [-4, -4])
             };
         };
     }
@@ -243,6 +243,6 @@ class Move {
     }
 }
 function calculateDelta(pos1, pos2, scale = 1) {
-    return ether.vec2.scale(ether.vec2.sub(pos2, pos1), scale);
+    return aether.vec2.scale(aether.vec2.sub(pos2, pos1), scale);
 }
 //# sourceMappingURL=toy.js.map

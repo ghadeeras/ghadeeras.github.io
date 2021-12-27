@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from '/gen/libs.js';
+import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
 import { newUniverse } from './universe.js';
@@ -58,7 +58,7 @@ function setupControls(canvas, universe, renderer) {
         .attach(m => renderer.modelMatrix = m);
     observerPosition
         .then(gear.drag(new dragging.LinearDragging(() => renderer.viewMatrix[3][2], -64, -1, 16)))
-        .map(z => ether.mat4.lookAt([0, 0, z]))
+        .map(z => aether.mat4.lookAt([0, 0, z]))
         .later()
         .attach(m => renderer.viewMatrix = m);
     bodyPointedness
@@ -75,16 +75,16 @@ function setupControls(canvas, universe, renderer) {
         .attach(s => renderer.radiusScale = s);
     zoom
         .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[0][0], 0.01, 100)))
-        .map(z => ether.mat4.projection(z))
+        .map(z => aether.mat4.projection(z))
         .later()
         .attach(m => renderer.projectionMatrix = m);
 }
 function setupActions(universe, renderer, pauseResumeAction) {
     action("pause").onclick = pauseResumeAction;
     action("reset").onclick = () => {
-        renderer.modelMatrix = ether.mat4.identity();
-        renderer.viewMatrix = ether.mat4.lookAt([0, 0, -24]);
-        renderer.projectionMatrix = ether.mat4.projection();
+        renderer.modelMatrix = aether.mat4.identity();
+        renderer.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
+        renderer.projectionMatrix = aether.mat4.projection();
         renderer.radiusScale = 0.05;
     };
     action("collapse").onclick = () => {

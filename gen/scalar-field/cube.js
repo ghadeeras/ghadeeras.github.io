@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 import * as dragging from "../utils/dragging.js";
 let context;
@@ -22,8 +22,8 @@ let cubeBuffer;
 let contourSurfaceBuffer;
 let cube = newCube(-1, -1, -1, -1, -1, -1, -1, -1);
 let contourValue = 0;
-const viewMatrix = ether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = ether.mat4.projection(2);
+const viewMatrix = aether.mat4.lookAt([-2, 2, 6], [0, 0, 0], [0, 1, 0]);
+const projectionMatrix = aether.mat4.projection(2);
 let scalarFieldInstance;
 export function initCubeDemo() {
     window.onload = () => doInit();
@@ -34,7 +34,7 @@ function doInit() {
             vertexShaderCode: "vertexColors.vert",
             fragmentShaderCode: "vertexColors.frag"
         }, "/shaders");
-        const scalarFieldModule = yield ether.loadScalarFieldModule();
+        const scalarFieldModule = yield aether.loadScalarFieldModule();
         scalarFieldInstance = scalarFieldModule.newInstance();
         context = djee.Context.of("canvas-gl");
         const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
@@ -50,9 +50,9 @@ function doInit() {
         lightPosition = program.uniform("lightPosition");
         shininess = program.uniform("shininess");
         fogginess = program.uniform("fogginess");
-        matModel.data = ether.mat4.columnMajorArray(ether.mat4.identity());
-        matView.data = ether.mat4.columnMajorArray(viewMatrix);
-        matProjection.data = ether.mat4.columnMajorArray(projectionMatrix);
+        matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity());
+        matView.data = aether.mat4.columnMajorArray(viewMatrix);
+        matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
         lightPosition.data = [2, 2, 2];
         shininess.data = [1];
         fogginess.data = [0];
@@ -61,7 +61,7 @@ function doInit() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(1, 1, 1, 1);
         const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => ether.mat4.from(matModel.data), () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const transformer = new dragging.RotationDragging(() => aether.mat4.from(matModel.data), () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const cases = {
             rotation: new gear.Value(),
             lightPosition: new gear.Value(),
@@ -81,10 +81,10 @@ function doInit() {
         cases.rotation
             .then(gear.drag(transformer))
             .defaultsTo(transformer.currentValue())
-            .attach(m => matModel.data = ether.mat4.columnMajorArray(m));
+            .attach(m => matModel.data = aether.mat4.columnMajorArray(m));
         cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
             .defaultsTo([Math.PI / 4, Math.PI / 4])
             .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
             .attach(pos => lightPosition.data = pos);
@@ -180,7 +180,7 @@ function newCube(field0, field1, field2, field3, field4, field5, field6, field7)
     return Object.assign(Object.assign(Object.assign({}, points), gradients), values);
 }
 function gradient(point, value, pointX, valueX, pointY, valueY, pointZ, valueZ) {
-    return ether.vec3.add(ether.vec3.scale(ether.vec3.sub(point, pointX), value - valueX), ether.vec3.add(ether.vec3.scale(ether.vec3.sub(point, pointY), value - valueY), ether.vec3.scale(ether.vec3.sub(point, pointZ), value - valueZ)));
+    return aether.vec3.add(aether.vec3.scale(aether.vec3.sub(point, pointX), value - valueX), aether.vec3.add(aether.vec3.scale(aether.vec3.sub(point, pointY), value - valueY), aether.vec3.scale(aether.vec3.sub(point, pointZ), value - valueZ)));
 }
 function cubeData(cube) {
     const normals = [
@@ -246,7 +246,7 @@ function contourSurfaceData(cube, contourValue) {
     const space = scalarFieldInstance.space;
     const scalarField = scalarFieldInstance.scalarField;
     if (!stack || !space || !scalarField) {
-        throw new Error("Failed to initialize Web Assembly Ether modules!");
+        throw new Error("Failed to initialize Web Assembly Aether modules!");
     }
     stack.leave();
     stack.enter();

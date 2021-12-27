@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as dragging from "../utils/dragging.js"
 import { MatricesGenerator } from "./matgen.js";
 import { renderer } from "./renderer.js";
@@ -9,17 +9,17 @@ export function init() {
 
 async function doInit() {
 
-    const proj = ether.mat4.projection();
-    const view = ether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
-    const modelMatrix: ether.Mat<4>[] = [ether.mat4.identity()]
+    const proj = aether.mat4.projection();
+    const view = aether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
+    const modelMatrix: aether.Mat<4>[] = [aether.mat4.identity()]
 
     renderer(proj, view, () => { 
-        return rendererInputs(modelMatrix, ether.mat4.mul(proj, view));
+        return rendererInputs(modelMatrix, aether.mat4.mul(proj, view));
     });
 
 }
 
-function rendererInputs(modelMatrix: ether.Mat<4>[], projView: ether.Mat<4>) {
+function rendererInputs(modelMatrix: aether.Mat<4>[], projView: aether.Mat<4>) {
     const canvas = gear.elementEvents("canvas-gl");
     const depthInc = gear.elementEvents("depth-inc");
     const depthDec = gear.elementEvents("depth-dec");
@@ -65,12 +65,12 @@ function rendererInputs(modelMatrix: ether.Mat<4>[], projView: ether.Mat<4>) {
 
         lightPosition: cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of(Math.PI * (1 - x) / 2, Math.PI * (1 - y) / 2))
-            .map(([x, y]) => ether.vec3.of(4 * Math.cos(x) * Math.sin(y), 4 * Math.cos(y), 4 * Math.sin(x) * Math.sin(y))),
+            .map(([x, y]) => aether.vec2.of(Math.PI * (1 - x) / 2, Math.PI * (1 - y) / 2))
+            .map(([x, y]) => aether.vec3.of(4 * Math.cos(x) * Math.sin(y), 4 * Math.cos(y), 4 * Math.sin(x) * Math.sin(y))),
 
         color: cases.color
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => ether.vec2.of((x + 1) / 2, (y + 1) / 2)),
+            .map(([x, y]) => aether.vec2.of((x + 1) / 2, (y + 1) / 2)),
 
         shininess: cases.shininess
             .then(gear.drag(dragging.positionDragging))

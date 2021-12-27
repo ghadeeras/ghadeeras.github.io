@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 export class GLPicker {
     constructor(mainView, vertexShader, fragmentShader, vertices) {
@@ -45,7 +45,7 @@ export class GLPicker {
     pick(matModelViewProjection, x, y) {
         return __awaiter(this, void 0, void 0, function* () {
             this.bind();
-            this.mvpMatrixUniform.data = new Float32Array(ether.mat4.columnMajorArray(matModelViewProjection));
+            this.mvpMatrixUniform.data = new Float32Array(aether.mat4.columnMajorArray(matModelViewProjection));
             this.posAttribute.pointTo(this.vertices());
             const context = this.mainView.context;
             context.gl.clear(WebGLRenderingContext.COLOR_BUFFER_BIT | WebGLRenderingContext.DEPTH_BUFFER_BIT);
@@ -53,7 +53,7 @@ export class GLPicker {
             const coordinatesAsColor = new Uint8Array(4);
             context.gl.readPixels(context.canvas.width * (x + 1) / 2, context.canvas.height * (y + 1) / 2, 1, 1, WebGLRenderingContext.RGBA, WebGLRenderingContext.UNSIGNED_BYTE, coordinatesAsColor);
             this.unbind();
-            return Promise.resolve(ether.vec4.sub(ether.vec4.scale(ether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]));
+            return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]));
         });
     }
 }

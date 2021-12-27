@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { ether, gear } from "/gen/libs.js";
+import { aether, gear } from "/gen/libs.js";
 import * as djee from "../djee/all.js";
 import * as gltf from "../djee/gltf.js";
 import * as dragging from "../utils/dragging.js";
@@ -25,12 +25,12 @@ let uFogginess;
 let modelIndex;
 let model;
 let lightPosition = [2, 2, 2];
-let viewMatrix = ether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-let modelMatrix = ether.mat4.identity();
+let viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+let modelMatrix = aether.mat4.identity();
 export function init() {
     window.onload = () => doInit();
 }
-const projectionMatrix = ether.mat4.projection(2);
+const projectionMatrix = aether.mat4.projection(2);
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const shaders = yield gear.fetchTextFiles({
@@ -51,8 +51,8 @@ function doInit() {
         normal.setTo(0, 0, 1);
         const canvas = gear.elementEvents("canvas-gl");
         const viewRotation = new dragging.RotationDragging(() => viewMatrix, () => projectionMatrix);
-        const modelRotation = new dragging.RotationDragging(() => modelMatrix, () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
-        const modelTranslation = new dragging.TranslationDragging(() => modelMatrix, () => ether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const modelRotation = new dragging.RotationDragging(() => modelMatrix, () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
+        const modelTranslation = new dragging.TranslationDragging(() => modelMatrix, () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const modelScale = new dragging.ScaleDragging(() => modelMatrix, 4);
         uPositionsMat = program.uniform("positionsMat");
         uNormalsMat = program.uniform("normalsMat");
@@ -62,7 +62,7 @@ function doInit() {
         uColor = program.uniform("color");
         uShininess = program.uniform("shininess");
         uFogginess = program.uniform("fogginess");
-        uProjectionMat.data = ether.mat4.columnMajorArray(projectionMatrix);
+        uProjectionMat.data = aether.mat4.columnMajorArray(projectionMatrix);
         uColor.data = [0.5, 0, 0.5, 1];
         uLightPosition.data = lightPosition;
         uLightRadius.data = [0.1];
@@ -89,9 +89,9 @@ function doInit() {
         canvas.dragging.value.switch(mouseBinding, cases);
         lightPositionTarget().value = cases.lightPosition
             .then(gear.drag(dragging.positionDragging))
-            .map(p => ether.vec2.length(p) > 1 ? ether.vec2.unit(p) : p)
-            .map(([x, y]) => ether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-            .defaultsTo(ether.vec2.of(0, 0));
+            .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
+            .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+            .defaultsTo(aether.vec2.of(0, 0));
         lightRadiusTarget().value = cases.lightRadius
             .then(gear.drag(dragging.positionDragging))
             .map(([x, y]) => (y + 1) / 2)
@@ -131,7 +131,7 @@ function modelLoaderTarget() {
             "NORMAL": normal,
         }, uPositionsMat, uNormalsMat);
         model = yield gltf.ActiveModel.create(modelUri, renderer);
-        modelMatrix = ether.mat4.identity();
+        modelMatrix = aether.mat4.identity();
         draw();
     }));
 }
@@ -150,7 +150,7 @@ function getModelUri(modelId) {
 function lightPositionTarget() {
     return new gear.Target(([x, y]) => {
         const p = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1];
-        lightPosition = ether.vec3.from(ether.vec4.add(viewMatrix[3], p));
+        lightPosition = aether.vec3.from(aether.vec4.add(viewMatrix[3], p));
         uLightPosition.data = lightPosition;
         draw();
     });
@@ -173,9 +173,9 @@ function colorTarget() {
     const greenVec = [Math.cos(third), Math.sin(third)];
     const blueVec = [Math.cos(2 * third), Math.sin(2 * third)];
     return new gear.Target(vec => {
-        const red = Math.min(2, 1 + ether.vec2.dot(vec, redVec)) / 2;
-        const green = Math.min(2, 1 + ether.vec2.dot(vec, greenVec)) / 2;
-        const blue = Math.min(2, 1 + ether.vec2.dot(vec, blueVec)) / 2;
+        const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
+        const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
+        const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
         uColor.data = [red, green, blue, 1];
         draw();
     });
@@ -190,7 +190,7 @@ function draw() {
     const gl = context.gl;
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     if (model) {
-        model.render(ether.mat4.mul(viewMatrix, modelMatrix));
+        model.render(aether.mat4.mul(viewMatrix, modelMatrix));
     }
     gl.flush();
 }

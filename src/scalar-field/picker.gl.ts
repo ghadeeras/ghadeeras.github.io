@@ -1,4 +1,4 @@
-import { ether, gear } from "/gen/libs.js"
+import { aether, gear } from "/gen/libs.js"
 import * as djee from "../djee/all.js"
 import { GLView } from "./view.gl.js"
 import { Picker } from "./view.js"
@@ -59,10 +59,10 @@ export class GLPicker implements Picker {
         this.mainView.bind()
     }
 
-    async pick(matModelViewProjection: ether.Mat<4>, x: number, y: number): Promise<ether.Vec4> {
+    async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
         this.bind()
 
-        this.mvpMatrixUniform.data = new Float32Array(ether.mat4.columnMajorArray(matModelViewProjection))
+        this.mvpMatrixUniform.data = new Float32Array(aether.mat4.columnMajorArray(matModelViewProjection))
         this.posAttribute.pointTo(this.vertices())
 
         const context = this.mainView.context
@@ -82,7 +82,7 @@ export class GLPicker implements Picker {
         )
 
         this.unbind()
-        return Promise.resolve(ether.vec4.sub(ether.vec4.scale(ether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]))
+        return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]))
     }
 
 }
