@@ -28,7 +28,7 @@ let uShininess: wgl.Uniform;
 let uFogginess: wgl.Uniform;
 
 let modelIndex: ModelIndexEntry[]
-let model: gltf.ActiveModel<wgl.IndicesBuffer, wgl.AttributesBuffer>
+let model: gltf.ActiveModel<wgl.IndicesBuffer, wgl.AttributesBuffer> | null = null
 
 let lightPosition: aether.Vec<3> = [2, 2, 2]
 let viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
@@ -182,6 +182,10 @@ function modelLoaderTarget(): gear.Target<string> {
             "POSITION" : position,
             "NORMAL" : normal,
         }, uPositionsMat, uNormalsMat)
+        if (model) {
+            model.delete()
+            model = null
+        }
         model = await gltf.ActiveModel.create(modelUri, renderer)
         modelMatrix = aether.mat4.identity()
         draw()

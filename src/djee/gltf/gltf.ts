@@ -127,7 +127,7 @@ export interface Renderer<I, A> {
 
     deleteBuffer(buffer: I | A): void
 
-    bind(attribute: string, buffer: A, byteOffset: number, normalized: boolean, accessor: Accessor): void
+    bind(attribute: string, buffer: A, accessor: Accessor): void
 
     bindIndices(buffer: I): void
 
@@ -135,13 +135,13 @@ export interface Renderer<I, A> {
 
     setIndexComponentType(componentType: GLenum): void
 
-    draw(componentType: GLenum, mode: GLenum, count: number, byteOffset: number): void
+    drawIndexed(componentType: GLenum, mode: GLenum, count: number, byteOffset: number): void
 
-    drawIndexed(mode: GLenum, count: number, byteOffset: number): void
+    draw(mode: GLenum, count: number, byteOffset: number): void
 
-    positionsMat: aether.Mat<4>
+    setPositionsMat(mat: aether.Mat<4>): void
 
-    normalsMat: aether.Mat<4>
+    setNormalsMat(mat: aether.Mat<4>): void
 
 }
 
@@ -180,9 +180,7 @@ class ActiveAccessor<I, A> {
     constructor(renderer: Renderer<I, A>, readonly accessor: Accessor, bufferViews: ActiveBufferView<I, A>[]) {
         if (accessor.bufferView !== undefined) {
             const buffer = bufferViews[accessor.bufferView].buffer
-            const byteOffset = accessor.byteOffset ?? 0
-            const normalized = accessor.normalized ?? false
-            this.bindTo = attribute => renderer.bind(attribute, buffer as A, byteOffset, normalized, accessor)
+            this.bindTo = attribute => renderer.bind(attribute, buffer as A, accessor)
             this.bindToIndex = () => renderer.bindIndices(buffer as I)
         } else {
             this.bindTo = attribute => renderer.setToZero(attribute)
@@ -397,8 +395,8 @@ class ActiveMesh<I, A> implements RenderSubject {
     }
 
     render(parentPositionsMatrix: aether.Mat<4>, parentNormalsMatrix: aether.Mat<4> = parentPositionsMatrix) {
-        this.renderer.positionsMat = parentPositionsMatrix
-        this.renderer.normalsMat = parentNormalsMatrix
+        this.renderer.setPositionsMat(parentPositionsMatrix)
+        this.renderer.setNormalsMat(parentNormalsMatrix)
         for (const primitive of this.primitives) {
             primitive.render()
         }
@@ -437,8 +435,8 @@ class ActiveMeshPrimitive<I, A> {
         }
         const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES
         this.sideEffects.push(indicesAccessor ?
-            () => renderer.draw(indicesAccessor.accessor.componentType, mode, count, indicesAccessor.accessor.byteOffset ?? 0) :
-            () => renderer.drawIndexed(mode, count, 0)
+            () => renderer.drawIndexed(indicesAccessor.accessor.componentType, mode, count, indicesAccessor.accessor.byteOffset ?? 0) :
+            () => renderer.draw(mode, count, 0)
         )
     }
 

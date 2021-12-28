@@ -22,7 +22,7 @@ let uColor;
 let uShininess;
 let uFogginess;
 let modelIndex;
-let model;
+let model = null;
 let lightPosition = [2, 2, 2];
 let viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
 let modelMatrix = aether.mat4.identity();
@@ -129,6 +129,10 @@ function modelLoaderTarget() {
             "POSITION": position,
             "NORMAL": normal,
         }, uPositionsMat, uNormalsMat);
+        if (model) {
+            model.delete();
+            model = null;
+        }
         model = yield gltf.ActiveModel.create(modelUri, renderer);
         modelMatrix = aether.mat4.identity();
         draw();

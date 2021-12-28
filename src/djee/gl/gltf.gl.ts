@@ -14,7 +14,10 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
         private attributes: Record<string, Attribute>, 
         private positionsMatUniform: Uniform, 
         private normalsMatUniform: Uniform
-    ) {        
+    ) {
+        for (const key of Object.keys(attributes)) {
+            this.setToZero(key)
+        }
     }
 
     newIndicesBuffer(byteOffset: number, byteLength: number, data: ArrayBuffer): IndicesBuffer {
@@ -33,8 +36,10 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
         buffer.delete()
     }
 
-    bind(attributeName: string, buffer: AttributesBuffer, byteOffset: number, normalized: boolean, accessor: Accessor): void {
+    bind(attributeName: string, buffer: AttributesBuffer, accessor: Accessor): void {
         const variableInfo = toVariableInfo(accessor)
+        const byteOffset = accessor.byteOffset ?? 0
+        const normalized = accessor.normalized ?? false
         const attribute = this.attributes[attributeName]
         if (attribute) {
             attribute.pointTo(buffer, byteOffset, normalized, variableInfo)
@@ -47,9 +52,9 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
 
     setToZero(attributeName: string): void {
         const attribute = this.attributes[attributeName]
-        if (attribute instanceof AttributesBuffer) {
-            attribute.setTo(0)
-        }
+        const value = new Array<number>(attribute.info.itemSize)
+        value.fill(0)
+        attribute.setTo(...value)
     }
 
     setIndexComponentType(componentType: number): void {
@@ -61,27 +66,19 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
         }
     }
 
-    draw(componentType: number, mode: number, count: number, byteOffset: number): void {
+    drawIndexed(componentType: number, mode: number, count: number, byteOffset: number): void {
         this.context.gl.drawElements(mode, count, componentType, byteOffset)
     }
 
-    drawIndexed(mode: number, count: number, byteOffset: number): void {
+    draw(mode: number, count: number, byteOffset: number): void {
         this.context.gl.drawArrays(mode, byteOffset, count)
     }
 
-    get positionsMat(): aether.Mat<4> {
-        return asMat(this.positionsMatUniform.data)
-    }
-
-    set positionsMat(mat: aether.Mat<4>) {
+    setPositionsMat(mat: aether.Mat<4>) {
         this.positionsMatUniform.data = aether.mat4.columnMajorArray(mat)
     }
 
-    get normalsMat(): aether.Mat<4> {
-        return asMat(this.normalsMatUniform.data)
-    }
-
-    set normalsMat(mat: aether.Mat<4>) {
+    setNormalsMat(mat: aether.Mat<4>) {
         this.normalsMatUniform.data = aether.mat4.columnMajorArray(mat)
     }
 

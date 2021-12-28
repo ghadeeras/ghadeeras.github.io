@@ -1,5 +1,4 @@
 import { aether } from "/gen/libs.js";
-import { AttributesBuffer } from "./buffer.js";
 import { asVariableInfo } from "./introspection.js";
 import { failure } from "../utils.js";
 export class GLRenderer {
@@ -8,6 +7,9 @@ export class GLRenderer {
         this.attributes = attributes;
         this.positionsMatUniform = positionsMatUniform;
         this.normalsMatUniform = normalsMatUniform;
+        for (const key of Object.keys(attributes)) {
+            this.setToZero(key);
+        }
     }
     newIndicesBuffer(byteOffset, byteLength, data) {
         const buffer = this.context.newIndicesBuffer();
@@ -22,8 +24,11 @@ export class GLRenderer {
     deleteBuffer(buffer) {
         buffer.delete();
     }
-    bind(attributeName, buffer, byteOffset, normalized, accessor) {
+    bind(attributeName, buffer, accessor) {
+        var _a, _b;
         const variableInfo = toVariableInfo(accessor);
+        const byteOffset = (_a = accessor.byteOffset) !== null && _a !== void 0 ? _a : 0;
+        const normalized = (_b = accessor.normalized) !== null && _b !== void 0 ? _b : false;
         const attribute = this.attributes[attributeName];
         if (attribute) {
             attribute.pointTo(buffer, byteOffset, normalized, variableInfo);
@@ -34,9 +39,9 @@ export class GLRenderer {
     }
     setToZero(attributeName) {
         const attribute = this.attributes[attributeName];
-        if (attribute instanceof AttributesBuffer) {
-            attribute.setTo(0);
-        }
+        const value = new Array(attribute.info.itemSize);
+        value.fill(0);
+        attribute.setTo(...value);
     }
     setIndexComponentType(componentType) {
         if (componentType === WebGLRenderingContext.UNSIGNED_INT) {
@@ -46,22 +51,16 @@ export class GLRenderer {
             }
         }
     }
-    draw(componentType, mode, count, byteOffset) {
+    drawIndexed(componentType, mode, count, byteOffset) {
         this.context.gl.drawElements(mode, count, componentType, byteOffset);
     }
-    drawIndexed(mode, count, byteOffset) {
+    draw(mode, count, byteOffset) {
         this.context.gl.drawArrays(mode, byteOffset, count);
     }
-    get positionsMat() {
-        return asMat(this.positionsMatUniform.data);
-    }
-    set positionsMat(mat) {
+    setPositionsMat(mat) {
         this.positionsMatUniform.data = aether.mat4.columnMajorArray(mat);
     }
-    get normalsMat() {
-        return asMat(this.normalsMatUniform.data);
-    }
-    set normalsMat(mat) {
+    setNormalsMat(mat) {
         this.normalsMatUniform.data = aether.mat4.columnMajorArray(mat);
     }
 }

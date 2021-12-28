@@ -33,13 +33,10 @@ class ActiveBufferView {
 }
 class ActiveAccessor {
     constructor(renderer, accessor, bufferViews) {
-        var _a, _b;
         this.accessor = accessor;
         if (accessor.bufferView !== undefined) {
             const buffer = bufferViews[accessor.bufferView].buffer;
-            const byteOffset = (_a = accessor.byteOffset) !== null && _a !== void 0 ? _a : 0;
-            const normalized = (_b = accessor.normalized) !== null && _b !== void 0 ? _b : false;
-            this.bindTo = attribute => renderer.bind(attribute, buffer, byteOffset, normalized, accessor);
+            this.bindTo = attribute => renderer.bind(attribute, buffer, accessor);
             this.bindToIndex = () => renderer.bindIndices(buffer);
         }
         else {
@@ -187,8 +184,8 @@ class ActiveMesh {
         this.max = this.primitives.map(primitive => primitive.max).reduce((prev, curr) => aether.vec3.max(prev, curr));
     }
     render(parentPositionsMatrix, parentNormalsMatrix = parentPositionsMatrix) {
-        this.renderer.positionsMat = parentPositionsMatrix;
-        this.renderer.normalsMat = parentNormalsMatrix;
+        this.renderer.setPositionsMat(parentPositionsMatrix);
+        this.renderer.setNormalsMat(parentNormalsMatrix);
         for (const primitive of this.primitives) {
             primitive.render();
         }
@@ -217,8 +214,8 @@ class ActiveMeshPrimitive {
         }
         const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES;
         this.sideEffects.push(indicesAccessor ?
-            () => { var _a; return renderer.draw(indicesAccessor.accessor.componentType, mode, count, (_a = indicesAccessor.accessor.byteOffset) !== null && _a !== void 0 ? _a : 0); } :
-            () => renderer.drawIndexed(mode, count, 0));
+            () => { var _a; return renderer.drawIndexed(indicesAccessor.accessor.componentType, mode, count, (_a = indicesAccessor.accessor.byteOffset) !== null && _a !== void 0 ? _a : 0); } :
+            () => renderer.draw(mode, count, 0));
     }
     render() {
         for (let sideEffect of this.sideEffects) {
