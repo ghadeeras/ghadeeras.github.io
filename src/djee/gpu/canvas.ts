@@ -43,9 +43,8 @@ export class Canvas {
         return {
             view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
+            loadValue: clearColor,
             storeOp: "discard",
-            loadOp: "clear",
-            clearValue: clearColor,
         }
     }
 

@@ -1,13 +1,14 @@
 struct Varyings {
-    @builtin(position) pos: vec4<f32>;
-    @location(0) c: vec2<f32>;
+    [[builtin(position)]] pos: vec4<f32>;
+    [[location(0)]] c: vec2<f32>;
 };
 
-@stage(vertex)
-fn v_main(@location(0) pos: vec2<f32>) -> Varyings {
+[[stage(vertex)]]
+fn v_main([[location(0)]] pos: vec2<f32>) -> Varyings {
     return Varyings(vec4<f32>(pos, 0.0, 1.0), pos);
 }
 
+[[block]]
 struct Params {
   center: vec2<f32>;
   color: vec2<f32>;
@@ -18,8 +19,7 @@ struct Params {
   julia: f32;
 };
 
-@group(0)
-@binding(0)
+[[group(0), binding(0)]]
 var<uniform> params: Params;
 
 let PI = 3.1415926535897932384626433832795;
@@ -78,8 +78,8 @@ fn mandelbrotOrJulia(p: vec2<f32>) -> f32 {
     return mandelbrot(params.scale * p + params.center, vec2<f32>(0.0));
 }
 
-@stage(fragment)
-fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
+[[stage(fragment)]]
+fn f_main(varyings: Varyings) -> [[location(0)]] vec4<f32> {
     var color = rgbColor();
     return vec4<f32>(mandelbrotOrJulia(varyings.c) * color, 1.0);
 }
