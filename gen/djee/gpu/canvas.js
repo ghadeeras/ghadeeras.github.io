@@ -19,6 +19,7 @@ export class Canvas {
             format: this.format,
             device: device.device,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
+            compositingAlphaMode: "opaque",
         });
         this.colorTexture = device.texture({
             size: this.size,
@@ -31,8 +32,9 @@ export class Canvas {
         return {
             view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
-            loadValue: clearColor,
             storeOp: "discard",
+            loadOp: "clear",
+            clearValue: clearColor,
         };
     }
     depthTexture() {
