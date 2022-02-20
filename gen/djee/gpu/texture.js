@@ -22,20 +22,23 @@ export class Texture {
     }) {
         return Object.assign(Object.assign({}, state), { format: formatOf(this.descriptor.format) });
     }
-    depthAttachment(loadValue = 1) {
+    depthAttachment(clearValue = 1) {
         return {
             view: this.view,
-            depthLoadValue: loadValue,
-            depthStoreOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
+            depthStoreOp: clearValue === undefined || this.isCopySrc ? "store" : "discard",
+            depthLoadOp: clearValue !== undefined ? "clear" : "load",
+            depthClearValue: clearValue,
             stencilStoreOp: "discard",
-            stencilLoadValue: 0,
+            stencilLoadOp: "clear",
+            stencilClearValue: 0,
         };
     }
-    colorAttachment(loadValue = "load") {
+    colorAttachment(clearValue = undefined) {
         return {
             view: this.view,
-            loadValue: loadValue,
-            storeOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
+            storeOp: clearValue === undefined || this.isCopySrc ? "store" : "discard",
+            loadOp: clearValue !== undefined ? "clear" : "load",
+            clearValue: clearValue,
         };
     }
     createView() {

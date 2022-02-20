@@ -17,7 +17,7 @@ export class CommandEncoder {
         try {
             return passSetter(pass)
         } finally {
-            pass.endPass()
+            pass.end()
         }
     }
     
@@ -26,7 +26,7 @@ export class CommandEncoder {
         try {
             return passSetter(pass)
         } finally {
-            pass.endPass()
+            pass.end()
         }
     }
     

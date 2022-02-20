@@ -8,33 +8,34 @@ struct BodyState {
     velocity: vec3<f32>;
 };
 
-[[block]]
 struct UniverseUniforms {
     bodyPointedness: f32;
     gravityConstant: f32;
     dT: f32;
 };
 
-[[block]]
 struct UniverseDesc {
     bodies: array<BodyDesc>;
 };
 
-[[block]]
 struct UniverseState {
     bodies: array<BodyState>;
 };
 
-[[group(0), binding(0)]]
+@group(0)
+@binding(0)
 var<storage, read> universeDesc: UniverseDesc;
 
-[[group(0), binding(1)]]
+@group(0)
+@binding(1)
 var<storage, read> currentState: UniverseState;
 
-[[group(0), binding(2)]]
+@group(0)
+@binding(2)
 var<storage, write> nextState: UniverseState;
 
-[[group(0), binding(3)]]
+@group(0)
+@binding(3)
 var<uniform> universeUniforms: UniverseUniforms;
 
 fn calculateBodiesCount() -> u32 {
@@ -69,8 +70,9 @@ fn accelerationAt(position: vec3<f32>, bodiesCount: u32) -> vec3<f32> {
     return acceleration;
 }
 
-[[stage(compute), workgroup_size(256)]]
-fn c_main([[builtin(global_invocation_id)]] global_invocation_id: vec3<u32>) {
+@stage(compute)
+@workgroup_size(256)
+fn c_main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
     var bodiesCount = calculateBodiesCount();
 
     var index = global_invocation_id.x; 

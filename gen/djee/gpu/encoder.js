@@ -12,7 +12,7 @@ export class CommandEncoder {
             return passSetter(pass);
         }
         finally {
-            pass.endPass();
+            pass.end();
         }
     }
     renderPass(descriptor, passSetter) {
@@ -21,7 +21,7 @@ export class CommandEncoder {
             return passSetter(pass);
         }
         finally {
-            pass.endPass();
+            pass.end();
         }
     }
 }

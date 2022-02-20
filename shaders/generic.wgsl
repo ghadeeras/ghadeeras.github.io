@@ -1,10 +1,9 @@
 struct VertexOutput {
-    [[builtin(position)]] projPos: vec4<f32>;
-    [[location(0)]] pos: vec3<f32>;
-    [[location(1)]] normal: vec3<f32>;
+    @builtin(position) projPos: vec4<f32>;
+    @location(0) pos: vec3<f32>;
+    @location(1) normal: vec3<f32>;
 };
 
-[[block]]
 struct Uniforms {
     positionsMat: mat4x4<f32>;
     normalsMat: mat4x4<f32>;
@@ -16,7 +15,8 @@ struct Uniforms {
     fogginess: f32;
 };
 
-[[group(0), binding(0)]]
+@group(0)
+@binding(0)
 var<uniform> uniforms: Uniforms;
 
 fn color(
@@ -50,10 +50,10 @@ fn color(
     return vec4<f32>(mix(vec3<f32>(1.0), shade * materialColor, fogFactor), uniforms.color.a);
 }
 
-[[stage(vertex)]]
+@stage(vertex)
 fn v_main(
-    [[location(0)]] pos: vec3<f32>, 
-    [[location(1)]] normal: vec3<f32>
+    @location(0) pos: vec3<f32>, 
+    @location(1) normal: vec3<f32>
 ) -> VertexOutput {
     var newPos = uniforms.positionsMat * vec4<f32>(pos, 1.0);
     var newNormal = uniforms.normalsMat * vec4<f32>(normal, 0.0);
@@ -64,11 +64,11 @@ fn v_main(
     );
 }
 
-[[stage(fragment)]]
+@stage(fragment)
 fn f_main(
-    [[location(0)]] pos: vec3<f32>,
-    [[location(1)]] normal: vec3<f32>,
-    [[builtin(front_facing)]] frontFacing: bool
-) -> [[location(0)]] vec4<f32> {
+    @location(0) pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @builtin(front_facing) frontFacing: bool
+) -> @location(0) vec4<f32> {
     return color(pos, normal, frontFacing);
 }

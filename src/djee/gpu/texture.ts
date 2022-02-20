@@ -32,21 +32,24 @@ export class Texture {
         }
     }
 
-    depthAttachment(loadValue: number | "load" = 1): GPURenderPassDepthStencilAttachment {
+    depthAttachment(clearValue: number | undefined = 1): GPURenderPassDepthStencilAttachment {
         return {
             view: this.view,
-            depthLoadValue: loadValue,
-            depthStoreOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
+            depthStoreOp: clearValue === undefined || this.isCopySrc ? "store" : "discard",
+            depthLoadOp: clearValue !== undefined ? "clear" : "load",
+            depthClearValue: clearValue,
             stencilStoreOp: "discard",
-            stencilLoadValue: 0,
+            stencilLoadOp: "clear",
+            stencilClearValue: 0,
         }
     }
 
-    colorAttachment(loadValue: GPUColor | "load" = "load"): GPURenderPassColorAttachment {
+    colorAttachment(clearValue: GPUColor | undefined = undefined): GPURenderPassColorAttachment {
         return {
             view: this.view,
-            loadValue: loadValue,
-            storeOp: loadValue == "load" || this.isCopySrc ? "store" : "discard",
+            storeOp: clearValue === undefined || this.isCopySrc ? "store" : "discard",
+            loadOp: clearValue !== undefined ? "clear" : "load",
+            clearValue: clearValue,
         }
     }
 
