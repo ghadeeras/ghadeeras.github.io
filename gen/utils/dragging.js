@@ -15,7 +15,14 @@ export class ModelMatrixDragging {
         return to => {
             const actualTo = aether.vec3.swizzle(aether.mat4.apply(invProjViewMatrix, [...to, -1, 1]), 0, 1, 2);
             const delta = this.delta(actualFrom, actualTo, speed);
-            return aether.mat4.mul(delta, matrix);
+            const translation = aether.mat4.translation(aether.vec3.from(matrix[3]));
+            const rotation = [
+                matrix[0],
+                matrix[1],
+                matrix[2],
+                [0, 0, 0, 1],
+            ];
+            return aether.mat4.mul(translation, aether.mat4.mul(delta, rotation));
         };
     }
     finalize(matrix) {
