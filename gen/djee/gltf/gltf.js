@@ -9,6 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether } from "/gen/libs.js";
 import { failure, lazily } from "../utils.js";
+export function fetchBuffers(bufferRefs, baseUri) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const buffers = new Array(bufferRefs.length);
+        for (let i = 0; i < buffers.length; i++) {
+            buffers[i] = yield fetchBuffer(bufferRefs[i], baseUri);
+        }
+        return buffers;
+    });
+}
 function fetchBuffer(bufferRef, baseUri) {
     return __awaiter(this, void 0, void 0, function* () {
         const url = new URL(bufferRef.uri, baseUri);
@@ -69,10 +78,7 @@ export class ActiveModel {
         return __awaiter(this, void 0, void 0, function* () {
             const response = yield fetch(modelUri, { mode: "cors" });
             const model = yield response.json();
-            const buffers = new Array(model.buffers.length);
-            for (let i = 0; i < buffers.length; i++) {
-                buffers[i] = yield fetchBuffer(model.buffers[i], modelUri);
-            }
+            const buffers = yield fetchBuffers(model.buffers, modelUri);
             return new ActiveModel(model, buffers, renderer);
         });
     }
@@ -121,7 +127,7 @@ class ActiveNode {
             return children;
         });
         this.positionsMatrix = node.matrix !== undefined ?
-            asMat(node.matrix) :
+            aether.mat4.from(node.matrix) :
             aether.mat4.identity();
         this.positionsMatrix = node.translation !== undefined ?
             aether.mat4.mul(this.positionsMatrix, aether.mat4.translation(node.translation)) :
@@ -222,16 +228,5 @@ class ActiveMeshPrimitive {
             sideEffect();
         }
     }
-}
-function asVec(array, offset = 0) {
-    return [...array.slice(offset, offset + 4)];
-}
-function asMat(array, offset = 0) {
-    return [
-        asVec(array, offset + 0),
-        asVec(array, offset + 4),
-        asVec(array, offset + 8),
-        asVec(array, offset + 12)
-    ];
 }
 //# sourceMappingURL=gltf.js.map

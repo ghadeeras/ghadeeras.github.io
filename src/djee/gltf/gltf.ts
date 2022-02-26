@@ -67,26 +67,31 @@ export type BufferView = {
     
 }
 
+export type ScalarType = WebGLRenderingContext[
+    "BYTE" | 
+    "UNSIGNED_BYTE" | 
+    "SHORT" | 
+    "UNSIGNED_SHORT" | 
+    "INT" | 
+    "UNSIGNED_INT" | 
+    "FLOAT"
+]
+
+export type ElementType = "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4"
+
 export type Accessor = {
 
     bufferView?: number
 
     byteOffset?: number
 
-    componentType:
-        typeof WebGLRenderingContext.BYTE |
-        typeof WebGLRenderingContext.UNSIGNED_BYTE |
-        typeof WebGLRenderingContext.SHORT |
-        typeof WebGLRenderingContext.UNSIGNED_SHORT |
-        typeof WebGLRenderingContext.INT |
-        typeof WebGLRenderingContext.UNSIGNED_INT |
-        typeof WebGLRenderingContext.FLOAT
+    componentType: ScalarType
 
     normalized?: boolean
 
     count: number
 
-    type: "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4",
+    type: ElementType,
 
     min?: number[],
 
@@ -100,16 +105,19 @@ export type Mesh = {
 
 }
 
+export type PrimitiveMode = WebGLRenderingContext[
+    "POINTS" | 
+    "LINES" | 
+    "LINE_LOOP" | 
+    "LINE_STRIP" | 
+    "TRIANGLES" | 
+    "TRIANGLE_STRIP" | 
+    "TRIANGLE_FAN"
+]
+
 export type MeshPrimitive = {
 
-    mode?: 
-        typeof WebGLRenderingContext.POINTS |
-        typeof WebGLRenderingContext.LINES |
-        typeof WebGLRenderingContext.LINE_LOOP |
-        typeof WebGLRenderingContext.LINE_STRIP |
-        typeof WebGLRenderingContext.TRIANGLES |
-        typeof WebGLRenderingContext.TRIANGLE_STRIP |
-        typeof WebGLRenderingContext.TRIANGLE_FAN
+    mode?: PrimitiveMode
     
     indices?: number
 
@@ -146,6 +154,14 @@ export interface Renderer<I, A> {
 }
 
 type SideEffect = () => void
+
+export async function fetchBuffers(bufferRefs: BufferRef[], baseUri: string) {
+    const buffers: ArrayBufferLike[] = new Array<ArrayBufferLike>(bufferRefs.length)
+    for (let i = 0; i < buffers.length; i++) {
+        buffers[i] = await fetchBuffer(bufferRefs[i], baseUri)
+    }
+    return buffers
+}
 
 async function fetchBuffer(bufferRef: BufferRef, baseUri: string): Promise<ArrayBuffer> {
     const url = new URL(bufferRef.uri, baseUri)
@@ -233,10 +249,7 @@ export class ActiveModel<I, A> implements RenderSubject {
     static async create<I, A>(modelUri: string, renderer: Renderer<I, A>) {
         const response = await fetch(modelUri, {mode : "cors"})
         const model = await response.json() as Model
-        const buffers: ArrayBufferLike[] = new Array<ArrayBufferLike>(model.buffers.length)
-        for (let i = 0; i < buffers.length; i++) {
-            buffers[i] = await fetchBuffer(model.buffers[i], modelUri)
-        }
+        const buffers: ArrayBufferLike[] = await fetchBuffers(model.buffers, modelUri)
         return new ActiveModel(model, buffers, renderer)
     }
 
@@ -313,7 +326,7 @@ class ActiveNode<I, A> implements RenderSubject {
             return children
         })
         this.positionsMatrix = node.matrix !== undefined ? 
-            asMat(node.matrix) : 
+            aether.mat4.from(node.matrix) : 
             aether.mat4.identity()
         this.positionsMatrix = node.translation !== undefined ? 
             aether.mat4.mul(this.positionsMatrix, aether.mat4.translation(node.translation)) :
@@ -447,17 +460,3 @@ class ActiveMeshPrimitive<I, A> {
     }
     
 }
-
-function asVec(array: number[] | Float32Array | Float64Array, offset: number = 0): aether.Vec<4> {
-    return [...array.slice(offset, offset + 4)] as aether.Vec<4>
-}
-
-function asMat(array: number[] | Float32Array | Float64Array, offset: number = 0): aether.Mat<4> {
-    return [
-        asVec(array, offset +  0),
-        asVec(array, offset +  4),
-        asVec(array, offset +  8),
-        asVec(array, offset + 12)
-    ]
-}
-
