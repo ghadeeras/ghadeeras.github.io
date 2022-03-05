@@ -1,7 +1,6 @@
 import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
-import { ViewInputs } from "./view.js";
-import { GLView } from "./view.gl.js";
+import { newViewFactory } from "./view.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -25,13 +24,10 @@ export function init() {
 }
 
 async function doInit() {
-    const shaders = await gear.fetchTextFiles({
-        vertexShaderCode: "generic.vert",
-        fragmentShaderCode: "generic.frag"
-    }, "/shaders")
-
     const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
     modelIndex = await modelIndexResponse.json() as ModelIndexEntry[]
+
+    const viewFactory = await newViewFactory("canvas-gl")
 
     const modelElement = document.getElementById("model") as HTMLSelectElement
     for (let entry of modelIndex) {
@@ -56,10 +52,8 @@ async function doInit() {
     )
 
     const mouseBinding = gear.readableValue("mouse-binding");
-    gear.invokeLater(() => mouseBinding.flow("modelRotation"))
 
     const model = gear.readableValue("model");
-    gear.invokeLater(() => model.flow("ScalarField"))
 
     const cases = {
         lightPosition: new gear.Value<gear.Dragging>(),
@@ -75,7 +69,7 @@ async function doInit() {
 
     canvas.dragging.value.switch(mouseBinding, cases)
 
-    const viewInputs: ViewInputs = {
+    const view = viewFactory({
         matModel: gear.Value.from(
                 cases.modelRotation.then(gear.drag(modelRotation)),
                 cases.modelMove.then(gear.drag(modelTranslation)),
@@ -108,9 +102,17 @@ async function doInit() {
             .then(gear.drag(dragging.positionDragging))
             .map(([x, y]) => (y + 1) / 2)
             .defaultsTo(0),
-    }
+        modelUri: model.map(getModelUri),
+    })
 
-    const view = new GLView("canvas-gl", shaders.vertexShaderCode, shaders.fragmentShaderCode, viewInputs, model.map(getModelUri))
+    mouseBinding.flow("modelRotation")
+    model.flow("ScalarField")
+    const frame = () => {
+        view.draw()
+        requestAnimationFrame(frame)
+    }
+    frame()
+
 }
 
 function positionToLightPosition(): gear.Mapper<[number, number], [number, number, number]> {

@@ -63,6 +63,7 @@ export class Node extends IdentifiableObject {
     readonly children: Node[] = []
     readonly matrix: aether.Mat4
     readonly antiMatrix: aether.Mat4
+    readonly isIdentityMatrix: boolean
 
     private gltfNode: gltf.Node
 
@@ -84,6 +85,7 @@ export class Node extends IdentifiableObject {
             aether.mat4.mul(this.matrix, aether.mat4.scaling(...node.scale)) :
             this.matrix
         this.antiMatrix = aether.mat4.transpose(aether.mat4.inverse(this.matrix)) 
+        this.isIdentityMatrix = isIdentityMatrix(this.matrix)
         this.gltfNode = node
     }
 
@@ -129,7 +131,7 @@ export class Primitive extends IdentifiableObject {
         for (const key of Object.keys(primitive.attributes)) {
             const accessor = accessors[primitive.attributes[key]]
             this.attributes[key] = accessor
-            if (accessor.count < this.count) {
+            if (this.indices === null && accessor.count < this.count) {
                 this.count = accessor.count
             }
         }
@@ -150,9 +152,7 @@ export class Accessor extends IdentifiableObject {
 
     constructor(accessor: gltf.Accessor, i: number, bufferViews: BufferView[]) {
         super(`accessor#${i}`)
-        this.bufferView = accessor.bufferView !== undefined ? 
-            bufferViews[accessor.bufferView] : 
-            utils.failure("Using zero buffers not supported yet!")
+        this.bufferView = bufferViews[accessor.bufferView ?? utils.failure<number>("Using zero buffers not supported yet!")]
         this.byteOffset = accessor.byteOffset ?? 0
         this.componentType = accessor.componentType
         this.normalized = accessor.normalized ?? false
@@ -187,8 +187,25 @@ function markIndexBufferView(model: gltf.Model) {
     for (const mesh of model.meshes) {
         for (const primitive of mesh.primitives) {
             if (primitive.indices !== undefined) {
-                model.bufferViews[primitive.indices].target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
+                model.bufferViews[model.accessors[primitive.indices].bufferView ?? utils.failure<number>("Using zero buffers not supported yet!")].target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
             }
         }
     }
 }
+function isIdentityMatrix(matrix: aether.Mat4): boolean {
+    for (let i = 0; i < 4; i++) {
+        for (let j = i; j < 4; j++) {
+            if (i === j) {
+                if (matrix[i][j] !== 1) {
+                    return false
+                }
+            } else {
+                if (matrix[i][j] !== 0 || matrix[j][i] !== 0) {
+                    return false
+                }
+            }
+        }
+    }
+    return true
+}
+

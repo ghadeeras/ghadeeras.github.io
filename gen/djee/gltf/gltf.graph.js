@@ -67,6 +67,7 @@ export class Node extends IdentifiableObject {
             aether.mat4.mul(this.matrix, aether.mat4.scaling(...node.scale)) :
             this.matrix;
         this.antiMatrix = aether.mat4.transpose(aether.mat4.inverse(this.matrix));
+        this.isIdentityMatrix = isIdentityMatrix(this.matrix);
         this.gltfNode = node;
     }
     wire(nodes) {
@@ -97,7 +98,7 @@ export class Primitive extends IdentifiableObject {
         for (const key of Object.keys(primitive.attributes)) {
             const accessor = accessors[primitive.attributes[key]];
             this.attributes[key] = accessor;
-            if (accessor.count < this.count) {
+            if (this.indices === null && accessor.count < this.count) {
                 this.count = accessor.count;
             }
         }
@@ -105,18 +106,16 @@ export class Primitive extends IdentifiableObject {
 }
 export class Accessor extends IdentifiableObject {
     constructor(accessor, i, bufferViews) {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e;
         super(`accessor#${i}`);
-        this.bufferView = accessor.bufferView !== undefined ?
-            bufferViews[accessor.bufferView] :
-            utils.failure("Using zero buffers not supported yet!");
-        this.byteOffset = (_a = accessor.byteOffset) !== null && _a !== void 0 ? _a : 0;
+        this.bufferView = bufferViews[(_a = accessor.bufferView) !== null && _a !== void 0 ? _a : utils.failure("Using zero buffers not supported yet!")];
+        this.byteOffset = (_b = accessor.byteOffset) !== null && _b !== void 0 ? _b : 0;
         this.componentType = accessor.componentType;
-        this.normalized = (_b = accessor.normalized) !== null && _b !== void 0 ? _b : false;
+        this.normalized = (_c = accessor.normalized) !== null && _c !== void 0 ? _c : false;
         this.count = accessor.count;
         this.type = accessor.type;
-        this.min = (_c = accessor.min) !== null && _c !== void 0 ? _c : [-1, -1, -1];
-        this.max = (_d = accessor.max) !== null && _d !== void 0 ? _d : [+1, +1, +1];
+        this.min = (_d = accessor.min) !== null && _d !== void 0 ? _d : [-1, -1, -1];
+        this.max = (_e = accessor.max) !== null && _e !== void 0 ? _e : [+1, +1, +1];
     }
 }
 export class BufferView extends IdentifiableObject {
@@ -131,12 +130,30 @@ export class BufferView extends IdentifiableObject {
     }
 }
 function markIndexBufferView(model) {
+    var _a;
     for (const mesh of model.meshes) {
         for (const primitive of mesh.primitives) {
             if (primitive.indices !== undefined) {
-                model.bufferViews[primitive.indices].target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
+                model.bufferViews[(_a = model.accessors[primitive.indices].bufferView) !== null && _a !== void 0 ? _a : utils.failure("Using zero buffers not supported yet!")].target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
             }
         }
     }
+}
+function isIdentityMatrix(matrix) {
+    for (let i = 0; i < 4; i++) {
+        for (let j = i; j < 4; j++) {
+            if (i === j) {
+                if (matrix[i][j] !== 1) {
+                    return false;
+                }
+            }
+            else {
+                if (matrix[i][j] !== 0 || matrix[j][i] !== 0) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 //# sourceMappingURL=gltf.graph.js.map

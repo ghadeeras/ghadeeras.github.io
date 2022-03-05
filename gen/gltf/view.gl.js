@@ -10,17 +10,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether, gear } from "/gen/libs.js";
 import { wgl, gltf } from "../djee/index.js";
 export class GLView {
-    constructor(canvasId, vertexShaderCode, fragmentShaderCode, inputs, modelUri) {
+    constructor(canvasId, vertexShaderCode, fragmentShaderCode, inputs) {
         this.model = null;
         this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.modelMatrix = aether.mat4.identity();
         this.projectionMatrix = aether.mat4.projection(2);
-        const shaders = {
-            vertexShaderCode,
-            fragmentShaderCode
-        };
         this.context = wgl.Context.of(canvasId);
-        const program = this.context.link(this.context.vertexShader(shaders.vertexShaderCode), this.context.fragmentShader(shaders.fragmentShaderCode));
+        const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
         this.position = program.attribute("position");
         this.normal = program.attribute("normal");
@@ -38,29 +34,14 @@ export class GLView {
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
-        this.lightPositionTarget().value = inputs.lightPosition;
-        this.lightRadiusTarget().value = inputs.lightRadius;
-        this.colorTarget().value = inputs.color;
-        this.shininessTarget().value = inputs.shininess;
-        this.fogginessTarget().value = inputs.fogginess;
-        this.modelMatrixTarget().value = inputs.matModel;
-        this.viewMatrixTarget().value = inputs.matView;
-        this.modelUriTarget().value = modelUri;
-    }
-    modelMatrixTarget() {
-        return new gear.Target(matrix => {
-            this.modelMatrix = matrix;
-            this.draw();
-        });
-    }
-    viewMatrixTarget() {
-        return new gear.Target(matrix => {
-            this.viewMatrix = matrix;
-            this.draw();
-        });
-    }
-    modelUriTarget() {
-        return new gear.Target((modelUri) => __awaiter(this, void 0, void 0, function* () {
+        inputs.lightPosition.attach(p => this.uLightPosition.data = p);
+        inputs.lightRadius.attach(r => this.uLightRadius.data = [r]);
+        inputs.color.attach(c => this.uColor.data = c);
+        inputs.shininess.attach(s => this.uShininess.data = [s]);
+        inputs.fogginess.attach(f => this.uFogginess.data = [f]);
+        inputs.matModel.attach(m => this.modelMatrix = m);
+        inputs.matView.attach(v => this.viewMatrix = v);
+        inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
             const renderer = new wgl.GLRenderer(this.context, {
                 "POSITION": this.position,
                 "NORMAL": this.normal,
@@ -70,38 +51,7 @@ export class GLView {
                 this.model = null;
             }
             this.model = yield gltf.ActiveModel.create(modelUri, renderer);
-            this.draw();
         }));
-    }
-    lightPositionTarget() {
-        return new gear.Target(lightPosition => {
-            this.uLightPosition.data = lightPosition;
-            this.draw();
-        });
-    }
-    lightRadiusTarget() {
-        return new gear.Target(value => {
-            this.uLightRadius.data = [value];
-            this.draw();
-        });
-    }
-    shininessTarget() {
-        return new gear.Target(value => {
-            this.uShininess.data = [value];
-            this.draw();
-        });
-    }
-    colorTarget() {
-        return new gear.Target(color => {
-            this.uColor.data = color;
-            this.draw();
-        });
-    }
-    fogginessTarget() {
-        return new gear.Target(value => {
-            this.uFogginess.data = [value];
-            this.draw();
-        });
     }
     draw() {
         const gl = this.context.gl;
@@ -111,5 +61,14 @@ export class GLView {
         }
         gl.flush();
     }
+}
+export function newViewFactory(canvasId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const shaders = yield gear.fetchTextFiles({
+            vertexShaderCode: "generic.vert",
+            fragmentShaderCode: "generic.frag"
+        }, "/shaders");
+        return inputs => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs);
+    });
 }
 //# sourceMappingURL=view.gl.js.map

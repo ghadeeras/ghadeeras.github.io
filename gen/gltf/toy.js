@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
-import { GLView } from "./view.gl.js";
+import { newViewFactory } from "./view.js";
 let modelIndex;
 let viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
 let modelMatrix = aether.mat4.identity();
@@ -19,12 +19,9 @@ export function init() {
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShaderCode: "generic.vert",
-            fragmentShaderCode: "generic.frag"
-        }, "/shaders");
         const modelIndexResponse = yield fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json");
         modelIndex = (yield modelIndexResponse.json());
+        const viewFactory = yield newViewFactory("canvas-gl");
         const modelElement = document.getElementById("model");
         for (let entry of modelIndex) {
             modelElement.appendChild(new Option(entry.name, entry.name));
@@ -35,9 +32,7 @@ function doInit() {
         const modelTranslation = new dragging.TranslationDragging(() => modelMatrix, () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const modelScale = new dragging.ScaleDragging(() => modelMatrix, 4);
         const mouseBinding = gear.readableValue("mouse-binding");
-        gear.invokeLater(() => mouseBinding.flow("modelRotation"));
         const model = gear.readableValue("model");
-        gear.invokeLater(() => model.flow("ScalarField"));
         const cases = {
             lightPosition: new gear.Value(),
             lightRadius: new gear.Value(),
@@ -50,7 +45,7 @@ function doInit() {
             viewRotation: new gear.Value(),
         };
         canvas.dragging.value.switch(mouseBinding, cases);
-        const viewInputs = {
+        const view = viewFactory({
             matModel: gear.Value.from(cases.modelRotation.then(gear.drag(modelRotation)), cases.modelMove.then(gear.drag(modelTranslation)), cases.modelScale.then(gear.drag(modelScale)), model.map(() => aether.mat4.identity())).defaultsTo(modelMatrix).attach(mat => modelMatrix = mat),
             matView: gear.Value.from(cases.viewRotation.then(gear.drag(viewRotation)), model.map(() => aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]))).defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
             color: cases.color
@@ -75,8 +70,15 @@ function doInit() {
                 .then(gear.drag(dragging.positionDragging))
                 .map(([x, y]) => (y + 1) / 2)
                 .defaultsTo(0),
+            modelUri: model.map(getModelUri),
+        });
+        mouseBinding.flow("modelRotation");
+        model.flow("ScalarField");
+        const frame = () => {
+            view.draw();
+            requestAnimationFrame(frame);
         };
-        const view = new GLView("canvas-gl", shaders.vertexShaderCode, shaders.fragmentShaderCode, viewInputs, model.map(getModelUri));
+        frame();
     });
 }
 function positionToLightPosition() {

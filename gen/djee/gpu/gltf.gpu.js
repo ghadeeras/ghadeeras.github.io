@@ -1,33 +1,43 @@
-import { failure } from "../utils";
+import { failure } from "../utils.js";
 import { mat4x4, struct } from "./types.js";
 import { aether } from "/gen/libs.js";
 export class GPURenderer {
     constructor(model, device, bindGroupIndex, attributeLocations, bindGroupSupplier, pipelineSupplier) {
         this.model = model;
+        this.resources = [];
         this.nodeRenderers = this.createNodeRenderers(device, bindGroupIndex, bindGroupSupplier);
-        this.primitiveRenderers = this.createPrimitiveRenderers(device, attributeLocations, pipelineSupplier);
+        this.primitiveRenderers = this.createPrimitiveRenderers(device, attributeLocations, caching(pipelineSupplier));
+    }
+    destroy() {
+        var _a;
+        while (this.resources.length > 0) {
+            (_a = this.resources.pop()) === null || _a === void 0 ? void 0 : _a.destroy();
+        }
     }
     createNodeRenderers(device, bindGroupIndex, bindGroupSupplier) {
         const matrices = collectSceneMatrices(this.model.scene);
         const dataView = matricesStruct.view(matrices);
         const buffer = device.buffer(GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
-        return this.createSceneNodeRenderers((node, offset) => {
+        this.resources.push(buffer);
+        return this.createSceneNodeRenderers(offset => {
             const bindGroup = bindGroupSupplier(buffer, offset);
-            this.nodeRenderers.set(node, pass => pass.setBindGroup(bindGroupIndex, bindGroup));
+            return pass => pass.setBindGroup(bindGroupIndex, bindGroup);
         });
     }
-    createSceneNodeRenderers(adder, map = new Map()) {
+    createSceneNodeRenderers(renderer, offset = 0, map = new Map()) {
         for (const node of this.model.scene.nodes) {
-            this.createNodeChildRenderers(node, adder, map);
+            this.createNodeChildRenderers(node, renderer, offset, map);
         }
         return map;
     }
-    createNodeChildRenderers(node, adder, map = new Map()) {
-        if (node.meshes.length > 0) {
-            adder(node, matricesStruct.paddedSize * this.nodeRenderers.size);
+    createNodeChildRenderers(node, renderer, offset = 0, map = new Map()) {
+        let newOffset = offset;
+        if (map.size == 0 || !node.isIdentityMatrix && node.meshes.length > 0) {
+            map.set(node, renderer(offset));
+            newOffset += matricesStruct.stride;
         }
         for (const child of node.children) {
-            this.createNodeChildRenderers(child, adder, map);
+            this.createNodeChildRenderers(child, renderer, newOffset, map);
         }
         return map;
     }
@@ -45,7 +55,9 @@ export class GPURenderer {
     gpuBuffers(device) {
         const buffers = new Map();
         for (const bufferView of this.model.bufferViews) {
-            buffers.set(bufferView, device.buffer(bufferView.index ? GPUBufferUsage.INDEX : GPUBufferUsage.VERTEX, new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength), bufferView.byteStride));
+            const buffer = device.buffer(bufferView.index ? GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX : GPUBufferUsage.VERTEX, new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength), bufferView.byteStride);
+            buffers.set(bufferView, buffer);
+            this.resources.push(buffer);
         }
         return buffers;
     }
@@ -58,9 +70,9 @@ export class GPURenderer {
         const renderer = this.nodeRenderers.get(node);
         if (renderer !== undefined) {
             renderer(pass);
-            for (const mesh of node.meshes) {
-                this.renderMesh(pass, mesh);
-            }
+        }
+        for (const mesh of node.meshes) {
+            this.renderMesh(pass, mesh);
         }
         for (const child of node.children) {
             this.renderNode(pass, child);
@@ -80,7 +92,7 @@ export class GPURenderer {
 const matricesStruct = struct({
     matrix: mat4x4,
     antiMatrix: mat4x4,
-}, ["matrix", "antiMatrix"]);
+}, ["matrix", "antiMatrix"]).clone(0, 256, false);
 function collectSceneMatrices(scene, mat = aether.mat4.identity(), antiMat = aether.mat4.identity(), matrices = []) {
     for (const node of scene.nodes) {
         collectNodeMatrices(node, mat, antiMat, matrices);
@@ -90,7 +102,7 @@ function collectSceneMatrices(scene, mat = aether.mat4.identity(), antiMat = aet
 function collectNodeMatrices(node, mat = aether.mat4.identity(), antiMat = aether.mat4.identity(), matrices = []) {
     const matrix = aether.mat4.mul(mat, node.matrix);
     const antiMatrix = aether.mat4.mul(antiMat, node.antiMatrix);
-    if (node.meshes.length > 0) {
+    if (matrices.length == 0 || !node.isIdentityMatrix && node.meshes.length > 0) {
         matrices.push({ matrix, antiMatrix });
     }
     for (const child of node.children) {
@@ -108,12 +120,12 @@ function primitiveRenderer(primitive, buffers, attributeLocations, pipelineSuppl
     const indexBuffer = primitive.indices !== null ?
         (_a = buffers.get(primitive.indices.bufferView)) !== null && _a !== void 0 ? _a : failure("Missing index buffer!") :
         null;
+    const format = primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32";
     return indexBuffer !== null ?
         pass => {
-            var _a;
             pass.setPipeline(pipeline);
             primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer));
-            pass.setIndexBuffer(indexBuffer.buffer, (_a = primitiveState.stripIndexFormat) !== null && _a !== void 0 ? _a : "uint32");
+            pass.setIndexBuffer(indexBuffer.buffer, format);
             pass.drawIndexed(primitive.count);
         } :
         pass => {
@@ -127,25 +139,41 @@ function asBufferViewGPUVertexBufferLayoutTuples(primitive, attributeLocations) 
     for (const attribute of Object.keys(primitive.attributes)) {
         const accessor = primitive.attributes[attribute];
         const location = attributeLocations[attribute];
-        const layout = computeIfAbsent(layouts, accessor.bufferView, () => new Map());
-        layout.set(location, accessor);
+        if (location !== undefined) {
+            const layout = computeIfAbsent(layouts, accessor.bufferView, () => new Map());
+            layout.set(location, accessor);
+        }
+    }
+    const attributeCount = [...layouts.values()].map(accessor => accessor.size).reduce((s1, s2) => s1 + s2, 0);
+    if (attributeCount < Object.keys(attributeLocations).length) {
+        return failure("Defaulting missing attributes is not supported!");
     }
     const bufferLayouts = [];
     for (const [bufferView, accessors] of layouts.entries()) {
+        const stride = bufferView.byteStride != 0 ? bufferView.byteStride : 12 * accessors.size;
         const attributes = [];
         for (const [location, accessor] of accessors.entries()) {
+            if (accessor.byteOffset >= stride) {
+                return failure("Non-interleaved attributes are not supported!");
+            }
             attributes.push({
                 format: asGPUVertexFormat(accessor),
                 offset: accessor.byteOffset,
                 shaderLocation: location,
             });
         }
+        attributes.sort((a1, a2) => a1.shaderLocation - a2.shaderLocation);
         bufferLayouts.push([bufferView, {
-                arrayStride: bufferView.byteStride,
+                arrayStride: stride,
                 attributes: attributes,
                 stepMode: "vertex",
             }]);
     }
+    bufferLayouts.sort(([v1, l1], [v2, l2]) => {
+        const [a1] = l1.attributes;
+        const [a2] = l2.attributes;
+        return a1.shaderLocation - a2.shaderLocation;
+    });
     return bufferLayouts;
 }
 function asGPUVertexFormat(accessor) {
@@ -177,7 +205,7 @@ function asGPUVertexFormat(accessor) {
         default: return failure("Unsupported accessor type!");
     }
 }
-function asGPUindexFormat(accessor) {
+function asGPUIndexFormat(accessor) {
     switch (accessor.componentType) {
         case WebGLRenderingContext.UNSIGNED_INT: return "uint32";
         case WebGLRenderingContext.UNSIGNED_SHORT: return "uint16";
@@ -189,7 +217,7 @@ function asGPUPrimitiveState(primitive) {
     return {
         topology: topology,
         stripIndexFormat: topology.endsWith("strip") ?
-            primitive.indices !== null ? asGPUindexFormat(primitive.indices) : "uint32" :
+            primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32" :
             undefined
     };
 }
@@ -210,5 +238,21 @@ function computeIfAbsent(map, key, computer) {
         map.set(key, result);
     }
     return result;
+}
+function caching(pipelineSupplier) {
+    const cache = new Map();
+    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts, primitiveState), () => pipelineSupplier(bufferLayouts, primitiveState));
+}
+function digest(bufferLayouts, primitiveState) {
+    return [...bufferLayouts]
+        .map(l => (Object.assign(Object.assign({}, l), { attributes: [...l.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation) })))
+        .sort((l1, l2) => l1.attributes[0].shaderLocation - l2.attributes[0].shaderLocation)
+        .reduce((s, l, i) => s + (i > 0 ? "|" : "") + digestLayout(l), "[") + "]";
+}
+function digestLayout(l) {
+    return "{" + l.arrayStride + ":" + [...l.attributes].reduce((s, a, i) => s + (i > 0 ? "|" : "") + digestAttribute(a), "[") + "]}";
+}
+function digestAttribute(a) {
+    return "{" + a.shaderLocation + ":" + a.offset + ":" + a.format + "}";
 }
 //# sourceMappingURL=gltf.gpu.js.map
