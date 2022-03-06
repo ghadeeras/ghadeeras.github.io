@@ -33,12 +33,12 @@ export type ViewFactory = (inputs: ViewInputs) => View;
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const apiElement = required(document.getElementById("graphics-api"))
-    // try {
-    //     const view = await gpuView.newViewFactory(canvasId)
-    //     apiElement.innerHTML = "WebGPU"
-    //     return view
-    // } catch (e) {
+    try {
+        const view = await gpuView.newViewFactory(canvasId)
+        apiElement.innerHTML = "WebGPU"
+        return view
+    } catch (e) {
         apiElement.innerHTML = "WebGL"
         return await glView.newViewFactory(canvasId)
-    // }
+    }
 }

@@ -8,18 +8,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { required } from "../utils/misc.js";
+import * as gpuView from "./view.gpu.js";
 import * as glView from "./view.gl.js";
 export function newViewFactory(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));
-        // try {
-        //     const view = await gpuView.newViewFactory(canvasId)
-        //     apiElement.innerHTML = "WebGPU"
-        //     return view
-        // } catch (e) {
-        apiElement.innerHTML = "WebGL";
-        return yield glView.newViewFactory(canvasId);
-        // }
+        try {
+            const view = yield gpuView.newViewFactory(canvasId);
+            apiElement.innerHTML = "WebGPU";
+            return view;
+        }
+        catch (e) {
+            apiElement.innerHTML = "WebGL";
+            return yield glView.newViewFactory(canvasId);
+        }
     });
 }
 //# sourceMappingURL=view.js.map

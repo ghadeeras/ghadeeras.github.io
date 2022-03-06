@@ -44,6 +44,15 @@ export class Scene extends IdentifiableObject {
         for (const node of scene.nodes) {
             this.nodes.push(nodes[node]);
         }
+        const ranges = this.nodes.map(node => node.range);
+        const min = minVec(ranges.map(([min, max]) => min));
+        const max = maxVec(ranges.map(([min, max]) => max));
+        [this.min, this.max] = [...min, ...max].some(c => Math.abs(c) == Number.MAX_VALUE) ?
+            [[-1, -1, -1], [1, 1, 1]] :
+            [min, max];
+        const scale = 2 / Math.max(...aether.vec3.sub(this.max, this.min));
+        const center = aether.vec3.scale(aether.vec3.add(this.min, this.max), -0.5);
+        this.matrix = aether.mat4.mul(aether.mat4.scaling(scale, scale, scale), aether.mat4.translation(center));
     }
 }
 export class Node extends IdentifiableObject {
@@ -51,6 +60,7 @@ export class Node extends IdentifiableObject {
         super(`node#${i}`);
         this.meshes = [];
         this.children = [];
+        this._range = null;
         if (node.mesh !== undefined) {
             this.meshes.push(meshes[node.mesh]);
         }
@@ -66,7 +76,8 @@ export class Node extends IdentifiableObject {
         this.matrix = node.scale !== undefined ?
             aether.mat4.mul(this.matrix, aether.mat4.scaling(...node.scale)) :
             this.matrix;
-        this.antiMatrix = aether.mat4.transpose(aether.mat4.inverse(this.matrix));
+        const inverse = aether.mat4.inverse(this.matrix);
+        this.antiMatrix = aether.mat4.transpose([inverse[0], inverse[1], inverse[2], [0, 0, 0, 1]]);
         this.isIdentityMatrix = isIdentityMatrix(this.matrix);
         this.gltfNode = node;
     }
@@ -80,11 +91,28 @@ export class Node extends IdentifiableObject {
             }
         }
     }
+    get range() {
+        if (this._range !== null) {
+            return this._range;
+        }
+        const childRanges = this.children.map(child => child.range);
+        const min = minVec([
+            ...this.meshes.map(mesh => mesh.min),
+            ...childRanges.map(([min, max]) => min)
+        ]);
+        const max = maxVec([
+            ...this.meshes.map(mesh => mesh.max),
+            ...childRanges.map(([min, max]) => max)
+        ]);
+        return this._range = minMax(this.matrix, min, max);
+    }
 }
 export class Mesh extends IdentifiableObject {
     constructor(mesh, i, accessors) {
         super(`mesh#${i}`);
         this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors));
+        this.min = minVec(this.primitives.map(p => p.min));
+        this.max = maxVec(this.primitives.map(p => p.max));
     }
 }
 export class Primitive extends IdentifiableObject {
@@ -102,6 +130,9 @@ export class Primitive extends IdentifiableObject {
                 this.count = accessor.count;
             }
         }
+        const position = this.attributes["POSITION"];
+        this.min = position.min.length >= 3 ? aether.vec3.from(position.min) : maxVecEver();
+        this.max = position.max.length >= 3 ? aether.vec3.from(position.max) : minVecEver();
     }
 }
 export class Accessor extends IdentifiableObject {
@@ -114,8 +145,8 @@ export class Accessor extends IdentifiableObject {
         this.normalized = (_c = accessor.normalized) !== null && _c !== void 0 ? _c : false;
         this.count = accessor.count;
         this.type = accessor.type;
-        this.min = (_d = accessor.min) !== null && _d !== void 0 ? _d : [-1, -1, -1];
-        this.max = (_e = accessor.max) !== null && _e !== void 0 ? _e : [+1, +1, +1];
+        this.min = (_d = accessor.min) !== null && _d !== void 0 ? _d : [];
+        this.max = (_e = accessor.max) !== null && _e !== void 0 ? _e : [];
     }
 }
 export class BufferView extends IdentifiableObject {
@@ -129,12 +160,29 @@ export class BufferView extends IdentifiableObject {
         this.index = bufferView.target == WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
     }
 }
+function maxVec(vectors) {
+    return aether.vec3.maxAll(minVecEver(), ...vectors);
+}
+function minVec(vectors) {
+    return aether.vec3.minAll(maxVecEver(), ...vectors);
+}
+function minVecEver() {
+    return [-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE];
+}
+function maxVecEver() {
+    return [+Number.MAX_VALUE, +Number.MAX_VALUE, +Number.MAX_VALUE];
+}
 function markIndexBufferView(model) {
     var _a;
     for (const mesh of model.meshes) {
         for (const primitive of mesh.primitives) {
             if (primitive.indices !== undefined) {
-                model.bufferViews[(_a = model.accessors[primitive.indices].bufferView) !== null && _a !== void 0 ? _a : utils.failure("Using zero buffers not supported yet!")].target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
+                const accessor = model.accessors[primitive.indices];
+                const bufferView = model.bufferViews[(_a = accessor.bufferView) !== null && _a !== void 0 ? _a : utils.failure("Using zero buffers not supported yet!")];
+                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
+                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
+                    bufferView.byteStride = 1;
+                }
             }
         }
     }
@@ -155,5 +203,25 @@ function isIdentityMatrix(matrix) {
         }
     }
     return true;
+}
+function minMax(matrix, min, max) {
+    if ([...min, ...max].some(c => Math.abs(c) == Number.MAX_VALUE)) {
+        return [maxVecEver(), minVecEver()];
+    }
+    const bounds = [min, max];
+    const vectors = [];
+    for (let x = 0; x < 2; x++) {
+        for (let y = 0; y < 2; y++) {
+            for (let z = 0; z < 2; z++) {
+                vectors.push(aether.vec3.from(aether.mat4.apply(matrix, [
+                    bounds[x][0],
+                    bounds[y][1],
+                    bounds[z][2],
+                    1
+                ])));
+            }
+        }
+    }
+    return [minVec(vectors), maxVec(vectors)];
 }
 //# sourceMappingURL=gltf.graph.js.map

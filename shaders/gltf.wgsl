@@ -59,10 +59,9 @@ fn color(
     return vec4<f32>(mix(vec3<f32>(1.0), shade * materialColor, fogFactor), uniforms.color.a);
 }
 
-@stage(vertex)
-fn v_main(
-    @location(0) pos: vec3<f32>, 
-    @location(1) normal: vec3<f32>
+fn v_main_common(
+    pos: vec3<f32>, 
+    normal: vec3<f32>
 ) -> VertexOutput {
     var newPos = uniforms.positionsMat * node.positionsMat * vec4<f32>(pos, 1.0);
     var newNormal = uniforms.normalsMat * node.normalsMat * vec4<f32>(normal, 0.0);
@@ -71,6 +70,20 @@ fn v_main(
         newPos.xyz,
         newNormal.xyz
     );
+}
+@stage(vertex)
+fn v_main(
+    @location(0) pos: vec3<f32>, 
+    @location(1) normal: vec3<f32>
+) -> VertexOutput {
+    return v_main_common(pos, normal);
+}
+
+@stage(vertex)
+fn v_main_no_normals(
+    @location(0) pos: vec3<f32>
+) -> VertexOutput {
+    return v_main_common(pos, vec3<f32>(0.0, 1.0, 0.0));
 }
 
 @stage(fragment)

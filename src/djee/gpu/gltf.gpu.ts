@@ -7,7 +7,7 @@ import { aether } from "/gen/libs.js";
 
 export class GPURenderer {
 
-    private nodeRenderers: Map<gltf.Node, Renderer>
+    private nodeRenderers: Map<gltf.Node | gltf.Scene, Renderer>
     private primitiveRenderers: Map<gltf.Primitive, Renderer>
     
     private resources: { destroy(): void }[] = []
@@ -45,21 +45,22 @@ export class GPURenderer {
         });
     }
 
-    private createSceneNodeRenderers(renderer: (offset: number) => Renderer, offset: number = 0, map: Map<gltf.Node, Renderer> = new Map()): Map<gltf.Node, Renderer> {
+    private createSceneNodeRenderers(renderer: (offset: number) => Renderer, map: Map<gltf.Node | gltf.Scene, Renderer> = new Map()): Map<gltf.Node | gltf.Scene, Renderer> {
+        map.set(this.model.scene, renderer(0))
         for (const node of this.model.scene.nodes) {
-            this.createNodeChildRenderers(node, renderer, offset, map)
+            this.createNodeChildRenderers(node, false, renderer, map)
         }
         return map
     }
 
-    private createNodeChildRenderers(node: gltf.Node, renderer: (offset: number) => Renderer, offset: number = 0, map: Map<gltf.Node, Renderer> = new Map()): Map<gltf.Node, Renderer> {
-        let newOffset = offset
-        if (map.size == 0 || !node.isIdentityMatrix && node.meshes.length > 0) {
-            map.set(node, renderer(offset))
-            newOffset += matricesStruct.stride
+    private createNodeChildRenderers(node: gltf.Node, parentTransformed: boolean, renderer: (offset: number) => Renderer, map: Map<gltf.Node | gltf.Scene, Renderer> = new Map()): Map<gltf.Node | gltf.Scene, Renderer> {
+        let transformed = parentTransformed || !node.isIdentityMatrix
+        if (transformed && node.meshes.length > 0) {
+            map.set(node, renderer(map.size * matricesStruct.stride))
+            transformed = false
         }
         for (const child of node.children) {
-            this.createNodeChildRenderers(child, renderer, newOffset, map)
+            this.createNodeChildRenderers(child, transformed, renderer, map)
         }
         return map
     }
@@ -83,9 +84,16 @@ export class GPURenderer {
     private gpuBuffers(device: Device) {
         const buffers: Map<gltf.BufferView, Buffer> = new Map();
         for (const bufferView of this.model.bufferViews) {
+            let dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
+            if (bufferView.byteStride == 1) {
+                const oldBuffer = new Uint8Array(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength)
+                const newBuffer = new Uint16Array(bufferView.byteLength)
+                newBuffer.set(oldBuffer)
+                dataView = new DataView(newBuffer.buffer)
+            }
             const buffer = device.buffer(
                 bufferView.index ? GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX : GPUBufferUsage.VERTEX,
-                new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength),
+                dataView,
                 bufferView.byteStride
             );
             buffers.set(bufferView, buffer);
@@ -95,21 +103,23 @@ export class GPURenderer {
     }
     
     render(pass: GPURenderPassEncoder) {
+        const renderer: Renderer = this.nodeRenderers.get(this.model.scene) ?? failure("There must be at least a scene renderer!");
+        renderer(pass)
         for (const node of this.model.scene.nodes) {
-            this.renderNode(pass, node)
+            this.renderNode(pass, node, renderer)
         }
     }
 
-    renderNode(pass: GPURenderPassEncoder, node: gltf.Node) {
-        const renderer = this.nodeRenderers.get(node)
-        if (renderer !== undefined) {
+    renderNode(pass: GPURenderPassEncoder, node: gltf.Node, parentRenderer: Renderer) {
+        const renderer = this.nodeRenderers.get(node) ?? parentRenderer
+        if (node.meshes.length > 0) {
             renderer(pass)
         }
         for (const mesh of node.meshes) {
             this.renderMesh(pass, mesh)
         }
         for (const child of node.children) {
-            this.renderNode(pass, child)
+            this.renderNode(pass, child, renderer)
         }
     }
 
@@ -133,21 +143,26 @@ const matricesStruct = struct({
     antiMatrix: mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false)
 
-function collectSceneMatrices(scene: gltf.Scene, mat: aether.Mat4 = aether.mat4.identity(), antiMat: aether.Mat4 = aether.mat4.identity(), matrices: DataTypeOf<typeof matricesStruct>[] = []): DataTypeOf<typeof matricesStruct>[] {
+function collectSceneMatrices(scene: gltf.Scene, matrices: DataTypeOf<typeof matricesStruct>[] = []): DataTypeOf<typeof matricesStruct>[] {
+    const matrix = scene.matrix
+    const antiMatrix = aether.mat4.identity()
+    matrices.push({ matrix, antiMatrix })
     for (const node of scene.nodes) {
-        collectNodeMatrices(node, mat, antiMat, matrices)
+        collectNodeMatrices(node, false, matrix, antiMatrix, matrices)
     }
     return matrices
 }
 
-function collectNodeMatrices(node: gltf.Node, mat: aether.Mat4 = aether.mat4.identity(), antiMat: aether.Mat4 = aether.mat4.identity(), matrices: DataTypeOf<typeof matricesStruct>[] = []): DataTypeOf<typeof matricesStruct>[] {
+function collectNodeMatrices(node: gltf.Node, parentTransformed: boolean, mat: aether.Mat4, antiMat: aether.Mat4, matrices: DataTypeOf<typeof matricesStruct>[]): DataTypeOf<typeof matricesStruct>[] {
     const matrix = aether.mat4.mul(mat, node.matrix)
     const antiMatrix = aether.mat4.mul(antiMat, node.antiMatrix)
-    if (matrices.length == 0 || !node.isIdentityMatrix && node.meshes.length > 0) {
+    let transformed = parentTransformed || !node.isIdentityMatrix
+    if (transformed && node.meshes.length > 0) {
         matrices.push({ matrix, antiMatrix })
+        transformed = false
     }
     for (const child of node.children) {
-        collectNodeMatrices(child, matrix, antiMatrix, matrices)
+        collectNodeMatrices(child, transformed, matrix, antiMatrix, matrices)
     }
     return matrices
 }
@@ -160,28 +175,30 @@ function primitiveRenderer(
 ): Renderer {
     const viewLayoutTuples = asBufferViewGPUVertexBufferLayoutTuples(primitive, attributeLocations);
     const primitiveState = asGPUPrimitiveState(primitive);
-    const bufferLayouts = viewLayoutTuples.map(([view, layout]) => layout);
-    const primitiveBuffers = viewLayoutTuples.map(([view, layout]) => buffers.get(view) ?? failure<Buffer>("Missing vertex buffer!"));
+    const bufferLayouts = viewLayoutTuples.map(([view, offset, layout]) => layout);
+    const bufferOffsets = viewLayoutTuples.map(([view, offset, layout]) => offset);
+    const primitiveBuffers = viewLayoutTuples.map(([view, offset, layout]) => buffers.get(view) ?? failure<Buffer>("Missing vertex buffer!"));
     const pipeline = pipelineSupplier(bufferLayouts, primitiveState);
     const indexBuffer = primitive.indices !== null ?
         buffers.get(primitive.indices.bufferView) ?? failure<Buffer>("Missing index buffer!") :
         null;
-    const format: GPUIndexFormat = primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32" 
+    const indexFormat: GPUIndexFormat = primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32" 
+    const indexOffset: number = primitive.indices !== null ? primitive.indices.byteOffset : 0 
     return indexBuffer !== null ?
         pass => {
             pass.setPipeline(pipeline);
-            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer));
-            pass.setIndexBuffer(indexBuffer.buffer, format);
+            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer, bufferOffsets[slot]));
+            pass.setIndexBuffer(indexBuffer.buffer, indexFormat, indexOffset);
             pass.drawIndexed(primitive.count);
         } :
         pass => {
             pass.setPipeline(pipeline);
-            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer));
+            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer, bufferOffsets[slot]));
             pass.draw(primitive.count);
         };
 }
 
-function asBufferViewGPUVertexBufferLayoutTuples(primitive: gltf.Primitive, attributeLocations: Partial<Record<string, number>>): [gltf.BufferView, GPUVertexBufferLayout][] {
+function asBufferViewGPUVertexBufferLayoutTuples(primitive: gltf.Primitive, attributeLocations: Partial<Record<string, number>>): [gltf.BufferView, number, GPUVertexBufferLayout][] {
     const layouts: Map<gltf.BufferView, Map<number, gltf.Accessor>> = new Map();
     for (const attribute of Object.keys(primitive.attributes)) {
         const accessor = primitive.attributes[attribute];
@@ -192,35 +209,54 @@ function asBufferViewGPUVertexBufferLayoutTuples(primitive: gltf.Primitive, attr
         }
     }
 
-    const attributeCount = [...layouts.values()].map(accessor => accessor.size).reduce((s1, s2) => s1 + s2, 0)
-    if (attributeCount < Object.keys(attributeLocations).length) {
-        return failure("Defaulting missing attributes is not supported!")
-    }
+    // const attributeCount = [...layouts.values()].map(accessors => accessors.size).reduce((s1, s2) => s1 + s2, 0)
+    // if (attributeCount < Object.keys(attributeLocations).length) {
+    //     return failure("Defaulting missing attributes is not supported!")
+    // }
 
-    const bufferLayouts: [gltf.BufferView, GPUVertexBufferLayout][] = [];
-    for (const [bufferView, accessors] of layouts.entries()) {
-        const stride = bufferView.byteStride != 0 ? bufferView.byteStride : 12 * accessors.size;
-        
-        const attributes: GPUVertexAttribute[] = [];
-        for (const [location, accessor] of accessors.entries()) {
-            if (accessor.byteOffset >= stride) {
-                return failure("Non-interleaved attributes are not supported!")
+    const bufferLayouts: [gltf.BufferView, number, GPUVertexBufferLayout][] = [];
+    for (const [bufferView, accessorsMap] of layouts.entries()) {
+        const stride = bufferView.byteStride != 0 ? bufferView.byteStride : 12 * accessorsMap.size;
+
+        const accessors = [...accessorsMap.values()];
+        const interleaved = accessors.every(accessor => accessor.byteOffset < stride)
+        // if (!interleaved) {
+        //     return failure("Non-interleaved attributes are not supported!")
+        // }
+
+        if (interleaved) {
+            const minOffset = Math.min(...accessors.map(accessor => accessor.byteOffset))
+
+            const attributes: GPUVertexAttribute[] = [];
+            for (const [location, accessor] of accessorsMap.entries()) {
+                attributes.push({
+                    format: asGPUVertexFormat(accessor),
+                    offset: accessor.byteOffset - minOffset,
+                    shaderLocation: location,
+                });
             }
-            attributes.push({
-                format: asGPUVertexFormat(accessor),
-                offset: accessor.byteOffset,
-                shaderLocation: location,
-            });
+            attributes.sort((a1, a2) => a1.shaderLocation - a2.shaderLocation)
+    
+            bufferLayouts.push([bufferView, minOffset, {
+                arrayStride: stride,
+                attributes: attributes,
+                stepMode: "vertex",
+            }]);
+        } else {
+            for (const [location, accessor] of accessorsMap.entries()) {
+                bufferLayouts.push([bufferView, accessor.byteOffset, {
+                    arrayStride: stride,
+                    attributes: [{
+                        format: asGPUVertexFormat(accessor),
+                        offset: 0,
+                        shaderLocation: location,
+                    }],
+                    stepMode: "vertex",
+                }]);
+            }
         }
-        attributes.sort((a1, a2) => a1.shaderLocation - a2.shaderLocation)
-
-        bufferLayouts.push([bufferView, {
-            arrayStride: stride,
-            attributes: attributes,
-            stepMode: "vertex",
-        }]);
     }
-    bufferLayouts.sort(([v1, l1], [v2, l2]) => {
+    bufferLayouts.sort(([v1, o1, l1], [v2, o2, l2]) => {
         const [a1] = l1.attributes
         const [a2] = l2.attributes
         return a1.shaderLocation - a2.shaderLocation
@@ -261,7 +297,8 @@ function asGPUVertexFormat(accessor: gltf.Accessor): GPUVertexFormat {
 function asGPUIndexFormat(accessor: gltf.Accessor): GPUIndexFormat {
     switch (accessor.componentType) {
         case WebGLRenderingContext.UNSIGNED_INT: return "uint32"
-        case WebGLRenderingContext.UNSIGNED_SHORT: return "uint16"
+        case WebGLRenderingContext.UNSIGNED_SHORT:
+        case WebGLRenderingContext.UNSIGNED_BYTE: return "uint16"
         default: return failure("Unsupported accessor type!") 
     }
 }
