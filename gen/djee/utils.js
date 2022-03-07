@@ -3,16 +3,9 @@ export function failure(message) {
 }
 export function lazily(constructor) {
     const ref = {};
-    return () => {
-        if (ref.value == undefined) {
-            const value = constructor();
-            ref.value = value;
-            return value;
-        }
-        else {
-            return ref.value;
-        }
-    };
+    return () => ref.value === undefined ?
+        ref.value = constructor() :
+        ref.value;
 }
 export function values(record) {
     const result = [];

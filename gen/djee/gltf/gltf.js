@@ -28,6 +28,36 @@ function fetchBuffer(bufferRef, baseUri) {
             failure(`Buffer at '${bufferRef.uri}' does not have expected length of ${bufferRef.byteLength} bytes!`);
     });
 }
+export function matrixOf(node) {
+    let matrix = node.matrix !== undefined ?
+        aether.mat4.from(node.matrix) :
+        aether.mat4.identity();
+    matrix = node.translation !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.translation(node.translation)) :
+        matrix;
+    matrix = node.rotation !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.cast(aether.quat.toMatrix(node.rotation))) :
+        matrix;
+    matrix = node.scale !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.scaling(...node.scale)) :
+        matrix;
+    return matrix;
+}
+export function enrichBufferViews(model) {
+    var _a;
+    for (const mesh of model.meshes) {
+        for (const primitive of mesh.primitives) {
+            if (primitive.indices !== undefined) {
+                const accessor = model.accessors[primitive.indices];
+                const bufferView = model.bufferViews[(_a = accessor.bufferView) !== null && _a !== void 0 ? _a : failure("Using zero buffers not supported yet!")];
+                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
+                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
+                    bufferView.byteStride = 1;
+                }
+            }
+        }
+    }
+}
 class ActiveBufferView {
     constructor(bufferView, buffers, indices, renderer) {
         var _a, _b, _c;

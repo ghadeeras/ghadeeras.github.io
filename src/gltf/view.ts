@@ -7,6 +7,8 @@ export interface View {
 
     draw(): void
 
+    status: gear.Value<string>
+
 }
 
 export type ViewInputs = {
@@ -29,7 +31,7 @@ export type ViewInputs = {
 
 }
 
-export type ViewFactory = (inputs: ViewInputs) => View;
+export type ViewFactory = (inputs: ViewInputs) => Promise<View>;
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const apiElement = required(document.getElementById("graphics-api"))

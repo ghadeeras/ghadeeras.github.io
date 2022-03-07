@@ -69,7 +69,7 @@ async function doInit() {
 
     canvas.dragging.value.switch(mouseBinding, cases)
 
-    const view = viewFactory({
+    const view = await viewFactory({
         matModel: gear.Value.from(
                 cases.modelRotation.then(gear.drag(modelRotation)),
                 cases.modelMove.then(gear.drag(modelTranslation)),
@@ -104,6 +104,8 @@ async function doInit() {
             .defaultsTo(0),
         modelUri: model.map(getModelUri),
     })
+
+    gear.text("status").value = view.status
 
     mouseBinding.flow("modelRotation")
     model.flow("ScalarField")

@@ -1,12 +1,17 @@
 import { failure } from "../utils.js";
 import { mat4x4, struct } from "./types.js";
 import { aether } from "/gen/libs.js";
+const matricesStruct = struct({
+    matrix: mat4x4,
+    antiMatrix: mat4x4,
+}, ["matrix", "antiMatrix"]).clone(0, 256, false);
 export class GPURenderer {
     constructor(model, device, bindGroupIndex, attributeLocations, bindGroupSupplier, pipelineSupplier) {
         this.model = model;
+        this.device = device;
         this.resources = [];
-        this.nodeRenderers = this.createNodeRenderers(device, bindGroupIndex, bindGroupSupplier);
-        this.primitiveRenderers = this.createPrimitiveRenderers(device, attributeLocations, caching(pipelineSupplier));
+        this.nodeRenderers = this.createNodeRenderers(bindGroupIndex, bindGroupSupplier);
+        this.primitiveRenderers = this.createPrimitiveRenderers(attributeLocations, caching(pipelineSupplier));
     }
     destroy() {
         var _a;
@@ -14,36 +19,18 @@ export class GPURenderer {
             (_a = this.resources.pop()) === null || _a === void 0 ? void 0 : _a.destroy();
         }
     }
-    createNodeRenderers(device, bindGroupIndex, bindGroupSupplier) {
+    createNodeRenderers(bindGroupIndex, bindGroupSupplier) {
         const matrices = collectSceneMatrices(this.model.scene);
         const dataView = matricesStruct.view(matrices);
-        const buffer = device.buffer(GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
+        const buffer = this.device.buffer(GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
         this.resources.push(buffer);
-        return this.createSceneNodeRenderers(offset => {
+        return createSceneNodeRenderers(this.model.scene, offset => {
             const bindGroup = bindGroupSupplier(buffer, offset);
             return pass => pass.setBindGroup(bindGroupIndex, bindGroup);
         });
     }
-    createSceneNodeRenderers(renderer, map = new Map()) {
-        map.set(this.model.scene, renderer(0));
-        for (const node of this.model.scene.nodes) {
-            this.createNodeChildRenderers(node, false, renderer, map);
-        }
-        return map;
-    }
-    createNodeChildRenderers(node, parentTransformed, renderer, map = new Map()) {
-        let transformed = parentTransformed || !node.isIdentityMatrix;
-        if (transformed && node.meshes.length > 0) {
-            map.set(node, renderer(map.size * matricesStruct.stride));
-            transformed = false;
-        }
-        for (const child of node.children) {
-            this.createNodeChildRenderers(child, transformed, renderer, map);
-        }
-        return map;
-    }
-    createPrimitiveRenderers(device, attributeLocations, pipelineSupplier) {
-        const buffers = this.gpuBuffers(device);
+    createPrimitiveRenderers(attributeLocations, pipelineSupplier) {
+        const buffers = this.gpuBuffers();
         const primitiveRenderers = new Map();
         for (const mesh of this.model.meshes) {
             for (const primitive of mesh.primitives) {
@@ -53,7 +40,7 @@ export class GPURenderer {
         }
         return primitiveRenderers;
     }
-    gpuBuffers(device) {
+    gpuBuffers() {
         const buffers = new Map();
         for (const bufferView of this.model.bufferViews) {
             let dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
@@ -63,7 +50,7 @@ export class GPURenderer {
                 newBuffer.set(oldBuffer);
                 dataView = new DataView(newBuffer.buffer);
             }
-            const buffer = device.buffer(bufferView.index ? GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX : GPUBufferUsage.VERTEX, dataView, bufferView.byteStride);
+            const buffer = this.device.buffer(bufferView.index ? GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX : GPUBufferUsage.VERTEX, dataView, bufferView.byteStride);
             buffers.set(bufferView, buffer);
             this.resources.push(buffer);
         }
@@ -101,119 +88,162 @@ export class GPURenderer {
         renderer(pass);
     }
 }
-const matricesStruct = struct({
-    matrix: mat4x4,
-    antiMatrix: mat4x4,
-}, ["matrix", "antiMatrix"]).clone(0, 256, false);
-function collectSceneMatrices(scene, matrices = []) {
-    const matrix = scene.matrix;
-    const antiMatrix = aether.mat4.identity();
-    matrices.push({ matrix, antiMatrix });
+function collectSceneMatrices(scene) {
+    const matrix = {
+        matrix: scene.matrix,
+        antiMatrix: aether.mat4.identity()
+    };
+    const matrices = [matrix];
     for (const node of scene.nodes) {
-        collectNodeMatrices(node, false, matrix, antiMatrix, matrices);
+        collectNodeMatrices(node, false, matrix, matrices);
     }
     return matrices;
 }
-function collectNodeMatrices(node, parentTransformed, mat, antiMat, matrices) {
-    const matrix = aether.mat4.mul(mat, node.matrix);
-    const antiMatrix = aether.mat4.mul(antiMat, node.antiMatrix);
-    let transformed = parentTransformed || !node.isIdentityMatrix;
-    if (transformed && node.meshes.length > 0) {
-        matrices.push({ matrix, antiMatrix });
-        transformed = false;
+function collectNodeMatrices(node, parentDirty, parentMatrix, matrices) {
+    const matrix = {
+        matrix: aether.mat4.mul(parentMatrix.matrix, node.matrix),
+        antiMatrix: aether.mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
+    };
+    let dirty = parentDirty || !node.isIdentityMatrix;
+    if (dirty && node.meshes.length > 0) {
+        matrices.push(matrix);
+        dirty = false;
     }
     for (const child of node.children) {
-        collectNodeMatrices(child, transformed, matrix, antiMatrix, matrices);
+        collectNodeMatrices(child, dirty, matrix, matrices);
     }
     return matrices;
 }
+function createSceneNodeRenderers(scene, rendererForOffset) {
+    const map = new Map();
+    map.set(scene, rendererForOffset(0));
+    for (const node of scene.nodes) {
+        createNodeChildRenderers(node, false, rendererForOffset, map);
+    }
+    return map;
+}
+function createNodeChildRenderers(node, parentDirty, rendererForOffset, map) {
+    let dirty = parentDirty || !node.isIdentityMatrix;
+    if (dirty && node.meshes.length > 0) {
+        map.set(node, rendererForOffset(map.size * matricesStruct.stride));
+        dirty = false;
+    }
+    for (const child of node.children) {
+        createNodeChildRenderers(child, dirty, rendererForOffset, map);
+    }
+    return map;
+}
 function primitiveRenderer(primitive, buffers, attributeLocations, pipelineSupplier) {
-    var _a;
-    const viewLayoutTuples = asBufferViewGPUVertexBufferLayoutTuples(primitive, attributeLocations);
+    const indexBuffer = asIndexBuffer(primitive, buffers);
+    const vertexBuffers = asVertexBuffers(primitive, buffers, attributeLocations);
+    const bufferLayouts = vertexBuffers.map(b => b.gpuLayout);
     const primitiveState = asGPUPrimitiveState(primitive);
-    const bufferLayouts = viewLayoutTuples.map(([view, offset, layout]) => layout);
-    const bufferOffsets = viewLayoutTuples.map(([view, offset, layout]) => offset);
-    const primitiveBuffers = viewLayoutTuples.map(([view, offset, layout]) => { var _a; return (_a = buffers.get(view)) !== null && _a !== void 0 ? _a : failure("Missing vertex buffer!"); });
     const pipeline = pipelineSupplier(bufferLayouts, primitiveState);
-    const indexBuffer = primitive.indices !== null ?
-        (_a = buffers.get(primitive.indices.bufferView)) !== null && _a !== void 0 ? _a : failure("Missing index buffer!") :
-        null;
-    const indexFormat = primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32";
-    const indexOffset = primitive.indices !== null ? primitive.indices.byteOffset : 0;
     return indexBuffer !== null ?
         pass => {
             pass.setPipeline(pipeline);
-            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer, bufferOffsets[slot]));
-            pass.setIndexBuffer(indexBuffer.buffer, indexFormat, indexOffset);
+            vertexBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
+            pass.setIndexBuffer(indexBuffer.gpuBuffer, indexBuffer.gpuFormat, indexBuffer.offset);
             pass.drawIndexed(primitive.count);
         } :
         pass => {
             pass.setPipeline(pipeline);
-            primitiveBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.buffer, bufferOffsets[slot]));
+            vertexBuffers.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
             pass.draw(primitive.count);
         };
 }
-function asBufferViewGPUVertexBufferLayoutTuples(primitive, attributeLocations) {
-    const layouts = new Map();
+function asIndexBuffer(primitive, buffers) {
+    var _a;
+    return primitive.indices !== null ?
+        {
+            gpuBuffer: ((_a = buffers.get(primitive.indices.bufferView)) !== null && _a !== void 0 ? _a : failure("Missing index buffer!")).buffer,
+            gpuFormat: gpuIndexFormatOf(primitive.indices),
+            offset: primitive.indices.byteOffset
+        } : null;
+}
+function asVertexBuffers(primitive, buffers, attributeLocations) {
+    var _a;
+    const accessorsByViewsThenLocations = groupAccessorsByViewsThenLocations(primitive, attributeLocations);
+    const vertexBuffers = [];
+    for (const [bufferView, viewAccessorsByLocation] of accessorsByViewsThenLocations.entries()) {
+        const buffer = (_a = buffers.get(bufferView)) !== null && _a !== void 0 ? _a : failure("Missing vertex buffer!");
+        const stride = bufferView.byteStride !== 0 ? bufferView.byteStride : byteSizeOf(viewAccessorsByLocation);
+        if (areInterleaved(viewAccessorsByLocation, stride)) {
+            vertexBuffers.push(interleavedBuffer(buffer, stride, viewAccessorsByLocation));
+        }
+        else
+            for (const [location, accessor] of viewAccessorsByLocation.entries()) {
+                vertexBuffers.push(nonInterleavedBuffer(buffer, stride, accessor, location));
+            }
+    }
+    return sortedVertexBuffers(vertexBuffers);
+}
+function groupAccessorsByViewsThenLocations(primitive, attributeLocations) {
+    const accessorsByViewsThenLocations = new Map();
     for (const attribute of Object.keys(primitive.attributes)) {
         const accessor = primitive.attributes[attribute];
         const location = attributeLocations[attribute];
         if (location !== undefined) {
-            const layout = computeIfAbsent(layouts, accessor.bufferView, () => new Map());
-            layout.set(location, accessor);
+            const viewAccessorsByLocation = computeIfAbsent(accessorsByViewsThenLocations, accessor.bufferView, () => new Map());
+            viewAccessorsByLocation.set(location, accessor);
         }
     }
-    // const attributeCount = [...layouts.values()].map(accessors => accessors.size).reduce((s1, s2) => s1 + s2, 0)
-    // if (attributeCount < Object.keys(attributeLocations).length) {
-    //     return failure("Defaulting missing attributes is not supported!")
-    // }
-    const bufferLayouts = [];
-    for (const [bufferView, accessorsMap] of layouts.entries()) {
-        const stride = bufferView.byteStride != 0 ? bufferView.byteStride : 12 * accessorsMap.size;
-        const accessors = [...accessorsMap.values()];
-        const interleaved = accessors.every(accessor => accessor.byteOffset < stride);
-        // if (!interleaved) {
-        //     return failure("Non-interleaved attributes are not supported!")
-        // }
-        if (interleaved) {
-            const minOffset = Math.min(...accessors.map(accessor => accessor.byteOffset));
-            const attributes = [];
-            for (const [location, accessor] of accessorsMap.entries()) {
-                attributes.push({
-                    format: asGPUVertexFormat(accessor),
-                    offset: accessor.byteOffset - minOffset,
+    return accessorsByViewsThenLocations;
+}
+function areInterleaved(viewAccessorsByLocation, stride) {
+    const accessors = [...viewAccessorsByLocation.values()];
+    return accessors.every(accessor => accessor.byteOffset < stride);
+}
+function interleavedBuffer(buffer, stride, viewAccessorsByLocation) {
+    const minOffset = Math.min(...[...viewAccessorsByLocation.values()].map(accessor => accessor.byteOffset));
+    const attributes = [];
+    for (const [location, accessor] of viewAccessorsByLocation.entries()) {
+        attributes.push({
+            format: gpuVertexFormatOf(accessor),
+            offset: accessor.byteOffset - minOffset,
+            shaderLocation: location,
+        });
+    }
+    const vertexBuffer = {
+        gpuBuffer: buffer.buffer,
+        offset: minOffset,
+        gpuLayout: {
+            arrayStride: stride,
+            attributes: attributes,
+            stepMode: "vertex",
+        }
+    };
+    return vertexBuffer;
+}
+function nonInterleavedBuffer(buffer, stride, accessor, location) {
+    return {
+        gpuBuffer: buffer.buffer,
+        offset: accessor.byteOffset,
+        gpuLayout: {
+            arrayStride: stride,
+            attributes: [{
+                    format: gpuVertexFormatOf(accessor),
+                    offset: 0,
                     shaderLocation: location,
-                });
-            }
-            attributes.sort((a1, a2) => a1.shaderLocation - a2.shaderLocation);
-            bufferLayouts.push([bufferView, minOffset, {
-                    arrayStride: stride,
-                    attributes: attributes,
-                    stepMode: "vertex",
-                }]);
+                }],
+            stepMode: "vertex",
         }
-        else {
-            for (const [location, accessor] of accessorsMap.entries()) {
-                bufferLayouts.push([bufferView, accessor.byteOffset, {
-                        arrayStride: stride,
-                        attributes: [{
-                                format: asGPUVertexFormat(accessor),
-                                offset: 0,
-                                shaderLocation: location,
-                            }],
-                        stepMode: "vertex",
-                    }]);
-            }
-        }
-    }
-    bufferLayouts.sort(([v1, o1, l1], [v2, o2, l2]) => {
-        const [a1] = l1.attributes;
-        const [a2] = l2.attributes;
+    };
+}
+function sortedVertexBuffers(vertexBuffers) {
+    return vertexBuffers.map(b => {
+        b.gpuLayout.attributes = [...b.gpuLayout.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation);
+        return b;
+    }).sort((b1, b2) => {
+        const [a1] = b1.gpuLayout.attributes;
+        const [a2] = b2.gpuLayout.attributes;
         return a1.shaderLocation - a2.shaderLocation;
     });
-    return bufferLayouts;
 }
-function asGPUVertexFormat(accessor) {
+function byteSizeOf(viewAccessorsByLocation) {
+    return 12 * viewAccessorsByLocation.size;
+}
+function gpuVertexFormatOf(accessor) {
     switch (accessor.type) {
         case "SCALAR": switch (accessor.componentType) {
             case WebGLRenderingContext.FLOAT: return "float32";
@@ -242,7 +272,7 @@ function asGPUVertexFormat(accessor) {
         default: return failure("Unsupported accessor type!");
     }
 }
-function asGPUIndexFormat(accessor) {
+function gpuIndexFormatOf(accessor) {
     switch (accessor.componentType) {
         case WebGLRenderingContext.UNSIGNED_INT: return "uint32";
         case WebGLRenderingContext.UNSIGNED_SHORT:
@@ -251,16 +281,16 @@ function asGPUIndexFormat(accessor) {
     }
 }
 function asGPUPrimitiveState(primitive) {
-    const topology = asGPUPrimitiveTopology(primitive.mode);
+    const topology = gpuTopologyOf(primitive);
     return {
         topology: topology,
         stripIndexFormat: topology.endsWith("strip") ?
-            primitive.indices !== null ? asGPUIndexFormat(primitive.indices) : "uint32" :
+            primitive.indices !== null ? gpuIndexFormatOf(primitive.indices) : "uint32" :
             undefined
     };
 }
-function asGPUPrimitiveTopology(mode) {
-    switch (mode) {
+function gpuTopologyOf(primitive) {
+    switch (primitive.mode) {
         case WebGLRenderingContext.TRIANGLES: return "triangle-list";
         case WebGLRenderingContext.TRIANGLE_STRIP: return "triangle-strip";
         case WebGLRenderingContext.LINES: return "line-list";
@@ -269,6 +299,10 @@ function asGPUPrimitiveTopology(mode) {
         default: return failure("Unsupported primitive mode!");
     }
 }
+function caching(pipelineSupplier) {
+    const cache = new Map();
+    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts, primitiveState), () => pipelineSupplier(bufferLayouts, primitiveState));
+}
 function computeIfAbsent(map, key, computer) {
     let result = map.get(key);
     if (result === undefined) {
@@ -276,10 +310,6 @@ function computeIfAbsent(map, key, computer) {
         map.set(key, result);
     }
     return result;
-}
-function caching(pipelineSupplier) {
-    const cache = new Map();
-    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts, primitiveState), () => pipelineSupplier(bufferLayouts, primitiveState));
 }
 function digest(bufferLayouts, primitiveState) {
     return [...bufferLayouts]

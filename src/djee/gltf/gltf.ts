@@ -172,6 +172,37 @@ async function fetchBuffer(bufferRef: BufferRef, baseUri: string): Promise<Array
         failure(`Buffer at '${bufferRef.uri}' does not have expected length of ${bufferRef.byteLength} bytes!`)
 }
 
+export function matrixOf(node: Node): aether.Mat4 {
+    let matrix = node.matrix !== undefined ?
+        aether.mat4.from(node.matrix) :
+        aether.mat4.identity()
+    matrix = node.translation !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.translation(node.translation)) :
+        matrix
+    matrix = node.rotation !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.cast(aether.quat.toMatrix(node.rotation))) :
+        matrix
+    matrix = node.scale !== undefined ?
+        aether.mat4.mul(matrix, aether.mat4.scaling(...node.scale)) :
+        matrix
+    return matrix
+}
+
+export function enrichBufferViews(model: Model) {
+    for (const mesh of model.meshes) {
+        for (const primitive of mesh.primitives) {
+            if (primitive.indices !== undefined) {
+                const accessor = model.accessors[primitive.indices]
+                const bufferView = model.bufferViews[accessor.bufferView ?? failure<number>("Using zero buffers not supported yet!")]
+                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
+                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
+                    bufferView.byteStride = 1
+                }
+            }
+        }
+    }
+}
+
 class ActiveBufferView<I, A> {
 
     readonly buffer: I | A

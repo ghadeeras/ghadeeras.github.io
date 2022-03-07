@@ -1,6 +1,7 @@
 import * as gltf from './gltf.js'
 import * as utils from '../utils.js'
 import * as aether from '/aether/latest/index.js'
+import * as aetherX from '../../utils/aether.js'
 
 export class Model {
 
@@ -12,12 +13,14 @@ export class Model {
     readonly bufferViews: BufferView[]
 
     constructor(model: gltf.Model, readonly buffers: ArrayBuffer[]) {
-        markIndexBufferView(model)
+        gltf.enrichBufferViews(model)
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers))
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews))
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors))
-        this.nodes = model.nodes.map((node, i) => new Node(node, i, this.meshes))
-        this.nodes.forEach(node => node.wire(this.nodes))
+        
+        const nodes: utils.Supplier<Node>[] = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, nodes))) 
+        
+        this.nodes = nodes.map(node => node())
         this.scenes = model.scenes.map((scene, i) => new Scene(scene, i, this.nodes))
         this.scene = this.scenes[model.scene ?? 0]
     }
@@ -47,8 +50,7 @@ class IdentifiableObject implements Identifiable {
 export class Scene extends IdentifiableObject {
 
     readonly nodes: Node[] = []
-    readonly min: aether.Vec3
-    readonly max: aether.Vec3
+    readonly range: aetherX.Range3D
     readonly matrix: aether.Mat4
 
     constructor(scene: gltf.Scene, i: number, nodes: Node[]) {
@@ -57,82 +59,33 @@ export class Scene extends IdentifiableObject {
             this.nodes.push(nodes[node])
         }
         const ranges = this.nodes.map(node => node.range);
-        const min = minVec(ranges.map(([min, max]) => min));
-        const max = maxVec(ranges.map(([min, max]) => max));
-        [this.min, this.max] = [...min, ...max].some(c => Math.abs(c) == Number.MAX_VALUE) ?
-            [[-1, -1, -1], [1, 1, 1]] :
-            [min, max]
-        const scale = 2 / Math.max(...aether.vec3.sub(this.max, this.min))
-        const center = aether.vec3.scale(aether.vec3.add(this.min, this.max), -0.5)
-        this.matrix = aether.mat4.mul(
-            aether.mat4.scaling(scale, scale, scale), 
-            aether.mat4.translation(center)
-        )
+        const range = aetherX.union(ranges);
+        this.range = aetherX.isOpen(range) ? [[-1, -1, -1], [1, 1, 1]] : range
+        this.matrix = aetherX.centeringMatrix(this.range)
     }
 
 }
 
 export class Node extends IdentifiableObject {
 
-    readonly meshes: Mesh[] = []
-    readonly children: Node[] = []
+    readonly meshes: Mesh[]
+    readonly children: Node[]
     readonly matrix: aether.Mat4
     readonly antiMatrix: aether.Mat4
     readonly isIdentityMatrix: boolean
+    readonly range: aetherX.Range3D
 
-    private gltfNode: gltf.Node
-
-    private _range: [aether.Vec3, aether.Vec3] | null = null
-
-    constructor(node: gltf.Node, i: number, meshes: Mesh[]) {
+    constructor(node: gltf.Node, i: number, meshes: Mesh[], nodes: utils.Supplier<Node>[]) {
         super(`node#${i}`)
-        if (node.mesh !== undefined) {
-            this.meshes.push(meshes[node.mesh])
-        }
-        this.matrix = node.matrix !== undefined ? 
-            aether.mat4.from(node.matrix) : 
-            aether.mat4.identity()
-        this.matrix = node.translation !== undefined ? 
-            aether.mat4.mul(this.matrix, aether.mat4.translation(node.translation)) :
-            this.matrix 
-        this.matrix = node.rotation !== undefined ? 
-            aether.mat4.mul(this.matrix, aether.mat4.cast(aether.quat.toMatrix(node.rotation))) :
-            this.matrix 
-        this.matrix = node.scale !== undefined ? 
-            aether.mat4.mul(this.matrix, aether.mat4.scaling(...node.scale)) :
-            this.matrix
-        const inverse = aether.mat4.inverse(this.matrix)
-        this.antiMatrix = aether.mat4.transpose([inverse[0], inverse[1], inverse[2], [0, 0, 0, 1]]) 
-        this.isIdentityMatrix = isIdentityMatrix(this.matrix)
-
-        this.gltfNode = node
-    }
-
-    wire(nodes: Node[]) {
-        if (this.children.length > 0) {
-            return
-        }
-        if (this.gltfNode.children != undefined) {
-            for (const child of this.gltfNode.children) {
-                this.children.push(nodes[child])
-            }
-        }
-    }
-
-    get range(): [aether.Vec3, aether.Vec3] {
-        if (this._range !== null) {
-            return this._range
-        }
-        const childRanges = this.children.map(child => child.range)
-        const min = minVec([
-            ...this.meshes.map(mesh => mesh.min), 
-            ...childRanges.map(([min, max]) => min)
-        ])
-        const max = maxVec([
-            ...this.meshes.map(mesh => mesh.max), 
-            ...childRanges.map(([min, max]) => max)
-        ]);
-        return this._range = minMax(this.matrix, min, max)
+        this.matrix = gltf.matrixOf(node)
+        this.antiMatrix = aetherX.anti(this.matrix)
+        this.isIdentityMatrix = aetherX.isIdentityMatrix(this.matrix)
+        this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : []
+        this.children = node.children !== undefined ? node.children.map(child => nodes[child]()) : []
+        this.range = aetherX.applyMatrixToRange(this.matrix, aetherX.union([
+            aetherX.union(this.meshes.map(mesh => mesh.range)), 
+            aetherX.union(this.children.map(child => child.range))
+        ]))
     }
 
 }
@@ -140,14 +93,12 @@ export class Node extends IdentifiableObject {
 export class Mesh extends IdentifiableObject {
 
     readonly primitives: Primitive[]
-    readonly min: aether.Vec3
-    readonly max: aether.Vec3
+    readonly range: aetherX.Range3D
 
     constructor(mesh: gltf.Mesh, i: number, accessors: Accessor[]) {
         super(`mesh#${i}`)
         this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors))
-        this.min = minVec(this.primitives.map(p => p.min))
-        this.max = maxVec(this.primitives.map(p => p.max))
+        this.range = aetherX.union(this.primitives.map(p => p.range))
     }
 
 }
@@ -160,8 +111,7 @@ export class Primitive extends IdentifiableObject {
     readonly attributes: {
         [attributeName: string]: Accessor
     }
-    readonly min: aether.Vec3
-    readonly max: aether.Vec3
+    readonly range: aetherX.Range3D
 
     constructor(primitive: gltf.MeshPrimitive, m: number, i: number, accessors: Accessor[]) {
         super(`primitive#${m}_${i}`)
@@ -177,8 +127,7 @@ export class Primitive extends IdentifiableObject {
             }
         }
         const position = this.attributes["POSITION"]
-        this.min = position.min.length >= 3 ? aether.vec3.from(position.min) : maxVecEver()
-        this.max = position.max.length >= 3 ? aether.vec3.from(position.max) : minVecEver()
+        this.range = position.range
     }
 
 }
@@ -191,8 +140,7 @@ export class Accessor extends IdentifiableObject {
     readonly normalized: boolean
     readonly count: number
     readonly type: gltf.ElementType
-    readonly min: number[]
-    readonly max: number[]
+    readonly range: aetherX.Range3D
 
     constructor(accessor: gltf.Accessor, i: number, bufferViews: BufferView[]) {
         super(`accessor#${i}`)
@@ -202,8 +150,10 @@ export class Accessor extends IdentifiableObject {
         this.normalized = accessor.normalized ?? false
         this.count = accessor.count
         this.type = accessor.type
-        this.min = accessor.min ?? []
-        this.max = accessor.max ?? []
+        this.range = [
+            accessor.min !== undefined ? aether.vec3.from(accessor.min) : aetherX.maxVecEver(), 
+            accessor.max !== undefined ? aether.vec3.from(accessor.max) : aetherX.minVecEver()
+        ] 
     }
 
 }
@@ -226,75 +176,3 @@ export class BufferView extends IdentifiableObject {
     }
 
 }
-
-function maxVec(vectors: [number, number, number][]): [number, number, number] {
-    return aether.vec3.maxAll(minVecEver(), ...vectors)
-}
-
-function minVec(vectors: [number, number, number][]): [number, number, number] {
-    return aether.vec3.minAll(maxVecEver(), ...vectors)
-}
-
-function minVecEver(): aether.Vec3 {
-    return [-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE]
-}
-
-function maxVecEver(): aether.Vec3 {
-    return [+Number.MAX_VALUE, +Number.MAX_VALUE, +Number.MAX_VALUE]
-}
-
-function markIndexBufferView(model: gltf.Model) {
-    for (const mesh of model.meshes) {
-        for (const primitive of mesh.primitives) {
-            if (primitive.indices !== undefined) {
-                const accessor = model.accessors[primitive.indices]
-                const bufferView = model.bufferViews[accessor.bufferView ?? utils.failure<number>("Using zero buffers not supported yet!")]
-                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
-                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
-                    bufferView.byteStride = 1
-                }
-            }
-        }
-    }
-}
-function isIdentityMatrix(matrix: aether.Mat4): boolean {
-    for (let i = 0; i < 4; i++) {
-        for (let j = i; j < 4; j++) {
-            if (i === j) {
-                if (matrix[i][j] !== 1) {
-                    return false
-                }
-            } else {
-                if (matrix[i][j] !== 0 || matrix[j][i] !== 0) {
-                    return false
-                }
-            }
-        }
-    }
-    return true
-}
-
-function minMax(matrix: aether.Mat4, min: aether.Vec3, max: aether.Vec3): [aether.Vec3, aether.Vec3] {
-    if ([...min, ...max].some(c => Math.abs(c) == Number.MAX_VALUE)) {
-        return [maxVecEver(), minVecEver()]
-    }
-    const bounds = [min, max]
-    const vectors: aether.Vec3[] = []
-    for (let x = 0; x < 2; x++) {
-        for (let y = 0; y < 2; y++) {
-            for (let z = 0; z < 2; z++) {
-                vectors.push(aether.vec3.from(aether.mat4.apply(
-                    matrix, 
-                    [
-                        bounds[x][0], 
-                        bounds[y][1], 
-                        bounds[z][2], 
-                        1
-                    ]
-                )))
-            }
-        }
-    }
-    return [minVec(vectors), maxVec(vectors)]
-}
-

@@ -10,15 +10,9 @@ type Ref<T> = {
 
 export function lazily<T>(constructor: Supplier<T>): Supplier<T> {
     const ref: Ref<T> = {}
-    return () => {
-        if (ref.value == undefined) {
-            const value = constructor()
-            ref.value = value
-            return value
-        } else {
-            return ref.value
-        }
-    }
+    return () => ref.value === undefined ?
+        ref.value = constructor() :
+        ref.value
 }
 
 export function values<K extends string | number | symbol, V>(record: Record<K, V>): V[] {

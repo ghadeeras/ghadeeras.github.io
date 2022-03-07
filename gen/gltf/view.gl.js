@@ -15,6 +15,8 @@ export class GLView {
         this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.modelMatrix = aether.mat4.identity();
         this.projectionMatrix = aether.mat4.projection(2);
+        this.statusUpdater = () => { };
+        this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.context = wgl.Context.of(canvasId);
         const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
@@ -42,6 +44,7 @@ export class GLView {
         inputs.matModel.attach(m => this.modelMatrix = m);
         inputs.matView.attach(v => this.viewMatrix = v);
         inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
+            this.statusUpdater("Loading model ...");
             const renderer = new wgl.GLRenderer(this.context, {
                 "POSITION": this.position,
                 "NORMAL": this.normal,
@@ -51,6 +54,7 @@ export class GLView {
                 this.model = null;
             }
             this.model = yield gltf.ActiveModel.create(modelUri, renderer);
+            this.statusUpdater("Rendering model ...");
         }));
     }
     draw() {
@@ -68,7 +72,7 @@ export function newViewFactory(canvasId) {
             vertexShaderCode: "generic.vert",
             fragmentShaderCode: "generic.frag"
         }, "/shaders");
-        return inputs => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs);
+        return inputs => Promise.resolve(new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs));
     });
 }
 //# sourceMappingURL=view.gl.js.map

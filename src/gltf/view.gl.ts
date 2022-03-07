@@ -76,6 +76,7 @@ export class GLView implements View {
         inputs.matView.attach(v => this.viewMatrix = v)
 
         inputs.modelUri.attach(async (modelUri) => {
+            this.statusUpdater("Loading model ...")
             const renderer = new wgl.GLRenderer(this.context, {
                 "POSITION" : this.position,
                 "NORMAL" : this.normal,
@@ -85,6 +86,7 @@ export class GLView implements View {
                 this.model = null
             }
             this.model = await gltf.ActiveModel.create(modelUri, renderer)
+            this.statusUpdater("Rendering model ...")
         })
 
     }
@@ -98,6 +100,10 @@ export class GLView implements View {
         gl.flush();
     }
 
+    private statusUpdater: gear.Consumer<string> = () => {}
+
+    readonly status: gear.Value<string> = new gear.Value(consumer => this.statusUpdater = consumer)
+
 }
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
@@ -105,5 +111,5 @@ export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
         vertexShaderCode: "generic.vert",
         fragmentShaderCode: "generic.frag"
     }, "/shaders")
-    return inputs => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs)
+    return inputs => Promise.resolve(new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs))
 }

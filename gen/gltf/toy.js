@@ -45,7 +45,7 @@ function doInit() {
             viewRotation: new gear.Value(),
         };
         canvas.dragging.value.switch(mouseBinding, cases);
-        const view = viewFactory({
+        const view = yield viewFactory({
             matModel: gear.Value.from(cases.modelRotation.then(gear.drag(modelRotation)), cases.modelMove.then(gear.drag(modelTranslation)), cases.modelScale.then(gear.drag(modelScale)), model.map(() => aether.mat4.identity())).defaultsTo(modelMatrix).attach(mat => modelMatrix = mat),
             matView: gear.Value.from(cases.viewRotation.then(gear.drag(viewRotation)), model.map(() => aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]))).defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
             color: cases.color
@@ -72,6 +72,7 @@ function doInit() {
                 .defaultsTo(0),
             modelUri: model.map(getModelUri),
         });
+        gear.text("status").value = view.status;
         mouseBinding.flow("modelRotation");
         model.flow("ScalarField");
         const frame = () => {

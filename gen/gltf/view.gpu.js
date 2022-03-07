@@ -9,10 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether, gear } from "/gen/libs.js";
 import { gltf, gpu } from "../djee/index.js";
-const vertex = gpu.vertex({
-    position: gpu.f32.x3,
-    normal: gpu.f32.x3,
-});
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
         positions: gpu.mat4x4,
@@ -26,26 +22,20 @@ const uniformsStruct = gpu.struct({
     fogginess: gpu.f32,
 });
 export class GPUView {
-    constructor(device, canvasId, shaderModule, inputs) {
+    constructor(device, shaderModule, canvasId, inputs) {
         this.device = device;
-        this.renderer = null;
+        this.shaderModule = shaderModule;
         this.uniformsView = uniformsStruct.view();
+        this.renderer = null;
         this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.modelMatrix = aether.mat4.identity();
         this.projectionMatrix = aether.mat4.mul(aether.mat4.mul(aether.mat4.scaling(1, 1, 0.5), aether.mat4.translation([0, 0, 1])), aether.mat4.projection(2));
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.statusUpdater = () => { };
+        this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.canvas = device.canvas(canvasId);
         this.depthTexture = this.canvas.depthTexture();
-        const nodeGroupLayout = device.device.createBindGroupLayout({
-            entries: [{
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: {
-                        type: "uniform",
-                    },
-                }],
-        });
-        const uniformsGroupLayout = device.device.createBindGroupLayout({
+        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniformsGroupLayout = device.device.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -54,8 +44,22 @@ export class GPUView {
                     },
                 }],
         });
-        this.uniformsGroup = device.createBindGroup(uniformsGroupLayout, [this.uniforms]);
-        inputs.lightPosition.map(p => aether.vec4.from([...p, 1])).attach(this.setter(uniformsStruct.members.lightPos));
+        this.uniformsGroup = device.createBindGroup(this.uniformsGroupLayout, [this.uniforms]);
+        this.nodeGroupLayout = device.device.createBindGroupLayout({
+            entries: [{
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "uniform",
+                    },
+                }],
+        });
+        this.pipelineLayout = this.device.device.createPipelineLayout({
+            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout]
+        });
+        this.fragmentState = this.shaderModule.fragmentState("f_main", [this.canvas]),
+            this.depthState = this.depthTexture.depthState(),
+            inputs.lightPosition.map(p => aether.vec4.from([...p, 1])).attach(this.setter(uniformsStruct.members.lightPos));
         inputs.lightRadius.attach(this.setter(uniformsStruct.members.lightRadius));
         inputs.color.attach(this.setter(uniformsStruct.members.color));
         inputs.shininess.attach(this.setter(uniformsStruct.members.shininess));
@@ -65,34 +69,43 @@ export class GPUView {
             normals: m,
         })).attach(this.setter(uniformsStruct.members.mat));
         this.setter(uniformsStruct.members.projectionMat)(this.projectionMatrix);
-        inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
-            const model = yield gltf.graph.Model.create(modelUri);
-            if (this.renderer !== null) {
-                this.renderer.destroy();
-                this.renderer = null;
-            }
-            this.renderer = new gpu.GPURenderer(model, this.device, 1, { POSITION: 0, NORMAL: 1 }, (buffer, offset) => this.nodeBindGroup(nodeGroupLayout, buffer, offset), (layouts, primitiveState) => this.primitivePipeline(shaderModule, [uniformsGroupLayout, nodeGroupLayout], layouts, primitiveState));
-            console.log(`Rendering ${modelUri} ...`);
-        }));
+        inputs.modelUri.attach((modelUri) => this.loadModel(modelUri));
     }
-    primitivePipeline(shaderModule, bindLayouts, vertexLayouts, primitiveState) {
-        const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
-        return this.device.device.createRenderPipeline({
-            layout: this.device.device.createPipelineLayout({
-                bindGroupLayouts: bindLayouts
-            }),
-            vertex: shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
-            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
-            depthStencil: this.depthTexture.depthState(),
-            primitive: primitiveState,
-            multisample: {
-                count: this.canvas.sampleCount
+    loadModel(modelUri) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                this.statusUpdater("Loading model ...");
+                const model = yield gltf.graph.Model.create(modelUri);
+                this.statusUpdater("Parsing model ...");
+                if (this.renderer !== null) {
+                    this.renderer.destroy();
+                    this.renderer = null;
+                }
+                this.renderer = new gpu.GPURenderer(model, this.device, 1, { POSITION: 0, NORMAL: 1 }, (buffer, offset) => this.nodeBindGroup(buffer, offset), (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
+                this.statusUpdater("Rendering model ...");
+            }
+            catch (e) {
+                this.statusUpdater(`Error: ${e}`);
+                console.error(e);
             }
         });
     }
-    nodeBindGroup(nodeGroupLayout, buffer, offset) {
+    primitivePipeline(vertexLayouts, primitiveState) {
+        const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
+        return this.device.device.createRenderPipeline({
+            layout: this.pipelineLayout,
+            fragment: this.fragmentState,
+            depthStencil: this.depthState,
+            multisample: {
+                count: this.canvas.sampleCount
+            },
+            vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
+            primitive: primitiveState,
+        });
+    }
+    nodeBindGroup(buffer, offset) {
         return this.device.device.createBindGroup({
-            layout: nodeGroupLayout,
+            layout: this.nodeGroupLayout,
             entries: [{
                     binding: 0,
                     resource: {
@@ -128,7 +141,7 @@ export function newViewFactory(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();
         const shaderModule = yield device.loadShaderModule("gltf.wgsl");
-        return inputs => new GPUView(device, canvasId, shaderModule, inputs);
+        return inputs => Promise.resolve(new GPUView(device, shaderModule, canvasId, inputs));
     });
 }
 //# sourceMappingURL=view.gpu.js.map
