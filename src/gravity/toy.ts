@@ -93,7 +93,7 @@ function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction:
         renderer.modelMatrix = aether.mat4.identity()
         renderer.viewMatrix = aether.mat4.lookAt([0, 0, -24])
         renderer.projectionMatrix = aether.mat4.projection()
-        renderer.radiusScale = 0.05
+        renderer.radiusScale = 0.06
     }
     action("collapse").onclick = () => {
         universe.bodyPointedness = 0.1
@@ -101,8 +101,8 @@ function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction:
         universe.recreateUniverse()
     }
     action("kaboom").onclick = () => {
-        universe.bodyPointedness = 10
-        universe.gravityConstant = 100
+        universe.bodyPointedness = 5
+        universe.gravityConstant = 25
         universe.recreateUniverse(1)
     }
 }

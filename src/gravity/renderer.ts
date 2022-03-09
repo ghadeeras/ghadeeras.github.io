@@ -34,12 +34,14 @@ export class Renderer {
 
     private readonly uniformsStruct = gpu.struct({
         mvpMatrix: gpu.f32.x4.x4,
+        mMatrix: gpu.f32.x4.x4,
         radiusScale: gpu.f32,
     })
 
     private readonly uniformsView = this.uniformsStruct.view([{
         mvpMatrix: this.mvpMatrix(),
-        radiusScale: 0.05
+        mMatrix: this.mMatrix(),
+        radiusScale: 0.06
     }])
 
     private updateUniformsData = new gear.DeferredComputation(() => {
@@ -110,6 +112,7 @@ export class Renderer {
 
     private updateMvpMatrix() {
         this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix())
+        this.setMember(this.uniformsStruct.members.mMatrix, this.mMatrix())
     }
 
     private getMember<T>(member: gpu.Element<T>): T {
@@ -126,6 +129,10 @@ export class Renderer {
             aether.mat4.mul(this._projectionMatrix, this._viewMatrix),
             this._modelMatrix
         )
+    }
+
+    private mMatrix() {
+        return this._modelMatrix
     }
 
     private createPipeline(shaderModule: gpu.ShaderModule, canvas: gpu.Canvas, mesh: geo.Mesh): GPURenderPipeline {

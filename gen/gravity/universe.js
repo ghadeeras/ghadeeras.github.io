@@ -86,7 +86,7 @@ export class Universe {
         const descriptions = [];
         const initialState = [];
         for (let i = 0; i < this.bodiesCount; i++) {
-            const mass = skewDown(Math.random(), 10, 0.1);
+            const mass = skewDown(Math.random(), 16) * 0.999 + 0.001;
             const radius = Math.pow(mass, (1 / 3));
             const p = randomVector(universeRadius);
             const v = randomVector(0.001 / mass);
@@ -115,28 +115,20 @@ Universe.bodyState = gpu.struct({
     velocity: gpu.f32.x3,
 });
 function randomVector(radius) {
-    const ya = Math.PI * (Math.random() + Math.random()) / 2;
+    const ya = Math.acos(1 - 2 * Math.random());
     const xa = 2 * Math.PI * Math.random();
-    const r = radius * skewUp(Math.random(), 100); // (1 - Math.abs(Math.random() + Math.random() - 1))
+    const r = radius * skewUp(Math.random(), 100);
     const ry = r * Math.sin(ya);
     const x = ry * Math.cos(xa);
     const y = r * Math.cos(ya);
     const z = ry * Math.sin(xa);
     return [x, y, z];
 }
-function skewDown(x, s, m = 0) {
-    const r = Math.pow(x, s);
-    return r * (1 - m);
+function skewUp(x, s) {
+    return skewDown(x, 1 / s);
 }
-function skewUp(x, s, m = 0) {
-    return 1 - skewDown(1 - x, s, m);
-}
-function skewMid(x, s) {
-    const y = 2 * x - 1;
-    const z = y >= 0 ?
-        +skewDown(+y, s, 0) :
-        -skewDown(-y, s, 0);
-    return (z + 1) / 2;
+function skewDown(x, s) {
+    return Math.pow(x, s);
 }
 export function newUniverse(device) {
     return __awaiter(this, void 0, void 0, function* () {

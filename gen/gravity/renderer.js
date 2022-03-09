@@ -28,11 +28,13 @@ export class Renderer {
         this._modelMatrix = aether.mat4.identity();
         this.uniformsStruct = gpu.struct({
             mvpMatrix: gpu.f32.x4.x4,
+            mMatrix: gpu.f32.x4.x4,
             radiusScale: gpu.f32,
         });
         this.uniformsView = this.uniformsStruct.view([{
                 mvpMatrix: this.mvpMatrix(),
-                radiusScale: 0.05
+                mMatrix: this.mMatrix(),
+                radiusScale: 0.06
             }]);
         this.updateUniformsData = new gear.DeferredComputation(() => {
             this.uniformsBuffer.writeAt(0, this.uniformsView);
@@ -83,6 +85,7 @@ export class Renderer {
     }
     updateMvpMatrix() {
         this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix());
+        this.setMember(this.uniformsStruct.members.mMatrix, this.mMatrix());
     }
     getMember(member) {
         return member.read(this.uniformsView);
@@ -93,6 +96,9 @@ export class Renderer {
     }
     mvpMatrix() {
         return aether.mat4.mul(aether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
+    }
+    mMatrix() {
+        return this._modelMatrix;
     }
     createPipeline(shaderModule, canvas, mesh) {
         return shaderModule.device.device.createRenderPipeline({
