@@ -192,14 +192,14 @@ function draw() {
     position.pointTo(tetrahedronBuffer, 0 * tetrahedronBuffer.word);
     normal.pointTo(tetrahedronBuffer, 3 * tetrahedronBuffer.word);
     color.pointTo(tetrahedronBuffer, 6 * tetrahedronBuffer.word);
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, tetrahedronBuffer.data.length / 10);
+    gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, tetrahedronBuffer.data.length / 10);
 
     gl.flush();
 
     position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     color.setTo(...contourColorData(contourValue));
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
+    gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
 
     gl.flush();
 

@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,10 +8,12 @@ precision mediump float;
 #endif
 #endif
 
-varying vec3 position;
-varying vec3 normal;
-varying vec3 lightRay;
+in vec3 position;
+in vec3 normal;
+in vec3 lightRay;
                 
+out vec4 fragColor; 
+
 uniform vec3 color;
 uniform float shininess;
                 
@@ -36,5 +40,5 @@ void main() {
     shine = pow(shine, 8.0);
                 
     float shade = diffuse + shine * s;
-    gl_FragColor = vec4(shade * (facing * color + vec3(1.0)) / 2.0, 1.0);
+    fragColor = vec4(shade * (facing * color + vec3(1.0)) / 2.0, 1.0);
 }

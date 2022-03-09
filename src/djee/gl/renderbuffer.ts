@@ -1,7 +1,7 @@
 import { Context } from "./context.js"
 import { failure } from "../utils.js"
 
-export type RenderBufferFormat = WebGLRenderingContext[
+export type RenderBufferFormat = WebGL2RenderingContext[
     "DEPTH_COMPONENT16" | 
     "STENCIL_INDEX8" |
     "STENCIL_INDEX8" |
@@ -15,7 +15,7 @@ export type RenderBufferFormat = WebGLRenderingContext[
 export class RenderBuffer {
 
     readonly glRenderBuffer: WebGLRenderbuffer
-    readonly target = WebGLRenderingContext.RENDERBUFFER
+    readonly target = WebGL2RenderingContext.RENDERBUFFER
     
     constructor(
         readonly context: Context, 

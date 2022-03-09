@@ -34,7 +34,7 @@ function getSetter(gl, location, info) {
             default: throw `Uniform matrices of size '${info.itemDimensions}' are not supported.`;
         }
     }
-    else if (info.primitiveType == WebGLRenderingContext.FLOAT) {
+    else if (info.primitiveType == WebGL2RenderingContext.FLOAT) {
         switch (info.itemDimensions) {
             case 1: return (d) => gl.uniform1fv(location, d);
             case 2: return (d) => gl.uniform2fv(location, d);

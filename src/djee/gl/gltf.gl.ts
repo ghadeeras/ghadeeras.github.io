@@ -57,15 +57,6 @@ export class GLRenderer implements Renderer<IndicesBuffer, AttributesBuffer> {
         attribute.setTo(...value)
     }
 
-    setIndexComponentType(componentType: number): void {
-        if (componentType === WebGLRenderingContext.UNSIGNED_INT) {
-            const ext = this.context.gl.getExtension('OES_element_index_uint')
-            if (!ext) {
-                failure("OES_element_index_uint extension is not supported")
-            }
-        }
-    }
-
     drawIndexed(componentType: number, mode: number, count: number, byteOffset: number): void {
         this.context.gl.drawElements(mode, count, componentType, byteOffset)
     }
@@ -109,11 +100,11 @@ function toVariableInfo(accessor: Accessor): VariableInfo {
 function glTypeOf(accessor: Accessor) {
     switch (accessor.type) {
         case "SCALAR": return accessor.componentType
-        case "VEC2": return accessor.componentType == WebGLRenderingContext.FLOAT ? WebGLRenderingContext.FLOAT_VEC2 : WebGLRenderingContext.INT_VEC2  
-        case "VEC3": return accessor.componentType == WebGLRenderingContext.FLOAT ? WebGLRenderingContext.FLOAT_VEC3 : WebGLRenderingContext.INT_VEC3  
-        case "VEC4": return accessor.componentType == WebGLRenderingContext.FLOAT ? WebGLRenderingContext.FLOAT_VEC4 : WebGLRenderingContext.INT_VEC4  
-        case "MAT2": return WebGLRenderingContext.FLOAT_MAT2  
-        case "MAT3": return WebGLRenderingContext.FLOAT_MAT3  
-        case "MAT4": return WebGLRenderingContext.FLOAT_MAT4  
+        case "VEC2": return accessor.componentType == WebGL2RenderingContext.FLOAT ? WebGL2RenderingContext.FLOAT_VEC2 : WebGL2RenderingContext.INT_VEC2  
+        case "VEC3": return accessor.componentType == WebGL2RenderingContext.FLOAT ? WebGL2RenderingContext.FLOAT_VEC3 : WebGL2RenderingContext.INT_VEC3  
+        case "VEC4": return accessor.componentType == WebGL2RenderingContext.FLOAT ? WebGL2RenderingContext.FLOAT_VEC4 : WebGL2RenderingContext.INT_VEC4  
+        case "MAT2": return WebGL2RenderingContext.FLOAT_MAT2  
+        case "MAT3": return WebGL2RenderingContext.FLOAT_MAT3  
+        case "MAT4": return WebGL2RenderingContext.FLOAT_MAT4  
     }
 }

@@ -1,7 +1,7 @@
 import { Context } from "./context.js"
 import { failure } from "../utils.js"
 
-export type TextureFormat = WebGLRenderingContext[
+export type TextureFormat = WebGL2RenderingContext[
     "RGBA" | 
     "RGB" | 
     "LUMINANCE_ALPHA" | 
@@ -18,7 +18,7 @@ export type RawImage = {
 
 export class TextureTarget {
 
-    static readonly texture2D: TextureTarget = new TextureTarget(WebGLRenderingContext.TEXTURE_2D)
+    static readonly texture2D: TextureTarget = new TextureTarget(WebGL2RenderingContext.TEXTURE_2D)
 
     private constructor(readonly id: GLenum) {
     }
@@ -27,7 +27,7 @@ export class TextureTarget {
 
 export class Texture2D {
 
-    readonly target = WebGLRenderingContext.TEXTURE_2D
+    readonly target = WebGL2RenderingContext.TEXTURE_2D
     readonly glTexture: WebGLTexture
 
     constructor(readonly context: Context, readonly unit: number = 0) {
@@ -42,7 +42,7 @@ export class Texture2D {
     bind() {
         const gl = this.context.gl
         gl.activeTexture(gl.TEXTURE0 + this.unit)
-        gl.bindTexture(WebGLRenderingContext.TEXTURE_2D, this.glTexture)
+        gl.bindTexture(WebGL2RenderingContext.TEXTURE_2D, this.glTexture)
     }
 
     setRawImage(image: RawImage, level: number | null = null) {
@@ -69,7 +69,7 @@ export class Texture2D {
         const gl = this.context.gl
         this.bind()
         gl.texImage2D(
-            WebGLRenderingContext.TEXTURE_2D, 
+            WebGL2RenderingContext.TEXTURE_2D, 
             level ?? 0, 
             gl.RGBA, 
             gl.RGBA, 
@@ -83,10 +83,10 @@ export class Texture2D {
     private optimize(mipmap: boolean) {
         const gl = this.context.gl
         if (mipmap) {
-            gl.generateMipmap(WebGLRenderingContext.TEXTURE_2D)
+            gl.generateMipmap(WebGL2RenderingContext.TEXTURE_2D)
         }
-        gl.texParameteri(WebGLRenderingContext.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-        gl.texParameteri(WebGLRenderingContext.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmap ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR)
+        gl.texParameteri(WebGL2RenderingContext.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+        gl.texParameteri(WebGL2RenderingContext.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmap ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR)
     }
 
 }

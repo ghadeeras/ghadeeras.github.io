@@ -30,14 +30,14 @@ export class GLPicker implements Picker {
         const canvas = context.canvas
         const colorTexture = context.newTexture2D()
         colorTexture.setRawImage({
-            format: WebGLRenderingContext.RGBA,
+            format: WebGL2RenderingContext.RGBA,
             width: canvas.width,
             height: canvas.height
         })
         this.frameBuffer = context.newFrameBuffer()
         this.frameBuffer.colorBuffer = colorTexture
         this.frameBuffer.depthBuffer = context.newRenderBuffer(
-            WebGLRenderingContext.DEPTH_COMPONENT16, 
+            WebGL2RenderingContext.DEPTH_COMPONENT16, 
             canvas.width, 
             canvas.height
         )
@@ -67,17 +67,17 @@ export class GLPicker implements Picker {
 
         const context = this.mainView.context
 
-        context.gl.clear(WebGLRenderingContext.COLOR_BUFFER_BIT | WebGLRenderingContext.DEPTH_BUFFER_BIT)
+        context.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT | WebGL2RenderingContext.DEPTH_BUFFER_BIT)
 
-        context.gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, this.vertices().count)
+        context.gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, this.vertices().count)
 
         const coordinatesAsColor = new Uint8Array(4)
         context.gl.readPixels(
             context.canvas.width * (x + 1) / 2, 
             context.canvas.height * (y + 1) / 2, 
             1, 1,
-            WebGLRenderingContext.RGBA,
-            WebGLRenderingContext.UNSIGNED_BYTE,
+            WebGL2RenderingContext.RGBA,
+            WebGL2RenderingContext.UNSIGNED_BYTE,
             coordinatesAsColor
         )
 

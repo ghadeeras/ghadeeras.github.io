@@ -30,13 +30,13 @@ function orderName(order) {
 }
 function primitiveTypeName(primitiveType) {
     switch (primitiveType) {
-        case WebGLRenderingContext.BOOL: return "truth";
-        case WebGLRenderingContext.INT: return "discrete";
+        case WebGL2RenderingContext.BOOL: return "truth";
+        case WebGL2RenderingContext.INT: return "discrete";
         default: return "scalar";
     }
 }
 function dimensions(info) {
-    const C = WebGLRenderingContext;
+    const C = WebGL2RenderingContext;
     switch (info.type) {
         case C.BOOL:
         case C.INT:
@@ -69,7 +69,7 @@ function dimensions(info) {
     }
 }
 function order(info) {
-    const C = WebGLRenderingContext;
+    const C = WebGL2RenderingContext;
     switch (info.type) {
         case C.BOOL:
         case C.INT:
@@ -101,7 +101,7 @@ function order(info) {
     }
 }
 function primitiveType(info) {
-    const C = WebGLRenderingContext;
+    const C = WebGL2RenderingContext;
     switch (info.type) {
         case C.BOOL:
         case C.INT:

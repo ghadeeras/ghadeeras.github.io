@@ -1,8 +1,10 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec4 color;
+in vec3 position;
+in vec3 normal;
+in vec4 color;
 
 uniform vec3 lightPosition;
                 
@@ -10,11 +12,11 @@ uniform mat4 matModel;
 uniform mat4 matView;
 uniform mat4 matProjection;
 
-varying vec4 fragColor;
-varying vec3 fragPosition;
-varying vec3 fragNormal;
-varying vec3 fragLightRay;
-varying float fogDepth;
+out vec4 fragColor;
+out vec3 fragPosition;
+out vec3 fragNormal;
+out vec3 fragLightRay;
+out float fogDepth;
 
 void main() {
     mat4 matModelView = matView * matModel;

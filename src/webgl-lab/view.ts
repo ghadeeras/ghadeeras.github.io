@@ -40,7 +40,7 @@ export class View {
     private defaultSample: ProgramSample;
     
     private lod = 50;
-    private mode = WebGLRenderingContext.TRIANGLE_STRIP;
+    private mode = WebGL2RenderingContext.TRIANGLE_STRIP;
     private cullingEnabled = false;
     private programScalars: Scalar[] = [];
     private xScalar: Scalar | null = null;
@@ -54,7 +54,7 @@ export class View {
 
         inputs.mesh
             .defaultsTo(false)
-            .then(gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
+            .then(gear.choice(WebGL2RenderingContext.LINE_STRIP, WebGL2RenderingContext.TRIANGLE_STRIP))
             .attach(mode => {
                 this.mode = mode;
                 this.draw()

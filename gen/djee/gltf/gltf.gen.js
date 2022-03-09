@@ -35,13 +35,13 @@ function createModelJson(name, indexedVertices) {
         accessors: [{
                 type: "SCALAR",
                 componentType: intScalarSize == 2 ?
-                    WebGLRenderingContext.UNSIGNED_SHORT :
-                    WebGLRenderingContext.UNSIGNED_INT,
+                    WebGL2RenderingContext.UNSIGNED_SHORT :
+                    WebGL2RenderingContext.UNSIGNED_INT,
                 bufferView: 0,
                 count: verticesCount
             }, {
                 type: "VEC3",
-                componentType: WebGLRenderingContext.FLOAT,
+                componentType: WebGL2RenderingContext.FLOAT,
                 bufferView: 1,
                 count: uniqueVerticesCount,
                 byteOffset: 0,
@@ -49,7 +49,7 @@ function createModelJson(name, indexedVertices) {
                 max: indexedVertices.maxPos
             }, {
                 type: "VEC3",
-                componentType: WebGLRenderingContext.FLOAT,
+                componentType: WebGL2RenderingContext.FLOAT,
                 bufferView: 1,
                 count: uniqueVerticesCount,
                 byteOffset: byteStride / 2

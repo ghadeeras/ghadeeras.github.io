@@ -4,7 +4,7 @@ export class FrameBuffer {
     constructor(context) {
         var _a;
         this.context = context;
-        this.target = WebGLRenderingContext.FRAMEBUFFER;
+        this.target = WebGL2RenderingContext.FRAMEBUFFER;
         this._colorBuffer = null;
         this._depthBuffer = null;
         this.glFrameBuffer = (_a = context.gl.createFramebuffer()) !== null && _a !== void 0 ? _a : failure("Failed to create a frame buffer!");
@@ -23,7 +23,7 @@ export class FrameBuffer {
     check() {
         this.bind();
         const result = this.context.gl.checkFramebufferStatus(this.target);
-        if (result !== WebGLRenderingContext.FRAMEBUFFER_COMPLETE) {
+        if (result !== WebGL2RenderingContext.FRAMEBUFFER_COMPLETE) {
             failure("Frame buffer is in an incomplete status!");
         }
     }
@@ -31,13 +31,13 @@ export class FrameBuffer {
         return this._colorBuffer;
     }
     set colorBuffer(buffer) {
-        this._colorBuffer = this.set(WebGLRenderingContext.COLOR_ATTACHMENT0, buffer, this._colorBuffer);
+        this._colorBuffer = this.set(WebGL2RenderingContext.COLOR_ATTACHMENT0, buffer, this._colorBuffer);
     }
     get depthBuffer() {
         return this._depthBuffer;
     }
     set depthBuffer(buffer) {
-        this._depthBuffer = this.set(WebGLRenderingContext.DEPTH_ATTACHMENT, buffer, this._depthBuffer);
+        this._depthBuffer = this.set(WebGL2RenderingContext.DEPTH_ATTACHMENT, buffer, this._depthBuffer);
     }
     set(attachment, newBuffer, oldBuffer) {
         const gl = this.context.gl;

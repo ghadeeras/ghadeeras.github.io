@@ -22,8 +22,8 @@ export class Shader {
 }
 export var ShaderType;
 (function (ShaderType) {
-    ShaderType[ShaderType["VertexShader"] = WebGLRenderingContext.VERTEX_SHADER] = "VertexShader";
-    ShaderType[ShaderType["FragmentShader"] = WebGLRenderingContext.FRAGMENT_SHADER] = "FragmentShader";
+    ShaderType[ShaderType["VertexShader"] = WebGL2RenderingContext.VERTEX_SHADER] = "VertexShader";
+    ShaderType[ShaderType["FragmentShader"] = WebGL2RenderingContext.FRAGMENT_SHADER] = "FragmentShader";
 })(ShaderType || (ShaderType = {}));
 function getScriptElement(scriptElementId) {
     const scriptElement = document.getElementById(scriptElementId);

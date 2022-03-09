@@ -76,7 +76,7 @@ export class Primitive extends IdentifiableObject {
     constructor(primitive, m, i, accessors) {
         var _a;
         super(`primitive#${m}_${i}`);
-        this.mode = (_a = primitive.mode) !== null && _a !== void 0 ? _a : WebGLRenderingContext.TRIANGLES;
+        this.mode = (_a = primitive.mode) !== null && _a !== void 0 ? _a : WebGL2RenderingContext.TRIANGLES;
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null;
         this.count = this.indices !== null ? this.indices.count : Number.MAX_SAFE_INTEGER;
         this.attributes = {};
@@ -115,7 +115,7 @@ export class BufferView extends IdentifiableObject {
         this.byteLength = bufferView.byteLength;
         this.byteOffset = (_a = bufferView.byteOffset) !== null && _a !== void 0 ? _a : 0;
         this.byteStride = (_b = bufferView.byteStride) !== null && _b !== void 0 ? _b : 0;
-        this.index = bufferView.target == WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
+        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
     }
 }
 //# sourceMappingURL=gltf.graph.js.map

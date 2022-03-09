@@ -9,7 +9,7 @@ import { FrameBuffer } from "./framebuffer.js"
 export class Context {
 
     readonly canvas: HTMLCanvasElement
-    readonly gl: WebGLRenderingContext
+    readonly gl: WebGL2RenderingContext
 
     private constructor(canvasElementId: string) {
         this.canvas = getCanvas(canvasElementId)
@@ -72,7 +72,7 @@ function getCanvas(canvasId: string): HTMLCanvasElement {
     return canvas ? canvas as HTMLCanvasElement : failure(`No canvas found with ID: ${canvasId}`)
 }
 
-function getContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
-    const context = canvas.getContext("webgl")
+function getContext(canvas: HTMLCanvasElement): WebGL2RenderingContext {
+    const context = canvas.getContext("webgl2")
     return context ?? failure(`Failed to get GL context from element: ${canvas.id}`)
 }

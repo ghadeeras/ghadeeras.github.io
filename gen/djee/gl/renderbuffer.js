@@ -6,7 +6,7 @@ export class RenderBuffer {
         this.format = format;
         this.width = width;
         this.height = height;
-        this.target = WebGLRenderingContext.RENDERBUFFER;
+        this.target = WebGL2RenderingContext.RENDERBUFFER;
         const gl = context.gl;
         this.glRenderBuffer = (_a = gl.createRenderbuffer()) !== null && _a !== void 0 ? _a : failure("Failed to create a render buffer!");
         this.setStorage(format, width, height);

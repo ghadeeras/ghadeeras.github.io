@@ -125,7 +125,7 @@ export class Renderer {
 
         for (let matrix of this.matrices) {
             this.matSubModel.data = matrix;
-            gl.drawArrays(WebGLRenderingContext.TRIANGLE_STRIP, 0, this.buffer.data.byteLength / (6 * 4));
+            gl.drawArrays(WebGL2RenderingContext.TRIANGLE_STRIP, 0, this.buffer.data.byteLength / (6 * 4));
         }
         
         gl.flush();

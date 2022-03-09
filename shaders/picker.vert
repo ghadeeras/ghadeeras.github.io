@@ -1,10 +1,12 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec3 aModelPos;
+in vec3 aModelPos;
 
 uniform mat4 mvpMat;
 
-varying vec4 vModelPos;
+out vec4 vModelPos;
 
 void main() {
     vModelPos = vec4(aModelPos, 1.0);

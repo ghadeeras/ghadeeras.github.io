@@ -1,6 +1,9 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec2 vertex;
+in vec2 vertex;
+
 uniform float magnitude;
 uniform float phase;
                 
@@ -11,7 +14,8 @@ uniform float focalRatio;
 uniform vec2 lightDirection;
 uniform float lightDistance;
 uniform float shininess;
-varying float shade;
+
+out float shade;
                 
 const float PI = 3.1415926535897932384626433832795;
 const float epsilon = 0.01;

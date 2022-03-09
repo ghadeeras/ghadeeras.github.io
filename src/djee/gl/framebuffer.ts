@@ -5,7 +5,7 @@ import { failure } from "../utils.js";
 
 export class FrameBuffer {
 
-    readonly target = WebGLRenderingContext.FRAMEBUFFER
+    readonly target = WebGL2RenderingContext.FRAMEBUFFER
     readonly glFrameBuffer: WebGLFramebuffer
 
     private _colorBuffer: RenderBuffer | Texture2D | null = null
@@ -32,7 +32,7 @@ export class FrameBuffer {
     check() {
         this.bind()
         const result = this.context.gl.checkFramebufferStatus(this.target)
-        if (result !== WebGLRenderingContext.FRAMEBUFFER_COMPLETE) {
+        if (result !== WebGL2RenderingContext.FRAMEBUFFER_COMPLETE) {
             failure("Frame buffer is in an incomplete status!")
         }   
     }
@@ -42,7 +42,7 @@ export class FrameBuffer {
     }
 
     set colorBuffer(buffer: RenderBuffer | Texture2D | null) {
-        this._colorBuffer = this.set(WebGLRenderingContext.COLOR_ATTACHMENT0, buffer, this._colorBuffer)
+        this._colorBuffer = this.set(WebGL2RenderingContext.COLOR_ATTACHMENT0, buffer, this._colorBuffer)
     }
 
     get depthBuffer() {
@@ -50,7 +50,7 @@ export class FrameBuffer {
     }
 
     set depthBuffer(buffer: RenderBuffer | Texture2D | null) {
-        this._depthBuffer = this.set(WebGLRenderingContext.DEPTH_ATTACHMENT, buffer, this._depthBuffer)
+        this._depthBuffer = this.set(WebGL2RenderingContext.DEPTH_ATTACHMENT, buffer, this._depthBuffer)
     }
 
     private set(attachment: number, newBuffer: RenderBuffer | Texture2D | null, oldBuffer: RenderBuffer | Texture2D | null) {

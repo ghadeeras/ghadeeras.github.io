@@ -1,7 +1,9 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec3 position;
-attribute vec3 normal;
+in vec3 position;
+in vec3 normal;
 
 uniform vec3 lightPosition;
                 
@@ -14,8 +16,8 @@ uniform float shininess;
 
 uniform float twist;
 
-varying float shade;
-varying float depth;
+out float shade;
+out float depth;
 
 const float PI = 3.1415926535897932384626433832795;
 

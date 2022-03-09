@@ -27,8 +27,8 @@ export class Shader {
 }
 
 export enum ShaderType {
-    VertexShader = WebGLRenderingContext.VERTEX_SHADER,
-    FragmentShader = WebGLRenderingContext.FRAGMENT_SHADER
+    VertexShader = WebGL2RenderingContext.VERTEX_SHADER,
+    FragmentShader = WebGL2RenderingContext.FRAGMENT_SHADER
 }
 
 function getScriptElement(scriptElementId: string): HTMLElement {

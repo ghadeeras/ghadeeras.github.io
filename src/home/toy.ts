@@ -30,7 +30,7 @@ async function doInit() {
 
     const texture = context.newTexture2D()
     texture.setRawImage({
-        format: WebGLRenderingContext.RGBA,
+        format: WebGL2RenderingContext.RGBA,
         width: 2,
         height: 2,
         pixels: new Uint8Array([

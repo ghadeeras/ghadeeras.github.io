@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,7 +8,9 @@ precision mediump float;
 #endif
 #endif
 
-varying vec2 pos;
+in vec2 pos;
+
+out vec4 fragColor; 
 
 uniform vec2 center;
 uniform float scale;
@@ -71,5 +75,5 @@ float mandelbrotOrJulia(in vec2 p) {
 
 void main() {
     vec3 color = rgbColor();
-    gl_FragColor = vec4(mandelbrotOrJulia(pos.xy) * color, 1.0);
+    fragColor = vec4(mandelbrotOrJulia(pos.xy) * color, 1.0);
 }

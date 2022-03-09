@@ -1,11 +1,11 @@
 import { failure } from "../utils.js"
 
 export type PrimitiveType = 
-    typeof WebGLRenderingContext.BOOL | 
-    typeof WebGLRenderingContext.INT | 
-    typeof WebGLRenderingContext.SAMPLER_2D | 
-    typeof WebGLRenderingContext.SAMPLER_CUBE | 
-    typeof WebGLRenderingContext.FLOAT
+    typeof WebGL2RenderingContext.BOOL | 
+    typeof WebGL2RenderingContext.INT | 
+    typeof WebGL2RenderingContext.SAMPLER_2D | 
+    typeof WebGL2RenderingContext.SAMPLER_CUBE | 
+    typeof WebGL2RenderingContext.FLOAT
 
 export type VariableInfo = {
     name: string,
@@ -63,14 +63,14 @@ function orderName(order: 0 | 1 | 2): "primitive" | "vector" | "matrix" {
 
 function primitiveTypeName(primitiveType: PrimitiveType): "truth" | "discrete" | "scalar" {
     switch (primitiveType) {
-        case WebGLRenderingContext.BOOL: return "truth"
-        case WebGLRenderingContext.INT: return "discrete"
+        case WebGL2RenderingContext.BOOL: return "truth"
+        case WebGL2RenderingContext.INT: return "discrete"
         default: return "scalar"
     }
 }
 
 function dimensions(info: WebGLActiveInfo): 1 | 2 | 3 | 4 {
-    const C = WebGLRenderingContext 
+    const C = WebGL2RenderingContext 
     switch (info.type) {
         case C.BOOL:
         case C.INT:
@@ -104,7 +104,7 @@ function dimensions(info: WebGLActiveInfo): 1 | 2 | 3 | 4 {
 }
 
 function order(info: WebGLActiveInfo): 0 | 1 | 2 {
-    const C = WebGLRenderingContext 
+    const C = WebGL2RenderingContext 
     switch (info.type) {
         case C.BOOL:
         case C.INT:
@@ -137,7 +137,7 @@ function order(info: WebGLActiveInfo): 0 | 1 | 2 {
 }
 
 function primitiveType(info: WebGLActiveInfo): PrimitiveType {
-    const C = WebGLRenderingContext 
+    const C = WebGL2RenderingContext 
     switch (info.type) {
         case C.BOOL:
         case C.INT:

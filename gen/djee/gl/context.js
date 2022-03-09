@@ -53,7 +53,7 @@ function getCanvas(canvasId) {
     return canvas ? canvas : failure(`No canvas found with ID: ${canvasId}`);
 }
 function getContext(canvas) {
-    const context = canvas.getContext("webgl");
+    const context = canvas.getContext("webgl2");
     return context !== null && context !== void 0 ? context : failure(`Failed to get GL context from element: ${canvas.id}`);
 }
 //# sourceMappingURL=context.js.map

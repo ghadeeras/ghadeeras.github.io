@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,7 +8,9 @@ precision mediump float;
 #endif
 #endif
 
-varying vec2 pos;
+in vec2 pos;
+
+out vec4 fragColor; 
 
 uniform int effect;
 uniform vec2 mousePos;
@@ -73,9 +77,9 @@ void main() {
 
     if (inVisibleArea(newPos)) {
         vec2 texturePos = (newPos + vec2(1.0, -1.0)) / vec2(2.0, -2.0);
-        gl_FragColor = texture2D(sampler, texturePos);
+        fragColor = texture(sampler, texturePos);
     } else {
-        gl_FragColor = vec4(1.0);
+        fragColor = vec4(1.0);
     }
 
 }

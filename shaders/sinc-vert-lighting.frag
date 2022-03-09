@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,10 +8,12 @@ precision mediump float;
 #endif
 #endif
 
-varying float shade;
+in float shade;
                 
+out vec4 fragColor; 
+
 uniform vec3 color;
 
 void main() {
-    gl_FragColor = vec4(abs(shade) * (sign(shade) * color + vec3(1.0)) / 2.0, 1.0);
+    fragColor = vec4(abs(shade) * (sign(shade) * color + vec3(1.0)) / 2.0, 1.0);
 }

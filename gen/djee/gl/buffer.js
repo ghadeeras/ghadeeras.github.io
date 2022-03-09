@@ -47,7 +47,7 @@ export class Buffer {
 }
 export class AttributesBuffer extends Buffer {
     constructor(context, byteStride = 0, isDynamic = false) {
-        super(WebGLRenderingContext.ARRAY_BUFFER, context, byteStride, isDynamic);
+        super(WebGL2RenderingContext.ARRAY_BUFFER, context, byteStride, isDynamic);
         this.context = context;
         this.byteStride = byteStride;
     }
@@ -69,28 +69,22 @@ export class AttributesBuffer extends Buffer {
 }
 export class IndicesBuffer extends Buffer {
     constructor(context, isDynamic = false) {
-        super(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic);
-        this.type = WebGLRenderingContext.UNSIGNED_SHORT;
+        super(WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic);
+        this.type = WebGL2RenderingContext.UNSIGNED_SHORT;
         this.data = new Uint16Array([]);
     }
     glTypeOf(data) {
         if (data instanceof Uint32Array) {
-            this.requestOESElementIndexUintExtension();
-            return WebGLRenderingContext.UNSIGNED_INT;
+            return WebGL2RenderingContext.UNSIGNED_INT;
         }
         else if (data instanceof Uint16Array) {
-            return WebGLRenderingContext.UNSIGNED_SHORT;
+            return WebGL2RenderingContext.UNSIGNED_SHORT;
         }
         else if (data instanceof Uint8Array) {
-            return WebGLRenderingContext.UNSIGNED_BYTE;
+            return WebGL2RenderingContext.UNSIGNED_BYTE;
         }
         else {
             return failure("Unsupported array type for indices buffer!");
-        }
-    }
-    requestOESElementIndexUintExtension() {
-        if (this.context.gl.getExtension("OES_element_index_uint") == null) {
-            failure("Unsigned integer element arrays are not supported!");
         }
     }
     set data(data) {

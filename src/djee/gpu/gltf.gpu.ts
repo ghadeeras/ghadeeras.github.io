@@ -310,27 +310,27 @@ function byteSizeOf(viewAccessorsByLocation: Map<number, gltf.Accessor>) {
 function gpuVertexFormatOf(accessor: gltf.Accessor): GPUVertexFormat {
     switch (accessor.type) {
         case "SCALAR": switch (accessor.componentType) {
-            case WebGLRenderingContext.FLOAT: return "float32"
-            case WebGLRenderingContext.INT: return "sint32"
-            case WebGLRenderingContext.UNSIGNED_INT: return "uint32"
+            case WebGL2RenderingContext.FLOAT: return "float32"
+            case WebGL2RenderingContext.INT: return "sint32"
+            case WebGL2RenderingContext.UNSIGNED_INT: return "uint32"
             default: return failure("Unsupported accessor type!") 
         }
         case "VEC2": switch (accessor.componentType) {
-            case WebGLRenderingContext.FLOAT: return "float32x2"
-            case WebGLRenderingContext.INT: return "sint32x2"
-            case WebGLRenderingContext.UNSIGNED_INT: return "uint32x2"
+            case WebGL2RenderingContext.FLOAT: return "float32x2"
+            case WebGL2RenderingContext.INT: return "sint32x2"
+            case WebGL2RenderingContext.UNSIGNED_INT: return "uint32x2"
             default: return failure("Unsupported accessor type!") 
         }
         case "VEC3": switch (accessor.componentType) {
-            case WebGLRenderingContext.FLOAT: return "float32x3"
-            case WebGLRenderingContext.INT: return "sint32x3"
-            case WebGLRenderingContext.UNSIGNED_INT: return "uint32x3"
+            case WebGL2RenderingContext.FLOAT: return "float32x3"
+            case WebGL2RenderingContext.INT: return "sint32x3"
+            case WebGL2RenderingContext.UNSIGNED_INT: return "uint32x3"
             default: return failure("Unsupported accessor type!") 
         }
         case "VEC4": switch (accessor.componentType) {
-            case WebGLRenderingContext.FLOAT: return "float32x4"
-            case WebGLRenderingContext.INT: return "sint32x4"
-            case WebGLRenderingContext.UNSIGNED_INT: return "uint32x4"
+            case WebGL2RenderingContext.FLOAT: return "float32x4"
+            case WebGL2RenderingContext.INT: return "sint32x4"
+            case WebGL2RenderingContext.UNSIGNED_INT: return "uint32x4"
             default: return failure("Unsupported accessor type!") 
         }
         default: return failure("Unsupported accessor type!") 
@@ -339,9 +339,9 @@ function gpuVertexFormatOf(accessor: gltf.Accessor): GPUVertexFormat {
 
 function gpuIndexFormatOf(accessor: gltf.Accessor): GPUIndexFormat {
     switch (accessor.componentType) {
-        case WebGLRenderingContext.UNSIGNED_INT: return "uint32"
-        case WebGLRenderingContext.UNSIGNED_SHORT:
-        case WebGLRenderingContext.UNSIGNED_BYTE: return "uint16"
+        case WebGL2RenderingContext.UNSIGNED_INT: return "uint32"
+        case WebGL2RenderingContext.UNSIGNED_SHORT:
+        case WebGL2RenderingContext.UNSIGNED_BYTE: return "uint16"
         default: return failure("Unsupported accessor type!") 
     }
 }
@@ -358,11 +358,11 @@ function asGPUPrimitiveState(primitive: gltf.Primitive): GPUPrimitiveState {
 
 function gpuTopologyOf(primitive: gltf.Primitive): GPUPrimitiveTopology {
     switch (primitive.mode) {
-        case WebGLRenderingContext.TRIANGLES: return "triangle-list"
-        case WebGLRenderingContext.TRIANGLE_STRIP: return "triangle-strip"
-        case WebGLRenderingContext.LINES: return "line-list"
-        case WebGLRenderingContext.LINE_STRIP: return "line-strip"
-        case WebGLRenderingContext.POINTS: return "point-list"
+        case WebGL2RenderingContext.TRIANGLES: return "triangle-list"
+        case WebGL2RenderingContext.TRIANGLE_STRIP: return "triangle-strip"
+        case WebGL2RenderingContext.LINES: return "line-list"
+        case WebGL2RenderingContext.LINE_STRIP: return "line-strip"
+        case WebGL2RenderingContext.POINTS: return "point-list"
         default: return failure("Unsupported primitive mode!")
     }
 }

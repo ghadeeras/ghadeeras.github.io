@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,7 +8,9 @@ precision mediump float;
 #endif
 #endif
 
-varying vec2 pos;
+in vec2 pos;
+
+out vec4 fragColor;
 
 uniform vec2 initialZ;
 uniform vec2 center;
@@ -48,5 +52,5 @@ vec3 color(in vec2 c) {
 void main() {
     float s = 0.75 * pow(1024.0, 0.1 - scale);
     vec2 c = 2.0 * center + vec2(0.75, 0.0);
-    gl_FragColor = vec4(color(s * pos.xy - c), 1.0);
+    fragColor = vec4(color(s * pos.xy - c), 1.0);
 }

@@ -40,7 +40,7 @@ export class Attribute {
 
 }
 
-function getSetter(gl: WebGLRenderingContext, location: number, info: VariableInfo): (data: number[]) => void {
+function getSetter(gl: WebGL2RenderingContext, location: number, info: VariableInfo): (data: number[]) => void {
     switch (info.itemDimensions) {
         case 1: return (d) => gl.vertexAttrib1fv(location, d);
         case 2: return (d) => gl.vertexAttrib2fv(location, d);

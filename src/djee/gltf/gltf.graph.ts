@@ -115,7 +115,7 @@ export class Primitive extends IdentifiableObject {
 
     constructor(primitive: gltf.MeshPrimitive, m: number, i: number, accessors: Accessor[]) {
         super(`primitive#${m}_${i}`)
-        this.mode = primitive.mode ?? WebGLRenderingContext.TRIANGLES
+        this.mode = primitive.mode ?? WebGL2RenderingContext.TRIANGLES
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null
         this.count = this.indices !== null ? this.indices.count : Number.MAX_SAFE_INTEGER
         this.attributes = {}
@@ -172,7 +172,7 @@ export class BufferView extends IdentifiableObject {
         this.byteLength = bufferView.byteLength
         this.byteOffset = bufferView.byteOffset ?? 0
         this.byteStride = bufferView.byteStride ?? 0
-        this.index = bufferView.target == WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
+        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
     }
 
 }

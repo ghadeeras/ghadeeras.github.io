@@ -5,7 +5,7 @@ export class View {
     constructor(canvasId, samples, inputs) {
         this.program = null;
         this.lod = 50;
-        this.mode = WebGLRenderingContext.TRIANGLE_STRIP;
+        this.mode = WebGL2RenderingContext.TRIANGLE_STRIP;
         this.cullingEnabled = false;
         this.programScalars = [];
         this.xScalar = null;
@@ -16,7 +16,7 @@ export class View {
         this.defaultSample = samples[0];
         inputs.mesh
             .defaultsTo(false)
-            .then(gear.choice(WebGLRenderingContext.LINE_STRIP, WebGLRenderingContext.TRIANGLE_STRIP))
+            .then(gear.choice(WebGL2RenderingContext.LINE_STRIP, WebGL2RenderingContext.TRIANGLE_STRIP))
             .attach(mode => {
             this.mode = mode;
             this.draw();

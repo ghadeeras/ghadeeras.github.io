@@ -137,12 +137,12 @@ function draw() {
     position.pointTo(cubeBuffer, 0 * cubeBuffer.word);
     normal.pointTo(cubeBuffer, 3 * cubeBuffer.word);
     color.pointTo(cubeBuffer, 6 * cubeBuffer.word);
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
+    gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
     gl.flush();
     position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
     normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
     color.setTo(...contourColorData(contourValue));
-    gl.drawArrays(WebGLRenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
+    gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
     gl.flush();
     requestAnimationFrame(draw);
 }

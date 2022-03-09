@@ -1,8 +1,10 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec2 vertex;
+in vec2 vertex;
 
-varying vec2 pos;
+out vec2 pos;
 
 void main() {
     pos = vertex;

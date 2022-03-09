@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -6,11 +8,13 @@ precision mediump float;
 #endif
 #endif
 
-varying vec4 fragColor;
-varying vec3 fragPosition;
-varying vec3 fragNormal;
-varying vec3 fragLightRay;
-varying float fogDepth;
+in vec4 fragColor;
+in vec3 fragPosition;
+in vec3 fragNormal;
+in vec3 fragLightRay;
+in float fogDepth;
+
+out vec4 finalFragColor; 
 
 uniform float shininess;
 uniform float fogginess;
@@ -36,5 +40,5 @@ void main() {
     float shade = diffuse + shine * shininess;
 
     float fogFactor = exp2(-fogDepth * fogginess / 8.0);
-    gl_FragColor = vec4(mix(white, shade * fragColor.rgb, fogFactor), fragColor.a);
+    finalFragColor = vec4(mix(white, shade * fragColor.rgb, fogFactor), fragColor.a);
 }

@@ -1,14 +1,16 @@
+#version 300 es
+
 precision highp float;
 
-attribute vec3 position;
-attribute vec3 normal;
+in vec3 position;
+in vec3 normal;
 
 uniform mat4 positionsMat;
 uniform mat4 normalsMat;
 uniform mat4 projectionMat;
 
-varying vec3 fragPosition;
-varying vec3 fragNormal;
+out vec3 fragPosition;
+out vec3 fragNormal;
 
 void main() {
     fragPosition = (positionsMat * vec4(position, 1.0)).xyz;

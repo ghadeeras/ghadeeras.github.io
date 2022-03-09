@@ -50,8 +50,8 @@ export function enrichBufferViews(model) {
             if (primitive.indices !== undefined) {
                 const accessor = model.accessors[primitive.indices];
                 const bufferView = model.bufferViews[(_a = accessor.bufferView) !== null && _a !== void 0 ? _a : failure("Using zero buffers not supported yet!")];
-                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER;
-                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
+                bufferView.target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
+                if (bufferView.byteStride === undefined && accessor.componentType == WebGL2RenderingContext.UNSIGNED_BYTE) {
                     bufferView.byteStride = 1;
                 }
             }
@@ -245,10 +245,9 @@ class ActiveMeshPrimitive {
         }
         count %= Number.MAX_SAFE_INTEGER;
         if (indicesAccessor) {
-            renderer.setIndexComponentType(indicesAccessor.accessor.componentType);
             this.sideEffects.push(indicesAccessor.bindToIndex);
         }
-        const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES;
+        const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGL2RenderingContext.TRIANGLES;
         this.sideEffects.push(indicesAccessor ?
             () => { var _a; return renderer.drawIndexed(indicesAccessor.accessor.componentType, mode, count, (_a = indicesAccessor.accessor.byteOffset) !== null && _a !== void 0 ? _a : 0); } :
             () => renderer.draw(mode, count, 0));

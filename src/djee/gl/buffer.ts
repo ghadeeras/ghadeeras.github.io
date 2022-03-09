@@ -3,7 +3,7 @@ import { failure } from "../utils.js"
 
 export type NumberArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array
 
-export type BufferTarget = WebGLRenderingContext[
+export type BufferTarget = WebGL2RenderingContext[
     "ARRAY_BUFFER" |
     "ELEMENT_ARRAY_BUFFER"
 ]
@@ -74,7 +74,7 @@ export abstract class Buffer {
 export class AttributesBuffer extends Buffer {
 
     constructor(readonly context: Context, readonly byteStride: number = 0, isDynamic: boolean = false) {
-        super(WebGLRenderingContext.ARRAY_BUFFER, context, byteStride, isDynamic)
+        super(WebGL2RenderingContext.ARRAY_BUFFER, context, byteStride, isDynamic)
     }
 
     set float32Data(data: number[] | ArrayBuffer) {
@@ -101,29 +101,22 @@ export class AttributesBuffer extends Buffer {
 
 export class IndicesBuffer extends Buffer {
 
-    private type = WebGLRenderingContext.UNSIGNED_SHORT
+    private type = WebGL2RenderingContext.UNSIGNED_SHORT
 
     constructor(context: Context, isDynamic: boolean = false) {
-        super(WebGLRenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic)
+        super(WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic)
         this.data = new Uint16Array([])
     }
 
     private glTypeOf(data: NumberArray) {
         if (data instanceof Uint32Array) {
-            this.requestOESElementIndexUintExtension()
-            return WebGLRenderingContext.UNSIGNED_INT 
+            return WebGL2RenderingContext.UNSIGNED_INT 
         } else if (data instanceof Uint16Array) {
-            return WebGLRenderingContext.UNSIGNED_SHORT 
+            return WebGL2RenderingContext.UNSIGNED_SHORT 
         } else if (data instanceof Uint8Array) {
-            return WebGLRenderingContext.UNSIGNED_BYTE 
+            return WebGL2RenderingContext.UNSIGNED_BYTE 
         } else {
             return failure<number>("Unsupported array type for indices buffer!")
-        }
-    }
-
-    private requestOESElementIndexUintExtension() {
-        if (this.context.gl.getExtension("OES_element_index_uint") == null) {
-            failure("Unsigned integer element arrays are not supported!")
         }
     }
 

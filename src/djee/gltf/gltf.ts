@@ -63,11 +63,11 @@ export type BufferView = {
 
     byteStride?: number
     
-    target?: WebGLRenderingContext["ARRAY_BUFFER" | "ELEMENT_ARRAY_BUFFER"]
+    target?: WebGL2RenderingContext["ARRAY_BUFFER" | "ELEMENT_ARRAY_BUFFER"]
     
 }
 
-export type ScalarType = WebGLRenderingContext[
+export type ScalarType = WebGL2RenderingContext[
     "BYTE" | 
     "UNSIGNED_BYTE" | 
     "SHORT" | 
@@ -105,7 +105,7 @@ export type Mesh = {
 
 }
 
-export type PrimitiveMode = WebGLRenderingContext[
+export type PrimitiveMode = WebGL2RenderingContext[
     "POINTS" | 
     "LINES" | 
     "LINE_LOOP" | 
@@ -140,8 +140,6 @@ export interface Renderer<I, A> {
     bindIndices(buffer: I): void
 
     setToZero(attribute: string): void
-
-    setIndexComponentType(componentType: GLenum): void
 
     drawIndexed(componentType: GLenum, mode: GLenum, count: number, byteOffset: number): void
 
@@ -194,8 +192,8 @@ export function enrichBufferViews(model: Model) {
             if (primitive.indices !== undefined) {
                 const accessor = model.accessors[primitive.indices]
                 const bufferView = model.bufferViews[accessor.bufferView ?? failure<number>("Using zero buffers not supported yet!")]
-                bufferView.target = WebGLRenderingContext.ELEMENT_ARRAY_BUFFER
-                if (bufferView.byteStride === undefined && accessor.componentType == WebGLRenderingContext.UNSIGNED_BYTE) {
+                bufferView.target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
+                if (bufferView.byteStride === undefined && accessor.componentType == WebGL2RenderingContext.UNSIGNED_BYTE) {
                     bufferView.byteStride = 1
                 }
             }
@@ -474,10 +472,9 @@ class ActiveMeshPrimitive<I, A> {
         }
         count %= Number.MAX_SAFE_INTEGER
         if (indicesAccessor) {
-            renderer.setIndexComponentType(indicesAccessor.accessor.componentType)
             this.sideEffects.push(indicesAccessor.bindToIndex)
         }
-        const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGLRenderingContext.TRIANGLES
+        const mode = meshPrimitive.mode !== undefined ? meshPrimitive.mode : WebGL2RenderingContext.TRIANGLES
         this.sideEffects.push(indicesAccessor ?
             () => renderer.drawIndexed(indicesAccessor.accessor.componentType, mode, count, indicesAccessor.accessor.byteOffset ?? 0) :
             () => renderer.draw(mode, count, 0)
