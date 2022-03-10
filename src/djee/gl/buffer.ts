@@ -1,5 +1,6 @@
 import { Context } from "./context.js"
 import { failure } from "../utils.js"
+import { Resource } from "../index.js"
 
 export type NumberArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array
 
@@ -8,7 +9,7 @@ export type BufferTarget = WebGL2RenderingContext[
     "ELEMENT_ARRAY_BUFFER"
 ]
 
-export abstract class Buffer {
+export abstract class Buffer implements Resource {
 
     readonly glBuffer: WebGLBuffer
     readonly usageHint: GLenum;
@@ -24,6 +25,10 @@ export abstract class Buffer {
         const gl = context.gl
         this.glBuffer = gl.createBuffer() ?? failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`)
         this.usageHint = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW
+    }
+
+    destroy(): void {
+        this.delete()
     }
 
     delete() {

@@ -14,7 +14,7 @@ export class Model {
 
     constructor(model: gltf.Model, readonly buffers: ArrayBuffer[]) {
         gltf.enrichBufferViews(model)
-        this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers))
+        this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors))
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews))
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors))
         
@@ -165,14 +165,53 @@ export class BufferView extends IdentifiableObject {
     readonly byteOffset: number
     readonly byteStride: number
     readonly index: boolean
+    readonly interleaved: boolean
 
-    constructor(bufferView: gltf.BufferView, i: number, buffers: ArrayBuffer[]) {
+    constructor(bufferView: gltf.BufferView, i: number, buffers: ArrayBuffer[], accessors: gltf.Accessor[]) {
         super(`bufferView#${i}`)
+        const references = accessors.filter(accessor => accessor.bufferView === i)
+        const offsets = references.map(r => r.byteOffset ?? 0)
+        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
+        this.interleaved = offsets.length === 0 || !this.index && offsets.every(o => o === offsets[0])
         this.buffer = buffers[bufferView.buffer]
         this.byteLength = bufferView.byteLength
         this.byteOffset = bufferView.byteOffset ?? 0
-        this.byteStride = bufferView.byteStride ?? 0
-        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
+        this.byteStride = bufferView.byteStride ?? (this.interleaved ?
+            references
+                .map(accessor => sizeOf(accessor))
+                .reduce((s1, s2) => s1 + s2, 0) :
+            sizeOf(references[0])
+        )
     }
 
 }
+function sizeOf(accessor: gltf.Accessor): number {
+    return elementSize(accessor.type) * componentSize(accessor.componentType)
+}
+
+function elementSize(type: gltf.ElementType): number {
+    switch (type) {
+        case "SCALAR": return 1
+        case "VEC2": return 2
+        case "VEC3": return 3
+        case "VEC4": return 4
+        case "MAT2": return 4
+        case "MAT3": return 9
+        case "MAT4": return 16
+        default: return utils.failure(`Unrecognized element type: ${type}`)
+    }
+}
+
+function componentSize(componentType: gltf.ScalarType): number {
+    switch (componentType) {
+        case WebGL2RenderingContext.BYTE: 
+        case WebGL2RenderingContext.UNSIGNED_BYTE: return 1 
+        case WebGL2RenderingContext.SHORT:  
+        case WebGL2RenderingContext.UNSIGNED_SHORT: return 2 
+        case WebGL2RenderingContext.INT:
+        case WebGL2RenderingContext.UNSIGNED_INT: 
+        case WebGL2RenderingContext.FLOAT: return 4
+        default: return utils.failure(`Unrecognized scalar type: ${componentType}`)
+    }
+}
+

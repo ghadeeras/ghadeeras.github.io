@@ -4,4 +4,5 @@ import * as gpu_1 from "./gpu/index.js";
 export { gpu_1 as gpu };
 import * as gltf_1 from "./gltf/index.js";
 export { gltf_1 as gltf };
+export * from "./utils.js";
 //# sourceMappingURL=index.js.map

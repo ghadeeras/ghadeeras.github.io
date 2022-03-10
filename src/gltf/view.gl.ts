@@ -23,13 +23,14 @@ export class GLView implements View {
     private uPositionsMat: wgl.Uniform;
     private uNormalsMat: wgl.Uniform;
     private uProjectionMat: wgl.Uniform;
+    private uModelViewMat: wgl.Uniform;
     private uLightPosition: wgl.Uniform;
     private uLightRadius: wgl.Uniform;
     private uColor: wgl.Uniform;
     private uShininess: wgl.Uniform;
     private uFogginess: wgl.Uniform;
 
-    private model: gltf.ActiveModel<wgl.IndicesBuffer, wgl.AttributesBuffer> | null = null
+    private renderer: wgl.GLRenderer | null = null
 
     private viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
     private modelMatrix: aether.Mat<4> = aether.mat4.identity()
@@ -53,6 +54,7 @@ export class GLView implements View {
         this.uPositionsMat = program.uniform("positionsMat");
         this.uNormalsMat = program.uniform("normalsMat");
         this.uProjectionMat = program.uniform("projectionMat");
+        this.uModelViewMat = program.uniform("modelViewMat");
 
         this.uLightPosition = program.uniform("lightPosition");
         this.uLightRadius = program.uniform("lightRadius");
@@ -72,30 +74,46 @@ export class GLView implements View {
         inputs.color.attach(c => this.uColor.data = c)
         inputs.shininess.attach(s => this.uShininess.data = [s])
         inputs.fogginess.attach(f => this.uFogginess.data = [f])
-        inputs.matModel.attach(m => this.modelMatrix = m)
-        inputs.matView.attach(v => this.viewMatrix = v)
+        inputs.matModel.attach(m => {
+            this.modelMatrix = m
+            this.updateModelViewMatrix();
+        })
+        inputs.matView.attach(v => {
+            this.viewMatrix = v
+            this.updateModelViewMatrix();
+        })
 
         inputs.modelUri.attach(async (modelUri) => {
             this.statusUpdater("Loading model ...")
-            const renderer = new wgl.GLRenderer(this.context, {
+            try {
+            const model = await gltf.graph.Model.create(modelUri)
+            if (this.renderer) {
+                this.renderer.destroy()
+                this.renderer = null
+            }
+            this.renderer = new wgl.GLRenderer(model, this.context, {
                 "POSITION" : this.position,
                 "NORMAL" : this.normal,
             }, this.uPositionsMat, this.uNormalsMat)
-            if (this.model) {
-                this.model.delete()
-                this.model = null
-            }
-            this.model = await gltf.ActiveModel.create(modelUri, renderer)
             this.statusUpdater("Rendering model ...")
+            } catch (e) {
+                this.statusUpdater(`Error: ${e}`)
+                console.error(e)
+            }
         })
 
+    }
+
+    private updateModelViewMatrix() {
+        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this.viewMatrix, this.modelMatrix));
     }
 
     draw() {
         const gl = this.context.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        if (this.model) {
-            this.model.render(aether.mat4.mul(this.viewMatrix, this.modelMatrix))
+        this.normal.setTo(0, 1, 0)
+        if (this.renderer) {
+            this.renderer.render(this.context)
         }
         gl.flush();
     }
@@ -108,7 +126,7 @@ export class GLView implements View {
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const shaders = await gear.fetchTextFiles({
-        vertexShaderCode: "generic.vert",
+        vertexShaderCode: "gltf.vert",
         fragmentShaderCode: "generic.frag"
     }, "/shaders")
     return inputs => Promise.resolve(new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs))

@@ -1,8 +1,6 @@
 import { gear } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 
-const WORKGROUP_SIZE = 256
-
 export class Universe {
 
     static readonly bodyDescription = gpu.struct({
@@ -17,7 +15,7 @@ export class Universe {
 
     readonly bodiesCount: number = 16384
     
-    private readonly workGroupsCount: number = Math.ceil(this.bodiesCount / WORKGROUP_SIZE)
+    private readonly workGroupsCount: number
 
     private readonly pipeline: GPUComputePipeline
     
@@ -45,7 +43,9 @@ export class Universe {
         this.uniformsBuffer.writeAt(0, this.uniformsView)
     })
 
-    constructor(private device: gpu.Device, computeShader: gpu.ShaderModule) {
+    constructor(private device: gpu.Device, private workgroupSize: number, computeShader: gpu.ShaderModule) {
+        this.workGroupsCount = Math.ceil(this.bodiesCount / this.workgroupSize)
+
         const [bodyDescriptions, initialState] = this.createUniverse()
         const initialStateView = Universe.bodyState.view(initialState)
         
@@ -145,12 +145,13 @@ export class Universe {
 }
 
 function randomVector(radius: number): [number, number, number] {
-    const ya = Math.acos(1 - 2 * Math.random())
+    const cosYA = 1 - 2 * Math.random()
+    const sinYA = Math.sqrt(1 - cosYA * cosYA)
     const xa = 2 * Math.PI * Math.random()
     const r = radius * skewUp(Math.random(), 100)
-    const ry = r * Math.sin(ya)
+    const ry = r * sinYA
     const x = ry * Math.cos(xa)
-    const y = r * Math.cos(ya)
+    const y = r * (cosYA)
     const z = ry * Math.sin(xa)
     return [x, y, z]
 }
@@ -164,6 +165,13 @@ function skewDown(x: number, s: number): number {
 }
 
 export async function newUniverse(device: gpu.Device) {
-    const shaderModule = await device.loadShaderModule("gravity-compute.wgsl")
-    return new Universe(device, shaderModule)
+    const limits = device.device.limits
+    const workgroupSize = Math.max(
+        limits.maxComputeWorkgroupSizeX,
+        limits.maxComputeWorkgroupSizeY,
+        limits.maxComputeWorkgroupSizeZ
+    )
+    console.warn(`Workgroup Size: ${workgroupSize}`)
+    const shaderModule = await device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`))
+    return new Universe(device, workgroupSize, shaderModule)
 }

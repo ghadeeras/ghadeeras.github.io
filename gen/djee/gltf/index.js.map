@@ -1,1 +1,1 @@
-{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../src/djee/gltf/index.ts"],"names":[],"mappings":"AAAA,cAAc,WAAW,CAAA;AACzB,cAAc,eAAe,CAAA;yBACN,iBAAiB;oBAA5B,KAAK"}
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../src/djee/gltf/index.ts"],"names":[],"mappings":"AAAA,cAAc,WAAW,CAAA;AACzB,cAAc,oBAAoB,CAAA;AAClC,cAAc,eAAe,CAAA;yBACN,iBAAiB;oBAA5B,KAAK"}

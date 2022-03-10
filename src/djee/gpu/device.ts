@@ -11,10 +11,10 @@ export class Device {
     constructor(readonly device: GPUDevice, readonly adapter: GPUAdapter) {
     }
 
-    async loadShaderModule(shaderName: string, basePath: string = "/shaders"): Promise<ShaderModule> {
+    async loadShaderModule(shaderName: string, templateFunction: (code: string) => string = s => s, basePath: string = "/shaders"): Promise<ShaderModule> {
         const shaderCodes = await gear.fetchTextFiles({ shader: shaderName }, basePath)
         
-        const shaderCode = shaderCodes["shader"] // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
+        const shaderCode = templateFunction(shaderCodes["shader"]) // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
         const shaderModule = new ShaderModule(this, shaderCode)
 
         if (await shaderModule.hasCompilationErrors()) {

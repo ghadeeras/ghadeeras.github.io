@@ -19,10 +19,10 @@ export class Device {
         this.device = device;
         this.adapter = adapter;
     }
-    loadShaderModule(shaderName, basePath = "/shaders") {
+    loadShaderModule(shaderName, templateFunction = s => s, basePath = "/shaders") {
         return __awaiter(this, void 0, void 0, function* () {
             const shaderCodes = yield gear.fetchTextFiles({ shader: shaderName }, basePath);
-            const shaderCode = shaderCodes["shader"]; // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
+            const shaderCode = templateFunction(shaderCodes["shader"]); // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
             const shaderModule = new ShaderModule(this, shaderCode);
             if (yield shaderModule.hasCompilationErrors()) {
                 throw new Error("Module compilation failed!");

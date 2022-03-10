@@ -16,7 +16,7 @@ export class Model {
         var _a;
         this.buffers = buffers;
         gltf.enrichBufferViews(model);
-        this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers));
+        this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors));
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews));
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors));
         const nodes = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, nodes)));
@@ -108,14 +108,48 @@ export class Accessor extends IdentifiableObject {
     }
 }
 export class BufferView extends IdentifiableObject {
-    constructor(bufferView, i, buffers) {
+    constructor(bufferView, i, buffers, accessors) {
         var _a, _b;
         super(`bufferView#${i}`);
+        const references = accessors.filter(accessor => accessor.bufferView === i);
+        const offsets = references.map(r => { var _a; return (_a = r.byteOffset) !== null && _a !== void 0 ? _a : 0; });
+        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
+        this.interleaved = offsets.length === 0 || !this.index && offsets.every(o => o === offsets[0]);
         this.buffer = buffers[bufferView.buffer];
         this.byteLength = bufferView.byteLength;
         this.byteOffset = (_a = bufferView.byteOffset) !== null && _a !== void 0 ? _a : 0;
-        this.byteStride = (_b = bufferView.byteStride) !== null && _b !== void 0 ? _b : 0;
-        this.index = bufferView.target == WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER;
+        this.byteStride = (_b = bufferView.byteStride) !== null && _b !== void 0 ? _b : (this.interleaved ?
+            references
+                .map(accessor => sizeOf(accessor))
+                .reduce((s1, s2) => s1 + s2, 0) :
+            sizeOf(references[0]));
+    }
+}
+function sizeOf(accessor) {
+    return elementSize(accessor.type) * componentSize(accessor.componentType);
+}
+function elementSize(type) {
+    switch (type) {
+        case "SCALAR": return 1;
+        case "VEC2": return 2;
+        case "VEC3": return 3;
+        case "VEC4": return 4;
+        case "MAT2": return 4;
+        case "MAT3": return 9;
+        case "MAT4": return 16;
+        default: return utils.failure(`Unrecognized element type: ${type}`);
+    }
+}
+function componentSize(componentType) {
+    switch (componentType) {
+        case WebGL2RenderingContext.BYTE:
+        case WebGL2RenderingContext.UNSIGNED_BYTE: return 1;
+        case WebGL2RenderingContext.SHORT:
+        case WebGL2RenderingContext.UNSIGNED_SHORT: return 2;
+        case WebGL2RenderingContext.INT:
+        case WebGL2RenderingContext.UNSIGNED_INT:
+        case WebGL2RenderingContext.FLOAT: return 4;
+        default: return utils.failure(`Unrecognized scalar type: ${componentType}`);
     }
 }
 //# sourceMappingURL=gltf.graph.js.map

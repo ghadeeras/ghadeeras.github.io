@@ -9,12 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { gear } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
-const WORKGROUP_SIZE = 256;
 export class Universe {
-    constructor(device, computeShader) {
+    constructor(device, workgroupSize, computeShader) {
         this.device = device;
+        this.workgroupSize = workgroupSize;
         this.bodiesCount = 16384;
-        this.workGroupsCount = Math.ceil(this.bodiesCount / WORKGROUP_SIZE);
         this.uniformsStruct = gpu.struct({
             bodyPointedness: gpu.f32,
             gravityConstant: gpu.f32,
@@ -28,6 +27,7 @@ export class Universe {
         this.updateUniformsData = new gear.DeferredComputation(() => {
             this.uniformsBuffer.writeAt(0, this.uniformsView);
         });
+        this.workGroupsCount = Math.ceil(this.bodiesCount / this.workgroupSize);
         const [bodyDescriptions, initialState] = this.createUniverse();
         const initialStateView = Universe.bodyState.view(initialState);
         /* Pipeline */
@@ -115,12 +115,13 @@ Universe.bodyState = gpu.struct({
     velocity: gpu.f32.x3,
 });
 function randomVector(radius) {
-    const ya = Math.acos(1 - 2 * Math.random());
+    const cosYA = 1 - 2 * Math.random();
+    const sinYA = Math.sqrt(1 - cosYA * cosYA);
     const xa = 2 * Math.PI * Math.random();
     const r = radius * skewUp(Math.random(), 100);
-    const ry = r * Math.sin(ya);
+    const ry = r * sinYA;
     const x = ry * Math.cos(xa);
-    const y = r * Math.cos(ya);
+    const y = r * (cosYA);
     const z = ry * Math.sin(xa);
     return [x, y, z];
 }
@@ -132,8 +133,11 @@ function skewDown(x, s) {
 }
 export function newUniverse(device) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaderModule = yield device.loadShaderModule("gravity-compute.wgsl");
-        return new Universe(device, shaderModule);
+        const limits = device.device.limits;
+        const workgroupSize = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
+        console.warn(`Workgroup Size: ${workgroupSize}`);
+        const shaderModule = yield device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`));
+        return new Universe(device, workgroupSize, shaderModule);
     });
 }
 //# sourceMappingURL=universe.js.map
