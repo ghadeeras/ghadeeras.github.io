@@ -1,13 +1,13 @@
 import { required } from "../../utils/misc.js";
 export class Canvas {
-    constructor(device, canvas) {
+    constructor(device, canvas, withMultiSampling = true) {
         var _a;
         this.device = device;
         this.element = typeof canvas === 'string' ?
             required(document.getElementById(canvas)) :
             canvas;
         this.context = required((_a = this.element.getContext("webgpu")) !== null && _a !== void 0 ? _a : this.element.getContext("gpupresent"));
-        const pixelRatio = window.devicePixelRatio;
+        const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1;
         this.sampleCount = Math.pow(Math.ceil(pixelRatio), 2);
         this.size = {
             width: Math.round(this.element.clientWidth * pixelRatio),
@@ -21,18 +21,23 @@ export class Canvas {
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
             compositingAlphaMode: "opaque",
         });
-        this.colorTexture = device.texture({
+        this.colorTexture = this.sampleCount !== 1 ? device.texture({
             size: this.size,
             format: this.format,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
             sampleCount: this.sampleCount,
-        });
+        }) : null;
     }
     attachment(clearColor) {
-        return {
+        return this.colorTexture ? {
             view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
             storeOp: "discard",
+            loadOp: "clear",
+            clearValue: clearColor,
+        } : {
+            view: this.context.getCurrentTexture().createView(),
+            storeOp: "store",
             loadOp: "clear",
             clearValue: clearColor,
         };
@@ -45,8 +50,15 @@ export class Canvas {
             sampleCount: this.sampleCount
         });
     }
+    multiSampleState() {
+        return this.colorTexture ? {
+            count: this.sampleCount
+        } : undefined;
+    }
     destroy() {
-        this.colorTexture.destroy();
+        if (this.colorTexture) {
+            this.colorTexture.destroy();
+        }
         this.context.unconfigure();
     }
 }

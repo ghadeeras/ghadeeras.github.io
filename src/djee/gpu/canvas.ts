@@ -6,18 +6,18 @@ export class Canvas {
 
     readonly element: HTMLCanvasElement
     readonly context: GPUCanvasContext
-    readonly colorTexture: Texture
+    readonly colorTexture: Texture | null 
     readonly size: GPUExtent3DDict
     readonly sampleCount: number
     readonly format: GPUTextureFormat
 
-    constructor(readonly device: Device, canvas: HTMLCanvasElement | string) {
+    constructor(readonly device: Device, canvas: HTMLCanvasElement | string, withMultiSampling: boolean = true) {
         this.element = typeof canvas === 'string' ? 
             required(document.getElementById(canvas)) as HTMLCanvasElement : 
             canvas
         this.context = required(this.element.getContext("webgpu") ?? this.element.getContext("gpupresent"))
 
-        const pixelRatio = window.devicePixelRatio
+        const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1
         this.sampleCount = Math.ceil(pixelRatio) ** 2
         this.size = {
             width: Math.round(this.element.clientWidth * pixelRatio),
@@ -32,22 +32,27 @@ export class Canvas {
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
             compositingAlphaMode: "opaque",
         })
-        this.colorTexture = device.texture({
+        this.colorTexture = this.sampleCount !== 1 ? device.texture({
             size: this.size,
             format: this.format,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
             sampleCount: this.sampleCount,
-        })
+        }) : null
     }
 
     attachment(clearColor: GPUColor): GPURenderPassColorAttachment {
-        return {
+        return this.colorTexture ? {
             view: this.colorTexture.createView(),
             resolveTarget: this.context.getCurrentTexture().createView(),
             storeOp: "discard",
             loadOp: "clear",
             clearValue: clearColor,
-        }
+        } : {
+            view: this.context.getCurrentTexture().createView(),
+            storeOp: "store",
+            loadOp: "clear",
+            clearValue: clearColor,
+        } 
     }
 
     depthTexture(): Texture {
@@ -59,8 +64,16 @@ export class Canvas {
         })
     }
 
+    multiSampleState(): GPUMultisampleState | undefined {
+        return this.colorTexture ? {
+            count: this.sampleCount
+        } : undefined
+    }
+
     destroy() {
-        this.colorTexture.destroy()
+        if (this.colorTexture) {
+            this.colorTexture.destroy()
+        }
         this.context.unconfigure()
     }
 

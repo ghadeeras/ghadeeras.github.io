@@ -45,8 +45,8 @@ export class Device {
         this.device.queue.submit(commands)
     }
     
-    canvas(element: HTMLCanvasElement | string): Canvas {
-        return new Canvas(this, element)
+    canvas(element: HTMLCanvasElement | string, withMultiSampling: boolean = true): Canvas {
+        return new Canvas(this, element, withMultiSampling)
     }
 
     texture(descriptor: GPUTextureDescriptor): Texture {

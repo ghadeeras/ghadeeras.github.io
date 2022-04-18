@@ -48,8 +48,8 @@ export class Device {
     enqueue(...commands) {
         this.device.queue.submit(commands);
     }
-    canvas(element) {
-        return new Canvas(this, element);
+    canvas(element, withMultiSampling = true) {
+        return new Canvas(this, element, withMultiSampling);
     }
     texture(descriptor) {
         return new Texture(this, descriptor);
