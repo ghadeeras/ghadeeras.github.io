@@ -70,6 +70,10 @@ export class Canvas {
         } : undefined
     }
 
+    fragmentCount(): number {
+        return this.size.width * (this.size.height ?? 1) * this.sampleCount
+    }
+
     destroy() {
         if (this.colorTexture) {
             this.colorTexture.destroy()

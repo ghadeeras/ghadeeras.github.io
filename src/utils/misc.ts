@@ -13,3 +13,26 @@ export function save(url: string, contentType: string, fileName: string) {
     anchor.download = fileName
     anchor.click()
 }
+
+export class FrequencyMeter {
+
+    private lastTime: number = 0
+    private counter: number = 0
+    
+    constructor(private unitTime: number, private measurementConsumer: (measuredFrequency: number) => void) {
+    }
+
+    tick(time: number = performance.now()) {
+        if (this.counter === 0) {
+            this.lastTime = time
+        }
+        const elapsedTime = time - this.lastTime
+        if (elapsedTime >= this.unitTime) {
+            this.measurementConsumer(this.counter * this.unitTime / elapsedTime)
+            this.counter = 0
+            this.lastTime = time
+        }
+        this.counter++
+    }
+
+}

@@ -50,6 +50,10 @@ export class Buffer {
         });
     }
     copyAt(thisOffset, that, thatOffset, size) {
+        const encoding = this.copyingAt(thisOffset, that, thatOffset, size);
+        this.device.enqueueCommand(encoding);
+    }
+    copyingAt(thisOffset, that, thatOffset, size) {
         const thisValidOffset = lowerMultipleOf(4, thisOffset);
         const thatValidOffset = lowerMultipleOf(4, thatOffset);
         const thisOffsetCorrection = thisOffset - thisValidOffset;
@@ -58,9 +62,10 @@ export class Buffer {
             throw new Error("Copying between unaligned buffers is not possible!");
         }
         const validSize = upperMultipleOf(4, size + thisOffsetCorrection);
-        this.device.enqueueCommand(encoder => {
+        const encoding = (encoder) => {
             encoder.encoder.copyBufferToBuffer(that.buffer, thatValidOffset, this.buffer, thisValidOffset, validSize);
-        });
+        };
+        return encoding;
     }
     newBlankBuffer(size) {
         return this.device.device.createBuffer({
