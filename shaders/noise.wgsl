@@ -14,6 +14,7 @@ struct Uniforms {
     randomSeed: vec4<u32>;
     canvasWidth: u32;
     sampleCount: u32;
+    samplesPerPixel: u32;
 };
 
 @group(0) @binding(0)
@@ -54,7 +55,7 @@ fn f_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     rng = newRNG(position.xy);
     
     var c = vec4(next_unorm(), next_unorm(), next_unorm(), 1.0);
-    for (var j = 1; j < 64; j = j + 1) {
+    for (var j = 1u; j < uniforms.samplesPerPixel; j = j + 1u) {
         c = c + vec4(next_unorm(), next_unorm(), next_unorm(), 1.0);
     };
     c = c / c.w;

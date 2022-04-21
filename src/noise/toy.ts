@@ -7,6 +7,13 @@ export function init() {
 
 const SEEDS_COUNT = 0x4000
 
+const uniformsStruct = gpu.struct({
+    randomSeed: gpu.u32.x4,
+    width: gpu.u32,
+    sampleCount: gpu.u32,
+    samplesPerPixel: gpu.u32,
+})
+
 async function doInit() {
     const device = await gpuDevice()
     const canvas = device.canvas("canvas", false)
@@ -27,6 +34,17 @@ async function doInit() {
     const uniformsBuffer = createUniformsBuffer(canvas)
     const rngSeedsBuffer = createRNGSeedsBuffer(device)
     const bindGroup = device.createBindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer])
+
+    const samplesPerPixelElement = misc.required(document.getElementById("spp"))
+    window.onkeyup = e => {
+        const key = e.key.toLowerCase()
+        if ('0' <= key && key <= '9') {
+            const power = Number.parseInt(key)
+            const spp = 2 ** power
+            uniformsBuffer.writeAt(uniformsStruct.members.samplesPerPixel.offset, gpu.u32.view([spp]))
+            samplesPerPixelElement.innerText = spp.toString()
+        }
+    }
 
     const draw = () => {
         device.enqueueCommand(encoding => {
@@ -67,16 +85,11 @@ async function gpuDevice() {
 }
 
 function createUniformsBuffer(canvas: gpu.Canvas) {
-    const struct = gpu.struct({
-        randomSeed: gpu.u32.x4,
-        width: gpu.u32,
-        sampleCount: gpu.u32,
-    })
-
-    const dataView = struct.view([{
+    const dataView = uniformsStruct.view([{
         randomSeed: [random(), random(), random(), random()],
         width: canvas.size.width,
         sampleCount: canvas.sampleCount,
+        samplesPerPixel: 1,
     }])
 
     return canvas.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
