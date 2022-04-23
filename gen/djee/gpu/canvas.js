@@ -1,12 +1,11 @@
 import { required } from "../../utils/misc.js";
 export class Canvas {
     constructor(device, canvas, withMultiSampling = true) {
-        var _a;
         this.device = device;
         this.element = typeof canvas === 'string' ?
             required(document.getElementById(canvas)) :
             canvas;
-        this.context = required((_a = this.element.getContext("webgpu")) !== null && _a !== void 0 ? _a : this.element.getContext("gpupresent"));
+        this.context = required(this.element.getContext("webgpu"));
         const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1;
         this.sampleCount = Math.pow(Math.ceil(pixelRatio), 2);
         this.size = {
@@ -30,7 +29,7 @@ export class Canvas {
     }
     attachment(clearColor) {
         return this.colorTexture ? {
-            view: this.colorTexture.createView(),
+            view: this.colorTexture.createView().view,
             resolveTarget: this.context.getCurrentTexture().createView(),
             storeOp: "discard",
             loadOp: "clear",

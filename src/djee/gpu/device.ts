@@ -4,7 +4,7 @@ import { Buffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
-import { Texture } from "./texture.js"
+import { Texture, Sampler, TextureView } from "./texture.js"
 
 export class Device {
 
@@ -53,20 +53,26 @@ export class Device {
         return new Texture(this, descriptor)
     }
 
+    sampler(descriptor: GPUSamplerDescriptor | undefined = undefined) {
+        return new Sampler(this, descriptor)
+    }
+
     buffer(usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride: number = 0): Buffer {
         return stride > 0 ? 
             new Buffer(this, usage, dataOrSize, stride) : 
             new Buffer(this, usage, dataOrSize) 
     }
 
-    createBindGroup(bindGroupLayout: GPUBindGroupLayout, buffers: Buffer[]) {
+    createBindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Buffer | TextureView | Sampler)[]) {
         return this.device.createBindGroup({
             layout: bindGroupLayout,
-            entries: buffers.map((buffer, index) => ({
+            entries: resources.map((resource, index) => ({
                 binding: index,
-                resource: { 
-                    buffer: buffer.buffer 
-                },
+                resource: resource instanceof Buffer ? { 
+                    buffer: resource.buffer 
+                } : resource instanceof TextureView ? 
+                    resource.view :
+                    resource.sampler,
             }))
         })
     }

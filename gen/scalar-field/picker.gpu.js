@@ -46,8 +46,8 @@ export class GPUPicker {
             this.device.enqueueCommand(encoder => {
                 var _a;
                 const passDescriptor = {
-                    colorAttachments: [this.colorTexture.colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
-                    depthStencilAttachment: this.depthTexture.depthAttachment()
+                    colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
+                    depthStencilAttachment: this.depthTexture.createView().depthAttachment()
                 };
                 encoder.renderPass(passDescriptor, pass => {
                     const vertices = this.vertices();

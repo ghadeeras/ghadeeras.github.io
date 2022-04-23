@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="origin-trial" content="AmO5B1uVFNjugHtJIPPGxlHEg3JZcZ6iyO11e+7bt55wkL38M1mZyzDdU5bFZ3NHwRsKDP94rJ0G4vcesZJtGQoAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY1MjgzMTk5OX0=">
+    <title>Path Tracing</title>
+    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
+    <script type="module">
+        import * as PathTracing from "../gen/path-tracing/toy.js"
+        PathTracing.init();
+    </script>
+</head>
+
+<body>
+
+    <div id="head">
+        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
+    </div>
+
+    <div id="content">
+
+        <div id="side">
+
+            <div class="section">
+                <strong>Controls / Key Mappings</strong>
+            </div>
+
+            <div>
+                <ul>
+                    <li>Mouse dragging to look around</li>
+                    <li>Mouse wheel to change focal length</li>
+                    <li>[W] to move forwards</li>
+                    <li>[S] to move backwards</li>
+                </ul>
+            </div>
+
+            <div>
+                <p>
+                    Press keys 0 to 9 to control the number of samples per pixel:
+                </p><p>
+                    0 &#x27A1; 2<sup>0</sup>,
+                    1 &#x27A1; 2<sup>1</sup>,
+                    2 &#x27A1; 2<sup>2</sup>,
+                    ...
+                    9 &#x27A1; 2<sup>9</sup>
+                </p>
+            </div>
+
+            <div>
+                <p>
+                    Press CTRL + keys 0 to 8 to control the number of averaging layers:
+                </p><p>
+                    0 &#x27A1; 2<sup>0</sup>,
+                    1 &#x27A1; 2<sup>1</sup>,
+                    2 &#x27A1; 2<sup>2</sup>,
+                    ...
+                    8 &#x27A1; 2<sup>8</sup>
+                </p>
+            </div>
+
+            <div class="section"></div>
+
+            <div>
+                <p>
+                    <strong>Samples Per Pixel</strong>: <span id="spp">1</span>
+                </p>
+                <p>
+                    <strong>Averaging Layers Count</strong>: <span id="layers">1</span>
+                </p>
+                <p>
+                    <strong>FPS</strong>: <span id="freq-watch">0</span>
+                </p>
+            </div>
+
+            <div class="section"></div>
+
+            <div>
+                <p>
+                    <strong>WebGPU Status</strong>: <span id="gpu-status">&#x1F630; ...</span>
+                </p>
+            </div>
+
+            <div>
+                <p>
+                    The source code of this toy could be found in 
+                    <a href="https://github.com/ghadeeras/ghadeeras.github.io/tree/master/src/noise">
+                        my GitHub repository
+                    </a> 
+                </p>
+            </div>
+
+        </div>
+
+        <div id="main">
+            <div class="view">
+                <canvas id="canvas" width="640" height="640" style="cursor: all-scroll;">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+            </div>
+        </div>
+
+        <div id="other-side">
+
+            <div class="section">
+                <strong>Path Tracing</strong>
+            </div>
+
+            <div>
+                <p>
+                    This is still so much a work in progress and it is still in a very early stage.
+                    I was inspired by the work of <a href="https://reindernijhoff.net/" target="_blank">Reinder Nijhoff</a>,
+                    specially his demo <a href="https://reindernijhoff.net/2019/03/wolfenstein-raytracing-on-using-webgl1/" target="_blank">Wolfenstein: Ray Tracing On using WebGL1</a>,
+                    which I find stunning it was implemented with WebGL 1! I am trying to do something similar as an exercise 
+                    to learn WebGPU and miscellaneous rendering techniques.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>

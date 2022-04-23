@@ -15,7 +15,7 @@ export class Canvas {
         this.element = typeof canvas === 'string' ? 
             required(document.getElementById(canvas)) as HTMLCanvasElement : 
             canvas
-        this.context = required(this.element.getContext("webgpu") ?? this.element.getContext("gpupresent"))
+        this.context = required(this.element.getContext("webgpu"))
 
         const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1
         this.sampleCount = Math.ceil(pixelRatio) ** 2
@@ -42,7 +42,7 @@ export class Canvas {
 
     attachment(clearColor: GPUColor): GPURenderPassColorAttachment {
         return this.colorTexture ? {
-            view: this.colorTexture.createView(),
+            view: this.colorTexture.createView().view,
             resolveTarget: this.context.getCurrentTexture().createView(),
             storeOp: "discard",
             loadOp: "clear",

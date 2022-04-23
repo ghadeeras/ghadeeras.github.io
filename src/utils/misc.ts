@@ -35,4 +35,27 @@ export class FrequencyMeter {
         this.counter++
     }
 
+    animateForever(frame: (t: number) => void) {
+        this.animate(t => {
+            frame(t)
+            return true
+        })
+    }
+
+    animate(frame: (t: number) => boolean) {
+        const wrappedFrame = (t: number) => {
+            const requestNextFrame = frame(t)
+            this.tick(t)
+            if (requestNextFrame) {
+                requestAnimationFrame(wrappedFrame)
+            }
+        }
+        requestAnimationFrame(wrappedFrame)
+    }
+
+    static create(unitTime: number, elementId: string) {
+        const element = required(document.getElementById(elementId))
+        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6))
+    }
+
 }

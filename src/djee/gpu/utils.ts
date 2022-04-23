@@ -2,6 +2,7 @@ import { Canvas } from "./canvas.js";
 import { Texture } from "./texture.js";
 
 export type TextureFormatSource =
+    GPUColorTargetState |
     GPUTextureFormat |
     Texture |
     Canvas

@@ -13,7 +13,7 @@ import { Buffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";
 import { CommandEncoder } from "./encoder.js";
 import { ShaderModule } from "./shader.js";
-import { Texture } from "./texture.js";
+import { Texture, Sampler, TextureView } from "./texture.js";
 export class Device {
     constructor(device, adapter) {
         this.device = device;
@@ -54,19 +54,24 @@ export class Device {
     texture(descriptor) {
         return new Texture(this, descriptor);
     }
+    sampler(descriptor = undefined) {
+        return new Sampler(this, descriptor);
+    }
     buffer(usage, dataOrSize, stride = 0) {
         return stride > 0 ?
             new Buffer(this, usage, dataOrSize, stride) :
             new Buffer(this, usage, dataOrSize);
     }
-    createBindGroup(bindGroupLayout, buffers) {
+    createBindGroup(bindGroupLayout, resources) {
         return this.device.createBindGroup({
             layout: bindGroupLayout,
-            entries: buffers.map((buffer, index) => ({
+            entries: resources.map((resource, index) => ({
                 binding: index,
-                resource: {
-                    buffer: buffer.buffer
-                },
+                resource: resource instanceof Buffer ? {
+                    buffer: resource.buffer
+                } : resource instanceof TextureView ?
+                    resource.view :
+                    resource.sampler,
             }))
         });
     }

@@ -126,7 +126,7 @@ export class GPUView {
         this.device.enqueueCommand(encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: this.depthTexture.depthAttachment()
+                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
             };
             encoder.renderPass(passDescriptor, pass => {
                 if (this.renderer !== null) {

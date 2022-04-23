@@ -121,7 +121,7 @@ export class Renderer {
     render(universe) {
         const descriptor = {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-            depthStencilAttachment: this.depthTexture.depthAttachment()
+            depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         };
         this.device.enqueueCommand(encoder => {
             encoder.renderPass(descriptor, pass => {

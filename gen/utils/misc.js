@@ -31,5 +31,25 @@ export class FrequencyMeter {
         }
         this.counter++;
     }
+    animateForever(frame) {
+        this.animate(t => {
+            frame(t);
+            return true;
+        });
+    }
+    animate(frame) {
+        const wrappedFrame = (t) => {
+            const requestNextFrame = frame(t);
+            this.tick(t);
+            if (requestNextFrame) {
+                requestAnimationFrame(wrappedFrame);
+            }
+        };
+        requestAnimationFrame(wrappedFrame);
+    }
+    static create(unitTime, elementId) {
+        const element = required(document.getElementById(elementId));
+        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6));
+    }
 }
 //# sourceMappingURL=misc.js.map
