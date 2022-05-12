@@ -86,14 +86,61 @@ function doInit() {
                 tracer.encode(encoder, integrator.colorAttachment({ r: 0, g: 0, b: 0, a: 1 }));
                 integrator.encode(encoder);
             });
-            if (speed[0] !== 0) {
-                const m = aether.mat3.transpose(tracer.matrix);
-                tracer.position = aether.vec3.add(tracer.position, aether.vec3.scale(m[2], speed[0]));
+            if (speed[0] === 0) {
+                return;
+            }
+            const [u, v, w] = aether.mat3.transpose(tracer.matrix);
+            let velocity = aether.vec3.scale(w, speed[0]);
+            for (let i = 0; i < 3; i++) {
+                let [dt, box] = hitDT(tracer.position, velocity, scene);
+                if (dt !== 0 || box === null) {
+                    tracer.position = aether.vec3.add(tracer.position, aether.vec3.scale(velocity, dt));
+                    break;
+                }
+                velocity = aether.vec3.reject(velocity, normalAt(box, tracer.position));
             }
         };
         const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch");
         freqMeter.animateForever(draw);
     });
+}
+function normalAt(box, position) {
+    const n = aether.vec3.sub(aether.vec3.div(aether.vec3.sub(position, box.volume.min), aether.vec3.sub(box.volume.max, box.volume.min)), [0.5, 0.5, 0.5]);
+    const m = Math.max(...n.map(Math.abs));
+    const [x, y, z] = n.map(c => Math.trunc(c / m));
+    return aether.vec3.unit([x, y, z]);
+}
+function hitDT(position, velocity, scene) {
+    const p = aether.vec3.add(position, velocity);
+    const [sx, sy, sz] = velocity.map(v => Math.sign(1 / v));
+    const [x1, y1, z1] = position.map(Math.trunc);
+    const [x2, y2, z2] = p.map(Math.trunc);
+    let result = 1;
+    let hitBox = null;
+    for (let x = x1; x != x2 + sx; x += sx) {
+        for (let y = y1; y != y2 + sy; y += sy) {
+            for (let z = z1; z != z2 + sz; z += sz) {
+                const boxes = scene.cellBoxes(x, y, z);
+                for (const box of boxes) {
+                    const d = distance(box, position, velocity, result);
+                    if (d < result) {
+                        result = d;
+                        hitBox = box;
+                    }
+                }
+            }
+        }
+    }
+    return [result, hitBox];
+}
+function distance(box, position, velocity, max) {
+    const t1 = aether.vec3.div(aether.vec3.sub(aether.vec3.sub(box.volume.min, [0.1, 0.1, 0.1]), position), velocity);
+    const t2 = aether.vec3.div(aether.vec3.sub(aether.vec3.add(box.volume.max, [0.1, 0.1, 0.1]), position), velocity);
+    const mn = aether.vec3.min(t1, t2);
+    const mx = aether.vec3.max(t1, t2);
+    const d1 = Math.max(0, ...mn);
+    const d2 = Math.min(max, ...mx);
+    return d1 < d2 ? d1 : max;
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {

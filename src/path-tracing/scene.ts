@@ -23,6 +23,14 @@ export class Scene {
         return grid
     }
 
+    cellBoxes(x: number, y: number, z: number): BoxStruct[] {
+        const cell = this.cell(x, y, z)
+        const i = cell.indexOf(NO_BOX)
+        return cell
+            .slice(0, i >= 0 ? i : undefined)
+            .map(b => this.boxes[b])
+    }
+
     material(m: aether.Vec4) {
         return this.materials.push(m) - 1
     }
@@ -61,12 +69,16 @@ export class Scene {
     }
     
     private addBoxToCell(box: number, x: number, y: number, z: number) {
-        const i = ((x * this.gridSize) + y) * this.gridSize + z
-        const cell = this.grid[i]
-        const j = cell.findIndex(b => b === NO_BOX)
+        const cell = this.cell(x, y, z)
+        const j = cell.indexOf(NO_BOX)
         if (j >= 0) {
             cell[j] = box
         }
     }
-    
+
+    private cell(x: number, y: number, z: number): Cell {
+        const i = ((x * this.gridSize) + y) * this.gridSize + z
+        return this.grid[i]
+    }
+
 }

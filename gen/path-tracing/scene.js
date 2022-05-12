@@ -17,6 +17,13 @@ export class Scene {
         }
         return grid;
     }
+    cellBoxes(x, y, z) {
+        const cell = this.cell(x, y, z);
+        const i = cell.indexOf(NO_BOX);
+        return cell
+            .slice(0, i >= 0 ? i : undefined)
+            .map(b => this.boxes[b]);
+    }
     material(m) {
         return this.materials.push(m) - 1;
     }
@@ -45,12 +52,15 @@ export class Scene {
         return aether.vec3.min(aether.vec3.max([Math.floor(v[0]), Math.floor(v[1]), Math.floor(v[2])], [0, 0, 0]), [this.gridSize - 1, this.gridSize - 1, this.gridSize - 1]);
     }
     addBoxToCell(box, x, y, z) {
-        const i = ((x * this.gridSize) + y) * this.gridSize + z;
-        const cell = this.grid[i];
-        const j = cell.findIndex(b => b === NO_BOX);
+        const cell = this.cell(x, y, z);
+        const j = cell.indexOf(NO_BOX);
         if (j >= 0) {
             cell[j] = box;
         }
+    }
+    cell(x, y, z) {
+        const i = ((x * this.gridSize) + y) * this.gridSize + z;
+        return this.grid[i];
     }
 }
 //# sourceMappingURL=scene.js.map
