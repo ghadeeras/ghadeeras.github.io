@@ -29,14 +29,14 @@ function doInit() {
         const speed = [0];
         const samplesPerPixelElement = misc.required(document.getElementById("spp"));
         const layersCountElement = misc.required(document.getElementById("layers"));
-        const handleKey = (key, ctrl) => {
-            if (!ctrl && '0' <= key && key <= '9') {
+        const handleKey = (key, alt) => {
+            if (!alt && '0' <= key && key <= '9') {
                 const power = Number.parseInt(key);
                 tracer.samplesPerPixel = Math.pow(2, power);
                 samplesPerPixelElement.innerText = tracer.samplesPerPixel.toString();
                 return true;
             }
-            if (ctrl && '0' <= key && key <= '8') {
+            if (alt && '0' <= key && key <= '8') {
                 const power = Number.parseInt(key);
                 integrator.layersCount = Math.pow(2, power);
                 layersCountElement.innerText = integrator.layersCount.toString();
@@ -49,7 +49,7 @@ function doInit() {
             }
         };
         window.onkeyup = e => {
-            if (handleKey(e.key.toLowerCase(), e.ctrlKey)) {
+            if (handleKey(e.key.toLowerCase(), e.altKey)) {
                 e.preventDefault();
             }
         };
