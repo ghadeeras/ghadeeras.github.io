@@ -1,6 +1,6 @@
 struct Vertex {
-    @builtin(position) position: vec4<f32>;
-    @location(0) uv: vec2<f32>;
+    @builtin(position) position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
 };
 
 var<private> vertices: array<vec2<f32>, 4> = array<vec2<f32>, 4>(

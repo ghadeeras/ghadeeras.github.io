@@ -1,12 +1,12 @@
 struct Varyings {
-    @builtin(position) position: vec4<f32>;
-    @location(0) color: vec3<f32>;
+    @builtin(position) position: vec4<f32>,
+    @location(0) color: vec3<f32>,
 };
 
 struct Uniforms {
-    mvpMatrix: mat4x4<f32>;
-    mMatrix: mat4x4<f32>;
-    radiusScale: f32;
+    mvpMatrix: mat4x4<f32>,
+    mMatrix: mat4x4<f32>,
+    radiusScale: f32,
 };
 
 @group(0)

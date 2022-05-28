@@ -1,6 +1,6 @@
 struct Varyings {
-    @builtin(position) pos: vec4<f32>;
-    @location(0) c: vec2<f32>;
+    @builtin(position) pos: vec4<f32>,
+    @location(0) c: vec2<f32>,
 };
 
 @stage(vertex)
@@ -9,13 +9,13 @@ fn v_main(@location(0) pos: vec2<f32>) -> Varyings {
 }
 
 struct Params {
-  center: vec2<f32>;
-  color: vec2<f32>;
-  juliaNumber: vec2<f32>;
-  scale: f32;
-  intensity: f32;
-  palette: f32;
-  julia: f32;
+  center: vec2<f32>,
+  color: vec2<f32>,
+  juliaNumber: vec2<f32>,
+  scale: f32,
+  intensity: f32,
+  palette: f32,
+  julia: f32,
 };
 
 @group(0)

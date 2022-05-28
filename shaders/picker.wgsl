@@ -1,10 +1,10 @@
 struct VertexOutput {
-    @builtin(position) projPos: vec4<f32>;
-    @location(0) modelPos: vec4<f32>;
+    @builtin(position) projPos: vec4<f32>,
+    @location(0) modelPos: vec4<f32>,
 };
 
 struct Uniforms {
-    mvpMat: mat4x4<f32>;
+    mvpMat: mat4x4<f32>,
 };
 
 @group(0)

@@ -1,18 +1,18 @@
 struct VertexOutput {
-    @builtin(position) projPos: vec4<f32>;
-    @location(0) pos: vec3<f32>;
-    @location(1) normal: vec3<f32>;
+    @builtin(position) projPos: vec4<f32>,
+    @location(0) pos: vec3<f32>,
+    @location(1) normal: vec3<f32>,
 };
 
 struct Uniforms {
-    positionsMat: mat4x4<f32>;
-    normalsMat: mat4x4<f32>;
-    projectionMat: mat4x4<f32>;
-    color: vec4<f32>;
-    lightPos: vec4<f32>;
-    shininess: f32;
-    lightRadius: f32;
-    fogginess: f32;
+    positionsMat: mat4x4<f32>,
+    normalsMat: mat4x4<f32>,
+    projectionMat: mat4x4<f32>,
+    color: vec4<f32>,
+    lightPos: vec4<f32>,
+    shininess: f32,
+    lightRadius: f32,
+    fogginess: f32,
 };
 
 @group(0)

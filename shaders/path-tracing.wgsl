@@ -1,12 +1,12 @@
 // ----- Common Stuff ----- // 
 
 struct Uniforms {
-    matrix: mat3x3<f32>;
-    position: vec3<f32>;
-    randomSeed: vec4<u32>;
-    focalLength: f32;
-    aspectRatio: f32;
-    samplesPerPixel: u32;
+    matrix: mat3x3<f32>,
+    position: vec3<f32>,
+    randomSeed: vec4<u32>,
+    focalLength: f32,
+    aspectRatio: f32,
+    samplesPerPixel: u32,
 };
 
 @group(0) @binding(0)
@@ -15,8 +15,8 @@ var<uniform> uniforms: Uniforms;
 // ----- Vertex Shader ----- //
 
 struct Vertex {
-    @builtin(position) position: vec4<f32>;
-    @location(0) xy: vec2<f32>;
+    @builtin(position) position: vec4<f32>,
+    @location(0) xy: vec2<f32>,
 };
 
 var<private> vertices: array<vec2<f32>, 4> = array<vec2<f32>, 4>(
@@ -38,39 +38,39 @@ fn v_main(@builtin(vertex_index) i: u32) -> Vertex {
 // ----- Fragment Shader ----- //
 
 struct Ray {
-    origin: vec3<f32>;
-    direction: vec3<f32>;
-    invDirection: vec3<f32>;
+    origin: vec3<f32>,
+    direction: vec3<f32>,
+    invDirection: vec3<f32>,
 };
 
 struct Traverser {
-    ray: Ray;
-    step: vec3<i32>;
-    limit: vec3<i32>;
-    distance: vec3<f32>;
-    cell: vec3<i32>;
+    ray: Ray,
+    step: vec3<i32>,
+    limit: vec3<i32>,
+    distance: vec3<f32>,
+    cell: vec3<i32>,
 }
 
 struct Volume {
-    min: vec3<f32>;
-    max: vec3<f32>;
+    min: vec3<f32>,
+    max: vec3<f32>,
 };
 
 struct Box {
-    volume: Volume;
-    material: u32;
+    volume: Volume,
+    material: u32,
 };
 
 struct Hit {
-    box: u32;
-    distance: f32;
+    box: u32,
+    distance: f32,
 }
 
 struct HitDetails {
-    ray: Ray;
-    position: vec3<f32>;
-    normal: vec3<f32>;
-    material: vec4<f32>;
+    ray: Ray,
+    position: vec3<f32>,
+    normal: vec3<f32>,
+    material: vec4<f32>,
 }
 
 type Cell = array<u32, 8>;

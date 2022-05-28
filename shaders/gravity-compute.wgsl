@@ -1,25 +1,25 @@
 struct BodyDesc {
-    mass: f32;
-    radius: f32;
+    mass: f32,
+    radius: f32,
 };
 
 struct BodyState {
-    position: vec3<f32>;
-    velocity: vec3<f32>;
+    position: vec3<f32>,
+    velocity: vec3<f32>,
 };
 
 struct UniverseUniforms {
-    bodyPointedness: f32;
-    gravityConstant: f32;
-    dT: f32;
+    bodyPointedness: f32,
+    gravityConstant: f32,
+    dT: f32,
 };
 
 struct UniverseDesc {
-    bodies: array<BodyDesc>;
+    bodies: array<BodyDesc>,
 };
 
 struct UniverseState {
-    bodies: array<BodyState>;
+    bodies: array<BodyState>,
 };
 
 @group(0)

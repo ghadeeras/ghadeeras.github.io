@@ -11,10 +11,10 @@ fn v_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
 }
 
 struct Uniforms {
-    randomSeed: vec4<u32>;
-    canvasWidth: u32;
-    sampleCount: u32;
-    samplesPerPixel: u32;
+    randomSeed: vec4<u32>,
+    canvasWidth: u32,
+    sampleCount: u32,
+    samplesPerPixel: u32,
 };
 
 @group(0) @binding(0)
