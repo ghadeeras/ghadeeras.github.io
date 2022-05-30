@@ -7,18 +7,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-export class Integrator {
-    constructor(shaderModule, canvas, maxLayersCount) {
-        this.canvas = canvas;
-        this.maxLayersCount = maxLayersCount;
+export class Stacker {
+    constructor(shaderModule, size, format) {
+        var _a;
+        this.size = size;
+        this.format = format;
         this.device = shaderModule.device;
+        this.maxLayersCount = (_a = size.depthOrArrayLayers) !== null && _a !== void 0 ? _a : this.device.device.limits.maxTextureArrayLayers;
         this.texture = this.device.texture({
-            format: canvas.format,
-            size: {
-                width: canvas.size.width,
-                height: canvas.size.height,
-                depthOrArrayLayers: maxLayersCount,
-            },
+            format: format,
+            size: Object.assign(Object.assign({}, size), { depthOrArrayLayers: this.maxLayersCount }),
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
         this.sampler = this.device.sampler({
@@ -38,8 +36,8 @@ export class Integrator {
             }
         });
         this.groupLayout = this.pipeline.getBindGroupLayout(0);
-        this._layersCount = maxLayersCount;
-        this._group = this.newGroup(maxLayersCount);
+        this._layersCount = this.maxLayersCount;
+        this._group = this.newGroup(this.maxLayersCount);
         this.layer = this.layersCount - 1;
     }
     newGroup(layersCount) {
@@ -56,38 +54,34 @@ export class Integrator {
         return this._layersCount;
     }
     set layersCount(count) {
-        const c = Math.min(Math.max(count, 0), this.maxLayersCount);
+        const c = Math.min(Math.max(count, 1), this.maxLayersCount);
         this._layersCount = c;
         this._group = this.newGroup(c);
         this.layer %= c;
     }
-    colorAttachment(clearColor) {
-        return this.layersCount < 2
-            ? this.canvas.attachment(clearColor)
+    colorAttachment(clearColor, colorAttachment = null) {
+        this.layer = (this.layer + 1) % this.layersCount;
+        return this.layersCount < 2 && colorAttachment !== null
+            ? colorAttachment
             : this.texture.createView({
                 dimension: "2d",
                 baseArrayLayer: this.layer,
                 arrayLayerCount: 1
             }).colorAttachment(clearColor);
     }
-    encode(encoder) {
-        this.layer = (this.layer + 1) % this.layersCount;
+    render(encoder, colorAttachment) {
         if (this.layersCount > 1) {
-            encoder.renderPass({
-                colorAttachments: [
-                    this.canvas.attachment({ r: 0, g: 0, b: 0, a: 1 })
-                ]
-            }, pass => {
+            encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {
                 pass.setBindGroup(0, this._group);
                 pass.setPipeline(this.pipeline);
                 pass.draw(4);
             });
         }
     }
-    static create(device, canvas, maxLayersCount = device.device.limits.maxTextureArrayLayers) {
+    static create(device, size, format) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Integrator(yield device.loadShaderModule("integrator.wgsl"), canvas, maxLayersCount);
+            return new Stacker(yield device.loadShaderModule("stacker.wgsl"), size, format);
         });
     }
 }
-//# sourceMappingURL=integrator.js.map
+//# sourceMappingURL=stacker.js.map

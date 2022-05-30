@@ -12,7 +12,7 @@ import * as aether from "/aether/latest/index.js";
 import * as gear from "/gear/latest/index.js";
 import * as misc from "../utils/misc.js";
 import { RotationDragging } from "../utils/dragging.js";
-import { Integrator } from "./integrator.js";
+import { Stacker } from "./stacker.js";
 import { Tracer } from "./tracer.js";
 import { Scene } from "./scene.js";
 export function init() {
@@ -25,7 +25,7 @@ function doInit() {
         const device = yield gpuDevice();
         const canvas = device.canvas("canvas", false);
         const tracer = yield Tracer.create(device, canvas, scene);
-        const integrator = yield Integrator.create(device, canvas);
+        const stacker = yield Stacker.create(device, canvas.size, canvas.format);
         const speed = [0];
         const samplesPerPixelElement = misc.required(document.getElementById("spp"));
         const layersCountElement = misc.required(document.getElementById("layers"));
@@ -38,8 +38,8 @@ function doInit() {
             }
             if (alt && '0' <= key && key <= '8') {
                 const power = Number.parseInt(key);
-                integrator.layersCount = Math.pow(2, power);
-                layersCountElement.innerText = integrator.layersCount.toString();
+                stacker.layersCount = Math.pow(2, power);
+                layersCountElement.innerText = stacker.layersCount.toString();
                 return true;
             }
             if (key == 'w' || key == 's') {
@@ -81,10 +81,12 @@ function doInit() {
         handleKey('4', false);
         handleKey('4', true);
         tracer.position = [36, 36, 36];
+        const clearColor = { r: 0, g: 0, b: 0, a: 1 };
         const draw = () => {
             device.enqueueCommand(encoder => {
-                tracer.encode(encoder, integrator.colorAttachment({ r: 0, g: 0, b: 0, a: 1 }));
-                integrator.encode(encoder);
+                const colorAttachment = canvas.attachment(clearColor);
+                tracer.encode(encoder, stacker.colorAttachment(clearColor, colorAttachment));
+                stacker.render(encoder, colorAttachment);
             });
             if (speed[0] === 0) {
                 return;
@@ -111,36 +113,48 @@ function normalAt(box, position) {
     return aether.vec3.unit([x, y, z]);
 }
 function hitDT(position, velocity, scene) {
-    const p = aether.vec3.add(position, velocity);
-    const [sx, sy, sz] = velocity.map(v => Math.sign(1 / v));
+    const [sx, sy, sz] = velocity.map(Math.sign);
     const [x1, y1, z1] = position.map(Math.trunc);
-    const [x2, y2, z2] = p.map(Math.trunc);
+    const [x2, y2, z2] = aether.vec3.add([x1, y1, z1], [sx, sy, sz]);
     let result = 1;
     let hitBox = null;
-    for (let x = x1; x != x2 + sx; x += sx) {
-        for (let y = y1; y != y2 + sy; y += sy) {
-            for (let z = z1; z != z2 + sz; z += sz) {
+    const distance = distanceFunction(position, velocity);
+    for (let x = x1; sx * x <= sx * x2; x += sx) {
+        for (let y = y1; sy * y <= sy * y2; y += sy) {
+            for (let z = z1; sz * z <= sz * z2; z += sz) {
                 const boxes = scene.cellBoxes(x, y, z);
                 for (const box of boxes) {
-                    const d = distance(box, position, velocity, result);
+                    const d = distance(box, result);
                     if (d < result) {
                         result = d;
                         hitBox = box;
                     }
                 }
+                if (sz === 0) {
+                    break;
+                }
             }
+            if (sy === 0) {
+                break;
+            }
+        }
+        if (sx === 0) {
+            break;
         }
     }
     return [result, hitBox];
 }
-function distance(box, position, velocity, max) {
-    const t1 = aether.vec3.div(aether.vec3.sub(aether.vec3.sub(box.volume.min, [0.1, 0.1, 0.1]), position), velocity);
-    const t2 = aether.vec3.div(aether.vec3.sub(aether.vec3.add(box.volume.max, [0.1, 0.1, 0.1]), position), velocity);
-    const mn = aether.vec3.min(t1, t2);
-    const mx = aether.vec3.max(t1, t2);
-    const d1 = Math.max(0, ...mn);
-    const d2 = Math.min(max, ...mx);
-    return d1 < d2 ? d1 : max;
+function distanceFunction(position, velocity) {
+    const p = aether.vec3.add(position, aether.vec3.setLength(velocity, 0.1));
+    return (box, max) => {
+        const t1 = aether.vec3.div(aether.vec3.sub(box.volume.min, p), velocity);
+        const t2 = aether.vec3.div(aether.vec3.sub(box.volume.max, p), velocity);
+        const mn = aether.vec3.min(t1, t2).filter(n => !Number.isNaN(n));
+        const mx = aether.vec3.max(t1, t2).filter(n => !Number.isNaN(n));
+        const d1 = Math.max(0, ...mn);
+        const d2 = Math.min(max, ...mx);
+        return d1 < d2 ? d1 : max;
+    };
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {

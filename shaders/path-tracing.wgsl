@@ -131,7 +131,7 @@ fn seedRNG(position: vec2<f32>) {
 fn init(vertex: Vertex) {
     seedRNG(vertex.position.xy);
     pixelSize = dpdy(vertex.xy.y);
-    lightPosition = vec3(1.0, 2.0, 0.0) * uniforms.matrix;
+    lightPosition = vec3(1.0, 2.0, 1.0) * uniforms.matrix;
 }
 
 fn pixelSample(pixel: vec2<f32>) -> vec2<f32> {
