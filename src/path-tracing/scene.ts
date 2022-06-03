@@ -35,7 +35,7 @@ export class Scene {
         return this.materials.push(m) - 1
     }
 
-    box(min: aether.Vec3, max: aether.Vec3, material: number) {
+    box(min: aether.Vec3, max: aether.Vec3, material: number[]) {
         const box = {
             volume: { min, max },
             material

@@ -21,7 +21,7 @@ export const volumeStruct = gpu.struct({
 export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    material: gpu.u32,
+    material: gpu.u32.times(6),
 }, ["volume", "material"])
 
 export type Cell = [number, number, number, number, number, number, number, number]

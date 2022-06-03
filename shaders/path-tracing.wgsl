@@ -58,7 +58,7 @@ struct Volume {
 
 struct Box {
     volume: Volume,
-    material: u32,
+    material: array<u32, 6>,
 };
 
 struct Hit {
@@ -186,7 +186,9 @@ fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
     var box = boxes[hit.box];
     var position = ray.origin + ray.direction * hit.distance;
     var normal = normalAt(position, box.volume);
-    return HitDetails(ray, position, normal, materials[box.material]);
+    var f = dot(vec3<i32>(normal), vec3(1, 2, 3)) + 3;
+    let face = select(f, f - 1, f > 3);
+    return HitDetails(ray, position, normal, materials[box.material[face]]);
 }
 
 fn traverser(ray: Ray) -> Traverser {
@@ -220,7 +222,10 @@ fn traceGrid(ray: Ray) -> vec3<f32> {
         var hit = shoot(cell, ray, range);
         if (hit.box != NO_BOX) {
             var hitDetails = detailsOf(hit, ray);
-            var shade = (1.0 - dot(hitDetails.normal, normalize(hitDetails.position - lightPosition - ray.origin))) * 0.5;
+            var shade = 1.0;
+            if (hitDetails.material.w >= 0.0) {
+                shade = (1.0 - dot(hitDetails.normal, normalize(hitDetails.position - lightPosition - ray.origin))) * 0.5;
+            }
             return hitDetails.material.xyz * shade * shade * 64.0 / (64.0 + hit.distance * hit.distance);
         }
     }

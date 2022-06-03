@@ -23,7 +23,7 @@ export const volumeStruct = gpu.struct({
 }, ["min", "max"]);
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    material: gpu.u32,
+    material: gpu.u32.times(6),
 }, ["volume", "material"]);
 export const cell = gpu.u32.times(8);
 const SEEDS_COUNT = 0x4000;

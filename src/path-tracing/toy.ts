@@ -179,32 +179,35 @@ async function gpuDevice() {
 }
 
 function setup(scene: Scene) {
-    scene.material([0.6, 0.9, 0.3, 1])
-    scene.material([0.3, 0.6, 0.9, 1])
-    scene.material([0.9, 0.3, 0.6, 1])
-    scene.material([0.5, 0.5, 0.5, 1])
+    scene.material([0.6, 0.9, 0.3, +1])
+    scene.material([0.3, 0.6, 0.9, +1])
+    scene.material([0.9, 0.3, 0.6, +1])
+    scene.material([0.5, 0.5, 0.5, +1])
+    scene.material([1.0, 1.0, 1.0, -1])
     populateGrid(scene)
 }
 
 function populateGrid(scene: Scene) {
-    scene.box([ 0,  0,  0], [64, 64,  1], 3)
-    scene.box([ 0,  0,  0], [64,  1, 64], 3)
-    scene.box([ 0,  0,  0], [ 1, 64, 64], 3)
-    scene.box([ 0,  0, 63], [64, 64, 64], 3)
-    scene.box([ 0, 63,  0], [64, 64, 64], 3)
-    scene.box([63,  0,  0], [64, 64, 64], 3)
+    const material = [3, 3, 3, 3, 3, 3]
+    scene.box([ 0,  0,  0], [64, 64,  1], material)
+    scene.box([ 0,  0,  0], [64,  1, 64], material)
+    scene.box([ 0,  0,  0], [ 1, 64, 64], material)
+    scene.box([ 0,  0, 63], [64, 64, 64], material)
+    scene.box([ 0, 63,  0], [64, 64, 64], material)
+    scene.box([63,  0,  0], [64, 64, 64], material)
     for (let x = 0; x < scene.gridSize; x += 8) {
         for (let y = 0; y < scene.gridSize; y += 8) {
             for (let z = 0; z < scene.gridSize; z += 8) {
+                const luminousOrientation = (x * y * z) % 3
                 for (let orientation = 0; orientation < 3; orientation++) {
-                    addWall(scene, [x, y, z], orientation)
+                    addWall(scene, [x, y, z], orientation, luminousOrientation)
                 }
             }
         }
     }
 }
 
-function addWall(scene: Scene, pos: aether.Vec3, orientation: number) {
+function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOrientation: number) {
     const config = Math.floor((pos[0] / 8 + pos[1] / 8 + pos[2] / 8) % 3)
     const volumes: VolumeStruct[] = [
         { min: [0.0, 0.0, 0.0], max: [4.0, 4.0, 1.0] },
@@ -223,17 +226,21 @@ function addWall(scene: Scene, pos: aether.Vec3, orientation: number) {
             min[1] = 8 - t 
         }); break
     }
+    let luminousFace = 3
     switch (orientation) {
         case 1: volumes.forEach(v => {
             v.min = aether.vec3.swizzle(v.min, 1, 2, 0)
             v.max = aether.vec3.swizzle(v.max, 1, 2, 0)
-        }); break
+        }); luminousFace = 5; break
         case 2: volumes.forEach(v => {
             v.min = aether.vec3.swizzle(v.min, 2, 0, 1)
             v.max = aether.vec3.swizzle(v.max, 2, 0, 1)
-        }); break
+        }); luminousFace = 4; break
     }
-    volumes.forEach(v => {
-        scene.box(aether.vec3.add(pos, v.min), aether.vec3.add(pos, v.max), orientation)
-    }) 
+    const material = [orientation, orientation, orientation, orientation, orientation, orientation]
+    const luminousMaterial = [...material]
+    if (luminousOrientation === orientation) {
+        luminousMaterial[luminousFace] = 4
+    }
+    volumes.forEach((v, i) => scene.box(aether.vec3.add(pos, v.min), aether.vec3.add(pos, v.max), i < 2 ? material : luminousMaterial)) 
 }
