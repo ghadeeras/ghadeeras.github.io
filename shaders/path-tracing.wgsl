@@ -54,12 +54,18 @@ struct Traverser {
 struct Volume {
     min: vec3<f32>,
     max: vec3<f32>,
+    invSize: vec3<f32>,
 };
 
 struct Box {
     volume: Volume,
-    material: array<u32, 6>,
+    faces: array<Face, 6>,
 };
+
+struct Face {
+    lights: vec4<u32>,
+    material: u32, 
+}
 
 struct Hit {
     box: u32,
@@ -87,13 +93,22 @@ var<storage, read> grid: Grid;
 
 var<private> rng: vec4<u32>;
 var<private> pixelSize: f32;
-var<private> lightPosition: vec3<f32>;
 
 let EPSILON: f32 = 0x1P-11;
 let RND_PRECISION: f32 = 0x1P-22;
 let MAX_BOXES_PER_CELL: u32 = 8u;
 let GRID_SIZE: vec3<i32> = vec3<i32>(262144, 4096, 64);
-let NO_BOX: u32 = 0xFFFFFFFFu;
+let NULL: u32 = 0xFFFFFFFFu;
+let TWO_PI = 6.283185307179586476925286766559;
+
+var<private> normals: array<vec3<f32>, 6> = array<vec3<f32>, 6>(
+    vec3( 0.0,  0.0, -1.0),
+    vec3( 0.0, -1.0,  0.0),
+    vec3(-1.0,  0.0,  0.0),
+    vec3( 1.0,  0.0,  0.0),
+    vec3( 0.0,  1.0,  0.0),
+    vec3( 0.0,  0.0,  1.0),
+); 
 
 // The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
 fn next_u32() -> u32 {
@@ -104,13 +119,12 @@ fn next_u32() -> u32 {
 	t = t ^ (t >> 8u);
     s = s ^ (s >> 19u);
 
-    var result = t ^ s;
-    rng = vec4(result, rng.xyz);
-    return result;
+    rng = vec4(t ^ s, rng.xyz);
+    return rng.x;
 }
 
 fn next_unorm() -> f32 {
-    var n = (next_u32() + 0x1FFu) >> 10u;
+    let n = (next_u32() + 0x1FFu) >> 10u;
     return f32(n) * RND_PRECISION;
 }
 
@@ -120,18 +134,12 @@ fn next_vec2() -> vec2<f32> {
 
 fn seedRNG(position: vec2<f32>) {
     var p = vec2<u32>(position);
-    rng = vec4(p, p) + vec4(3u, 5u, 7u, 11u);
-    next_u32();
-    next_u32();
-    next_u32();
-    next_u32();
-    rng = uniforms.randomSeed * rng;
+    rng = (p.xyyx + vec4(3u, 7u, 5u, 11u)) * uniforms.randomSeed;
 }
 
 fn init(vertex: Vertex) {
     seedRNG(vertex.position.xy);
-    pixelSize = dpdy(vertex.xy.y);
-    lightPosition = vec3(1.0, 2.0, 1.0) * uniforms.matrix;
+    pixelSize = dpdy(vertex.xy.y) * 1.5;
 }
 
 fn pixelSample(pixel: vec2<f32>) -> vec2<f32> {
@@ -139,7 +147,7 @@ fn pixelSample(pixel: vec2<f32>) -> vec2<f32> {
 }
 
 fn primaryRay(pixel: vec2<f32>) -> Ray {
-    var direction = normalize(vec3(pixel, -uniforms.focalLength) * uniforms.matrix);
+    var direction = vec3(pixel, -uniforms.focalLength) * uniforms.matrix;
     return Ray(
         uniforms.position,
         direction,
@@ -152,17 +160,17 @@ fn hitRange(volume: Volume, ray: Ray, range: vec2<f32>) -> vec2<f32> {
     var t2 = (volume.max - ray.origin) * ray.invDirection;
     var mn = min(t1, t2);
     var mx = max(t1, t2);
-    var d1 = max(max(max(mn.x, mn.y), mn.z), range[0]);
-    var d2 = min(min(min(mx.x, mx.y), mx.z), range[1]);
+    let d1 = max(max(max(mn.x, mn.y), mn.z), range[0]);
+    let d2 = min(min(min(mx.x, mx.y), mx.z), range[1]);
     return vec2(d1, d2);
 }
 
 fn shoot(cell: Cell, ray: Ray, range: vec2<f32>) -> Hit {
     var r = range;
-    var nearestBox = NO_BOX;
+    var nearestBox = NULL;
     for (var i = 0u; i < MAX_BOXES_PER_CELL; i = i + 1u) {
         var box = cell[i];
-        if (box == NO_BOX) {
+        if (box == NULL) {
             break;
         }
         var newR = hitRange(boxes[box].volume, ray, r);
@@ -174,21 +182,24 @@ fn shoot(cell: Cell, ray: Ray, range: vec2<f32>) -> Hit {
     return Hit(nearestBox, r[1]);
 }
 
-fn normalAt(position: vec3<f32>, volume: Volume) -> vec3<f32> {
-    var v = (position - volume.min) / (volume.max - volume.min) - 0.5;
+fn face(position: vec3<f32>, volume: Volume) -> i32 {
+    var v = (position - volume.min) * volume.invSize - 1.0;
     var absV = abs(v);
-    var m = max(absV.x, max(absV.y, absV.z));
-    var n = trunc(v / m);
-    return normalize(n);
+    let xFace = select(2, 3, v.x > 0.0); 
+    let yFace = select(1, 4, v.y > 0.0);
+    var zFace = select(0, 5, v.z > 0.0); 
+    return select(
+        select(zFace, yFace, absV.y > absV.z),
+        select(zFace, xFace, absV.x > absV.z),
+        absV.x > absV.y
+    );
 }
 
 fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
     var box = boxes[hit.box];
     var position = ray.origin + ray.direction * hit.distance;
-    var normal = normalAt(position, box.volume);
-    var f = dot(vec3<i32>(normal), vec3(1, 2, 3)) + 3;
-    let face = select(f, f - 1, f > 3);
-    return HitDetails(ray, position, normal, materials[box.material[face]]);
+    var face = face(position, box.volume);
+    return HitDetails(ray, position, normals[face], materials[box.faces[face].material]);
 }
 
 fn traverser(ray: Ray) -> Traverser {
@@ -210,31 +221,64 @@ fn next(t: ptr<function, Traverser>) -> f32 {
     return result;
 }
 
-fn traceGrid(ray: Ray) -> vec3<f32> {
+fn shootInGrid(ray: Ray) -> Hit {
     var t = traverser(ray);
     var range = vec2(EPSILON, EPSILON);
+    var hit = Hit(NULL, range[1]);
     loop {
-        if (any(t.cell == t.limit)) {
-            return vec3(0.0); 
-        }
         var cell = grid[t.cell.x + t.cell.y + t.cell.z];
         range[1] = next(&t);
-        var hit = shoot(cell, ray, range);
-        if (hit.box != NO_BOX) {
-            var hitDetails = detailsOf(hit, ray);
-            var shade = 1.0;
-            if (hitDetails.material.w >= 0.0) {
-                shade = (1.0 - dot(hitDetails.normal, normalize(hitDetails.position - lightPosition - ray.origin))) * 0.5;
-            }
-            return hitDetails.material.xyz * shade * shade * 64.0 / (64.0 + hit.distance * hit.distance);
+        hit = shoot(cell, ray, range);
+        if (hit.box != NULL || any(t.cell == t.limit)) {
+            return hit;
         }
     }
+}
+
+fn mapToHemisphere(orientation: vec3<f32>, squarePoint: vec2<f32>) -> vec3<f32> {
+    var m = mat3x3(abs(orientation.yzx), orientation, orientation.zxy);
+    var cosTheta = 1.0 - squarePoint.y;
+    var sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    var phi = TWO_PI * squarePoint.x;
+    return m * vec3(sinTheta * sin(phi), cosTheta, sinTheta * cos(phi));
+}
+
+fn scatterRay(hitDetails: HitDetails) -> Ray {
+    var direction: vec3<f32>;
+    if (next_unorm() < hitDetails.material.w) {
+        direction = mapToHemisphere(hitDetails.normal, next_vec2());
+    } else {
+        direction = reflect(hitDetails.ray.direction, hitDetails.normal);
+    }
+    return Ray(
+        hitDetails.position,
+        direction,
+        1.0 / direction
+    );
+}
+
+fn trace(ray: Ray) -> vec3<f32> {
+    var r = ray;
+    var color = vec3(1.0);
+    for (var i = 0; i < 3; i = i + 1) {
+        var hit = shootInGrid(r);
+        if (hit.box == NULL) {
+            break;
+        }
+        var hitDetails = detailsOf(hit, r);
+        color = color * hitDetails.material.xyz;
+        if (hitDetails.material.w < 0.0) {
+            return color; 
+        }
+        r = scatterRay(hitDetails);
+    }
+    return color * 0.015625;
 }
 
 fn estimateColor(pixel: vec2<f32>) -> vec3<f32> {
     var c = vec3(0.0);
     for (var j = 0u; j < uniforms.samplesPerPixel; j = j + 1u) {
-        c = c + traceGrid(primaryRay(pixelSample(pixel)));
+        c = c + trace(primaryRay(pixelSample(pixel)));
     };
     return c / f32(uniforms.samplesPerPixel);
 }
@@ -242,5 +286,7 @@ fn estimateColor(pixel: vec2<f32>) -> vec3<f32> {
 @stage(fragment)
 fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     init(vertex);
-    return vec4(estimateColor(vertex.xy), 1.0);
+    var c = estimateColor(vertex.xy);
+    var m = max(c.x, max(c.y, c.z));
+    return vec4(select(c, c / m, m > 1.0), 1.0);
 }

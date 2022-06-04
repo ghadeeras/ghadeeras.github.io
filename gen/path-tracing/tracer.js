@@ -20,11 +20,16 @@ export const uniformsStruct = gpu.struct({
 export const volumeStruct = gpu.struct({
     min: gpu.f32.x3,
     max: gpu.f32.x3,
-}, ["min", "max"]);
+    invSize: gpu.f32.x3,
+}, ["min", "max", "invSize"]);
+export const faceStruct = gpu.struct({
+    lights: gpu.u32.x4,
+    material: gpu.u32,
+}, ["lights", "material"]);
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    material: gpu.u32.times(6),
-}, ["volume", "material"]);
+    faces: faceStruct.times(6),
+}, ["volume", "faces"]);
 export const cell = gpu.u32.times(8);
 const SEEDS_COUNT = 0x4000;
 export class Tracer {

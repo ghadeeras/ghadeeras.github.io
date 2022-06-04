@@ -16,13 +16,20 @@ export type VolumeStruct = gpu.DataTypeOf<typeof volumeStruct>
 export const volumeStruct = gpu.struct({
     min: gpu.f32.x3,
     max: gpu.f32.x3,
-}, ["min", "max"])
+    invSize: gpu.f32.x3,
+}, ["min", "max", "invSize"])
+
+export type FaceStruct = gpu.DataTypeOf<typeof faceStruct>
+export const faceStruct = gpu.struct({
+    lights: gpu.u32.x4,
+    material: gpu.u32,
+}, ["lights", "material"])
 
 export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    material: gpu.u32.times(6),
-}, ["volume", "material"])
+    faces: faceStruct.times(6),
+}, ["volume", "faces"])
 
 export type Cell = [number, number, number, number, number, number, number, number]
 export const cell = gpu.u32.times(8)

@@ -1,7 +1,7 @@
 import * as aether from '/aether/latest/index.js'
-import { BoxStruct, Cell } from "./tracer"
+import { BoxStruct, Cell, VolumeStruct, volumeStruct } from "./tracer"
 
-const NO_BOX = 0xFFFFFFFF
+const NULL = 0xFFFFFFFF
 
 export class Scene {
 
@@ -16,8 +16,8 @@ export class Scene {
         const grid = new Array<Cell>(this.gridSize ** 3)
         for (let i = 0; i < grid.length; i++) {
             grid[i] = [
-                NO_BOX, NO_BOX, NO_BOX, NO_BOX, 
-                NO_BOX, NO_BOX, NO_BOX, NO_BOX
+                NULL, NULL, NULL, NULL, 
+                NULL, NULL, NULL, NULL
             ]
         }
         return grid
@@ -25,20 +25,25 @@ export class Scene {
 
     cellBoxes(x: number, y: number, z: number): BoxStruct[] {
         const cell = this.cell(x, y, z)
-        const i = cell.indexOf(NO_BOX)
+        const i = cell.indexOf(NULL)
         return cell
             .slice(0, i >= 0 ? i : undefined)
             .map(b => this.boxes[b])
     }
 
     material(m: aether.Vec4) {
-        return this.materials.push(m) - 1
+        const mm = aether.vec4.mul(m, m)
+        mm[3] = m[3]
+        return this.materials.push(mm) - 1
     }
 
-    box(min: aether.Vec3, max: aether.Vec3, material: number[]) {
+    box(min: aether.Vec3, max: aether.Vec3, materials: number[]) {
         const box = {
-            volume: { min, max },
-            material
+            volume: volume(min, max),
+            faces: materials.map(m => ({
+                lights: aether.vec4.of(NULL, NULL, NULL, NULL),
+                material: m
+            }))
         }
         const id = this.boxes.push(box) - 1
         this.addBox(box, id)
@@ -70,7 +75,7 @@ export class Scene {
     
     private addBoxToCell(box: number, x: number, y: number, z: number) {
         const cell = this.cell(x, y, z)
-        const j = cell.indexOf(NO_BOX)
+        const j = cell.indexOf(NULL)
         if (j >= 0) {
             cell[j] = box
         }
@@ -81,4 +86,14 @@ export class Scene {
         return this.grid[i]
     }
 
+}
+
+export function volume(min: aether.Vec3, max: aether.Vec3): VolumeStruct {
+    return {
+        min, max,
+        invSize: aether.vec3.div(
+            aether.vec3.of(2, 2, 2),
+            aether.vec3.sub(max, min)
+        )
+    }
 }

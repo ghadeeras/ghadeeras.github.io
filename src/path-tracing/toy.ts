@@ -5,7 +5,7 @@ import * as misc from "../utils/misc.js"
 import { RotationDragging } from "../utils/dragging.js"
 import { Stacker } from "./stacker.js"
 import { BoxStruct, Tracer, VolumeStruct } from "./tracer.js"
-import { Scene } from "./scene.js"
+import { Scene, volume } from "./scene.js"
 
 export function init() {
     window.onload = doInit
@@ -21,54 +21,48 @@ async function doInit() {
     const tracer = await Tracer.create(device, canvas, scene)
     const stacker = await Stacker.create(device, canvas.size, canvas.format)
 
+    const changing = [false]
     const speed = [0]
     const samplesPerPixelElement = misc.required(document.getElementById("spp"))
     const layersCountElement = misc.required(document.getElementById("layers"))
-    const handleKey = (key: string, alt: boolean) => {
-        if (!alt && '0' <= key && key <= '9') {
-            const power = Number.parseInt(key)
-            tracer.samplesPerPixel = 2 ** power
-            samplesPerPixelElement.innerText = tracer.samplesPerPixel.toString()
-            return true
-        }
-        if (alt && '0' <= key && key <= '8') {
-            const power = Number.parseInt(key)
-            stacker.layersCount = 2 ** power
-            layersCountElement.innerText = stacker.layersCount.toString()
-            return true
-        }
-        if (key == 'w' || key == 's') {
-            speed[0] = 0.0
-            console.log(tracer.position)
-            return true
-        }
-    }
-    window.onkeyup = e => {
-        if (handleKey(e.key.toLowerCase(), e.altKey)) {
-            e.preventDefault()
-        }
-    }
-    window.onkeydown = e => {
-        const key = e.key.toLowerCase()
-        if (key == 'w') {
-            e.preventDefault()
-            speed[0] = -0.2
-        }
-        if (key == 's') {
-            e.preventDefault()
-            speed[0] = 0.2
-        }
+
+    const setSamplesPerPixel = (spp: number) => {
+        tracer.samplesPerPixel = spp
+        samplesPerPixelElement.innerText = tracer.samplesPerPixel.toString()
     }
 
+    const setLayersCount = (c: number) => {
+        stacker.layersCount = c
+        layersCountElement.innerText = stacker.layersCount.toString()
+    }
+
+    setSamplesPerPixel(16)
+    setLayersCount(4)
+
+    const handleKey = (e: KeyboardEvent, down: boolean) => {
+        let s = down ? 0.2 : 0
+        if (e.key == 'w') {
+            speed[0] = -s
+            e.preventDefault()
+        }
+        if (e.key == 's') {
+            speed[0] = s
+            e.preventDefault()
+        }
+    }
+    window.onkeyup = e => handleKey(e, false)
+    window.onkeydown = e => handleKey(e, true)
+
     canvas.element.onwheel = e => {
+        changing[0] = true
         e.preventDefault()
-        const m = aether.mat3.transpose(tracer.matrix)
         tracer.focalRatio *= Math.exp(-Math.sign(e.deltaY) * 0.25)
     }
 
     gear.ElementEvents.create(canvas.element.id).dragging.value
         .then(gear.drag(new RotationDragging(() => aether.mat4.cast(tracer.matrix), () => aether.mat4.projection(1, Math.SQRT2))))
         .attach(m => {
+            changing[0] = true
             tracer.matrix = aether.mat3.from([
                 ...aether.vec3.swizzle(m[0], 0, 1, 2),
                 ...aether.vec3.swizzle(m[1], 0, 1, 2),
@@ -76,16 +70,22 @@ async function doInit() {
             ])
         })
 
-    handleKey('4', false)
-    handleKey('4', true)
     tracer.position = [36, 36, 36]
 
     const clearColor = { r: 0, g: 0, b: 0, a: 1 }
+    const wasMoving = [false]
     const draw = () => {
+        const moving = speed[0] !== 0 || changing[0]
+        setLayersCount(moving ? 4 : wasMoving[0] ? 1 : stacker.layersCount + 1)
+        setSamplesPerPixel(moving ? 8 : Math.floor(Math.sqrt(16 + stacker.layersCount)))
+        wasMoving[0] = moving
+        changing[0] = false;
         device.enqueueCommand(encoder => {
-            const colorAttachment = canvas.attachment(clearColor)
-            tracer.encode(encoder, stacker.colorAttachment(clearColor, colorAttachment))
-            stacker.render(encoder, colorAttachment)
+            tracer.encode(encoder, stacker.colorAttachment(clearColor))
+            if (stacker.layersCount >= 4) {
+                const colorAttachment = canvas.attachment(clearColor)
+                stacker.render(encoder, colorAttachment)
+            }
         })
         if (speed[0] === 0) {
             return
@@ -179,26 +179,26 @@ async function gpuDevice() {
 }
 
 function setup(scene: Scene) {
-    scene.material([0.6, 0.9, 0.3, +1])
-    scene.material([0.3, 0.6, 0.9, +1])
-    scene.material([0.9, 0.3, 0.6, +1])
-    scene.material([0.5, 0.5, 0.5, +1])
-    scene.material([1.0, 1.0, 1.0, -1])
+    scene.material([0.6, 0.9, 0.3,  1.0])
+    scene.material([0.3, 0.6, 0.9,  1.0])
+    scene.material([0.9, 0.3, 0.6,  1.0])
+    scene.material([0.5, 0.5, 0.5,  1.0])
+    scene.material([2.0, 2.0, 2.0, -1.0])
     populateGrid(scene)
 }
 
 function populateGrid(scene: Scene) {
-    const material = [3, 3, 3, 3, 3, 3]
-    scene.box([ 0,  0,  0], [64, 64,  1], material)
-    scene.box([ 0,  0,  0], [64,  1, 64], material)
-    scene.box([ 0,  0,  0], [ 1, 64, 64], material)
-    scene.box([ 0,  0, 63], [64, 64, 64], material)
-    scene.box([ 0, 63,  0], [64, 64, 64], material)
-    scene.box([63,  0,  0], [64, 64, 64], material)
+    const materials = [3, 3, 3, 3, 3, 3]
+    scene.box([ 0,  0,  0], [64, 64,  1], materials)
+    scene.box([ 0,  0,  0], [64,  1, 64], materials)
+    scene.box([ 0,  0,  0], [ 1, 64, 64], materials)
+    scene.box([ 0,  0, 63], [64, 64, 64], materials)
+    scene.box([ 0, 63,  0], [64, 64, 64], materials)
+    scene.box([63,  0,  0], [64, 64, 64], materials)
     for (let x = 0; x < scene.gridSize; x += 8) {
         for (let y = 0; y < scene.gridSize; y += 8) {
             for (let z = 0; z < scene.gridSize; z += 8) {
-                const luminousOrientation = (x * y * z) % 3
+                const luminousOrientation = ((x + y + z) / 8) % 3
                 for (let orientation = 0; orientation < 3; orientation++) {
                     addWall(scene, [x, y, z], orientation, luminousOrientation)
                 }
@@ -210,9 +210,9 @@ function populateGrid(scene: Scene) {
 function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOrientation: number) {
     const config = Math.floor((pos[0] / 8 + pos[1] / 8 + pos[2] / 8) % 3)
     const volumes: VolumeStruct[] = [
-        { min: [0.0, 0.0, 0.0], max: [4.0, 4.0, 1.0] },
-        { min: [4.0, 0.0, 0.0], max: [8.0, 4.0, 1.0] },
-        { min: [0.0, 4.0, 0.0], max: [4.0, 8.0, 1.0] },
+        volume([0.0, 0.0, 0.0], [4.0, 4.0, 1.0]),
+        volume([4.0, 0.0, 0.0], [8.0, 4.0, 1.0]),
+        volume([0.0, 4.0, 0.0], [4.0, 8.0, 1.0]),
     ]
     switch (config) {
         case 1: volumes.forEach(({min, max}) => { 
@@ -231,16 +231,17 @@ function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOr
         case 1: volumes.forEach(v => {
             v.min = aether.vec3.swizzle(v.min, 1, 2, 0)
             v.max = aether.vec3.swizzle(v.max, 1, 2, 0)
-        }); luminousFace = 5; break
+        }); luminousFace = 0; break
         case 2: volumes.forEach(v => {
             v.min = aether.vec3.swizzle(v.min, 2, 0, 1)
             v.max = aether.vec3.swizzle(v.max, 2, 0, 1)
         }); luminousFace = 4; break
     }
-    const material = [orientation, orientation, orientation, orientation, orientation, orientation]
-    const luminousMaterial = [...material]
+    const m = orientation
+    const materials = [m, m, m, m, m, m]
+    const luminousMaterials = [...materials]
     if (luminousOrientation === orientation) {
-        luminousMaterial[luminousFace] = 4
+        luminousMaterials[luminousFace] = 4
     }
-    volumes.forEach((v, i) => scene.box(aether.vec3.add(pos, v.min), aether.vec3.add(pos, v.max), i < 2 ? material : luminousMaterial)) 
+    volumes.forEach((v, i) => scene.box(aether.vec3.add(pos, v.min), aether.vec3.add(pos, v.max), i < 2 ? materials : luminousMaterials)) 
 }

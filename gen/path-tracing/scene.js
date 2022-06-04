@@ -1,5 +1,5 @@
 import * as aether from '/aether/latest/index.js';
-const NO_BOX = 0xFFFFFFFF;
+const NULL = 0xFFFFFFFF;
 export class Scene {
     constructor(gridSize) {
         this.gridSize = gridSize;
@@ -11,26 +11,31 @@ export class Scene {
         const grid = new Array(Math.pow(this.gridSize, 3));
         for (let i = 0; i < grid.length; i++) {
             grid[i] = [
-                NO_BOX, NO_BOX, NO_BOX, NO_BOX,
-                NO_BOX, NO_BOX, NO_BOX, NO_BOX
+                NULL, NULL, NULL, NULL,
+                NULL, NULL, NULL, NULL
             ];
         }
         return grid;
     }
     cellBoxes(x, y, z) {
         const cell = this.cell(x, y, z);
-        const i = cell.indexOf(NO_BOX);
+        const i = cell.indexOf(NULL);
         return cell
             .slice(0, i >= 0 ? i : undefined)
             .map(b => this.boxes[b]);
     }
     material(m) {
-        return this.materials.push(m) - 1;
+        const mm = aether.vec4.mul(m, m);
+        mm[3] = m[3];
+        return this.materials.push(mm) - 1;
     }
-    box(min, max, material) {
+    box(min, max, materials) {
         const box = {
-            volume: { min, max },
-            material
+            volume: volume(min, max),
+            faces: materials.map(m => ({
+                lights: aether.vec4.of(NULL, NULL, NULL, NULL),
+                material: m
+            }))
         };
         const id = this.boxes.push(box) - 1;
         this.addBox(box, id);
@@ -53,7 +58,7 @@ export class Scene {
     }
     addBoxToCell(box, x, y, z) {
         const cell = this.cell(x, y, z);
-        const j = cell.indexOf(NO_BOX);
+        const j = cell.indexOf(NULL);
         if (j >= 0) {
             cell[j] = box;
         }
@@ -62,5 +67,11 @@ export class Scene {
         const i = ((x * this.gridSize) + y) * this.gridSize + z;
         return this.grid[i];
     }
+}
+export function volume(min, max) {
+    return {
+        min, max,
+        invSize: aether.vec3.div(aether.vec3.of(2, 2, 2), aether.vec3.sub(max, min))
+    };
 }
 //# sourceMappingURL=scene.js.map
