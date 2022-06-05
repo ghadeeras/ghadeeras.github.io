@@ -235,10 +235,11 @@ fn shootInGrid(ray: Ray) -> Hit {
     }
 }
 
-fn mapToHemisphere(orientation: vec3<f32>, squarePoint: vec2<f32>) -> vec3<f32> {
+fn diffuseDirection(orientation: vec3<f32>) -> vec3<f32> {
+    var squarePoint = next_vec2();
     var m = mat3x3(abs(orientation.yzx), orientation, orientation.zxy);
-    var cosTheta = 1.0 - squarePoint.y;
-    var sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    var cosTheta = sqrt(squarePoint.y);
+    var sinTheta = sqrt(1.0 - squarePoint.y);
     var phi = TWO_PI * squarePoint.x;
     return m * vec3(sinTheta * sin(phi), cosTheta, sinTheta * cos(phi));
 }
@@ -246,7 +247,7 @@ fn mapToHemisphere(orientation: vec3<f32>, squarePoint: vec2<f32>) -> vec3<f32> 
 fn scatterRay(hitDetails: HitDetails) -> Ray {
     var direction: vec3<f32>;
     if (next_unorm() < hitDetails.material.w) {
-        direction = mapToHemisphere(hitDetails.normal, next_vec2());
+        direction = diffuseDirection(hitDetails.normal);
     } else {
         direction = reflect(hitDetails.ray.direction, hitDetails.normal);
     }
@@ -260,7 +261,7 @@ fn scatterRay(hitDetails: HitDetails) -> Ray {
 fn trace(ray: Ray) -> vec3<f32> {
     var r = ray;
     var color = vec3(1.0);
-    for (var i = 0; i < 3; i = i + 1) {
+    for (var i = 0; i < 4; i = i + 1) {
         var hit = shootInGrid(r);
         if (hit.box == NULL) {
             break;
