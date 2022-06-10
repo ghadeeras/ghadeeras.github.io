@@ -75,13 +75,13 @@ function doInit() {
         const clearColor = { r: 0, g: 0, b: 0, a: 1 };
         const draw = () => {
             const animating = state.speed !== 0 || state.animating;
-            setLayersCount(animating ? 4 : state.wasAnimating ? 1 : stacker.layersCount + 1);
-            setSamplesPerPixel(Math.max(4, Math.floor(Math.sqrt(stacker.layersCount))));
+            setLayersCount(animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1);
+            // setSamplesPerPixel(Math.max(4, stacker.layersCount))
             state.wasAnimating = animating;
             state.animating = false;
             device.enqueueCommand(encoder => {
                 tracer.encode(encoder, stacker.colorAttachment(clearColor));
-                if (stacker.layersCount >= 4) {
+                if (stacker.layersCount >= 2) {
                     stacker.render(encoder, canvas.attachment(clearColor));
                 }
             });
@@ -177,18 +177,40 @@ function setup(scene) {
 }
 function populateGrid(scene) {
     const materials = [3, 3, 3, 3, 3, 3];
-    scene.box([0, 0, 0], [64, 64, 1], materials);
-    scene.box([0, 0, 0], [64, 1, 64], materials);
-    scene.box([0, 0, 0], [1, 64, 64], materials);
-    scene.box([0, 0, 63], [64, 64, 64], materials);
-    scene.box([0, 63, 0], [64, 64, 64], materials);
-    scene.box([63, 0, 0], [64, 64, 64], materials);
+    bigBox(scene, [0, 0, 0], [64, 64, 1], materials);
+    bigBox(scene, [0, 0, 0], [64, 1, 64], materials);
+    bigBox(scene, [0, 0, 0], [1, 64, 64], materials);
+    bigBox(scene, [0, 0, 63], [64, 64, 64], materials);
+    bigBox(scene, [0, 63, 0], [64, 64, 64], materials);
+    bigBox(scene, [63, 0, 0], [64, 64, 64], materials);
     for (let x = 0; x < scene.gridSize; x += 8) {
         for (let y = 0; y < scene.gridSize; y += 8) {
             for (let z = 0; z < scene.gridSize; z += 8) {
                 const luminousOrientation = ((x + y + z) / 8) % 3;
                 for (let orientation = 0; orientation < 3; orientation++) {
                     addWall(scene, [x, y, z], orientation, luminousOrientation);
+                }
+            }
+        }
+    }
+}
+function bigBox(scene, min, max, materials) {
+    const size = aether.vec3.sub(max, min);
+    if (size.some(c => c > 4)) {
+        const cx = size[0] > 4 ? Math.ceil(size[0] / 4) : 1;
+        const cy = size[1] > 4 ? Math.ceil(size[1] / 4) : 1;
+        const cz = size[2] > 4 ? Math.ceil(size[2] / 4) : 1;
+        const s = aether.vec3.div(size, [cx, cy, cz]);
+        for (let i = 0; i < cx; i++) {
+            const x1 = Math.floor(min[0] + i * s[0]);
+            const x2 = Math.ceil(min[0] + (i + 1) * s[0]);
+            for (let j = 0; j < cy; j++) {
+                const y1 = Math.floor(min[1] + j * s[1]);
+                const y2 = Math.ceil(min[1] + (j + 1) * s[1]);
+                for (let k = 0; k < cz; k++) {
+                    const z1 = Math.floor(min[2] + k * s[2]);
+                    const z2 = Math.ceil(min[2] + (k + 1) * s[2]);
+                    scene.box([x1, y1, z1], [x2, y2, z2], materials);
                 }
             }
         }

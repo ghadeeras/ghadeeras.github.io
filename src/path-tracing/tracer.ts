@@ -1,6 +1,7 @@
 import * as aether from '/aether/latest/index.js'
 import * as gpu from "../djee/gpu/index.js"
-import { Scene } from './scene.js'
+import { NULL, Scene } from './scene.js'
+import { u32 } from '../djee/gpu/index.js'
 
 export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>
 export const uniformsStruct = gpu.struct({
@@ -19,17 +20,35 @@ export const volumeStruct = gpu.struct({
     invSize: gpu.f32.x3,
 }, ["min", "max", "invSize"])
 
+export type FaceDirectionsStruct = gpu.DataTypeOf<typeof faceDirectionsStruct>
+export const faceDirectionsStruct = gpu.struct({
+    lights: gpu.u32.times(4),
+}, ["lights"])
+
 export type FaceStruct = gpu.DataTypeOf<typeof faceStruct>
 export const faceStruct = gpu.struct({
-    lights: gpu.u32.x4,
-    material: gpu.u32,
-}, ["lights", "material"])
+    material: u32,
+    light: u32,
+}) 
 
 export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faceMaterials: gpu.u32.times(6),
-}, ["volume", "faceMaterials"])
+    faces: faceStruct.times(6),
+}, ["volume", "faces"])
+
+export type BoxDirectionsStruct = gpu.DataTypeOf<typeof boxStruct>
+export const boxDirectionsStruct = gpu.struct({
+    faces: faceDirectionsStruct.times(6),
+}, ["faces"])
+
+export type RectangleStruct = gpu.DataTypeOf<typeof rectangleStruct>
+export const rectangleStruct = gpu.struct({
+    position: gpu.f32.x3,
+    size: gpu.f32.x2,
+    face: gpu.i32,
+    area: gpu.f32,
+}, ["position", "size", "face", "area"])
 
 export type Cell = [number, number, number, number, number, number, number, number]
 export const cell = gpu.u32.times(8)
@@ -43,11 +62,15 @@ export class Tracer {
     private readonly pipeline: GPURenderPipeline
     private readonly groupLayout: GPUBindGroupLayout
 
+    readonly materialsBuffer: gpu.Buffer
+    readonly boxesBuffer: gpu.Buffer
+    readonly lightsBuffer: gpu.Buffer
+
     private readonly uniformsBuffer: gpu.Buffer 
-    private readonly materialsBuffer: gpu.Buffer
-    private readonly boxesBuffer: gpu.Buffer
     private readonly gridBuffer: gpu.Buffer
     private readonly rngSeedsBuffer: gpu.Buffer
+
+    private readonly importantDirectionsBuffer: gpu.Buffer
 
     private readonly group: GPUBindGroup
 
@@ -56,7 +79,7 @@ export class Tracer {
     private _samplesPerPixel = 16
     private _focalRation = Math.SQRT2
 
-    constructor(shaderModule: gpu.ShaderModule, private canvas: gpu.Canvas, private scene: Scene) {
+    constructor(shaderModule: gpu.ShaderModule, private canvas: gpu.Canvas, readonly scene: Scene) {
         this.device = shaderModule.device
 
         this.pipeline = this.device.device.createRenderPipeline({
@@ -74,14 +97,19 @@ export class Tracer {
         this.uniformsBuffer = this.createUniformsBuffer()
         this.materialsBuffer = this.createMaterialsBuffer()
         this.boxesBuffer = this.createBoxesBuffer()
+        this.lightsBuffer = this.createLightsBuffer()
         this.gridBuffer = this.createGridBuffer()
         this.rngSeedsBuffer = this.createRNGSeedsBuffer()
+
+        this.importantDirectionsBuffer = this.createImportantDirectionsBuffer()
 
         this.group = this.device.createBindGroup(this.groupLayout, [
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
-            this.gridBuffer
+            this.lightsBuffer,
+            this.gridBuffer,
+            this.importantDirectionsBuffer
         ])
     }
 
@@ -170,8 +198,35 @@ export class Tracer {
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
     
+    private createLightsBuffer() {
+        const dataView = rectangleStruct.view(this.scene.lights)
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+    }
+    
     private createGridBuffer() {
         const dataView = cell.view(this.scene.grid)
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+    }
+
+    private createImportantDirectionsBuffer() {
+        const dataView = boxDirectionsStruct.view(this.scene.boxes.length)
+        for (let i = 0; i < this.scene.boxes.length; i++) {
+            boxDirectionsStruct.writeOne(dataView, i, {
+                faces: [{
+                    lights: [NULL, NULL, NULL, NULL]
+                }, {
+                    lights: [NULL, NULL, NULL, NULL]
+                }, {
+                    lights: [NULL, NULL, NULL, NULL]
+                }, {
+                    lights: [NULL, NULL, NULL, NULL]
+                }, {
+                    lights: [NULL, NULL, NULL, NULL]
+                }, {
+                    lights: [NULL, NULL, NULL, NULL]
+                }]
+            })
+        } 
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
     

@@ -1,12 +1,14 @@
 import * as aether from '/aether/latest/index.js'
-import { BoxStruct, Cell, VolumeStruct } from "./tracer"
+import { BoxStruct, Cell, RectangleStruct, VolumeStruct } from "./tracer"
 
-const NULL = 0xFFFFFFFF
+export const NULL = 0xFFFFFFFF
 
 export class Scene {
 
     readonly grid = this.createGrid()
     readonly boxes: BoxStruct[] = []
+
+    readonly lights: RectangleStruct[] = []
     readonly materials: aether.Vec4[] = []
 
     constructor(readonly gridSize: number) {
@@ -38,20 +40,52 @@ export class Scene {
     box(min: aether.Vec3, max: aether.Vec3, materials: number[]) {
         const box = {
             volume: volume(min, max),
-            faceMaterials: materials
+            faces: materials.map((m, face) => {
+                const material = this.materials[m]
+                let light = NULL
+                if (material[3] < 0) { // i.e. light
+                    light = this.addLight(max, min, face)
+                }
+                return {
+                    material: m,
+                    light: light
+                }
+            })
         }
         const id = this.boxes.push(box) - 1
         this.addBox(box, id)
         return id
     }
 
+    private addLight(max: aether.Vec3, min: aether.Vec3, face: number) {
+        const size3D = aether.vec3.sub(max, min)
+        const mid = aether.vec3.scale(aether.vec3.add(min, max), 0.5)
+        switch (face) {
+            case 0: return this.light([mid[0], mid[1], min[2]], [size3D[0], size3D[1]], face)
+            case 1: return this.light([mid[0], min[1], mid[2]], [size3D[2], size3D[0]], face)
+            case 2: return this.light([min[0], mid[1], mid[2]], [size3D[1], size3D[2]], face)
+            case 3: return this.light([max[0], mid[1], mid[2]], [size3D[1], size3D[2]], face)
+            case 4: return this.light([mid[0], max[1], mid[2]], [size3D[2], size3D[0]], face)
+            case 5: return this.light([mid[0], mid[1], max[2]], [size3D[0], size3D[1]], face)
+        }
+        return NULL
+    }
+
+    light(position: aether.Vec3, size: aether.Vec2, i: number) {
+        return this.lights.push({
+            position: position,
+            size: size,
+            face: i,
+            area: size[0] * size[1]
+        }) - 1
+    }
+
     private addBox(box: BoxStruct, id: number) {
         let { min, max } = box.volume
         min = this.toGridCoords(min)
-        max = this.toGridCoords(max)
-        for (let x = min[0]; x <= max[0]; x++) {
-            for (let y = min[1]; y <= max[1]; y++) {
-                for (let z = min[2]; z <= max[2]; z++) {
+        for (let x = min[0]; x < max[0]; x++) {
+            for (let y = min[1]; y < max[1]; y++) {
+                for (let z = min[2]; z < max[2]; z++) {
                     this.addBoxToCell(id, x, y, z)
                 }
             }

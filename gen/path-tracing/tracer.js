@@ -9,6 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as aether from '/aether/latest/index.js';
 import * as gpu from "../djee/gpu/index.js";
+import { NULL } from './scene.js';
+import { u32 } from '../djee/gpu/index.js';
 export const uniformsStruct = gpu.struct({
     matrix: gpu.mat3x3,
     position: gpu.f32.x3,
@@ -22,14 +24,26 @@ export const volumeStruct = gpu.struct({
     max: gpu.f32.x3,
     invSize: gpu.f32.x3,
 }, ["min", "max", "invSize"]);
+export const faceDirectionsStruct = gpu.struct({
+    lights: gpu.u32.times(4),
+}, ["lights"]);
 export const faceStruct = gpu.struct({
-    lights: gpu.u32.x4,
-    material: gpu.u32,
-}, ["lights", "material"]);
+    material: u32,
+    light: u32,
+});
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faceMaterials: gpu.u32.times(6),
-}, ["volume", "faceMaterials"]);
+    faces: faceStruct.times(6),
+}, ["volume", "faces"]);
+export const boxDirectionsStruct = gpu.struct({
+    faces: faceDirectionsStruct.times(6),
+}, ["faces"]);
+export const rectangleStruct = gpu.struct({
+    position: gpu.f32.x3,
+    size: gpu.f32.x2,
+    face: gpu.i32,
+    area: gpu.f32,
+}, ["position", "size", "face", "area"]);
 export const cell = gpu.u32.times(8);
 const SEEDS_COUNT = 0x4000;
 export class Tracer {
@@ -55,13 +69,17 @@ export class Tracer {
         this.uniformsBuffer = this.createUniformsBuffer();
         this.materialsBuffer = this.createMaterialsBuffer();
         this.boxesBuffer = this.createBoxesBuffer();
+        this.lightsBuffer = this.createLightsBuffer();
         this.gridBuffer = this.createGridBuffer();
         this.rngSeedsBuffer = this.createRNGSeedsBuffer();
+        this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
         this.group = this.device.createBindGroup(this.groupLayout, [
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
-            this.gridBuffer
+            this.lightsBuffer,
+            this.gridBuffer,
+            this.importantDirectionsBuffer
         ]);
     }
     static create(device, canvas, scene) {
@@ -136,8 +154,33 @@ export class Tracer {
         const dataView = boxStruct.view(this.scene.boxes);
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
+    createLightsBuffer() {
+        const dataView = rectangleStruct.view(this.scene.lights);
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+    }
     createGridBuffer() {
         const dataView = cell.view(this.scene.grid);
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+    }
+    createImportantDirectionsBuffer() {
+        const dataView = boxDirectionsStruct.view(this.scene.boxes.length);
+        for (let i = 0; i < this.scene.boxes.length; i++) {
+            boxDirectionsStruct.writeOne(dataView, i, {
+                faces: [{
+                        lights: [NULL, NULL, NULL, NULL]
+                    }, {
+                        lights: [NULL, NULL, NULL, NULL]
+                    }, {
+                        lights: [NULL, NULL, NULL, NULL]
+                    }, {
+                        lights: [NULL, NULL, NULL, NULL]
+                    }, {
+                        lights: [NULL, NULL, NULL, NULL]
+                    }, {
+                        lights: [NULL, NULL, NULL, NULL]
+                    }]
+            });
+        }
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
     createRNGSeedsBuffer() {
