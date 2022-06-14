@@ -70,13 +70,11 @@ export class Stacker {
             }).colorAttachment(clearColor);
     }
     render(encoder, colorAttachment) {
-        if (this.layersCount > 1) {
-            encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {
-                pass.setBindGroup(0, this._group);
-                pass.setPipeline(this.pipeline);
-                pass.draw(4);
-            });
-        }
+        encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {
+            pass.setBindGroup(0, this._group);
+            pass.setPipeline(this.pipeline);
+            pass.draw(4);
+        });
     }
     static create(device, size, format) {
         return __awaiter(this, void 0, void 0, function* () {

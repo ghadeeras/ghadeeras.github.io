@@ -28,8 +28,8 @@ export const faceStruct = gpu.struct({
 export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faces: faceStruct.times(6),
-}, ["volume", "faces"])
+    faceMaterials: gpu.u32.times(6),
+}, ["volume", "faceMaterials"])
 
 export type Cell = [number, number, number, number, number, number, number, number]
 export const cell = gpu.u32.times(8)

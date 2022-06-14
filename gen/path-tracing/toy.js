@@ -26,8 +26,11 @@ function doInit() {
         const canvas = device.canvas("canvas", false);
         const tracer = yield Tracer.create(device, canvas, scene);
         const stacker = yield Stacker.create(device, canvas.size, canvas.format);
-        const changing = [false];
-        const speed = [0];
+        const state = {
+            wasAnimating: false,
+            animating: false,
+            speed: 0
+        };
         const samplesPerPixelElement = misc.required(document.getElementById("spp"));
         const layersCountElement = misc.required(document.getElementById("layers"));
         const setSamplesPerPixel = (spp) => {
@@ -38,30 +41,30 @@ function doInit() {
             stacker.layersCount = c;
             layersCountElement.innerText = stacker.layersCount.toString();
         };
-        setSamplesPerPixel(16);
+        setSamplesPerPixel(4);
         setLayersCount(4);
         const handleKey = (e, down) => {
             let s = down ? 0.2 : 0;
             if (e.key == 'w') {
-                speed[0] = -s;
+                state.speed = -s;
                 e.preventDefault();
             }
             if (e.key == 's') {
-                speed[0] = s;
+                state.speed = s;
                 e.preventDefault();
             }
         };
         window.onkeyup = e => handleKey(e, false);
         window.onkeydown = e => handleKey(e, true);
         canvas.element.onwheel = e => {
-            changing[0] = true;
+            state.animating = true;
             e.preventDefault();
             tracer.focalRatio *= Math.exp(-Math.sign(e.deltaY) * 0.25);
         };
         gear.ElementEvents.create(canvas.element.id).dragging.value
             .then(gear.drag(new RotationDragging(() => aether.mat4.cast(tracer.matrix), () => aether.mat4.projection(1, Math.SQRT2))))
             .attach(m => {
-            changing[0] = true;
+            state.animating = true;
             tracer.matrix = aether.mat3.from([
                 ...aether.vec3.swizzle(m[0], 0, 1, 2),
                 ...aether.vec3.swizzle(m[1], 0, 1, 2),
@@ -70,25 +73,23 @@ function doInit() {
         });
         tracer.position = [36, 36, 36];
         const clearColor = { r: 0, g: 0, b: 0, a: 1 };
-        const wasMoving = [false];
         const draw = () => {
-            const moving = speed[0] !== 0 || changing[0];
-            setLayersCount(moving ? 4 : wasMoving[0] ? 1 : stacker.layersCount + 1);
-            setSamplesPerPixel(moving ? 8 : Math.floor(Math.sqrt(16 + stacker.layersCount)));
-            wasMoving[0] = moving;
-            changing[0] = false;
+            const animating = state.speed !== 0 || state.animating;
+            setLayersCount(animating ? 4 : state.wasAnimating ? 1 : stacker.layersCount + 1);
+            setSamplesPerPixel(Math.max(4, Math.floor(Math.sqrt(stacker.layersCount))));
+            state.wasAnimating = animating;
+            state.animating = false;
             device.enqueueCommand(encoder => {
                 tracer.encode(encoder, stacker.colorAttachment(clearColor));
                 if (stacker.layersCount >= 4) {
-                    const colorAttachment = canvas.attachment(clearColor);
-                    stacker.render(encoder, colorAttachment);
+                    stacker.render(encoder, canvas.attachment(clearColor));
                 }
             });
-            if (speed[0] === 0) {
+            if (state.speed === 0) {
                 return;
             }
             const [u, v, w] = aether.mat3.transpose(tracer.matrix);
-            let velocity = aether.vec3.scale(w, speed[0]);
+            let velocity = aether.vec3.scale(w, state.speed);
             for (let i = 0; i < 3; i++) {
                 let [dt, box] = hitDT(tracer.position, velocity, scene);
                 if (dt !== 0 || box === null) {

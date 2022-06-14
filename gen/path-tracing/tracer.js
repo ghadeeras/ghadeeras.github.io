@@ -28,8 +28,8 @@ export const faceStruct = gpu.struct({
 }, ["lights", "material"]);
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faces: faceStruct.times(6),
-}, ["volume", "faces"]);
+    faceMaterials: gpu.u32.times(6),
+}, ["volume", "faceMaterials"]);
 export const cell = gpu.u32.times(8);
 const SEEDS_COUNT = 0x4000;
 export class Tracer {

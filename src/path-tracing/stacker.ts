@@ -90,13 +90,11 @@ export class Stacker {
     }
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment) {
-        if (this.layersCount > 1) {
-            encoder.renderPass({ colorAttachments: [ colorAttachment ] }, pass => {
-                pass.setBindGroup(0, this._group)
-                pass.setPipeline(this.pipeline)
-                pass.draw(4)
-            })
-        }
+        encoder.renderPass({ colorAttachments: [ colorAttachment ] }, pass => {
+            pass.setBindGroup(0, this._group)
+            pass.setPipeline(this.pipeline)
+            pass.draw(4)
+        })
     }
 
     static async create(device: gpu.Device, size: GPUExtent3DDictStrict, format: GPUTextureFormat): Promise<Stacker> {

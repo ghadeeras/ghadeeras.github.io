@@ -25,17 +25,12 @@ export class Scene {
             .map(b => this.boxes[b]);
     }
     material(m) {
-        const mm = aether.vec4.mul(m, m);
-        mm[3] = m[3];
-        return this.materials.push(mm) - 1;
+        return this.materials.push(m) - 1;
     }
     box(min, max, materials) {
         const box = {
             volume: volume(min, max),
-            faces: materials.map(m => ({
-                lights: aether.vec4.of(NULL, NULL, NULL, NULL),
-                material: m
-            }))
+            faceMaterials: materials
         };
         const id = this.boxes.push(box) - 1;
         this.addBox(box, id);

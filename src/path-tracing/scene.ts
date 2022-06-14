@@ -1,5 +1,5 @@
 import * as aether from '/aether/latest/index.js'
-import { BoxStruct, Cell, VolumeStruct, volumeStruct } from "./tracer"
+import { BoxStruct, Cell, VolumeStruct } from "./tracer"
 
 const NULL = 0xFFFFFFFF
 
@@ -32,18 +32,13 @@ export class Scene {
     }
 
     material(m: aether.Vec4) {
-        const mm = aether.vec4.mul(m, m)
-        mm[3] = m[3]
-        return this.materials.push(mm) - 1
+        return this.materials.push(m) - 1
     }
 
     box(min: aether.Vec3, max: aether.Vec3, materials: number[]) {
         const box = {
             volume: volume(min, max),
-            faces: materials.map(m => ({
-                lights: aether.vec4.of(NULL, NULL, NULL, NULL),
-                material: m
-            }))
+            faceMaterials: materials
         }
         const id = this.boxes.push(box) - 1
         this.addBox(box, id)
