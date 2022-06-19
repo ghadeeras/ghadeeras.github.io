@@ -42,7 +42,7 @@ fn next_unorm() -> f32 {
 
 fn newRNG(position: vec2<f32>) -> vec4<u32> {
     var p = vec2<u32>(position);
-    rng = vec4(p, p) + vec4(3u, 5u, 7u, 11u);
+    rng = p.xyxy + vec4(3u, 7u, 5u, 11u);
     next_u32();
     next_u32();
     next_u32();

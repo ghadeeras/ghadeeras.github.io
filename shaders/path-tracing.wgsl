@@ -115,11 +115,12 @@ fn next_vec2() -> vec2<f32> {
 
 fn seedRNG(position: vec2<f32>) {
     let p = vec2<u32>(position);
-    rng = (p.xyyx + vec4(3u, 7u, 5u, 11u)) * uniforms.randomSeed;
+    rng = p.xyxy + vec4(3u, 7u, 5u, 11u);
     next_u32();
     next_u32();
     next_u32();
     next_u32();
+    rng = uniforms.randomSeed * rng;
 }
 
 // Rays

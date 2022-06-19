@@ -30,8 +30,10 @@
                 <ul>
                     <li>Mouse dragging to look around</li>
                     <li>Mouse wheel to change focal length</li>
-                    <li><kbd>W</kbd> to move forwards</li>
-                    <li><kbd>S</kbd> to move backwards</li>
+                    <li><kbd>1</kbd> ... <kbd>8</kbd> to change the number of samples per pixel</li>
+                    <li><kbd>W</kbd> / <kbd>S</kbd> to move forwards/backwards</li>
+                    <li><kbd>D</kbd> / <kbd>A</kbd> to move right/left</li>
+                    <li><kbd>E</kbd> / <kbd>C</kbd> to move up/down</li>
                 </ul>
             </div>
 
@@ -89,6 +91,19 @@
                     specially his demo <a href="https://reindernijhoff.net/2019/03/wolfenstein-raytracing-on-using-webgl1/" target="_blank">Wolfenstein: Ray Tracing On using WebGL1</a>,
                     which I find stunning it was implemented with WebGL 1! I am trying to do something similar as an exercise 
                     to learn WebGPU and miscellaneous rendering techniques.
+                </p>
+            </div>
+
+            <div class="section">
+                <strong>Noise</strong>
+            </div>
+
+            <div>
+                <p>
+                    In order to experiment with different ways for pseudo-random number generation, I used this 
+                    <a href="./noise.html" target="_blank">toy</a>.
+                    I eventually settled on using the XorShift128 algorithm seeded by a per-frame uniform random seed 
+                    and the coordinates of each fragment.
                 </p>
             </div>
 

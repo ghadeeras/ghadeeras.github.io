@@ -14,14 +14,13 @@ import * as misc from "../utils/misc.js";
 import { RotationDragging } from "../utils/dragging.js";
 import { Stacker } from "./stacker.js";
 import { Tracer } from "./tracer.js";
-import { Scene, volume } from "./scene.js";
+import { buildScene } from "./scene-builder.js";
 export function init() {
     window.onload = doInit;
 }
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const scene = new Scene(64);
-        setup(scene);
+        const scene = buildScene();
         const device = yield gpuDevice();
         const canvas = device.canvas("canvas", false);
         const tracer = yield Tracer.create(device, canvas, scene);
@@ -29,7 +28,7 @@ function doInit() {
         const state = {
             wasAnimating: false,
             animating: false,
-            speed: 0
+            speed: aether.vec3.of(0, 0, 0)
         };
         const samplesPerPixelElement = misc.required(document.getElementById("spp"));
         const layersCountElement = misc.required(document.getElementById("layers"));
@@ -44,13 +43,34 @@ function doInit() {
         setSamplesPerPixel(4);
         setLayersCount(4);
         const handleKey = (e, down) => {
-            let s = down ? 0.2 : 0;
+            const m = aether.mat3.transpose(tracer.matrix);
+            const s = down ? 0.2 : 0;
             if (e.key == 'w') {
-                state.speed = -s;
+                state.speed = aether.vec3.scale(m[2], -s);
                 e.preventDefault();
             }
-            if (e.key == 's') {
-                state.speed = s;
+            else if (e.key == 's') {
+                state.speed = aether.vec3.scale(m[2], s);
+                e.preventDefault();
+            }
+            else if (e.key == 'd') {
+                state.speed = aether.vec3.scale(m[0], s);
+                e.preventDefault();
+            }
+            else if (e.key == 'a') {
+                state.speed = aether.vec3.scale(m[0], -s);
+                e.preventDefault();
+            }
+            else if (e.key == 'e') {
+                state.speed = aether.vec3.scale(m[1], s);
+                e.preventDefault();
+            }
+            else if (e.key == 'c') {
+                state.speed = aether.vec3.scale(m[1], -s);
+                e.preventDefault();
+            }
+            else if (down && e.key >= '1' && e.key <= '8') {
+                setSamplesPerPixel(Number.parseInt(e.key));
                 e.preventDefault();
             }
         };
@@ -74,7 +94,8 @@ function doInit() {
         tracer.position = [36, 36, 36];
         const clearColor = { r: 0, g: 0, b: 0, a: 1 };
         const draw = () => {
-            const animating = state.speed !== 0 || state.animating;
+            const speed = aether.vec3.length(state.speed);
+            const animating = speed !== 0 || state.animating;
             setLayersCount(animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1);
             // setSamplesPerPixel(Math.max(4, stacker.layersCount))
             state.wasAnimating = animating;
@@ -85,11 +106,10 @@ function doInit() {
                     stacker.render(encoder, canvas.attachment(clearColor));
                 }
             });
-            if (state.speed === 0) {
+            if (speed === 0) {
                 return;
             }
-            const [u, v, w] = aether.mat3.transpose(tracer.matrix);
-            let velocity = aether.vec3.scale(w, state.speed);
+            let velocity = state.speed;
             for (let i = 0; i < 3; i++) {
                 let [dt, box] = hitDT(tracer.position, velocity, scene);
                 if (dt !== 0 || box === null) {
@@ -166,102 +186,5 @@ function gpuDevice() {
             throw e;
         }
     });
-}
-function setup(scene) {
-    scene.material([0.6, 0.9, 0.3, 1.0]);
-    scene.material([0.3, 0.6, 0.9, 1.0]);
-    scene.material([0.9, 0.3, 0.6, 1.0]);
-    scene.material([0.5, 0.5, 0.5, 1.0]);
-    scene.material([2.0, 2.0, 2.0, -1.0]);
-    populateGrid(scene);
-}
-function populateGrid(scene) {
-    const materials = [3, 3, 3, 3, 3, 3];
-    bigBox(scene, [0, 0, 0], [64, 64, 1], materials);
-    bigBox(scene, [0, 0, 0], [64, 1, 64], materials);
-    bigBox(scene, [0, 0, 0], [1, 64, 64], materials);
-    bigBox(scene, [0, 0, 63], [64, 64, 64], materials);
-    bigBox(scene, [0, 63, 0], [64, 64, 64], materials);
-    bigBox(scene, [63, 0, 0], [64, 64, 64], materials);
-    for (let x = 0; x < scene.gridSize; x += 8) {
-        for (let y = 0; y < scene.gridSize; y += 8) {
-            for (let z = 0; z < scene.gridSize; z += 8) {
-                const luminousOrientation = ((x + y + z) / 8) % 3;
-                for (let orientation = 0; orientation < 3; orientation++) {
-                    addWall(scene, [x, y, z], orientation, luminousOrientation);
-                }
-            }
-        }
-    }
-}
-function bigBox(scene, min, max, materials) {
-    const size = aether.vec3.sub(max, min);
-    if (size.some(c => c > 4)) {
-        const cx = size[0] > 4 ? Math.ceil(size[0] / 4) : 1;
-        const cy = size[1] > 4 ? Math.ceil(size[1] / 4) : 1;
-        const cz = size[2] > 4 ? Math.ceil(size[2] / 4) : 1;
-        const s = aether.vec3.div(size, [cx, cy, cz]);
-        for (let i = 0; i < cx; i++) {
-            const x1 = Math.floor(min[0] + i * s[0]);
-            const x2 = Math.ceil(min[0] + (i + 1) * s[0]);
-            for (let j = 0; j < cy; j++) {
-                const y1 = Math.floor(min[1] + j * s[1]);
-                const y2 = Math.ceil(min[1] + (j + 1) * s[1]);
-                for (let k = 0; k < cz; k++) {
-                    const z1 = Math.floor(min[2] + k * s[2]);
-                    const z2 = Math.ceil(min[2] + (k + 1) * s[2]);
-                    scene.box([x1, y1, z1], [x2, y2, z2], materials);
-                }
-            }
-        }
-    }
-}
-function addWall(scene, pos, orientation, luminousOrientation) {
-    const config = Math.floor((pos[0] / 8 + pos[1] / 8 + pos[2] / 8) % 3);
-    const volumes = [
-        volume([0.0, 0.0, 0.0], [4.0, 4.0, 1.0]),
-        volume([4.0, 0.0, 0.0], [8.0, 4.0, 1.0]),
-        volume([0.0, 4.0, 0.0], [4.0, 8.0, 1.0]),
-    ];
-    switch (config) {
-        case 1:
-            volumes.forEach(({ min, max }) => {
-                const t = max[0];
-                max[0] = 8 - min[0];
-                min[0] = 8 - t;
-            });
-            break;
-        case 2:
-            volumes.forEach(({ min, max }) => {
-                const t = max[1];
-                max[1] = 8 - min[1];
-                min[1] = 8 - t;
-            });
-            break;
-    }
-    let luminousFace = 3;
-    switch (orientation) {
-        case 1:
-            volumes.forEach(v => {
-                v.min = aether.vec3.swizzle(v.min, 1, 2, 0);
-                v.max = aether.vec3.swizzle(v.max, 1, 2, 0);
-            });
-            luminousFace = 0;
-            break;
-        case 2:
-            volumes.forEach(v => {
-                v.min = aether.vec3.swizzle(v.min, 2, 0, 1);
-                v.max = aether.vec3.swizzle(v.max, 2, 0, 1);
-            });
-            luminousFace = 4;
-            break;
-    }
-    const m = orientation;
-    const materials = [m, m, m, m, m, m];
-    const luminousMaterials = [...materials];
-    if (luminousOrientation === orientation) {
-        luminousMaterials[luminousFace] = 4;
-    }
-    volumes.forEach((v, i) => scene.box(aether.vec3.add(pos, v.min), aether.vec3.add(pos, v.max), i < 2 ? materials : luminousMaterials));
 }
 //# sourceMappingURL=toy.js.map
