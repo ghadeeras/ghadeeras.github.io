@@ -11,14 +11,14 @@ fn v_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
 }
 
 struct Uniforms {
-    randomSeed: vec4<u32>,
-    canvasWidth: u32,
-    sampleCount: u32,
     samplesPerPixel: u32,
 };
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
+
+@group(0) @binding(1)
+var<storage, read_write> clock: atomic<u32>;
 
 var<private> rng: vec4<u32>;
 
@@ -42,12 +42,11 @@ fn next_unorm() -> f32 {
 
 fn newRNG(position: vec2<f32>) -> vec4<u32> {
     var p = vec2<u32>(position);
-    rng = p.xyxy + vec4(3u, 7u, 5u, 11u);
-    next_u32();
-    next_u32();
-    next_u32();
-    next_u32();
-    return uniforms.randomSeed * rng;
+    var r = p.xyxy * vec4(3u, 7u, 5u, 11u) + vec4(atomicAdd(&clock, 1u));
+    r = r + reverseBits(r.yzwx);
+    r = r * reverseBits(r.zwxy);
+    r = r + reverseBits(r.wxyz);
+    return r;
 }
 
 @stage(fragment)

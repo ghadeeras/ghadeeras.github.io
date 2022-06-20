@@ -84,15 +84,13 @@
 
             <div>
                 <p>
-                    In this toy, I was just experimenting with generating random numbers inside the fragment shader.
+                    In this toy, I was just experimenting with generating pseudo-random numbers inside the fragment shader.
                     I eventually settled on using the <a href="https://en.wikipedia.org/wiki/Xorshift" target="_blank">
                     xorshift algorithm</a>.
                 </p>
                 <p>
-                    Each pixel/fragment has a different RNG for which the seed is a mix of the fragment coordinates
-                    and a 128 bit uniform seed supplied by JavaScript. JavaScript initially generates a static buffer
-                    of 16K 32 bit seeds. For each frame it randomly copies 4 of these 32 bit seeds into the 128 bit
-                    uniform seed.
+                    Each pixel/fragment has a different PRNG for which the seed is a mix of the fragment coordinates
+                    and a counter that is incremented for each frame by the shader.
                 </p>
                 <p>
                     The fragment shader then uses the resulting seed to generate each pseudo random sample. It averages 

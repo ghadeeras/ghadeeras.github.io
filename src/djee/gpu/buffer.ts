@@ -20,7 +20,7 @@ export class Buffer {
             [this.newBlankBuffer(dataOrSize), dataOrSize] :
             [this.newBuffer(dataOrSize), dataOrSize.byteLength]
 
-        this._strideCount = positiveInteger(this._size / stride)
+        this._strideCount = Math.ceil(this._size / stride)
         this._capacity = upperMultipleOf(4, this._size)
 
         this.writer = (usage & GPUBufferUsage.MAP_WRITE) != 0 ?
@@ -156,7 +156,7 @@ export class Buffer {
 
     setData(data: DataView) {
         this._size = data.byteLength
-        this._strideCount = positiveInteger(this._size / this.stride)
+        this._strideCount = Math.ceil(this._size / this.stride)
         if (this._size > this._capacity) {
             this._capacity = upperMultipleOf(4, this._size)
             this._buffer.destroy()
@@ -170,13 +170,6 @@ export class Buffer {
 
 function size(dataOrSize: number | DataView): number {
     return typeof dataOrSize === 'number' ? dataOrSize : dataOrSize.byteLength
-}
-
-function positiveInteger(n: number) {
-    if (!Number.isSafeInteger(n) || n < 0) {
-        throw new Error(`${n} is not a positive integer!`)
-    }
-    return n
 }
 
 function upperMultipleOf(n: number, value: number): number {

@@ -14,9 +14,6 @@ export function init() {
 }
 const SEEDS_COUNT = 0x4000;
 const uniformsStruct = gpu.struct({
-    randomSeed: gpu.u32.x4,
-    width: gpu.u32,
-    sampleCount: gpu.u32,
     samplesPerPixel: gpu.u32,
 });
 function doInit() {
@@ -35,9 +32,9 @@ function doInit() {
                 stripIndexFormat: "uint32"
             }
         });
-        const uniformsBuffer = createUniformsBuffer(canvas);
-        const rngSeedsBuffer = createRNGSeedsBuffer(device);
-        const bindGroup = device.createBindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer]);
+        const uniformsBuffer = createUniformsBuffer(device);
+        const clockBuffer = createClockBuffer(device);
+        const bindGroup = device.createBindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer, clockBuffer]);
         const samplesPerPixelElement = misc.required(document.getElementById("spp"));
         window.onkeyup = e => {
             const key = e.key.toLowerCase();
@@ -55,10 +52,6 @@ function doInit() {
                     pass.setPipeline(pipeline);
                     pass.draw(4);
                 });
-                uniformsBuffer.copyingAt(0, rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoding);
-                uniformsBuffer.copyingAt(4, rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoding);
-                uniformsBuffer.copyingAt(8, rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoding);
-                uniformsBuffer.copyingAt(12, rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoding);
             });
         };
         const freqWatch = misc.required(document.getElementById("freq-watch"));
@@ -85,27 +78,14 @@ function gpuDevice() {
         }
     });
 }
-function createUniformsBuffer(canvas) {
+function createUniformsBuffer(device) {
     const dataView = uniformsStruct.view([{
-            randomSeed: [random(), random(), random(), random()],
-            width: canvas.size.width,
-            sampleCount: canvas.sampleCount,
             samplesPerPixel: 1,
         }]);
-    return canvas.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
+    return device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
 }
-function createRNGSeedsBuffer(device) {
-    const seeds = [];
-    for (let i = 0; i < SEEDS_COUNT; i++) {
-        seeds.push(random());
-    }
-    const dataView = gpu.u32.view(seeds);
-    return device.buffer(GPUBufferUsage.COPY_SRC, dataView);
-}
-function random() {
-    return Math.round(Math.random() * 0xFFFFFFFF) | 1;
-}
-function randomSeedOffset() {
-    return Math.floor(Math.random() * SEEDS_COUNT) * Uint32Array.BYTES_PER_ELEMENT;
+function createClockBuffer(device) {
+    const dataView = gpu.u32.view([0]);
+    return device.buffer(GPUBufferUsage.STORAGE, dataView);
 }
 //# sourceMappingURL=toy.js.map

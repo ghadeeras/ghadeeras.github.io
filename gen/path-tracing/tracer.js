@@ -14,11 +14,10 @@ import { u32 } from '../djee/gpu/index.js';
 export const uniformsStruct = gpu.struct({
     matrix: gpu.mat3x3,
     position: gpu.f32.x3,
-    randomSeed: gpu.u32.x4,
     focalLength: gpu.f32,
     aspectRatio: gpu.f32,
     samplesPerPixel: gpu.u32,
-}, ["matrix", "position", "randomSeed", "focalLength", "aspectRatio", "samplesPerPixel"]);
+}, ["matrix", "position", "focalLength", "aspectRatio", "samplesPerPixel"]);
 export const volumeStruct = gpu.struct({
     min: gpu.f32.x3,
     max: gpu.f32.x3,
@@ -45,15 +44,14 @@ export const rectangleStruct = gpu.struct({
     area: gpu.f32,
 }, ["position", "size", "face", "area"]);
 export const cell = gpu.u32.times(8);
-const SEEDS_COUNT = 0x4000;
 export class Tracer {
     constructor(shaderModule, canvas, scene) {
         this.canvas = canvas;
         this.scene = scene;
         this._matrix = aether.mat3.identity();
         this._position = aether.vec3.of(32, 32, 32);
-        this._samplesPerPixel = 16;
-        this._focalRation = Math.SQRT2;
+        this._samplesPerPixel = 1;
+        this._focalLength = Math.SQRT2;
         this.device = shaderModule.device;
         this.pipeline = this.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
@@ -71,7 +69,7 @@ export class Tracer {
         this.boxesBuffer = this.createBoxesBuffer();
         this.lightsBuffer = this.createLightsBuffer();
         this.gridBuffer = this.createGridBuffer();
-        this.rngSeedsBuffer = this.createRNGSeedsBuffer();
+        this.clockBuffer = this.createClockBuffer();
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
         this.group = this.device.createBindGroup(this.groupLayout, [
             this.uniformsBuffer,
@@ -79,7 +77,8 @@ export class Tracer {
             this.boxesBuffer,
             this.lightsBuffer,
             this.gridBuffer,
-            this.importantDirectionsBuffer
+            this.importantDirectionsBuffer,
+            this.clockBuffer,
         ]);
     }
     static create(device, canvas, scene) {
@@ -93,11 +92,6 @@ export class Tracer {
             pass.setPipeline(this.pipeline);
             pass.draw(4);
         });
-        const seed = uniformsStruct.members.randomSeed;
-        this.uniformsBuffer.copyingAt(seed.x.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder);
-        this.uniformsBuffer.copyingAt(seed.y.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder);
-        this.uniformsBuffer.copyingAt(seed.z.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder);
-        this.uniformsBuffer.copyingAt(seed.w.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder);
     }
     get matrix() {
         return this._matrix;
@@ -125,10 +119,10 @@ export class Tracer {
         this.uniformsBuffer.writeAt(uniformsStruct.members.samplesPerPixel.offset, v);
     }
     get focalRatio() {
-        return this._focalRation;
+        return this._focalLength;
     }
     set focalRatio(f) {
-        this._focalRation = f;
+        this._focalLength = f;
         const v = gpu.f32.view([f]);
         this.uniformsBuffer.writeAt(uniformsStruct.members.focalLength.offset, v);
     }
@@ -139,8 +133,7 @@ export class Tracer {
         const dataView = uniformsStruct.view([{
                 matrix: this._matrix,
                 position: this._position,
-                randomSeed: [random(), random(), random(), random()],
-                focalLength: this._focalRation,
+                focalLength: this._focalLength,
                 aspectRatio: width / height,
                 samplesPerPixel: this._samplesPerPixel,
             }]);
@@ -183,24 +176,14 @@ export class Tracer {
         }
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
-    createRNGSeedsBuffer() {
-        const seeds = [];
-        for (let i = 0; i < SEEDS_COUNT; i++) {
-            seeds.push(random());
-        }
-        const dataView = gpu.u32.view(seeds);
-        return this.device.buffer(GPUBufferUsage.COPY_SRC, dataView);
+    createClockBuffer() {
+        const dataView = gpu.u32.view([0]);
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
     clamp(p) {
         const min = 0.5;
         const max = this.scene.gridSize - 0.5;
         return aether.vec3.min(aether.vec3.max(p, aether.vec3.of(min, min, min)), aether.vec3.of(max, max, max));
     }
-}
-function randomSeedOffset() {
-    return Math.floor(Math.random() * SEEDS_COUNT) * Uint32Array.BYTES_PER_ELEMENT;
-}
-function random() {
-    return Math.round(Math.random() * 0xFFFFFFFF) | 1;
 }
 //# sourceMappingURL=tracer.js.map

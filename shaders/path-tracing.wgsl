@@ -3,7 +3,6 @@
 struct Uniforms {
     matrix: mat3x3<f32>,
     position: vec3<f32>,
-    randomSeed: vec4<u32>,
     focalLength: f32,
     aspectRatio: f32,
     samplesPerPixel: u32,
@@ -80,6 +79,9 @@ var<storage, read> grid: Grid;
 @group(0) @binding(5)
 var<storage, read_write> importantDirections: array<BoxDirections>;
 
+@group(0) @binding(6)
+var<storage, read_write> clock: atomic<u32>;
+
 var<private> rng: vec4<u32>;
 var<private> pixelSize: f32;
 
@@ -114,13 +116,11 @@ fn next_vec2() -> vec2<f32> {
 }
 
 fn seedRNG(position: vec2<f32>) {
-    let p = vec2<u32>(position);
-    rng = p.xyxy + vec4(3u, 7u, 5u, 11u);
-    next_u32();
-    next_u32();
-    next_u32();
-    next_u32();
-    rng = uniforms.randomSeed * rng;
+    var p = vec2<u32>(position);
+    var r = p.xyxy * vec4(3u, 7u, 5u, 11u) + vec4(atomicAdd(&clock, 1u));
+    r = r + reverseBits(r.yzwx);
+    r = r * reverseBits(r.zwxy);
+    rng = r + reverseBits(r.wxyz);
 }
 
 // Rays
@@ -403,7 +403,7 @@ fn trace(ray: Ray) -> vec3<f32> {
         color = color * material.xyz * weightedRay.weight;
         if (hitDetails.face.lightId != NULL) {
             if (weightedRay.lightId == NULL && prevBoxId != NULL) {
-                let light = next_u32() & 3u;
+                let light = (next_u32() + 0x3FFFFFFFu) >> 30u;
                 atomicStore(&importantDirections[prevBoxId].faces[prevFaceId].lights[light], hitDetails.face.lightId);
             }
             return color; 

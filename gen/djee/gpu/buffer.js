@@ -15,7 +15,7 @@ export class Buffer {
         [this._buffer, this._size] = typeof dataOrSize === 'number' ?
             [this.newBlankBuffer(dataOrSize), dataOrSize] :
             [this.newBuffer(dataOrSize), dataOrSize.byteLength];
-        this._strideCount = positiveInteger(this._size / stride);
+        this._strideCount = Math.ceil(this._size / stride);
         this._capacity = upperMultipleOf(4, this._size);
         this.writer = (usage & GPUBufferUsage.MAP_WRITE) != 0 ?
             (bufferOffset, data, dataOffset, size) => this.writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) :
@@ -148,7 +148,7 @@ export class Buffer {
     }
     setData(data) {
         this._size = data.byteLength;
-        this._strideCount = positiveInteger(this._size / this.stride);
+        this._strideCount = Math.ceil(this._size / this.stride);
         if (this._size > this._capacity) {
             this._capacity = upperMultipleOf(4, this._size);
             this._buffer.destroy();
@@ -161,12 +161,6 @@ export class Buffer {
 }
 function size(dataOrSize) {
     return typeof dataOrSize === 'number' ? dataOrSize : dataOrSize.byteLength;
-}
-function positiveInteger(n) {
-    if (!Number.isSafeInteger(n) || n < 0) {
-        throw new Error(`${n} is not a positive integer!`);
-    }
-    return n;
 }
 function upperMultipleOf(n, value) {
     return Math.ceil(value / n) * n;

@@ -7,11 +7,10 @@ export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>
 export const uniformsStruct = gpu.struct({
     matrix: gpu.mat3x3,
     position: gpu.f32.x3,
-    randomSeed: gpu.u32.x4,
     focalLength: gpu.f32,
     aspectRatio: gpu.f32,
     samplesPerPixel: gpu.u32,
-}, ["matrix", "position", "randomSeed", "focalLength", "aspectRatio", "samplesPerPixel"])
+}, ["matrix", "position", "focalLength", "aspectRatio", "samplesPerPixel"])
 
 export type VolumeStruct = gpu.DataTypeOf<typeof volumeStruct>
 export const volumeStruct = gpu.struct({
@@ -53,8 +52,6 @@ export const rectangleStruct = gpu.struct({
 export type Cell = [number, number, number, number, number, number, number, number]
 export const cell = gpu.u32.times(8)
 
-const SEEDS_COUNT = 0x4000
-
 export class Tracer {
 
     private readonly device: gpu.Device
@@ -68,7 +65,7 @@ export class Tracer {
 
     private readonly uniformsBuffer: gpu.Buffer 
     private readonly gridBuffer: gpu.Buffer
-    private readonly rngSeedsBuffer: gpu.Buffer
+    private readonly clockBuffer: gpu.Buffer
 
     private readonly importantDirectionsBuffer: gpu.Buffer
 
@@ -76,8 +73,8 @@ export class Tracer {
 
     private _matrix = aether.mat3.identity()
     private _position = aether.vec3.of(32, 32, 32)
-    private _samplesPerPixel = 16
-    private _focalRation = Math.SQRT2
+    private _samplesPerPixel = 1
+    private _focalLength = Math.SQRT2
 
     constructor(shaderModule: gpu.ShaderModule, private canvas: gpu.Canvas, readonly scene: Scene) {
         this.device = shaderModule.device
@@ -99,7 +96,7 @@ export class Tracer {
         this.boxesBuffer = this.createBoxesBuffer()
         this.lightsBuffer = this.createLightsBuffer()
         this.gridBuffer = this.createGridBuffer()
-        this.rngSeedsBuffer = this.createRNGSeedsBuffer()
+        this.clockBuffer = this.createClockBuffer()
 
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer()
 
@@ -109,7 +106,8 @@ export class Tracer {
             this.boxesBuffer,
             this.lightsBuffer,
             this.gridBuffer,
-            this.importantDirectionsBuffer
+            this.importantDirectionsBuffer,
+            this.clockBuffer,
         ])
     }
 
@@ -126,11 +124,6 @@ export class Tracer {
                 pass.draw(4)
             }
         )
-        const seed = uniformsStruct.members.randomSeed
-        this.uniformsBuffer.copyingAt(seed.x.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder)
-        this.uniformsBuffer.copyingAt(seed.y.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder)
-        this.uniformsBuffer.copyingAt(seed.z.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder)
-        this.uniformsBuffer.copyingAt(seed.w.offset, this.rngSeedsBuffer, randomSeedOffset(), Uint32Array.BYTES_PER_ELEMENT)(encoder)
     }
 
     get matrix() {
@@ -165,11 +158,11 @@ export class Tracer {
     }
 
     get focalRatio() {
-        return this._focalRation
+        return this._focalLength
     }
 
     set focalRatio(f: number) {
-        this._focalRation = f
+        this._focalLength = f
         const v = gpu.f32.view([f])
         this.uniformsBuffer.writeAt(uniformsStruct.members.focalLength.offset, v)
     }
@@ -180,8 +173,7 @@ export class Tracer {
         const dataView = uniformsStruct.view([{
             matrix: this._matrix,
             position: this._position,
-            randomSeed: [random(), random(), random(), random()],
-            focalLength: this._focalRation,
+            focalLength: this._focalLength,
             aspectRatio: width / height,
             samplesPerPixel: this._samplesPerPixel,
         }])
@@ -230,13 +222,9 @@ export class Tracer {
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
     
-    private createRNGSeedsBuffer() {
-        const seeds: number[] = []
-        for (let i = 0; i < SEEDS_COUNT; i++) {
-            seeds.push(random())
-        }
-        const dataView = gpu.u32.view(seeds)
-        return this.device.buffer(GPUBufferUsage.COPY_SRC, dataView)
+    private createClockBuffer() {
+        const dataView = gpu.u32.view([0])
+        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
     
     private clamp(p: aether.Vec3) {
@@ -251,12 +239,4 @@ export class Tracer {
         )
     }
     
-}
-
-function randomSeedOffset(): number {
-    return Math.floor(Math.random() * SEEDS_COUNT) * Uint32Array.BYTES_PER_ELEMENT
-}
-
-function random(): number {
-    return Math.round(Math.random() * 0xFFFFFFFF) | 1
 }

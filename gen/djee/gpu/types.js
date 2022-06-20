@@ -5,14 +5,14 @@ class BaseElement {
         this.paddedSize = Math.ceil(size / this.alignment) * this.alignment;
         this.offset = Math.ceil(offset / this.alignment) * this.alignment;
         this.packed = packed;
-        this.stride = stride == 0 ? this.paddedSize : stride;
+        this.stride = stride < this.paddedSize ? this.paddedSize : stride;
     }
     view(dataOrSize = 1) {
         if (typeof dataOrSize == 'number') {
-            return new DataView(new ArrayBuffer(dataOrSize * this.stride));
+            return new DataView(new ArrayBuffer((dataOrSize - 1) * this.stride + this.size));
         }
         else {
-            const result = new DataView(new ArrayBuffer(dataOrSize.length * this.stride));
+            const result = new DataView(new ArrayBuffer((dataOrSize.length - 1) * this.stride + this.size));
             this.writeMulti(result, 0, dataOrSize);
             return result;
         }
@@ -340,12 +340,12 @@ function cloneItems(item, length, offset, stride, packed) {
     for (let i = 0; i < length; i++) {
         const clonedItem = clone(item, itemOffset, stride, packed);
         items.push(clonedItem);
-        itemOffset += clonedItem.paddedSize;
+        itemOffset = clonedItem.offset + clonedItem.paddedSize;
     }
     return items;
 }
 function structAlignment(membersOrder, struct) {
-    let result = 4;
+    let result = 1;
     for (const key of membersOrder) {
         const member = struct[key];
         if (member.alignment > result) {
@@ -359,16 +359,17 @@ function structSize(membersOrder, struct, packed) {
     for (const key of membersOrder) {
         const member = struct[key];
         result = packed ? result : Math.ceil(result / member.alignment) * member.alignment;
-        result += packed ? member.size : member.paddedSize;
+        result += member.size;
     }
-    return result;
+    const alignment = packed ? 1 : structAlignment(membersOrder, struct);
+    return Math.ceil(result / alignment) * alignment;
 }
 function cloneStruct(membersOrder, struct, offset, stride, packed) {
     let result = {};
     for (const key of membersOrder) {
         const t = clone(struct[key], offset, stride, packed);
         result[key] = t;
-        offset += t.paddedSize;
+        offset = t.offset + t.size;
     }
     return result;
 }
