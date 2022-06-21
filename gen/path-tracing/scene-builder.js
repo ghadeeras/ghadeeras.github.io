@@ -9,7 +9,7 @@ function setup(scene) {
     scene.material([0.6, 0.9, 0.3, 1.0]);
     scene.material([0.3, 0.6, 0.9, 1.0]);
     scene.material([0.9, 0.3, 0.6, 1.0]);
-    scene.material([0.6, 0.6, 0.6, 1.0]);
+    scene.material([0.6, 0.6, 0.6, 0.9]);
     scene.material([2.0, 2.0, 2.0, -1.0]);
     populateGrid(scene);
 }

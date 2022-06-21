@@ -38,20 +38,8 @@ fn v_main(@builtin(vertex_index) i: u32) -> Vertex {
 
 struct Box {
     volume: Volume,
-    faces: array<Face, 6>,
+    faceMaterials: array<u32, 6>,
 };
-
-struct Face {
-    materialId: u32,
-    lightId: u32,
-}
-
-struct Rectangle {
-    position: vec3<f32>,
-    size: vec2<f32>,
-    faceId: i32,
-    area: f32,
-}
 
 struct BoxDirections {
     faces: array<FaceDirections, 6>,
@@ -71,15 +59,12 @@ var<storage, read> materials: array<vec4<f32>>;
 var<storage, read> boxes: array<Box>;
 
 @group(0) @binding(3)
-var<storage, read> lights: array<Rectangle>;
-
-@group(0) @binding(4)
 var<storage, read> grid: Grid;
 
-@group(0) @binding(5)
+@group(0) @binding(4)
 var<storage, read_write> importantDirections: array<BoxDirections>;
 
-@group(0) @binding(6)
+@group(0) @binding(5)
 var<storage, read_write> clock: atomic<u32>;
 
 var<private> rng: vec4<u32>;
@@ -179,7 +164,7 @@ struct Hit {
 struct HitDetails {
     ray: Ray,
     position: vec3<f32>,
-    face: Face,
+    materialId: u32,
     boxId: u32,
     faceId: u32,
 }
@@ -215,8 +200,8 @@ fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
     let box = boxes[hit.boxId];
     let position = ray.origin + ray.direction * hit.distance;
     let faceId = faceIdOf(box.volume, position);
-    let face = box.faces[faceId];
-    return HitDetails(ray, position, face, hit.boxId, faceId);
+    let materialId = box.faceMaterials[faceId];
+    return HitDetails(ray, position, materialId, hit.boxId, faceId);
 }
 
 // Grid Traversing
@@ -251,7 +236,9 @@ fn next(t: ptr<function, Traverser>) -> f32 {
 // Sampling
 
 struct Direction {
-    direction: vec4<f32>,
+    direction: vec3<f32>,
+    diffusePDF: f32,
+    lightPDF: f32,
     lightId: u32,
 }
 
@@ -275,7 +262,7 @@ fn diffuseDirection(normal: vec3<f32>) -> Direction {
 
     let direction = matrix * vec3(sinTheta * sin(phi), cosTheta, sinTheta * cos(phi)); 
     let pdf = ONE_BY_PI * cosTheta;
-    return Direction(vec4(direction, pdf), NULL);
+    return Direction(direction, pdf, 0.0, NULL);
 }
 
 fn diffusePDF(normal: vec3<f32>, direction: vec3<f32>) -> f32 {
@@ -287,32 +274,56 @@ fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction
     if (lightId == NULL) {
         return diffuseDirection(normal);
     }
-    let rectangle = lights[lightId];
-    let lightNormal = normals[rectangle.faceId];
-    let matrix = mat2x3(lightNormal.zxy, abs(lightNormal.yzx));
-    
-    let to = matrix * (rectangle.size * (next_vec2() - vec2(0.5))) + rectangle.position;
-    let direction = normalize(to - from);
-    return Direction(vec4(direction, diffusePDF(normal, direction)), lightId);
+
+    let boxId = lightId >> 3u;
+    let volume = boxes[boxId].volume;
+    let size = volume.max - volume.min;
+    let center = (volume.max + volume.min) * 0.5;
+
+    let faceId = lightId & 7u;
+    let lightNormal = normals[faceId];
+    let matrix = mat3x3(lightNormal.zxy, abs(lightNormal.yzx), lightNormal);
+
+    let to = (matrix * vec3(next_vec2() - vec2(0.5), 0.5)) * size + center;
+    let fromTo = to - from;
+    let distance = length(fromTo);
+    let direction = fromTo / distance;
+
+    let localSize = abs(size * matrix);
+    let area = -localSize.x * localSize.y * dot(lightNormal, direction); 
+    let pdf = distance * distance / area;
+
+    return Direction(direction, diffusePDF(normal, direction), pdf, lightId);
 }
 
-fn lightPDF(lightId: u32, diffusePDF: f32, ray: Ray) -> f32 {
+fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
     if (lightId == NULL) {
-        return diffusePDF;
+        return direction.diffusePDF;
     }
-    let rectangle = lights[lightId];
-    let lightNormal = normals[rectangle.faceId];
+    if (lightId == direction.lightId) {
+        return direction.lightPDF;
+    }
+
+    let boxId = lightId >> 3u;
+    let volume = boxes[boxId].volume;
+    let size = volume.max - volume.min;
+    let center = (volume.max + volume.min) * 0.5;
+
+    let faceId = lightId & 7u;
+    let lightNormal = normals[faceId];
     let matrix = mat3x3(lightNormal.zxy, abs(lightNormal.yzx), lightNormal);
+
+    let localSize = abs(size * matrix);
+    let faceCenter =  center + 0.5 * localSize.z * lightNormal; 
+
+    let area = -localSize.x * localSize.y * dot(direction.direction, lightNormal);
     
-    let cosTheta = -dot(ray.direction, lightNormal);
-    let area = cosTheta * rectangle.area;
+    let localFrom = (from - faceCenter) * matrix;
+    let localDirection = direction.direction * matrix;
+    let distance = -localFrom.z / localDirection.z;
     
-    let from = (ray.origin - rectangle.position) * matrix;
-    let direction = ray.direction * matrix;
-    let distance = -from.z / direction.z;
-    
-    let to = from.xy + distance * direction.xy;
-    let hit = area > 0.0 && all(abs(to) <= (rectangle.size * 0.5));
+    let localTo = localFrom.xy + distance * localDirection.xy;
+    let hit = area > 0.0 && all(abs(localTo) <= (localSize.xy * 0.5));
 
     return select(0.0, distance * distance  / area, hit);
 }
@@ -327,12 +338,12 @@ fn importantDirection(importantLights: vec4<u32>, from: vec3<f32>, normal: vec3<
     }
 }
 
-fn importantPDF(importantLights: vec4<u32>, diffusePDF: f32, ray: Ray) -> f32 {
-    return 0.2  * diffusePDF + 0.2 * (
-        lightPDF(importantLights[0], diffusePDF, ray) +
-        lightPDF(importantLights[1], diffusePDF, ray) +
-        lightPDF(importantLights[2], diffusePDF, ray) +
-        lightPDF(importantLights[3], diffusePDF, ray)
+fn importantPDF(importantLights: vec4<u32>, from: vec3<f32>, direction: Direction) -> f32 {
+    return 0.2  * direction.diffusePDF + 0.2 * (
+        lightPDF(importantLights[0], from, direction) +
+        lightPDF(importantLights[1], from, direction) +
+        lightPDF(importantLights[2], from, direction) +
+        lightPDF(importantLights[3], from, direction)
     );
 }
 
@@ -350,8 +361,8 @@ fn diffuseRay(hitDetails: HitDetails) -> WeightedRay {
     let importantLights = loadLights(hitDetails.boxId, hitDetails.faceId);
     let normal = normals[hitDetails.faceId];
     let direction = importantDirection(importantLights, hitDetails.position, normal);
-    let ray = newRay(hitDetails.position, direction.direction.xyz);
-    let weight = direction.direction.w /  importantPDF(importantLights, direction.direction.w, ray);
+    let ray = newRay(hitDetails.position, direction.direction);
+    let weight = direction.diffusePDF /  importantPDF(importantLights, hitDetails.position, direction);
     return WeightedRay(ray, weight, direction.lightId);
 }
 
@@ -399,12 +410,13 @@ fn trace(ray: Ray) -> vec3<f32> {
             break;
         }
         let hitDetails = detailsOf(hit, weightedRay.ray);
-        let material = materials[hitDetails.face.materialId];
+        let material = materials[hitDetails.materialId];
         color = color * material.xyz * weightedRay.weight;
-        if (hitDetails.face.lightId != NULL) {
+        if (material.w < 0.0) {
             if (weightedRay.lightId == NULL && prevBoxId != NULL) {
                 let light = (next_u32() + 0x3FFFFFFFu) >> 30u;
-                atomicStore(&importantDirections[prevBoxId].faces[prevFaceId].lights[light], hitDetails.face.lightId);
+                let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
+                atomicStore(&importantDirections[prevBoxId].faces[prevFaceId].lights[light], lightId);
             }
             return color; 
         }

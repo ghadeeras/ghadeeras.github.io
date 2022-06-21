@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as aether from '/aether/latest/index.js';
 import * as gpu from "../djee/gpu/index.js";
 import { NULL } from './scene.js';
-import { u32 } from '../djee/gpu/index.js';
 export const uniformsStruct = gpu.struct({
     matrix: gpu.mat3x3,
     position: gpu.f32.x3,
@@ -26,14 +25,10 @@ export const volumeStruct = gpu.struct({
 export const faceDirectionsStruct = gpu.struct({
     lights: gpu.u32.times(4),
 }, ["lights"]);
-export const faceStruct = gpu.struct({
-    material: u32,
-    light: u32,
-});
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faces: faceStruct.times(6),
-}, ["volume", "faces"]);
+    faceMaterials: gpu.u32.times(6),
+}, ["volume", "faceMaterials"]);
 export const boxDirectionsStruct = gpu.struct({
     faces: faceDirectionsStruct.times(6),
 }, ["faces"]);
@@ -67,7 +62,6 @@ export class Tracer {
         this.uniformsBuffer = this.createUniformsBuffer();
         this.materialsBuffer = this.createMaterialsBuffer();
         this.boxesBuffer = this.createBoxesBuffer();
-        this.lightsBuffer = this.createLightsBuffer();
         this.gridBuffer = this.createGridBuffer();
         this.clockBuffer = this.createClockBuffer();
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
@@ -75,7 +69,6 @@ export class Tracer {
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
-            this.lightsBuffer,
             this.gridBuffer,
             this.importantDirectionsBuffer,
             this.clockBuffer,
@@ -145,10 +138,6 @@ export class Tracer {
     }
     createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes);
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
-    }
-    createLightsBuffer() {
-        const dataView = rectangleStruct.view(this.scene.lights);
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
     createGridBuffer() {

@@ -1,7 +1,6 @@
 import * as aether from '/aether/latest/index.js'
 import * as gpu from "../djee/gpu/index.js"
 import { NULL, Scene } from './scene.js'
-import { u32 } from '../djee/gpu/index.js'
 
 export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>
 export const uniformsStruct = gpu.struct({
@@ -24,17 +23,11 @@ export const faceDirectionsStruct = gpu.struct({
     lights: gpu.u32.times(4),
 }, ["lights"])
 
-export type FaceStruct = gpu.DataTypeOf<typeof faceStruct>
-export const faceStruct = gpu.struct({
-    material: u32,
-    light: u32,
-}) 
-
 export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxStruct = gpu.struct({
     volume: volumeStruct,
-    faces: faceStruct.times(6),
-}, ["volume", "faces"])
+    faceMaterials: gpu.u32.times(6),
+}, ["volume", "faceMaterials"])
 
 export type BoxDirectionsStruct = gpu.DataTypeOf<typeof boxStruct>
 export const boxDirectionsStruct = gpu.struct({
@@ -61,7 +54,6 @@ export class Tracer {
 
     readonly materialsBuffer: gpu.Buffer
     readonly boxesBuffer: gpu.Buffer
-    readonly lightsBuffer: gpu.Buffer
 
     private readonly uniformsBuffer: gpu.Buffer 
     private readonly gridBuffer: gpu.Buffer
@@ -94,7 +86,6 @@ export class Tracer {
         this.uniformsBuffer = this.createUniformsBuffer()
         this.materialsBuffer = this.createMaterialsBuffer()
         this.boxesBuffer = this.createBoxesBuffer()
-        this.lightsBuffer = this.createLightsBuffer()
         this.gridBuffer = this.createGridBuffer()
         this.clockBuffer = this.createClockBuffer()
 
@@ -104,7 +95,6 @@ export class Tracer {
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
-            this.lightsBuffer,
             this.gridBuffer,
             this.importantDirectionsBuffer,
             this.clockBuffer,
@@ -187,11 +177,6 @@ export class Tracer {
     
     private createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes)
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
-    }
-    
-    private createLightsBuffer() {
-        const dataView = rectangleStruct.view(this.scene.lights)
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
     
