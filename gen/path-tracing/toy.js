@@ -40,8 +40,8 @@ function doInit() {
             stacker.layersCount = c;
             layersCountElement.innerText = stacker.layersCount.toString();
         };
-        setSamplesPerPixel(4);
-        setLayersCount(4);
+        setSamplesPerPixel(2);
+        setLayersCount(2);
         const handleKey = (e, down) => {
             const m = aether.mat3.transpose(tracer.matrix);
             const s = down ? 0.2 : 0;
@@ -97,7 +97,6 @@ function doInit() {
             const speed = aether.vec3.length(state.speed);
             const animating = speed !== 0 || state.animating;
             setLayersCount(animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1);
-            // setSamplesPerPixel(Math.max(4, stacker.layersCount))
             state.wasAnimating = animating;
             state.animating = false;
             device.enqueueCommand(encoder => {

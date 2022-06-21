@@ -329,7 +329,7 @@ fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
 }
 
 fn importantDirection(importantLights: vec4<u32>, from: vec3<f32>, normal: vec3<f32>) -> Direction {
-    let r = next_unorm() * 5.0 - 1.0;
+    let r = next_unorm() * 6.0 - 2.0;
     if (r < 0.0) {
         return diffuseDirection(normal);
     } else {
@@ -339,7 +339,7 @@ fn importantDirection(importantLights: vec4<u32>, from: vec3<f32>, normal: vec3<
 }
 
 fn importantPDF(importantLights: vec4<u32>, from: vec3<f32>, direction: Direction) -> f32 {
-    return 0.2  * direction.diffusePDF + 0.2 * (
+    return 0.333  * direction.diffusePDF + 0.167 * (
         lightPDF(importantLights[0], from, direction) +
         lightPDF(importantLights[1], from, direction) +
         lightPDF(importantLights[2], from, direction) +
@@ -398,6 +398,15 @@ fn shootInGrid(ray: Ray) -> Hit {
     return hit;
 }
 
+fn exchangeLight(boxId: u32, faceId: u32, oldLightId: u32, newLightId: u32) {
+    let light = ((next_u32() + 0x7FFFFFu) >> 24u) & 3u;
+    let lightPtr = &importantDirections[boxId].faces[faceId].lights[light];
+    let result = atomicCompareExchangeWeak(lightPtr, oldLightId, newLightId);
+    // if (result.old_value == oldLightId && !result.exchanged) {
+    //     atomicStore(lightPtr, newLightId);
+    // }
+}
+
 fn trace(ray: Ray) -> vec3<f32> {
     var color = vec3(1.0);
     var weightedRay = WeightedRay(ray, 1.0, NULL);
@@ -414,11 +423,15 @@ fn trace(ray: Ray) -> vec3<f32> {
         color = color * material.xyz * weightedRay.weight;
         if (material.w < 0.0) {
             if (weightedRay.lightId == NULL && prevBoxId != NULL) {
-                let light = (next_u32() + 0x3FFFFFFFu) >> 30u;
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
-                atomicStore(&importantDirections[prevBoxId].faces[prevFaceId].lights[light], lightId);
+                exchangeLight(prevBoxId, prevFaceId, NULL, lightId);
             }
             return color; 
+        } else {
+            if (weightedRay.lightId != NULL && prevBoxId != NULL) {
+                let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
+                exchangeLight(prevBoxId, prevFaceId, lightId, NULL);
+            }
         }
         prevBoxId = hitDetails.boxId;
         prevFaceId = hitDetails.faceId;
