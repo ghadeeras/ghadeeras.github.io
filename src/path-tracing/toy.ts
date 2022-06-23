@@ -7,6 +7,7 @@ import { Stacker } from "./stacker.js"
 import { BoxStruct, Tracer } from "./tracer.js"
 import { Scene } from "./scene.js"
 import { buildScene } from "./scene-builder.js"
+import { Denoiser } from "./denoiser.js"
 
 export function init() {
     window.onload = doInit
@@ -18,16 +19,22 @@ async function doInit() {
     const device = await gpuDevice()
     const canvas = device.canvas("canvas", false)
 
-    const tracer = await Tracer.create(device, canvas, scene)
-    const stacker = await Stacker.create(device, canvas.size, canvas.format)
+    const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
+    const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
+    const stacker = await Stacker.create(device, canvas.size, canvas.format, canvas.format)
 
     const state = {
         wasAnimating: false,
         animating: false,
-        speed: aether.vec3.of(0, 0, 0)
+        changingView: false,
+        twoLayersOnly: false,
+        denoising: true,  
+        speed: aether.vec3.of(0, 0, 0),
     }
     const samplesPerPixelElement = misc.required(document.getElementById("spp"))
     const layersCountElement = misc.required(document.getElementById("layers"))
+    const maxLayersCountElement = misc.required(document.getElementById("max-layers"))
+    const denoisingElement = misc.required(document.getElementById("denoising"))
 
     const setSamplesPerPixel = (spp: number) => {
         tracer.samplesPerPixel = spp
@@ -39,8 +46,20 @@ async function doInit() {
         layersCountElement.innerText = stacker.layersCount.toString()
     }
 
-    setSamplesPerPixel(2)
-    setLayersCount(2)
+    const setTwoLayersOnly = (b: boolean) => {
+        state.twoLayersOnly = b
+        maxLayersCountElement.innerText = b ? "2" : "256"
+    }
+
+    const setDenoising = (b: boolean) => {
+        state.denoising = b
+        denoisingElement.innerText = b ? "on" : "off"
+    }
+
+    setSamplesPerPixel(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
+    setLayersCount(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
+    setTwoLayersOnly(misc.required(maxLayersCountElement.textContent) == "2")
+    setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on")
 
     const handleKey = (e: KeyboardEvent, down: boolean) => {
         const m = aether.mat3.transpose(tracer.matrix)
@@ -66,13 +85,19 @@ async function doInit() {
         } else if (down && e.key >= '1' && e.key <= '8') {
             setSamplesPerPixel(Number.parseInt(e.key))
             e.preventDefault()
+        } else if (down && e.key == 'l') {
+            setTwoLayersOnly(!state.twoLayersOnly)
+            e.preventDefault()
+        } else if (down && e.key == 'n') {
+            setDenoising(!state.denoising)
+            e.preventDefault()
         }
     }
     window.onkeyup = e => handleKey(e, false)
     window.onkeydown = e => handleKey(e, true)
 
     canvas.element.onwheel = e => {
-        state.animating = true
+        state.changingView = true
         e.preventDefault()
         tracer.focalRatio *= Math.exp(-Math.sign(e.deltaY) * 0.25)
     }
@@ -80,7 +105,7 @@ async function doInit() {
     gear.ElementEvents.create(canvas.element.id).dragging.value
         .then(gear.drag(new RotationDragging(() => aether.mat4.cast(tracer.matrix), () => aether.mat4.projection(1, Math.SQRT2))))
         .attach(m => {
-            state.animating = true
+            state.changingView = true
             tracer.matrix = aether.mat3.from([
                 ...aether.vec3.swizzle(m[0], 0, 1, 2),
                 ...aether.vec3.swizzle(m[1], 0, 1, 2),
@@ -93,16 +118,22 @@ async function doInit() {
     const clearColor = { r: 0, g: 0, b: 0, a: 1 }
     const draw = () => {
         const speed = aether.vec3.length(state.speed)
-        const animating = speed !== 0 || state.animating
-        setLayersCount(animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1)
-        state.wasAnimating = animating
-        state.animating = false;
+        state.wasAnimating = state.animating
+        state.animating = state.twoLayersOnly || state.changingView || speed !== 0
+        state.changingView = false
+        setLayersCount(state.animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1)
         device.enqueueCommand(encoder => {
-            tracer.encode(encoder, stacker.colorAttachment(clearColor))
+            const [colorsAttachment, normalsAttachment] = denoiser.attachments(clearColor, clearColor)
+            if (stacker.layersCount > 64 || !state.denoising) {
+                tracer.encode(encoder, stacker.colorAttachment(clearColor), normalsAttachment)
+            } else {
+                tracer.encode(encoder, colorsAttachment, normalsAttachment)
+                denoiser.render(encoder, stacker.colorAttachment(clearColor))
+            }
             if (stacker.layersCount >= 2) {
                 stacker.render(encoder, canvas.attachment(clearColor))
             }
-        })
+    })
         if (speed === 0) {
             return
         }

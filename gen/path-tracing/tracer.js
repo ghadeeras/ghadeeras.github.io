@@ -40,9 +40,11 @@ export const rectangleStruct = gpu.struct({
 }, ["position", "size", "face", "area"]);
 export const cell = gpu.u32.times(8);
 export class Tracer {
-    constructor(shaderModule, canvas, scene) {
+    constructor(shaderModule, canvas, scene, colorFormat, normalsFormat) {
         this.canvas = canvas;
         this.scene = scene;
+        this.colorFormat = colorFormat;
+        this.normalsFormat = normalsFormat;
         this._matrix = aether.mat3.identity();
         this._position = aether.vec3.of(32, 32, 32);
         this._samplesPerPixel = 1;
@@ -51,7 +53,8 @@ export class Tracer {
         this.pipeline = this.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [
-                canvas
+                colorFormat,
+                normalsFormat
             ]),
             primitive: {
                 topology: "triangle-strip",
@@ -74,13 +77,13 @@ export class Tracer {
             this.clockBuffer,
         ]);
     }
-    static create(device, canvas, scene) {
+    static create(device, canvas, scene, colorFormat, normalsFormat) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Tracer(yield device.loadShaderModule("path-tracing.wgsl"), canvas, scene);
+            return new Tracer(yield device.loadShaderModule("path-tracing.wgsl"), canvas, scene, colorFormat, normalsFormat);
         });
     }
-    encode(encoder, colorAttachment) {
-        encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {
+    encode(encoder, colorAttachment, normalsAttachment) {
+        encoder.renderPass({ colorAttachments: [colorAttachment, normalsAttachment] }, pass => {
             pass.setBindGroup(0, this.group);
             pass.setPipeline(this.pipeline);
             pass.draw(4);

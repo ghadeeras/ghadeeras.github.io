@@ -60,7 +60,9 @@ export class ShaderModule {
         return {
             module: this.shaderModule,
             entryPoint: entryPoint,
-            targets: targets.map(formatOf).map(format => ({ format }))
+            targets: targets.map(target => target !== null
+                ? { format: formatOf(target) }
+                : null)
         };
     }
 }

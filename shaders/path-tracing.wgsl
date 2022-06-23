@@ -407,11 +407,17 @@ fn exchangeLight(boxId: u32, faceId: u32, oldLightId: u32, newLightId: u32) {
     // }
 }
 
-fn trace(ray: Ray) -> vec3<f32> {
+struct Result {
+    color: vec3<f32>,
+    normal: vec4<f32>,
+}
+
+fn trace(ray: Ray) -> Result {
     var color = vec3(1.0);
     var weightedRay = WeightedRay(ray, 1.0, NULL);
     var prevBoxId = NULL;
     var prevFaceId = NULL;
+    var firstNormal = vec4(-ray.direction, 128.0);
     for (var i = 0; i < 4; i = i + 1) {
         let hit = shootInGrid(weightedRay.ray);
         if (hit.boxId == NULL) {
@@ -419,6 +425,9 @@ fn trace(ray: Ray) -> vec3<f32> {
             break;
         }
         let hitDetails = detailsOf(hit, weightedRay.ray);
+        if (i == 0) {
+            firstNormal = vec4(normals[hitDetails.faceId], hit.distance);
+        }
         let material = materials[hitDetails.materialId];
         color = color * material.xyz * weightedRay.weight;
         if (material.w < 0.0) {
@@ -426,7 +435,7 @@ fn trace(ray: Ray) -> vec3<f32> {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
                 exchangeLight(prevBoxId, prevFaceId, NULL, lightId);
             }
-            return color; 
+            return Result(color, firstNormal); 
         } else {
             if (weightedRay.lightId != NULL && prevBoxId != NULL) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
@@ -437,7 +446,7 @@ fn trace(ray: Ray) -> vec3<f32> {
         prevFaceId = hitDetails.faceId;
         weightedRay = scatterRay(hitDetails, material);
     }
-    return color * 0.015625;
+    return Result(color * 0.015625, firstNormal);
 }
 
 fn primaryRay(pixel: vec2<f32>) -> Ray {
@@ -447,12 +456,16 @@ fn primaryRay(pixel: vec2<f32>) -> Ray {
 
 // Integration
 
-fn estimateColor(pixel: vec2<f32>) -> vec3<f32> {
+fn estimateColor(pixel: vec2<f32>) -> Result {
     var c = vec3(0.0);
+    var n = vec4(0.0);
     for (var j = 0u; j < uniforms.samplesPerPixel; j = j + 1u) {
-        c = c + trace(primaryRay(pixelSample(pixel)));
+        let r = trace(primaryRay(pixelSample(pixel)));
+        c = c + r.color;
+        n = n + r.normal;
     };
-    return c / f32(uniforms.samplesPerPixel);
+    let invSPP = 1.0 / f32(uniforms.samplesPerPixel);
+    return Result(c * invSPP, n * invSPP);
 }
 
 // Main
@@ -462,10 +475,23 @@ fn init(vertex: Vertex) {
     pixelSize = dpdy(vertex.xy.y);
 }
 
+struct Output {
+    @location(0) color: vec4<f32>,
+    @location(1) normal: vec4<f32>,
+}
+
 @stage(fragment)
-fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
+fn f_main(vertex: Vertex) -> Output {
     init(vertex);
-    let c = estimateColor(vertex.xy);
-    let m = max(c.x, max(c.y, c.z));
-    return vec4(select(c, c / m, m > 1.0), 1.0);
+    let r = estimateColor(vertex.xy);
+
+    // Guard against NaNs
+    let c = max(r.color, vec3(0.0));
+    let n = clamp(r.normal, vec4(-1.0, -1.0, -1.0, 0.0), vec4(1.0, 1.0, 1.0, 128.0));
+
+    let m = max(c.r, max(c.g, c.b));
+    return Output(
+        vec4(select(c, c / m, m > 1.0), 1.0), 
+        vec4((1.0 + n.xzy) * 0.5, n.w / 128.0),
+    );
 }

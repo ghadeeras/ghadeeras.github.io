@@ -53,11 +53,14 @@ export class ShaderModule {
         }
     }
 
-    fragmentState(entryPoint: string, targets: TextureFormatSource[]): GPUFragmentState {
+    fragmentState(entryPoint: string, targets: (TextureFormatSource | null)[]): GPUFragmentState {
         return {
             module: this.shaderModule,
             entryPoint: entryPoint,
-            targets: targets.map(formatOf).map(format => ({ format }))
+            targets: targets.map(target => target !== null 
+                ? { format: formatOf(target) } 
+                : null
+            )
         }
     }
 
