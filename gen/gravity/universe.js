@@ -100,7 +100,7 @@ export class Universe {
             encoder.computePass(pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.bindGroups[this.currentBuffer]);
-                pass.dispatch(this.workGroupsCount);
+                pass.dispatchWorkgroups(this.workGroupsCount);
             });
         });
         this.currentBuffer ^= 1;

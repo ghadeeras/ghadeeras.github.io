@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/ghadeeras/ghadeeras.github.io#readme",
   "devDependencies": {
-    "@webgpu/types": "^0.1.15"
+    "@webgpu/types": "^0.1.20"
   }
 }

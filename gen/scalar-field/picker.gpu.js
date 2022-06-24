@@ -36,7 +36,8 @@ export class GPUPicker {
             depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
-            }
+            },
+            layout: "auto"
         });
         this.uniformsGroup = this.device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
     }

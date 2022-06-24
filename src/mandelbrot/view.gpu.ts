@@ -62,7 +62,8 @@ export class ViewGPU implements View {
             },
             multisample: {
                 count: this.canvas.sampleCount
-            }
+            },
+            layout: "auto"
         })
 
         this.paramsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms])

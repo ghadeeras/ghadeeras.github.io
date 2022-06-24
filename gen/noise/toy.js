@@ -30,7 +30,8 @@ function doInit() {
             primitive: {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
-            }
+            },
+            layout: "auto"
         });
         const uniformsBuffer = createUniformsBuffer(device);
         const clockBuffer = createClockBuffer(device);

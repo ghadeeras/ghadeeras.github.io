@@ -43,7 +43,8 @@ export class GPUView {
             },
             multisample: {
                 count: this.canvas.sampleCount
-            }
+            },
+            layout: "auto"
         });
         this.uniformsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
         this.frame = () => {

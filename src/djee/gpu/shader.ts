@@ -34,7 +34,8 @@ export class ShaderModule {
             compute: { 
                 module: this.shaderModule,
                 entryPoint: entryPoint, 
-            }
+            },
+            layout: "auto"
         })
     }
 

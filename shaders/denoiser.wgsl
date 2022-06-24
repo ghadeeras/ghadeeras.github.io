@@ -29,9 +29,9 @@ var colorsTexture: texture_2d<f32>;
 var normalsTexture: texture_2d<f32>;
 
 struct Sample {
-    color: vec3<f32>;
-    normal: vec3<f32>;
-    position: vec3<f32>;
+    color: vec3<f32>,
+    normal: vec3<f32>,
+    position: vec3<f32>,
 };
 
 fn loadSample(xy: vec2<i32>, pos: vec2<f32>) -> Sample {

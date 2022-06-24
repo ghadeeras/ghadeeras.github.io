@@ -80,7 +80,8 @@ export class Tracer {
             primitive: {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
-            }
+            },
+            layout: "auto"
         })
         this.groupLayout = this.pipeline.getBindGroupLayout(0)
 

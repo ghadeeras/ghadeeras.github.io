@@ -59,7 +59,8 @@ export class GPUView implements v.View {
             },
             multisample: {
                 count: this.canvas.sampleCount
-            }
+            },
+            layout: "auto"
         })
 
         this.uniformsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);

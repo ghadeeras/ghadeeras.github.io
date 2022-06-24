@@ -50,7 +50,8 @@ export class ViewGPU {
             },
             multisample: {
                 count: this.canvas.sampleCount
-            }
+            },
+            layout: "auto"
         });
         this.paramsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
         const frame = () => {

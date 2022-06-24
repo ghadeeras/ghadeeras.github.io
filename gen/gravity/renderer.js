@@ -115,7 +115,8 @@ export class Renderer {
             },
             multisample: {
                 count: canvas.sampleCount
-            }
+            },
+            layout: "auto"
         });
     }
     render(universe) {
