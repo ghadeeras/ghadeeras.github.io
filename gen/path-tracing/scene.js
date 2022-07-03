@@ -24,6 +24,25 @@ export class Scene {
             .slice(0, i >= 0 ? i : undefined)
             .map(b => this.boxes[b]);
     }
+    volumeBoxes(volume) {
+        const result = [];
+        for (let x = volume.min[0]; x <= volume.max[0]; x++) {
+            const i = Math.floor(x);
+            for (let y = volume.min[1]; y <= volume.max[1]; y++) {
+                const j = Math.floor(y);
+                for (let z = volume.min[2]; z <= volume.max[2]; z++) {
+                    const k = Math.floor(z);
+                    const boxes = this.cellBoxes(i, j, k);
+                    for (const box of boxes) {
+                        if (result.indexOf(box) < 0) {
+                            result.push(box);
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
     material(m) {
         return this.materials.push(m) - 1;
     }

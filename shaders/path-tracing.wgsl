@@ -427,7 +427,7 @@ fn shootObserver(ray: Ray) -> Hit {
     }
     let sqrtD = sqrt(d);
     let distance = halfB - sqrtD;
-    if (distance <= EPSILON) {
+    if (distance <= 0.0) {
         return Hit(NULL, 128.0);
     }
     return Hit(OBSERVER, distance);

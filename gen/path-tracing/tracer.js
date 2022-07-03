@@ -83,7 +83,7 @@ export class Tracer {
             return new Tracer(yield device.loadShaderModule("path-tracing.wgsl"), canvas, scene, colorFormat, normalsFormat);
         });
     }
-    encode(encoder, colorAttachment, normalsAttachment) {
+    render(encoder, colorAttachment, normalsAttachment) {
         encoder.renderPass({ colorAttachments: [colorAttachment, normalsAttachment] }, pass => {
             pass.setBindGroup(0, this.group);
             pass.setPipeline(this.pipeline);

@@ -107,7 +107,7 @@ export class Tracer {
         return new Tracer(await device.loadShaderModule("path-tracing.wgsl"), canvas, scene, colorFormat, normalsFormat)
     }
 
-    encode(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment | null, normalsAttachment: GPURenderPassColorAttachment | null) {
+    render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment | null, normalsAttachment: GPURenderPassColorAttachment | null) {
         encoder.renderPass(
             { colorAttachments: [ colorAttachment, normalsAttachment ] },
             pass => {
