@@ -1,5 +1,5 @@
 import * as aether from '/aether/latest/index.js'
-import { BoxStruct, Cell, VolumeStruct } from "./tracer"
+import { BoxStruct, cellStruct, CellStruct, VolumeStruct } from "./tracer.js"
 
 export const NULL = 0xFFFFFFFF
 
@@ -13,22 +13,24 @@ export class Scene {
     constructor(readonly gridSize: number) {
     }
 
-    private createGrid(): Cell[] {
-        const grid = new Array<Cell>(this.gridSize ** 3)
+    private createGrid(): CellStruct[] {
+        const grid = new Array<CellStruct>(this.gridSize ** 3)
         for (let i = 0; i < grid.length; i++) {
-            grid[i] = [
-                NULL, NULL, NULL, NULL, 
-                NULL, NULL, NULL, NULL
-            ]
+            grid[i] = {
+                boxes: [
+                    NULL, NULL, NULL, NULL, 
+                    NULL, NULL, NULL, NULL
+                ],
+                size: 0
+            }
         }
         return grid
     }
 
     cellBoxes(x: number, y: number, z: number): BoxStruct[] {
         const cell = this.cell(x, y, z)
-        const i = cell.indexOf(NULL)
-        return cell
-            .slice(0, i >= 0 ? i : undefined)
+        return cell.boxes
+            .slice(0, cell.size)
             .map(b => this.boxes[b])
     }
 
@@ -90,13 +92,12 @@ export class Scene {
     
     private addBoxToCell(box: number, x: number, y: number, z: number) {
         const cell = this.cell(x, y, z)
-        const j = cell.indexOf(NULL)
-        if (j >= 0) {
-            cell[j] = box
+        if (cell.size < cellStruct.members.boxes.items.length) {
+            cell.boxes[cell.size++] = box
         }
     }
 
-    private cell(x: number, y: number, z: number): Cell {
+    private cell(x: number, y: number, z: number): CellStruct {
         const i = ((x * this.gridSize) + y) * this.gridSize + z
         return this.grid[i]
     }

@@ -38,7 +38,10 @@ export const rectangleStruct = gpu.struct({
     face: gpu.i32,
     area: gpu.f32,
 }, ["position", "size", "face", "area"]);
-export const cell = gpu.u32.times(8);
+export const cellStruct = gpu.struct({
+    boxes: gpu.u32.times(8),
+    size: gpu.u32,
+}, ["boxes", "size"]);
 export class Tracer {
     constructor(shaderModule, canvas, scene, colorFormat, normalsFormat) {
         this.canvas = canvas;
@@ -145,7 +148,7 @@ export class Tracer {
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
     createGridBuffer() {
-        const dataView = cell.view(this.scene.grid);
+        const dataView = cellStruct.view(this.scene.grid);
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
     }
     createImportantDirectionsBuffer() {

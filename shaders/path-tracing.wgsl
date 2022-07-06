@@ -49,7 +49,11 @@ struct FaceDirections {
     lights: array<atomic<u32>, 4>,
 }
 
-type Cell = array<u32, 8>;
+struct Cell {
+    boxes: array<u32, 8>,
+    size: u32,
+}
+
 type Grid = array<Cell, 262144>; // 262144 = 64 * 64 * 64
 
 @group(0) @binding(1)
@@ -73,7 +77,11 @@ var<private> pixelSize: f32;
 let EPSILON: f32 = 0x1P-11;
 let RND_PRECISION: f32 = 0x1P-22;
 let MAX_BOXES_PER_CELL: u32 = 8u;
-let GRID_SIZE: vec3<i32> = vec3<i32>(262144, 4096, 64);
+let GRID_LIMIT_LO: vec3<i32> = vec3<i32>(-4096, -64, -1);
+let GRID_LIMIT_HI: vec3<i32> = vec3<i32>(262144, 4096, 64);
+let GRID_BITS_SHIFT: vec3<u32> = vec3<u32>(12u, 6u, 0u);
+let ZERO_F3D = vec3(0.0);
+let ZERO_I3D = vec3(0);
 let NULL: u32 = 0xFFFFFFFFu;
 let OBSERVER: u32 = 0x7FFFFFFFu;
 let OBSERVER_RADIUS: f32 = 0.5;
@@ -183,21 +191,17 @@ fn hitRange(volume: Volume, ray: Ray, range: vec2<f32>) -> vec2<f32> {
     return vec2(d1, d2);
 }
 
-fn shoot(cell: Cell, ray: Ray, range: vec2<f32>) -> Hit {
-    var r = range;
-    var nearestBoxId = NULL;
-    for (var i = 0u; i < MAX_BOXES_PER_CELL; i = i + 1u) {
-        let boxId = cell[i];
-        if (boxId == NULL) {
-            break;
-        }
-        let newR = hitRange(boxes[boxId].volume, ray, r);
-        if (newR[0] < newR[1]) {
-            r[1] = newR[0];
-            nearestBoxId = boxId;
-        }
+fn shoot(cell: Cell, ray: Ray, nearestHit: Hit) -> Hit {
+    var range = vec2(EPSILON, nearestHit.distance);
+    var nearestBoxId = nearestHit.boxId;
+    for (var i = 0u; i < cell.size; i = i + 1u) {
+        let boxId = cell.boxes[i];
+        let newR = hitRange(boxes[boxId].volume, ray, range);
+        let hit = newR[0] < newR[1]; 
+        range[1] = select(range[1], newR[0], hit);
+        nearestBoxId = select(nearestBoxId, boxId, hit);
     }
-    return Hit(nearestBoxId, r[1]);
+    return Hit(nearestBoxId, range[1]);
 }
 
 fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
@@ -206,7 +210,7 @@ fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
         let normal = normalize(position - uniforms.position);
         let axis = vec3(uniforms.matrix[0][2], uniforms.matrix[1][2], uniforms.matrix[2][2]);
         let cosTheta = -dot(normal, axis);
-        let color = select(vec3(1.0), select(vec3(0.5, 0.5, 1.0), vec3(0.0), cosTheta > 0.95), cosTheta > 0.8);
+        let color = select(vec3(1.0), select(vec3(0.5, 0.5, 1.0), ZERO_F3D, cosTheta > 0.95), cosTheta > 0.8);
         return HitDetails(ray, position, normal, vec4(color, 0.75), OBSERVER, NULL);
     } else {
         let box = boxes[hit.boxId];
@@ -228,11 +232,11 @@ struct Traverser {
 
 fn traverser(ray: Ray) -> Traverser {
     let direction = sign(ray.direction);
-    let step = vec3<i32>(direction) << vec3(12u, 6u, 0u); 
-    let rearCorner = max(-direction, vec3(0.0));
-    let limit = select(vec3(-1, -64, -4096), GRID_SIZE, step > vec3(0));
+    let step = vec3<i32>(direction) << GRID_BITS_SHIFT; 
+    let rearCorner = max(-direction, ZERO_F3D);
+    let limit = select(GRID_LIMIT_LO, GRID_LIMIT_HI, step > ZERO_I3D);
     let distance = (rearCorner - fract(ray.origin)) * ray.invDirection; 
-    let cell = vec3<i32>(ray.origin) << vec3(12u, 6u, 0u);
+    let cell = vec3<i32>(ray.origin) << GRID_BITS_SHIFT;
     return Traverser(ray, step, limit, distance, cell);
 }
 
@@ -241,7 +245,7 @@ fn next(t: ptr<function, Traverser>) -> f32 {
     let result = min(next.x, min(next.y, next.z));
     let closest = (next == vec3(result));
     (*t).distance = select((*t).distance, next, closest);
-    (*t).cell = (*t).cell + select(vec3(0), (*t).step, closest);
+    (*t).cell = (*t).cell + select(ZERO_I3D, (*t).step, closest);
     return result;
 }
 
@@ -264,19 +268,15 @@ fn pixelSample(pixel: vec2<f32>) -> vec2<f32> {
     return pixel + next_vec2() * pixelSize;
 }
 
-fn alignedWithY(u: vec3<f32>, axisAligned: bool) -> mat3x3<f32> {
-    if (axisAligned) {
-        return mat3x3(abs(u.yzx), u, u.zxy);
-    } else {
+fn alignedWithY(u: vec3<f32>) -> mat3x3<f32> {
         let v = select(u.zxy, normalize(vec3(u.x, -2.0 * u.y, u.z)), dot(u, u.zxy) > 0.9375);
         let uu = normalize(u);
         let vv = normalize(v - dot(uu, v) * uu);
         return mat3x3(cross(uu, vv), uu, vv);
-    }
 }
 
-fn diffuseDirection(normal: vec3<f32>, axisAligned: bool) -> Direction {
-    let matrix: mat3x3<f32> = alignedWithY(normal, axisAligned);
+fn diffuseDirection(normal: vec3<f32>) -> Direction {
+    let matrix: mat3x3<f32> = alignedWithY(normal);
 
     let squarePoint = next_vec2();
     let cosTheta = sqrt(squarePoint.y);
@@ -294,10 +294,6 @@ fn diffusePDF(normal: vec3<f32>, direction: vec3<f32>) -> f32 {
 }
 
 fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction {
-    if (lightId == NULL) {
-        return diffuseDirection(normal, true);
-    }
-
     let boxId = lightId >> 3u;
     let volume = boxes[boxId].volume;
     let size = volume.max - volume.min;
@@ -309,22 +305,19 @@ fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction
 
     let to = (matrix * vec3(next_vec2() - vec2(0.5), 0.5)) * size + center;
     let fromTo = to - from;
-    let distance = length(fromTo);
-    let direction = fromTo / distance;
+    let distanceSquared = dot(fromTo, fromTo);
+    let direction = fromTo / sqrt(distanceSquared);
 
     let localSize = abs(size * matrix);
     let area = -localSize.x * localSize.y * dot(lightNormal, direction); 
-    let pdf = distance * distance / area;
+    let pdf = distanceSquared / area;
 
     return Direction(direction, diffusePDF(normal, direction), pdf, lightId);
 }
 
 fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
-    if (lightId == NULL) {
-        return direction.diffusePDF;
-    }
-    if (lightId == direction.lightId) {
-        return direction.lightPDF;
+    if (lightId == NULL | lightId == direction.lightId) {
+        return select(direction.lightPDF, direction.diffusePDF, lightId == NULL);
     }
 
     let boxId = lightId >> 3u;
@@ -346,17 +339,17 @@ fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
     let distance = -localFrom.z / localDirection.z;
     
     let localTo = localFrom.xy + distance * localDirection.xy;
-    let hit = area > 0.0 && all(abs(localTo) <= (localSize.xy * 0.5));
+    let hit = area > 0.0 & all(abs(localTo) <= (localSize.xy * 0.5));
 
     return select(0.0, distance * distance  / area, hit);
 }
 
 fn importantDirection(importantLights: vec4<u32>, from: vec3<f32>, normal: vec3<f32>) -> Direction {
     let r = next_unorm() * 6.0 - 2.0;
-    if (r < 0.0) {
-        return diffuseDirection(normal, true);
+    let lightId = importantLights[i32(r) & 3];
+    if (r < 0.0 | lightId == NULL) {
+        return diffuseDirection(normal);
     } else {
-        let lightId = importantLights[i32(r)];
         return lightDirection(lightId, from, normal);
     }
 }
@@ -382,7 +375,7 @@ fn loadLights(boxId: u32, faceId: u32) -> vec4<u32> {
 
 fn diffuseRay(hitDetails: HitDetails) -> WeightedRay {
     if (hitDetails.boxId == OBSERVER) {
-        let direction = diffuseDirection(hitDetails.normal, false);
+        let direction = diffuseDirection(hitDetails.normal);
         let ray = newRay(hitDetails.position, direction.direction);
         return WeightedRay(ray, 1.0, NULL);
     } else {
@@ -416,47 +409,33 @@ fn scatterRay(hitDetails: HitDetails) -> WeightedRay {
 fn shootObserver(ray: Ray) -> Hit {
     let observerRelativePosition = uniforms.position - ray.origin;
     let observerRelativeDistanceSquared = dot(observerRelativePosition, observerRelativePosition);
-    if (observerRelativeDistanceSquared <= OBSERVER_RADIUS_SQUARED) {
-        return Hit(NULL, 128.0);
-    }
     let halfB = dot(ray.direction, observerRelativePosition);
     let c = observerRelativeDistanceSquared - OBSERVER_RADIUS_SQUARED;
     let d = halfB * halfB - c;
-    if (d <= 0.0) {
-        return Hit(NULL, 128.0);
-    }
-    let sqrtD = sqrt(d);
+    let sqrtD = select(halfB, sqrt(d), d > 0.0);
     let distance = halfB - sqrtD;
-    if (distance <= 0.0) {
-        return Hit(NULL, 128.0);
-    }
-    return Hit(OBSERVER, distance);
+    let hit = distance > 0.0; 
+    return Hit(select(NULL, OBSERVER, hit), select(128.0, distance, hit));
 }
 
 fn shootInGrid(ray: Ray) -> Hit {
-    let observerHit = shootObserver(ray);
     var t = traverser(ray);
-    var range = vec2(EPSILON);
-    var hit = Hit(NULL, range[1]);
+    var hit = shootObserver(ray);
     var done = false;
-    for (var i = 0; i < 128 && !done; i = i + 1) {
+    for (var i = 0; i < 128 & !done; i = i + 1) {
         let cell = grid[t.cell.x + t.cell.y + t.cell.z];
-        range[1] = next(&t);
-        hit = shoot(cell, ray, range);
-        done = hit.boxId != NULL || any(t.cell == t.limit) || hit.distance >= observerHit.distance;
+        let distance = next(&t);
+        hit = shoot(cell, ray, hit);
+        done = hit.boxId < OBSERVER | any(t.cell == t.limit) | distance >= hit.distance;
     }
-    if (hit.boxId == NULL && observerHit.boxId != NULL) {
-        return observerHit;
-    } else {
-        return hit;
-    }
+    return hit;
 }
 
 fn exchangeLight(boxId: u32, faceId: u32, oldLightId: u32, newLightId: u32) {
     let light = ((next_u32() + 0x7FFFFFu) >> 24u) & 3u;
     let lightPtr = &importantDirections[boxId].faces[faceId].lights[light];
     let result = atomicCompareExchangeWeak(lightPtr, oldLightId, newLightId);
-    // if (result.old_value == oldLightId && !result.exchanged) {
+    // if (result.old_value == oldLightId  !result.exchanged) {
     //     atomicStore(lightPtr, newLightId);
     // }
 }
@@ -475,21 +454,19 @@ fn trace(ray: Ray) -> Result {
     for (var i = 0; i < 4; i = i + 1) {
         let hit = shootInGrid(weightedRay.ray);
         if (hit.boxId == NULL) {
-            return Result(vec3(0.0), firstNormal);
+            return Result(ZERO_F3D, firstNormal);
         }
         let hitDetails = detailsOf(hit, weightedRay.ray);
-        if (i == 0) {
-            firstNormal = vec4(hitDetails.normal, hit.distance);
-        }
+        firstNormal = select(firstNormal, vec4(hitDetails.normal, hit.distance), i == 0);
         color = color * hitDetails.material.xyz * weightedRay.weight;
         if (hitDetails.material.w < 0.0) {
-            if (weightedRay.lightId == NULL && prevBoxId < OBSERVER) {
+            if (weightedRay.lightId == NULL & prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
                 exchangeLight(prevBoxId, prevFaceId, NULL, lightId);
             }
             return Result(color, firstNormal); 
         } else {
-            if (weightedRay.lightId != NULL && prevBoxId < OBSERVER) {
+            if (weightedRay.lightId != NULL & prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
                 exchangeLight(prevBoxId, prevFaceId, lightId, NULL);
             }
@@ -498,7 +475,7 @@ fn trace(ray: Ray) -> Result {
         prevFaceId = hitDetails.faceId;
         weightedRay = scatterRay(hitDetails);
     }
-    return Result(color * 0.015625, firstNormal);
+    return Result(ZERO_F3D, firstNormal);
 }
 
 fn primaryRay(pixel: vec2<f32>) -> Ray {
@@ -509,7 +486,7 @@ fn primaryRay(pixel: vec2<f32>) -> Ray {
 // Integration
 
 fn estimateColor(pixel: vec2<f32>) -> Result {
-    var c = vec3(0.0);
+    var c = ZERO_F3D;
     var n = vec4(0.0);
     for (var j = 0u; j < uniforms.samplesPerPixel; j = j + 1u) {
         let r = trace(primaryRay(pixelSample(pixel)));
@@ -538,7 +515,7 @@ fn f_main(vertex: Vertex) -> Output {
     let r = estimateColor(vertex.xy);
 
     // Guard against NaNs
-    let c = max(r.color, vec3(0.0));
+    let c = max(r.color, ZERO_F3D);
     let n = clamp(r.normal, vec4(-1.0, -1.0, -1.0, 0.0), vec4(1.0, 1.0, 1.0, 128.0));
 
     let m = max(c.r, max(c.g, c.b));

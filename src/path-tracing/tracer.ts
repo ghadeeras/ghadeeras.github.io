@@ -42,8 +42,11 @@ export const rectangleStruct = gpu.struct({
     area: gpu.f32,
 }, ["position", "size", "face", "area"])
 
-export type Cell = [number, number, number, number, number, number, number, number]
-export const cell = gpu.u32.times(8)
+export type CellStruct = gpu.DataTypeOf<typeof cellStruct>
+export const cellStruct = gpu.struct({
+    boxes: gpu.u32.times(8),
+    size: gpu.u32,
+}, ["boxes", "size"])
 
 export class Tracer {
 
@@ -183,7 +186,7 @@ export class Tracer {
     }
     
     private createGridBuffer() {
-        const dataView = cell.view(this.scene.grid)
+        const dataView = cellStruct.view(this.scene.grid)
         return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
     }
 

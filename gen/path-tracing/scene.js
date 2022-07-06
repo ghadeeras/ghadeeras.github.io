@@ -1,4 +1,5 @@
 import * as aether from '/aether/latest/index.js';
+import { cellStruct } from "./tracer.js";
 export const NULL = 0xFFFFFFFF;
 export class Scene {
     constructor(gridSize) {
@@ -10,18 +11,20 @@ export class Scene {
     createGrid() {
         const grid = new Array(Math.pow(this.gridSize, 3));
         for (let i = 0; i < grid.length; i++) {
-            grid[i] = [
-                NULL, NULL, NULL, NULL,
-                NULL, NULL, NULL, NULL
-            ];
+            grid[i] = {
+                boxes: [
+                    NULL, NULL, NULL, NULL,
+                    NULL, NULL, NULL, NULL
+                ],
+                size: 0
+            };
         }
         return grid;
     }
     cellBoxes(x, y, z) {
         const cell = this.cell(x, y, z);
-        const i = cell.indexOf(NULL);
-        return cell
-            .slice(0, i >= 0 ? i : undefined)
+        return cell.boxes
+            .slice(0, cell.size)
             .map(b => this.boxes[b]);
     }
     volumeBoxes(volume) {
@@ -71,9 +74,8 @@ export class Scene {
     }
     addBoxToCell(box, x, y, z) {
         const cell = this.cell(x, y, z);
-        const j = cell.indexOf(NULL);
-        if (j >= 0) {
-            cell[j] = box;
+        if (cell.size < cellStruct.members.boxes.items.length) {
+            cell.boxes[cell.size++] = box;
         }
     }
     cell(x, y, z) {
