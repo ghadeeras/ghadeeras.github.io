@@ -16,8 +16,8 @@ export function save(url: string, contentType: string, fileName: string) {
 
 export class FrequencyMeter {
 
-    private lastTime: number = 0
-    private counter: number = 0
+    private lastTime = 0
+    private counter = 0
     
     constructor(private unitTime: number, private measurementConsumer: (measuredFrequency: number) => void) {
     }

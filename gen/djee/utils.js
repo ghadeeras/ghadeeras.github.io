@@ -9,7 +9,7 @@ export function lazily(constructor) {
 }
 export function values(record) {
     const result = [];
-    for (let key in record) {
+    for (const key in record) {
         result.push(record[key]);
     }
     return result;

@@ -2,7 +2,7 @@ import { gear } from "/gen/libs.js"
 import { wgl } from "../djee/index.js"
 import { FlattenedSierpinski } from "./model.js"
 
-var vertexShader = `
+const vertexShader = `
     attribute vec2 vPosition;
     
     uniform float twist;
@@ -18,7 +18,7 @@ var vertexShader = `
     }
 `;
 
-var fragmentShader = `
+const fragmentShader = `
     precision mediump float;
     
     void main() {
@@ -26,7 +26,7 @@ var fragmentShader = `
     }
 `
 
-var ST = wgl.ShaderType;
+const ST = wgl.ShaderType;
 
 function round(value: number) {
     return Math.round(1000 * value) / 1000;
@@ -54,9 +54,9 @@ export class View {
     private readonly cornersBuffer: wgl.AttributesBuffer;
     private readonly centersBuffer: wgl.AttributesBuffer;
 
-    private mustShowCorners: boolean = true;
-    private mustShowCenters: boolean = true;
-    private stride: number = 0;
+    private mustShowCorners = true;
+    private mustShowCenters = true;
+    private stride = 0;
 
     constructor(
         canvasId: string, 
@@ -124,7 +124,7 @@ export class View {
 
     private draw() {
         setTimeout(() => {
-            var gl = this.context.gl;
+            const gl = this.context.gl;
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             if (this.mustShowCorners) {

@@ -238,7 +238,7 @@ function caching(pipelineSupplier: (bufferLayouts: GPUVertexBufferLayout[], prim
     const cache = new Map<string, GPURenderPipeline>()
     return (bufferLayouts, primitiveState) => computeIfAbsent(
         cache, 
-        digest(bufferLayouts, primitiveState), 
+        digest(bufferLayouts), 
         () => pipelineSupplier(bufferLayouts, primitiveState)
     )
 }
@@ -252,7 +252,7 @@ function computeIfAbsent<K, V, T extends V>(map: Map<K, V>, key: K, computer: (k
     return result;
 }
 
-function digest(bufferLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState): string {
+function digest(bufferLayouts: GPUVertexBufferLayout[]): string {
     return [...bufferLayouts]
         .map(l => ({
             ...l, 

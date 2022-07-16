@@ -17,7 +17,7 @@ let tetrahedronBuffer: wgl.AttributesBuffer;
 let contourSurfaceBuffer: wgl.AttributesBuffer;
 
 let tetrahedron: Tetrahedron = newTetrahedron(1, -1, -1, -1);
-let contourValue: number = 0;
+let contourValue = 0;
 
 let scalarFieldInstance: aether.ScalarFieldInstance 
 
@@ -130,7 +130,7 @@ async function doInit() {
 
     cases.contourValue
         .then(gear.drag(dragging.positionDragging))
-        .map(([x, y]) => y)
+        .map(([_, y]) => y)
         .defaultsTo(0)
         .map(v => contourSurfaceData(tetrahedron, contourValue = v))
         .attach(data => contourSurfaceBuffer.data = data)
@@ -159,7 +159,7 @@ async function doInit() {
             .map(t => contourSurfaceData(tetrahedron = t, contourValue)),
         cases.contourValue
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => y)
+            .map(([_, y]) => y)
             .defaultsTo(0)
             .map(v => contourSurfaceData(tetrahedron, contourValue = v))
     ).attach(data => contourSurfaceBuffer.float32Data = data)
@@ -171,7 +171,7 @@ type TetrahedronCorner = 0 | 1 | 2 | 3
 type TetrahedronCornerValue = [TetrahedronCorner, number]
 
 function cornerValue(corner: TetrahedronCorner): (xy: aether.Vec<2>) => TetrahedronCornerValue {
-    return ([x, y]) => [corner, y]
+    return ([_, y]) => [corner, y]
 } 
 
 function tetrahedronAdjustor(tetrahedron: Tetrahedron, cornerValue: number[]): Tetrahedron {
@@ -279,20 +279,20 @@ function contourSurfaceData(tetrahedron: Tetrahedron, contourValue: number): Flo
     stack.leave();
     stack.enter();
     const p0 = space.f64_vec4(tetrahedron.point0[0], tetrahedron.point0[1], tetrahedron.point0[2], 1)
-    const g0 = space.f64_vec4(tetrahedron.gradient0[0], tetrahedron.gradient0[1], tetrahedron.gradient0[2], tetrahedron.value0);
+    space.f64_vec4(tetrahedron.gradient0[0], tetrahedron.gradient0[1], tetrahedron.gradient0[2], tetrahedron.value0);
     const p1 = space.f64_vec4(tetrahedron.point1[0], tetrahedron.point1[1], tetrahedron.point1[2], 1)
-    const g1 = space.f64_vec4(tetrahedron.gradient1[0], tetrahedron.gradient1[1], tetrahedron.gradient1[2], tetrahedron.value1);
+    space.f64_vec4(tetrahedron.gradient1[0], tetrahedron.gradient1[1], tetrahedron.gradient1[2], tetrahedron.value1);
     const p2 = space.f64_vec4(tetrahedron.point2[0], tetrahedron.point2[1], tetrahedron.point2[2], 1)
-    const g2 = space.f64_vec4(tetrahedron.gradient2[0], tetrahedron.gradient2[1], tetrahedron.gradient2[2], tetrahedron.value2);
+    space.f64_vec4(tetrahedron.gradient2[0], tetrahedron.gradient2[1], tetrahedron.gradient2[2], tetrahedron.value2);
     const p3 = space.f64_vec4(tetrahedron.point3[0], tetrahedron.point3[1], tetrahedron.point3[2], 1)
-    const g3 = space.f64_vec4(tetrahedron.gradient3[0], tetrahedron.gradient3[1], tetrahedron.gradient3[2], tetrahedron.value3);
+    space.f64_vec4(tetrahedron.gradient3[0], tetrahedron.gradient3[1], tetrahedron.gradient3[2], tetrahedron.value3);
     const begin = scalarField.tessellateTetrahedron(contourValue, p0, p1, p2, p3);
     const end = stack.allocate8(0);
     const result = new Float32Array(stack.stack.buffer, begin, (end - begin) / 4);
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha: number = 0.4): aether.Vec<4> {
+function fieldColor(fieldValue: number, alpha = 0.4): aether.Vec<4> {
     return [(1 + fieldValue) / 2, 0, (1 - fieldValue) / 2, alpha];
 }
 

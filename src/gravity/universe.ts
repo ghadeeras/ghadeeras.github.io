@@ -107,7 +107,7 @@ export class Universe {
         this.updateUniformsData.perform()
     }
 
-    recreateUniverse(universeRadius: number = 12) {
+    recreateUniverse(universeRadius = 12) {
         const [bodyDescriptions, initialState] = this.createUniverse(universeRadius)
         const initialStateView = Universe.bodyState.view(initialState)
         this.bodyDescriptionsBuffer.writeAt(0, Universe.bodyDescription.view(bodyDescriptions))
@@ -115,7 +115,7 @@ export class Universe {
         this.stateBuffers[1].writeAt(0, initialStateView)
     }
 
-    private createUniverse(universeRadius: number = 12): [gpu.DataTypeOf<typeof Universe.bodyDescription>[], gpu.DataTypeOf<typeof Universe.bodyState>[]] {
+    private createUniverse(universeRadius = 12): [gpu.DataTypeOf<typeof Universe.bodyDescription>[], gpu.DataTypeOf<typeof Universe.bodyState>[]] {
         const descriptions: gpu.DataTypeOf<typeof Universe.bodyDescription>[] = []
         const initialState: gpu.DataTypeOf<typeof Universe.bodyState>[] = []
 

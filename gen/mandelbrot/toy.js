@@ -42,11 +42,11 @@ function doInit() {
             .defaultsTo([mandelbrotView.hue, mandelbrotView.saturation]);
         intensity.value = cases.intensity
             .then(gear.drag(positionDragging))
-            .map(([x, y]) => (y + 1) / 2)
+            .map(([_, y]) => (y + 1) / 2)
             .defaultsTo(mandelbrotView.intensity);
         palette.value = cases.palette
             .then(gear.drag(positionDragging))
-            .map(([x, y]) => y * 2)
+            .map(([_, y]) => y * 2)
             .defaultsTo(mandelbrotView.palette);
         julia.value = cases.julia
             .then(gear.drag(positionDragging))

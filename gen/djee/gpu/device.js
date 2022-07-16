@@ -32,18 +32,17 @@ export class Device {
     }
     encodeCommand(encoding) {
         const encoder = new CommandEncoder(this);
-        try {
-            encoding(encoder);
-        }
-        finally {
-            return encoder.finish();
-        }
+        encoding(encoder);
+        return encoder.finish();
+    }
+    encodeCommands(...encodings) {
+        return encodings.map(encoding => this.encodeCommand(encoding));
     }
     enqueueCommand(encoding) {
         this.enqueue(this.encodeCommand(encoding));
     }
     enqueueCommands(...encodings) {
-        this.enqueue(...encodings.map(encoding => this.encodeCommand(encoding)));
+        this.enqueue(...this.encodeCommands(...encodings));
     }
     enqueue(...commands) {
         this.device.queue.submit(commands);
@@ -78,15 +77,12 @@ export class Device {
     monitorErrors(filter, expression) {
         return __awaiter(this, void 0, void 0, function* () {
             this.device.pushErrorScope(filter);
-            try {
-                return expression();
+            const result = expression();
+            const error = yield this.device.popErrorScope();
+            if (error) {
+                throw error;
             }
-            finally {
-                const error = yield this.device.popErrorScope();
-                if (error) {
-                    throw error;
-                }
-            }
+            return result;
         });
     }
     static instance() {

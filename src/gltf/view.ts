@@ -40,6 +40,7 @@ export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
         apiElement.innerHTML = "WebGPU"
         return view
     } catch (e) {
+        console.warn("Falling back to WebGL because of exception!", e)
         apiElement.innerHTML = "WebGL"
         return await glView.newViewFactory(canvasId)
     }

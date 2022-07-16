@@ -83,7 +83,7 @@ export class GLTFRenderer {
     gpuBuffers() {
         const buffers = new Map();
         for (const bufferView of this.model.bufferViews) {
-            let dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
+            const dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
             const buffer = bufferView.index ?
                 this.adapter.indexBuffer(dataView, bufferView.byteStride) :
                 this.adapter.vertexBuffer(dataView, bufferView.byteStride);

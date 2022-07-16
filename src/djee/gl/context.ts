@@ -45,15 +45,15 @@ export class Context {
         return new Program(this, shaders)
     }
 
-    newAttributesBuffer(byteStride: number = 0, isDynamic: boolean = false) {
+    newAttributesBuffer(byteStride = 0, isDynamic = false) {
         return new AttributesBuffer(this, byteStride, isDynamic)
     }
 
-    newIndicesBuffer(isDynamic: boolean = false) {
+    newIndicesBuffer(isDynamic = false) {
         return new IndicesBuffer(this, isDynamic)
     }
 
-    newTexture2D(unit: number = 0) {
+    newTexture2D(unit = 0) {
         return new Texture2D(this, unit)
     }
 

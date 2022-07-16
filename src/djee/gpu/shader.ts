@@ -39,7 +39,7 @@ export class ShaderModule {
         })
     }
 
-    vertexState(entryPoint: string, buffers: GPUVertexBufferLayout[], rewriteLocations: boolean = true): GPUVertexState {
+    vertexState(entryPoint: string, buffers: GPUVertexBufferLayout[], rewriteLocations = true): GPUVertexState {
         const index = [0]
         return {
             module: this.shaderModule,

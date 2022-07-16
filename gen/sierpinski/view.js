@@ -1,6 +1,6 @@
 import { gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
-var vertexShader = `
+const vertexShader = `
     attribute vec2 vPosition;
     
     uniform float twist;
@@ -15,14 +15,14 @@ var vertexShader = `
     gl_Position = vec4(rotation * p, 0.0, 1.0);
     }
 `;
-var fragmentShader = `
+const fragmentShader = `
     precision mediump float;
     
     void main() {
     gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `;
-var ST = wgl.ShaderType;
+const ST = wgl.ShaderType;
 function round(value) {
     return Math.round(1000 * value) / 1000;
 }
@@ -77,7 +77,7 @@ export class View {
     }
     draw() {
         setTimeout(() => {
-            var gl = this.context.gl;
+            const gl = this.context.gl;
             gl.clear(gl.COLOR_BUFFER_BIT);
             if (this.mustShowCorners) {
                 this.shaderPosition.pointTo(this.cornersBuffer);

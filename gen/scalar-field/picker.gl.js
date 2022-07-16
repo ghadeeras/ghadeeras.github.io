@@ -43,18 +43,16 @@ export class GLPicker {
         this.mainView.bind();
     }
     pick(matModelViewProjection, x, y) {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.bind();
-            this.mvpMatrixUniform.data = new Float32Array(aether.mat4.columnMajorArray(matModelViewProjection));
-            this.posAttribute.pointTo(this.vertices());
-            const context = this.mainView.context;
-            context.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT | WebGL2RenderingContext.DEPTH_BUFFER_BIT);
-            context.gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, this.vertices().count);
-            const coordinatesAsColor = new Uint8Array(4);
-            context.gl.readPixels(context.canvas.width * (x + 1) / 2, context.canvas.height * (y + 1) / 2, 1, 1, WebGL2RenderingContext.RGBA, WebGL2RenderingContext.UNSIGNED_BYTE, coordinatesAsColor);
-            this.unbind();
-            return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]));
-        });
+        this.bind();
+        this.mvpMatrixUniform.data = new Float32Array(aether.mat4.columnMajorArray(matModelViewProjection));
+        this.posAttribute.pointTo(this.vertices());
+        const context = this.mainView.context;
+        context.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT | WebGL2RenderingContext.DEPTH_BUFFER_BIT);
+        context.gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, this.vertices().count);
+        const coordinatesAsColor = new Uint8Array(4);
+        context.gl.readPixels(context.canvas.width * (x + 1) / 2, context.canvas.height * (y + 1) / 2, 1, 1, WebGL2RenderingContext.RGBA, WebGL2RenderingContext.UNSIGNED_BYTE, coordinatesAsColor);
+        this.unbind();
+        return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]));
     }
 }
 export function picker(mainView, vertices) {

@@ -29,6 +29,7 @@ export async function view(julia: boolean, canvasId: string, center: aether.Vec<
         apiElement.innerHTML = "WebGPU"
         return view
     } catch (e) {
+        console.warn("Falling back to WebGL because of exception!", e)
         apiElement.innerHTML = "WebGL"
         return await viewGL(julia, canvasId, center, scale)
     }

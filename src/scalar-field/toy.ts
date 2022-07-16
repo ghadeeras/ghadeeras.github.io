@@ -17,7 +17,7 @@ async function doInit() {
     const view = await v.newView("canvas-gl")
     view.matView = viewMatrix
     view.matProjection = projectionMatrix
-    const toy = new Toy(view, scalarFieldInstance)
+    new Toy(view, scalarFieldInstance)
 }
 
 class Toy {
@@ -43,7 +43,7 @@ class Toy {
 
         const contourValue = cases.contourValue
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => y)
+            .map(([_, y]) => y)
             .defaultsTo(0.01)
         const resolution = this.levelOfDetails()
 
@@ -65,12 +65,12 @@ class Toy {
 
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.shininess),
 
             fogginess: cases.fogginess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.fogginess),
             
             lightPosition: cases.lightPosition
@@ -82,7 +82,7 @@ class Toy {
             
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0.1),
             
             vertices: gear.Value.from(

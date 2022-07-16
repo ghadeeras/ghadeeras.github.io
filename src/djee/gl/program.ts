@@ -72,13 +72,13 @@ function makeProgram(context: Context, shaders: Shader[]): WebGLProgram {
         return failure(`Failed to create GL program in context:  ${context.canvas.id}`)
     }
 
-    for (let shader of shaders) {
+    for (const shader of shaders) {
         gl.attachShader(program, shader.glShader)
     }
 
     gl.linkProgram(program)
 
-    for (let shader of shaders) {
+    for (const shader of shaders) {
         gl.detachShader(program, shader.glShader)
         if (!shader.reusable) {
             shader.delete()

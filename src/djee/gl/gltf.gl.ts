@@ -51,7 +51,7 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, AttributesBu
         return buffer
     }
 
-    indexBuffer(view: DataView, stride: number): IndicesBuffer {
+    indexBuffer(view: DataView): IndicesBuffer {
         const buffer = this.context.newIndicesBuffer()
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
         return buffer

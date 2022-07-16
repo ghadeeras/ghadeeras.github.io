@@ -192,7 +192,7 @@ function toGpuTopology(primitiveMode) {
 }
 function caching(pipelineSupplier) {
     const cache = new Map();
-    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts, primitiveState), () => pipelineSupplier(bufferLayouts, primitiveState));
+    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts), () => pipelineSupplier(bufferLayouts, primitiveState));
 }
 function computeIfAbsent(map, key, computer) {
     let result = map.get(key);
@@ -202,7 +202,7 @@ function computeIfAbsent(map, key, computer) {
     }
     return result;
 }
-function digest(bufferLayouts, primitiveState) {
+function digest(bufferLayouts) {
     return [...bufferLayouts]
         .map(l => (Object.assign(Object.assign({}, l), { attributes: [...l.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation) })))
         .sort((l1, l2) => l1.attributes[0].shaderLocation - l2.attributes[0].shaderLocation)

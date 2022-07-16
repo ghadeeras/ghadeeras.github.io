@@ -365,7 +365,7 @@ function structSize(membersOrder, struct, packed) {
     return Math.ceil(result / alignment) * alignment;
 }
 function cloneStruct(membersOrder, struct, offset, stride, packed) {
-    let result = {};
+    const result = {};
     for (const key of membersOrder) {
         const t = clone(struct[key], offset, stride, packed);
         result[key] = t;

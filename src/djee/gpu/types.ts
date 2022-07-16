@@ -78,7 +78,7 @@ abstract class BaseElement<T> implements Element<T> {
         }
     }
 
-    range(index: number = 0, count: number = 1): [number, number] {
+    range(index = 0, count = 1): [number, number] {
         return [
             this.offset + index * this.paddedSize, 
             this.offset + (index + count) * this.paddedSize
@@ -509,7 +509,7 @@ export class Vertex<T extends Record<string, Element<any>>> {
     constructor(readonly attributes: (keyof T)[], readonly struct: Struct<T>) {
     }
 
-    asBufferLayout(stepMode: GPUVertexStepMode = "vertex", baseIndex: number = 0): GPUVertexBufferLayout {
+    asBufferLayout(stepMode: GPUVertexStepMode = "vertex", baseIndex = 0): GPUVertexBufferLayout {
         return {
             arrayStride: this.struct.stride,
             attributes: this.attributes.map((name, index) => {
@@ -567,7 +567,7 @@ function structSize<T extends Record<string, Element<any>>>(membersOrder: (keyof
 }
 
 function cloneStruct<T extends Record<string, Element<any>>>(membersOrder: (keyof T)[], struct: T, offset: number, stride: number, packed: boolean): T {
-    let result: Partial<T> = {}
+    const result: Partial<T> = {}
     for (const key of membersOrder) {
         const t = clone(struct[key], offset, stride, packed)
         result[key] = t

@@ -19,6 +19,7 @@ export function newViewFactory(canvasId) {
             return view;
         }
         catch (e) {
+            console.warn("Falling back to WebGL because of exception!", e);
             apiElement.innerHTML = "WebGL";
             return yield glView.newViewFactory(canvasId);
         }

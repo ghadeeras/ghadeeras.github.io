@@ -16,7 +16,7 @@ export class Attribute {
         this.setter = getSetter(gl, this.location, this.info)
     }
 
-    pointTo(buffer: AttributesBuffer, byteOffset: number = 0, normalized: boolean = false, info: VariableInfo = this.info) {
+    pointTo(buffer: AttributesBuffer, byteOffset = 0, normalized = false, info: VariableInfo = this.info) {
         buffer.bind()
         const gl = buffer.context.gl
         gl.enableVertexAttribArray(this.location);

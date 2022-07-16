@@ -25,7 +25,7 @@ async function doInit() {
     stone.sampler = field
     stone.contourValue = 0.5
 
-    const toy = new Toy(stone, scalarFieldModule, view, picker)
+    new Toy(stone, scalarFieldModule, view, picker)
 }
 
 class Toy {
@@ -62,7 +62,7 @@ class Toy {
         const contourValue = gear.Value.from(
             cases.contourValue
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => this.clamp((y + 1) / 2, 0, 1))
+                .map(([_, y]) => this.clamp((y + 1) / 2, 0, 1))
                 .defaultsTo(this.stone.contourValue),
             gear.elementEvents("reset-contour").click.value.map(() => 0.5)
         )
@@ -98,12 +98,12 @@ class Toy {
 
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.shininess),
 
             fogginess: cases.fogginess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.fogginess),
             
             lightPosition: cases.lightPosition
@@ -115,7 +115,7 @@ class Toy {
             
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0.1),
             
             vertices: stoneValue.then((s, c) => this.contourSurfaceDataForStone(s, c)),
@@ -248,7 +248,7 @@ function dropOn(element: HTMLElement) {
     return gear.Source.from((c: gear.Consumer<DragEvent>) => element.ondrop = c).value
 }
 
-async function data(e: DragEvent): Promise<ArrayBuffer> {
+function data(e: DragEvent): Promise<ArrayBuffer> {
     e.preventDefault()
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]

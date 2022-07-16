@@ -35,10 +35,6 @@ export function sierpinski(
     ).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
 }
 
-function from<T>(...sources: gear.Value<T>[]): gear.Value<T> {
-    return gear.Value.from(...sources);
-}
-
 function vec(angleInDegrees: number): aether.Vec<2> {
     const angle = Math.PI * angleInDegrees / 180
     return [Math.cos(angle), Math.sin(angle)];

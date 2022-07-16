@@ -162,7 +162,7 @@ export class GPUView implements v.View {
         this.uniforms.syncFrom(this.uniformsView, member)
     }
 
-    setMesh(primitives: GLenum, vertices: Float32Array) {
+    setMesh(_primitives: GLenum, vertices: Float32Array) {
         this.vertices.setData(gpu.dataView(vertices))
     }
 

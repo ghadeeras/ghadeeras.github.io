@@ -28,7 +28,7 @@ export class GLAdapter {
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         return buffer;
     }
-    indexBuffer(view, stride) {
+    indexBuffer(view) {
         const buffer = this.context.newIndicesBuffer();
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         return buffer;

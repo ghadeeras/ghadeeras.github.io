@@ -117,7 +117,7 @@ function indexVertices(vertices: Float32Array) {
         const position = vertex.slice(0, 3)
         const normal = vertex.slice(3, 6)
         const nextIndex = indexedVertices.vertices.length / stride
-        let index = lookUp(map, position, nextIndex)
+        const index = lookUp(map, position, nextIndex)
         if (index == nextIndex) {
             const unitNormal = aether.vec3.unit([normal[0], normal[1], normal[2]])
             indexedVertices.vertices.push(...position, ...unitNormal)

@@ -17,7 +17,7 @@ export function lazily<T>(constructor: Supplier<T>): Supplier<T> {
 
 export function values<K extends string | number | symbol, V>(record: Record<K, V>): V[] {
     const result: V[] = []
-    for (let key in record) {
+    for (const key in record) {
         result.push(record[key])
     }
     return result

@@ -44,12 +44,12 @@ export class View {
             .defaultsTo(0)
             .map(index => this.xScalar = index >= 0 ? this.programScalars[index] : null)
             .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY
-            .map(([x, y]) => this.xScalar != null ? x.toPrecision(3) : ""));
+            .map(([x, _]) => this.xScalar != null ? x.toPrecision(3) : ""));
         gear.text("mouse-y-val").value = gear.Value.from(inputs.mouseYBinding
             .defaultsTo(0)
             .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
             .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY
-            .map(([x, y]) => this.yScalar != null ? y.toPrecision(3) : ""));
+            .map(([_, y]) => this.yScalar != null ? y.toPrecision(3) : ""));
         mouseXY.attach(([x, y]) => {
             this.setValue(this.xScalar, x);
             this.setValue(this.yScalar, y);
@@ -80,11 +80,11 @@ export class View {
     }
     toScalars(reflection) {
         const result = [];
-        for (let attribute of reflection.attributes) {
+        for (const attribute of reflection.attributes) {
             const glAttribute = reflection.program.attribute(attribute.name);
             glAttribute.pointTo(this.buffer);
         }
-        for (let uniform of reflection.uniforms) {
+        for (const uniform of reflection.uniforms) {
             const dimensions = uniform.itemDimensions;
             const glUniform = reflection.program.uniform(uniform.name);
             const data = [];

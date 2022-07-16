@@ -1,6 +1,5 @@
 import { aether, gear } from "/gen/libs.js"
 import { Picker } from "../scalar-field/view.js";
-import { samples } from "../webgl-lab/samples.js";
 
 const weights = [0.5, 1, 0.5]
 

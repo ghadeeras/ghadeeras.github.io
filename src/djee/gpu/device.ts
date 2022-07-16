@@ -11,7 +11,7 @@ export class Device {
     constructor(readonly device: GPUDevice, readonly adapter: GPUAdapter) {
     }
 
-    async loadShaderModule(shaderName: string, templateFunction: (code: string) => string = s => s, basePath: string = "/shaders"): Promise<ShaderModule> {
+    async loadShaderModule(shaderName: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
         const shaderCodes = await gear.fetchTextFiles({ shader: shaderName }, basePath)
         
         const shaderCode = templateFunction(shaderCodes["shader"]) // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
@@ -26,26 +26,27 @@ export class Device {
     
     encodeCommand(encoding: (encoder: CommandEncoder) => void): GPUCommandBuffer {
         const encoder = new CommandEncoder(this)
-        try {
-            encoding(encoder)
-        } finally {
-            return encoder.finish()
-        }
+        encoding(encoder)
+        return encoder.finish()
     }
 
+    encodeCommands(...encodings: ((encoder: CommandEncoder) => void)[]): GPUCommandBuffer[] {
+        return encodings.map(encoding => this.encodeCommand(encoding))
+    }
+    
     enqueueCommand(encoding: (encoder: CommandEncoder) => void) {
         this.enqueue(this.encodeCommand(encoding))
     }
 
     enqueueCommands(...encodings: ((encoder: CommandEncoder) => void)[]) {
-        this.enqueue(...encodings.map(encoding => this.encodeCommand(encoding)))
+        this.enqueue(...this.encodeCommands(...encodings))
     }
     
     enqueue(...commands: GPUCommandBuffer[]) {
         this.device.queue.submit(commands)
     }
     
-    canvas(element: HTMLCanvasElement | string, withMultiSampling: boolean = true): Canvas {
+    canvas(element: HTMLCanvasElement | string, withMultiSampling = true): Canvas {
         return new Canvas(this, element, withMultiSampling)
     }
 
@@ -57,7 +58,7 @@ export class Device {
         return new Sampler(this, descriptor)
     }
 
-    buffer(usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride: number = 0): Buffer {
+    buffer(usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride = 0): Buffer {
         return stride > 0 ? 
             new Buffer(this, usage, dataOrSize, stride) : 
             new Buffer(this, usage, dataOrSize) 
@@ -79,14 +80,12 @@ export class Device {
     
     async monitorErrors<T>(filter: GPUErrorFilter, expression: () => T): Promise<T> {
         this.device.pushErrorScope(filter)
-        try {
-            return expression()
-        } finally {
-            const error = await this.device.popErrorScope()
-            if (error) {
-                throw error
-            }
+        const result = expression()
+        const error = await this.device.popErrorScope()
+        if (error) {
+            throw error
         }
+        return result
     }    
 
     static async instance(): Promise<Device> {

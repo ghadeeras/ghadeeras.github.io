@@ -59,7 +59,7 @@ export class GLPicker implements Picker {
         this.mainView.bind()
     }
 
-    async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
+    pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
         this.bind()
 
         this.mvpMatrixUniform.data = new Float32Array(aether.mat4.columnMajorArray(matModelViewProjection))

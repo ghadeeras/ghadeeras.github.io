@@ -4,7 +4,7 @@ import { failure } from "../utils.js";
 import * as gltf from "../gltf/gltf.js";
 import * as graph from "../gltf/gltf.graph.js";
 
-export interface APIAdapter<U extends Resource, V extends Resource, I extends Resource, R extends Renderer> {
+export interface APIAdapter<U extends Resource, V extends Resource, I extends Resource, R> {
 
     matricesBuffer(matrices: Matrix[]): U
 
@@ -34,17 +34,14 @@ export type VertexAttribute<V> = {
     buffer: V,
 }
 
-export interface Renderer {
-}
-
-export type Binder<R extends Renderer> = (renderer: R) => void
+export type Binder<R> = (renderer: R) => void
 
 export type Matrix = {
     matrix: aether.Mat4,
     antiMatrix: aether.Mat4,
 }
 
-export class GLTFRenderer<U extends Resource, V extends Resource, I extends Resource, R extends Renderer> {
+export class GLTFRenderer<U extends Resource, V extends Resource, I extends Resource, R> {
 
     private matrixBinders: Map<graph.Node | graph.Scene, Binder<R>>
     private primitiveBinders: Map<graph.Primitive, Binder<R>>
@@ -139,7 +136,7 @@ export class GLTFRenderer<U extends Resource, V extends Resource, I extends Reso
     private gpuBuffers() {
         const buffers: Map<graph.BufferView, V | I> = new Map();
         for (const bufferView of this.model.bufferViews) {
-            let dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
+            const dataView = new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
             const buffer = bufferView.index ? 
                 this.adapter.indexBuffer(dataView, bufferView.byteStride) :
                 this.adapter.vertexBuffer(dataView, bufferView.byteStride)

@@ -98,7 +98,7 @@ export class AttributesBuffer extends Buffer {
         this.data = new Int8Array(data)
     }
 
-    draw(mode: GLenum, count: number = this.count, first: number = 0) {
+    draw(mode: GLenum, count: number = this.count, first = 0) {
         this.context.gl.drawArrays(mode, first, count)
     }
 
@@ -130,7 +130,7 @@ export class IndicesBuffer extends Buffer {
         super.data = data
     }
 
-    draw(mode: GLenum, count: number = this.data.length, offset: number = 0) {
+    draw(mode: GLenum, count: number = this.data.length, offset = 0) {
         this.context.gl.drawElements(mode, count, this.type, offset)
     }
 

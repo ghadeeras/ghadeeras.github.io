@@ -6,7 +6,7 @@ export function init() {
 }
 function doInit() {
     const controller = new Controller();
-    const view = new View("canvas-gl", samples, {
+    new View("canvas-gl", samples, {
         levelOfDetails: controller.levelOfDetails(),
         programSample: controller.programSample()
             .map(index => samples[index])

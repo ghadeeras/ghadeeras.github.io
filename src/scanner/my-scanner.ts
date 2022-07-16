@@ -76,7 +76,7 @@ export class MyScanner extends L.Scanner {
 
     tokenize(text: string): string {
         let output = ""
-        for (let token of this.iterator(new L.TextInputStream(text))) {
+        for (const token of this.iterator(new L.TextInputStream(text))) {
             if (token.tokenType == this.whiteSpace) {
                 continue
             }

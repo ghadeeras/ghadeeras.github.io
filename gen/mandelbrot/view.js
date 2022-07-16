@@ -18,6 +18,7 @@ export function view(julia, canvasId, center, scale) {
             return view;
         }
         catch (e) {
+            console.warn("Falling back to WebGL because of exception!", e);
             apiElement.innerHTML = "WebGL";
             return yield viewGL(julia, canvasId, center, scale);
         }

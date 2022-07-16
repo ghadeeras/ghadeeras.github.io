@@ -44,12 +44,12 @@ async function doInit() {
 
     intensity.value = cases.intensity
         .then(gear.drag(positionDragging))
-        .map(([x, y]) => (y + 1) / 2)
+        .map(([_, y]) => (y + 1) / 2)
         .defaultsTo(mandelbrotView.intensity)
 
     palette.value = cases.palette
         .then(gear.drag(positionDragging))
-        .map(([x, y]) => y * 2)
+        .map(([_, y]) => y * 2)
         .defaultsTo(mandelbrotView.palette)
 
     julia.value = cases.julia
@@ -155,7 +155,7 @@ function text(elementId: string): gear.Consumer<string> {
     }
 }
 
-function toString(v: aether.Vec<2>, precision: number = 3) {
+function toString(v: aether.Vec<2>, precision = 3) {
     const [x, y] = v.map(c => c.toPrecision(precision))
     return `(${x}, ${y})`
 }
@@ -287,7 +287,7 @@ class Move implements gear.DraggingHandler<Transformation> {
 
 }
 
-function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, scale: number = 1) {
+function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, scale = 1) {
     return aether.vec2.scale(
         aether.vec2.sub(pos2, pos1), 
         scale

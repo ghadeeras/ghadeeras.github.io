@@ -11,13 +11,12 @@ export class Controller {
         this.showCenters = gear.checkbox(centersCheckboxId);
         const mousePos = canvas.dragging.value.then(gear.drag(positionDragging));
         this.twist = mousePos
-            .map(([x, y]) => 2 * Math.PI * x)
+            .map(([x, _]) => 2 * Math.PI * x)
             .then(gear.flowSwitch(twistEnabled));
         this.scale = mousePos
-            .map(([x, y]) => 2 * Math.PI * y)
+            .map(([_, y]) => 2 * Math.PI * y)
             .then(gear.flowSwitch(scaleEnabled));
-        ;
-        this.depth = gear.Value.from(depthDecButton.click.value.map(e => -1), depthIncButton.click.value.map(e => 1)).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);
+        this.depth = gear.Value.from(depthDecButton.click.value.map(_ => -1), depthIncButton.click.value.map(_ => 1)).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);
     }
 }
 //# sourceMappingURL=controller.js.map

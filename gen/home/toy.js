@@ -111,23 +111,21 @@ function tearImage(e, mousePos, effect) {
     draw(mousePos.program.context);
 }
 function loadImage(e, effect) {
-    return __awaiter(this, void 0, void 0, function* () {
-        e.preventDefault();
-        effect.data = [effect.data[0] - 3];
-        if (e.dataTransfer) {
-            const item = e.dataTransfer.items[0];
-            if (item.kind == 'file') {
-                const url = URL.createObjectURL(required(item.getAsFile()));
-                mySketch.src = url;
-            }
-            else {
-                item.getAsString(url => {
-                    mySketch.crossOrigin = isCrossOrigin(url) ? "anonymous" : null;
-                    mySketch.src = url;
-                });
-            }
+    e.preventDefault();
+    effect.data = [effect.data[0] - 3];
+    if (e.dataTransfer) {
+        const item = e.dataTransfer.items[0];
+        if (item.kind == 'file') {
+            const url = URL.createObjectURL(required(item.getAsFile()));
+            mySketch.src = url;
         }
-    });
+        else {
+            item.getAsString(url => {
+                mySketch.crossOrigin = isCrossOrigin(url) ? "anonymous" : null;
+                mySketch.src = url;
+            });
+        }
+    }
 }
 function isCrossOrigin(url) {
     const urlObj = new URL(url, window.location.href);

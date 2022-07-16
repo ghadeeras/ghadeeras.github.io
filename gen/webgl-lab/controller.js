@@ -26,7 +26,7 @@ export class Controller {
 function programFlow() {
     const compileBtn = gear.ElementEvents.create("compile-button");
     return compileBtn.clickPos.value
-        .map(pos => program())
+        .map(program)
         .filter(program => program && program.vertexShader && program.fragmentShader ? true : false);
 }
 function program() {
@@ -39,8 +39,8 @@ function program() {
     };
 }
 function levelOfDetailsFlow() {
-    const inc = gear.elementEvents("lod-inc").pointerButtons.value.map(([l, m, r]) => l ? +1 : 0);
-    const dec = gear.elementEvents("lod-dec").pointerButtons.value.map(([l, m, r]) => l ? -1 : 0);
+    const inc = gear.elementEvents("lod-inc").pointerButtons.value.map(([l, ..._]) => l ? +1 : 0);
+    const dec = gear.elementEvents("lod-dec").pointerButtons.value.map(([l, ..._]) => l ? -1 : 0);
     return gear.Value.from(inc, dec)
         .then(gear.repeater(128, 0))
         .reduce((i, lod) => clamp(lod + i, 0, 100), 50);

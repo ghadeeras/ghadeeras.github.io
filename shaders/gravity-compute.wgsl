@@ -32,7 +32,7 @@ var<storage, read> currentState: UniverseState;
 
 @group(0)
 @binding(2)
-var<storage, write> nextState: UniverseState;
+var<storage, read_write> nextState: UniverseState;
 
 @group(0)
 @binding(3)

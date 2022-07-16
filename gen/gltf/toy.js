@@ -23,7 +23,7 @@ function doInit() {
         modelIndex = (yield modelIndexResponse.json());
         const viewFactory = yield newViewFactory("canvas-gl");
         const modelElement = document.getElementById("model");
-        for (let entry of modelIndex) {
+        for (const entry of modelIndex) {
             modelElement.appendChild(new Option(entry.name, entry.name));
         }
         const canvas = gear.elementEvents("canvas-gl");
@@ -60,15 +60,15 @@ function doInit() {
                 .defaultsTo(aether.vec3.of(2, 2, 2)),
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0.1),
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0),
             fogginess: cases.fogginess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0),
             modelUri: model.map(getModelUri),
         });
@@ -107,9 +107,10 @@ function getModelUri(modelId) {
         case "ScalarFieldOut": return new URL('/models/ScalarFieldOut.gltf', window.location.href).href;
         case "SculptTorso": return new URL('/models/SculptTorso.gltf', window.location.href).href;
         case "SculptHead": return new URL('/models/SculptHead.gltf', window.location.href).href;
-        default:
+        default: {
             const modelIndexEntry = modelIndex.find(entry => entry.name === modelId);
             return `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry === null || modelIndexEntry === void 0 ? void 0 : modelIndexEntry.variants.glTF}`;
+        }
     }
 }
 //# sourceMappingURL=toy.js.map

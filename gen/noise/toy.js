@@ -12,7 +12,6 @@ import * as misc from "../utils/misc.js";
 export function init() {
     window.onload = doInit;
 }
-const SEEDS_COUNT = 0x4000;
 const uniformsStruct = gpu.struct({
     samplesPerPixel: gpu.u32,
 });

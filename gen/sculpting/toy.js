@@ -29,7 +29,7 @@ function doInit() {
         stone.resolution = 64;
         stone.sampler = field;
         stone.contourValue = 0.5;
-        const toy = new Toy(stone, scalarFieldModule, view, picker);
+        new Toy(stone, scalarFieldModule, view, picker);
     });
 }
 class Toy {
@@ -54,7 +54,7 @@ class Toy {
         canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases);
         const contourValue = gear.Value.from(cases.contourValue
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => this.clamp((y + 1) / 2, 0, 1))
+            .map(([_, y]) => this.clamp((y + 1) / 2, 0, 1))
             .defaultsTo(this.stone.contourValue), gear.elementEvents("reset-contour").click.value.map(() => 0.5));
         const resolution = this.levelOfDetails();
         const stoneValue = gear.Value.from(cases.carving.then(gear.drag(this.carving)), resolution.map(r => this.stoneWithResolution(r)), contourValue.map(v => this.stoneWithContourValue(v)), gear.elementEvents("undo").click.value.map(() => this.carving.undo()), dropOn(canvas.element)
@@ -75,11 +75,11 @@ class Toy {
                 .map(v => this.fieldColor(v)),
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.shininess),
             fogginess: cases.fogginess
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.fogginess),
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
@@ -89,7 +89,7 @@ class Toy {
                 .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
             lightRadius: cases.lightRadius
                 .then(gear.drag(dragging.positionDragging))
-                .map(([x, y]) => (y + 1) / 2)
+                .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(0.1),
             vertices: stoneValue.then((s, c) => this.contourSurfaceDataForStone(s, c)),
         });
@@ -203,18 +203,16 @@ function dropOn(element) {
     return gear.Source.from((c) => element.ondrop = c).value;
 }
 function data(e) {
-    return __awaiter(this, void 0, void 0, function* () {
-        e.preventDefault();
-        if (e.dataTransfer) {
-            const item = e.dataTransfer.items[0];
-            return item.kind == 'file' ?
-                misc.required(item.getAsFile()).arrayBuffer() :
-                asURL(item).then(fetch).then(response => response.arrayBuffer());
-        }
-        else {
-            return Promise.reject("Not a data transfer!");
-        }
-    });
+    e.preventDefault();
+    if (e.dataTransfer) {
+        const item = e.dataTransfer.items[0];
+        return item.kind == 'file' ?
+            misc.required(item.getAsFile()).arrayBuffer() :
+            asURL(item).then(fetch).then(response => response.arrayBuffer());
+    }
+    else {
+        return Promise.reject("Not a data transfer!");
+    }
 }
 function asURL(transferItem) {
     return __awaiter(this, void 0, void 0, function* () {

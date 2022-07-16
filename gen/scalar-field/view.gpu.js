@@ -122,7 +122,7 @@ export class GPUView {
         member.write(this.uniformsView, value);
         this.uniforms.syncFrom(this.uniformsView, member);
     }
-    setMesh(primitives, vertices) {
+    setMesh(_primitives, vertices) {
         this.vertices.setData(gpu.dataView(vertices));
     }
     picker() {

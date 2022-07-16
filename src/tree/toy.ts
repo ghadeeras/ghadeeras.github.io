@@ -7,7 +7,7 @@ export function init() {
     window.onload = doInit
 }
 
-async function doInit() {
+function doInit() {
 
     const proj = aether.mat4.projection();
     const view = aether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
@@ -51,7 +51,7 @@ function rendererInputs(modelMatrix: aether.Mat<4>[], projView: aether.Mat<4>) {
             .map(depth => generator.generateMatrices(depth, null)),
         cases.angle
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => Math.PI * x)
+            .map(([x, _]) => Math.PI * x)
             .defaultsTo(Math.PI / 4)
             .map(angle => generator.generateMatrices(null, angle))
     );
@@ -74,15 +74,15 @@ function rendererInputs(modelMatrix: aether.Mat<4>[], projView: aether.Mat<4>) {
 
         shininess: cases.shininess
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => (y + 1) / 2),
+            .map(([_, y]) => (y + 1) / 2),
 
         fogginess: cases.fogginess
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => (y + 1) / 2),
+            .map(([_, y]) => (y + 1) / 2),
 
         twist: cases.twist
             .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => y),
+            .map(([_, y]) => y),
     };
 }
 

@@ -12,6 +12,16 @@
 				"isDefault": true
 			},
 			"label": "tsc: build"
+		},
+		{
+			"type": "deno",
+			"command": "lint",
+			"problemMatcher": [
+				"$deno-lint"
+			],
+			"group": "test",
+			"label": "deno: lint",
+			"args": ["src"]
 		}
 	]
 }

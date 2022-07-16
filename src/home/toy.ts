@@ -118,7 +118,7 @@ function tearImage(e: DragEvent, mousePos: wgl.Uniform, effect: wgl.Uniform) {
     draw(mousePos.program.context)
 }
 
-async function loadImage(e: DragEvent, effect: wgl.Uniform) {
+function loadImage(e: DragEvent, effect: wgl.Uniform) {
     e.preventDefault()
     effect.data = [effect.data[0] - 3]
     if (e.dataTransfer) {

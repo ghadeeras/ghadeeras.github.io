@@ -36,21 +36,21 @@ export class Buffer {
         this._buffer.destroy()
     }
 
-    async syncFrom(data: DataView, element: Element<any>, index: number = 0, count: number = 1): Promise<Buffer> {
+    async syncFrom<T>(data: DataView, element: Element<T>, index = 0, count = 1): Promise<Buffer> {
         const [from, to] = element.range(index, count)
         return await this.writeAt(from, data, from, to - from)
     }
 
-    async syncTo(data: DataView, element: Element<any>, index: number = 0, count: number = 1): Promise<DataView> {
+    async syncTo<T>(data: DataView, element: Element<T>, index = 0, count = 1): Promise<DataView> {
         const [from, to] = element.range(index, count)
         return await this.readAt(from, data, from, to - from)
     }
 
-    async writeAt(bufferOffset: number, data: DataView, dataOffset: number = 0, size: number = data.byteLength): Promise<Buffer> {
+    async writeAt(bufferOffset: number, data: DataView, dataOffset = 0, size: number = data.byteLength): Promise<Buffer> {
         return await this.writer(bufferOffset, data, dataOffset, size)
     }
 
-    async readAt(bufferOffset: number, data: DataView, dataOffset: number = 0, size: number = data.byteLength): Promise<DataView> {
+    async readAt(bufferOffset: number, data: DataView, dataOffset = 0, size: number = data.byteLength): Promise<DataView> {
         return await this.reader(bufferOffset, data, dataOffset, size)
     }
 
