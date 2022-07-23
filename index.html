@@ -1,85 +1,88 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-  <meta charset="utf-8">
-  <title>Ghadeer's Playcloud</title>
-  <link type="text/css" rel="stylesheet" href="./css/ghadeeras.css" />
-  <style>
-    #main .view div {
-      padding: 16px;
-    }
-    sub {
-      color: red;
-      font-size: xx-small;
-      font-weight: bold;
-    }
-  </style>
-  <script type="module">
-    import * as Home from "../gen/home/toy.js"
-    Home.init();
-  </script>
-</head>
-
-<body>
-  
-    <div id="head">
-        <div><a href="./index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                Toys to play with!
+    <head>
+        <meta charset="utf-8">
+        <title>Ghadeer's Playcloud</title>
+        <link type="text/css" rel="stylesheet" href="./index.css" />
+      </style>
+        <script type="module">
+            import * as Home from "../gen/home/toy.js"
+            import init from "../gen/initializer.js"
+            init(Home);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud" style="background-image: url('./icons/gh32px.png'); margin-bottom: 32px;"></div>
+                <div id="controls-button" title="Controls" style="background-image: url('./icons/controls.svg')"></div>
+                <div id="about-button" title="About / Info" style="background-image: url('./icons/about.svg')"></div>
             </div>
-
+            <div class="links">
+                <div id="github" title="Fork me!" style="background-image: url('./icons/github.png')"></div>
+                <div id="linkedin" title="Contact me!" style="background-image: url('./icons/linkedin.png')"></div>
+                <div id="twitter" title="Follow me!" style="background-image: url('./icons/twitter.svg')"></div>
+                <div id="youtube" title="Subscribe to my channel!" style="background-image: url('./icons/youtube.png')"></div>
+            </div>
+        </div>
+        <div class="tiles">
+            <div style="width: 752px; height: 360px; padding: 16px">
+                <canvas 
+                    id="canvas" 
+                    style="display: flex; float: right; width: 360px; height: 360px; margin-left: 32px;" 
+                    width="512"
+                    height="512">
+                    <!-- width and height are set to match the texture dimensions in order to avoid blurring. -->
+                    Please use a web browser that supports WebGL!
+                </canvas>
+                <h1>Welcome to Ghadeer's Playcloud!</h1>
+                <p>Hello! &#x1F44B;&#x1F642;</p>
+                <p>
+                    My name is Ghadeer, and this is my "playcloud" (as opposed to a playground).
+                    It is where I will be creating toys, often purposeless ones, 
+                    just for the pure joy of programming, to learn something new in the process, 
+                    and hopefully to stir some curiosity in the passers-by.
+                </p>
+                <p>Please feel free to play with them! Feedback, including bug reports, is appreciated.</p>
+                <p>Cheers!</p>
+            </div>
+            <div class="toy" id="gravity"><span><p>Gravity <sub>Requires WebGPU</sub></p></span></div>
+            <div class="toy" id="path-tracing"><span><p>Path Tracing <sub>Requires WebGPU</sub></p></span></div>
+            <div class="toy" id="sculpting"><span><p>Sculpting</p></span></div>
+            <div class="toy" id="mandelbrot"><span><p>Mandelbrot</p></span></div>
+            <div class="toy" id="tree"><span><p>Tree</p></span></div>
+            <div class="toy" id="scalar-field"><span><p>Scalar Field</p></span></div>
+            <div class="toy" id="gltf"><span><p>glTF Renderer</p></span></div>
+            <div class="toy" id="sierpinski"><span><p>Sierpinski Triangles</p></span></div>
+            <div class="toy" id="webgl-lab"><span><p>WebGL Lab</p></span></div>
+            <div class="toy" id="scanner"><span><p>Scanner</p></span></div>
+            <div class="toy" id="msx"><span><p>MSX Programs</p></span></div>
+        </div>
+        <div id="about" class="hud">
             <div>
-              <ul>
-                <li><a href="./pages/gravity.html">Gravity</a> <sub>Requires WebGPU</sub></li>
-                <li><a href="./pages/path-tracing.html">Path Tracing</a> <sub>Requires WebGPU</sub></li>
-                <li><a href="./pages/sculpting.html">Sculpting</a></li>
-                <li><a href="./pages/mandelbrot.html">Mandelbrot</a></li>
-                <li><a href="./pages/tree.html">Tree</a></li>
-                <li><a href="./pages/scalar-field.html">Scalar Field</a></li>
-                <li><a href="./pages/gltf.html">glTF Renderer</a></li>
-                <li><a href="./pages/sierpinski.html">Sierpinski Triangles</a></li>
-                <li><a href="./pages/webgl-lab.html">WebGL Lab</a></li>
-                <li><a href="./pages/scanner.html">Scanner</a></li>
-                <li><a href="./pages/msx.html">MSX Programs</a></li>
-              </ul>
+                <h1>Ghadeer's Playcloud Home Page</h1>
+                <h2>Credits</h2>
+                Not all artwork is mine:
+                <ul>
+                    <li>
+                        <img src="./icons/controls.svg" style="width: 1em; height: 1em; background-color: white;"/> 
+                        &#x27A1; 
+                        <a href="https://freeicons.io/profile/2257">www.wishforge.games</a>
+                    </li><li>
+                        <img src="./icons/about.svg" style="width: 1em; height: 1em; background-color: white;"/> 
+                        &#x27A1; 
+                        <a href="https://freeicons.io/profile/103149">Rolas Design</a>
+                    </li>
+                </ul>
+                And the other social media icons were obtained from the respective sites they refer to.
             </div>
-
         </div>
-
-        <div id="main">
-          <div class="view"><div>
-            <canvas 
-              id="canvas" 
-              style="display: flex; float: right; width: 320px; height: 320px; margin-left: 32px;" 
-              width="512" height="512"
-            > <!-- width and height are set to match the texture dimensions in order to avoid blurring. -->
-              Please use a web browser that supports WebGL!
-            </canvas>
-            <strong>Welcome to Ghadeer's Playcloud!</strong>
-            <p>Hello! :-)</p>
-            <p>
-              My name is Ghadeer, and this is my playcloud (as opposed to a playground).
-              It is where I will be creating my programming toys.
-            </p>
-            <p>Feel free to play with them!</p>
-            <p>The source code for these toys can be found in <a href="https://github.com/ghadeeras/ghadeeras.github.io" target="_blank">this GitHub repository</a>.</p>
-            <p>Other more serious projects can be found in <a href="https://github.com/ghadeeras" target="_blank">my GitHub profile</a>.</p>
-            <p>I can be found on <a href="https://www.linkedin.com/in/ghadeer-abou-saleh-69243b162/" target="_blank">LinkedIn</a></p>
-            <p>Cheers!</p>
-            <p>P.S. Try interacting with the image in this panel (including dragging and dropping images onto it). </p>
-          </div></div>
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls</h1>
+                <p>The controls should be quite intuitive. Just click on on the tiles to load the various toys.</p>
+                <p>Try interacting with the image in this panel (including dragging and dropping images onto it). </p>
+            </div>
         </div>
-
-    </div>
-</body>
-
+    </body>
 </html>
-
-<html>

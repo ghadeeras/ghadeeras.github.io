@@ -1,0 +1,113 @@
+body {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding: 0px 0px 0px 0px;
+    margin: 0px 0px 0px 0px;
+    font-family: Arial, Helvetica, sans-serif;
+    background: rgb(192, 192, 192);
+    color: rgb(64, 96, 160);
+}
+
+div {
+    position: relative;
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+    border: 0px;
+}
+
+.menu {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    bottom: 0px;
+    width: 48px;
+    height: 100%;
+    border: 1px black;
+    background: white;
+    box-shadow: 2px 2px 4px black;
+}
+
+.menu > div {
+    position: absolute;
+    margin: 8px;
+}
+
+.menu > .items {
+    top: 0px;
+}
+
+.menu > .links {
+    bottom: 0px;
+}
+
+.menu > div > div {
+    width: 32px;
+    height: 32px;
+    background-size: 32px 32px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.tiles, .hud {
+    position: absolute;
+    top: 0px;
+    left: 52px;
+    bottom: 0px;
+    right: 0px;
+    height: 100%;
+    overflow: auto;
+}
+
+.hud {
+    visibility: hidden;
+    z-index: 16;
+    background-color: rgba(16, 24, 40, 0.875);
+    color: white;
+}
+
+.hud > div {
+    margin: 16px 16px 16px 16px;
+    font-size: large;
+}
+
+.hud > div > h1, .hud > div > h2 {
+    display: block;
+    width: 75%;
+    padding-bottom: 0.25em;
+    border-bottom: 2px solid white;
+}
+
+.tiles > div {
+    float: left;
+    border: 1px black;
+    margin: 4px 4px 4px 4px;
+    background: white;
+    box-shadow: 2px 2px 4px black;
+}
+
+.toy {
+    width: 256px;
+    height: 192px;
+    cursor: pointer;
+}
+
+.toy > span {
+    position: absolute;
+    top: 1em;
+    width: 100%;
+    text-align: center;
+    font-size: larger;
+    font-weight: bold;
+}
+
+sub {
+    color: red;
+    font-size: xx-small;
+    font-weight: bold;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}

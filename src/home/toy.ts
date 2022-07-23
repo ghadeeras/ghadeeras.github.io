@@ -11,11 +11,7 @@ const square = [
     +1, -1
 ]
 
-export function init() {
-    window.onload = doInit
-}
-
-async function doInit() {
+export async function init() {
     const shaders = await gear.fetchTextFiles({
         vertexShaderCode: "mandelbrot.vert",
         fragmentShaderCode: "home.frag"

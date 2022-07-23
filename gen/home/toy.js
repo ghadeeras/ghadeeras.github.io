@@ -18,9 +18,6 @@ const square = [
     +1, -1
 ];
 export function init() {
-    window.onload = doInit;
-}
-function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const shaders = yield gear.fetchTextFiles({
             vertexShaderCode: "mandelbrot.vert",
