@@ -1,5 +1,5 @@
 let filterWidth = 3;
-let aspectRatio = 1.0;
+let aspectRatio = 2.0;
 let focalLength = 1.4142135623730950488016887242097;
 
 struct Vertex {
@@ -57,10 +57,10 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     var color = vec3(0.0);
     for (var i = -filterWidth; i <= filterWidth; i = i + 1) {
         for (var j = -filterWidth; j <= filterWidth; j = j + 1) {
-            if (i == 0 && j == 0) {
+            let sXY = xy + vec2(i, j);
+            if (i == 0 && j == 0 | any(sXY < vec2(0)) | any(sXY > maxXY)) {
                 continue;
             }
-            let sXY = abs(maxXY - abs(maxXY - xy - vec2(i, j)));
             let sPos = vertex.pos + pixelSize * vec2<f32>(sXY - xy); 
             let s = loadSample(sXY, sPos);
             let w = weightOf(s, ref, pixelSize);

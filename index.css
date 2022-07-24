@@ -16,6 +16,10 @@ div {
     border: 0px;
 }
 
+canvas {
+    display: block;
+}
+
 .menu {
     position: absolute;
     top: 0px;
@@ -25,7 +29,7 @@ div {
     height: 100%;
     border: 1px black;
     background: white;
-    box-shadow: 2px 2px 4px black;
+    box-shadow: 2px 0px 4px black;
 }
 
 .menu > div {
@@ -52,7 +56,7 @@ div {
 .tiles, .hud {
     position: absolute;
     top: 0px;
-    left: 52px;
+    left: 48px;
     bottom: 0px;
     right: 0px;
     height: 100%;
@@ -66,9 +70,19 @@ div {
     color: white;
 }
 
+.top-right {
+    top: 16px;
+    left: auto;
+    bottom: auto;
+    right: 16px;
+    height: auto;
+    border: 2px solid rgb(64, 96, 160);
+    opacity: 0.67;
+    font-size: small;
+}
+
 .hud > div {
     margin: 16px 16px 16px 16px;
-    font-size: large;
 }
 
 .hud > div > h1, .hud > div > h2 {
@@ -78,10 +92,27 @@ div {
     border-bottom: 2px solid white;
 }
 
+.hud > div .img-char {
+    width: 1.5em; 
+    height: 1.5em; 
+    background-color: white;
+}
+
+.hud > div kbd {
+    border-radius: 3px;
+    border: 1px solid white;
+    color: white;
+    display: inline-block;
+    font-weight: bold;
+    line-height: 1;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
 .tiles > div {
     float: left;
     border: 1px black;
-    margin: 4px 4px 4px 4px;
+    margin: 8px 0px 0px 8px;
     background: white;
     box-shadow: 2px 2px 4px black;
 }
@@ -108,6 +139,36 @@ sub {
 }
 
 a {
-    color: inherit;
+    color: rgb(96, 144, 240);
+    font-weight: bold;
     text-decoration: none;
+}
+
+#logo {
+    background-image: url('/icons/gh32px.png'); 
+    margin-bottom: 32px;
+}
+
+#controls-button { 
+    background-image: url('/icons/controls.svg');
+}
+
+#about-button {
+    background-image: url('/icons/about.svg');
+}
+
+#github { 
+    background-image: url('/icons/github.png');
+}
+
+#linkedin { 
+    background-image: url('/icons/linkedin.png');
+}
+
+#twitter {
+    background-image: url('/icons/twitter.svg');
+}
+
+#youtube {
+    background-image: url('/icons/youtube.png');
 }

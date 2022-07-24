@@ -1,88 +1,54 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="origin-trial" content="AlsoSctAUm+avq6eEklYNqzb6Pu/VAWyCIB2/j6t7oAk7ct6UwAr+qPzEVtXnyVHHog0GDUeOoegfb193O+fswkAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY2MzcxODM5OX0=">
-    <title>Path Tracing</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="module">
-        import * as PathTracing from "../gen/path-tracing/toy.js"
-        PathTracing.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Controls / Key Mappings</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="AlsoSctAUm+avq6eEklYNqzb6Pu/VAWyCIB2/j6t7oAk7ct6UwAr+qPzEVtXnyVHHog0GDUeOoegfb193O+fswkAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY2MzcxODM5OX0=">
+        <title>Path Tracing</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+      </style>
+        <script type="module">
+            import * as PathTracing from "../gen/path-tracing/toy.js"
+            import init from "../gen/initializer.js"
+            init(PathTracing);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor" style="background-image: url('/icons/monitor.svg');"></div>
             </div>
-
-            <div>
-                <table>
-                    <tr><td width="96px">&#x1F5B1; (drag)</td><td>to look around</td></tr>
-                    <tr><td>&#x1F5B1; (wheel)</td><td>to change focal length</td></tr>
-                    <tr><td><kbd>1</kbd> ... <kbd>8</kbd></td><td>to change the number of samples per pixel</td></tr>
-                    <tr><td><kbd>W</kbd> / <kbd>S</kbd></td><td>to move forwards/backwards</td></tr>
-                    <tr><td><kbd>D</kbd> / <kbd>A</kbd></td><td>to move right/left</td></tr>
-                    <tr><td><kbd>E</kbd> / <kbd>C</kbd></td><td>to move up/down</td></tr>
-                    <tr><td><kbd>L</kbd></td><td>to toggle maximum layering</td></tr>
-                    <tr><td><kbd>N</kbd></td><td>to toggle denoising</td></tr>
-                </table>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="twitter" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
-
-            <div class="section"></div>
-
-            <div><p>
-                <strong>Samples Per Pixel</strong>: <span id="spp">2</span><br />
-                <strong>Averaging Layers Count</strong>: <span id="layers">2</span><br />
-                <strong>Maximum Layers Count</strong>: <span id="max-layers">256</span><br />
-                <strong>Denoising</strong>: <span id="denoising">on</span><br />
-                <strong>FPS</strong>: <span id="freq-watch">0</span>                
-            </p></div>
-
-            <div class="section"></div>
-
-            <div>
-                <p>
-                    <strong>WebGPU Status</strong>: <span id="gpu-status">&#x1F630; ...</span>
-                </p>
-            </div>
-
-            <div>
-                <p>
-                    The source code of this toy could be found in 
-                    <a href="https://github.com/ghadeeras/ghadeeras.github.io/tree/master/src/path-tracing">
-                        my GitHub repository
-                    </a> 
-                </p>
-            </div>
-
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas" width="640" height="640" style="cursor: all-scroll;">
+        <div class="tiles">
+            <div style="width: 93.75%;">
+                <canvas id="canvas" width="900px" height="450px" style="cursor: all-scroll; width: 100%; aspect-ratio: 2 / 1;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><td>Samples Per Pixel</td><td><span id="spp">2</span></td></tr>
+                            <tr><td>Averaging Layers Count</td><td><span id="layers">2</span></td></tr>
+                            <tr><td>Maximum Layers Count</td><td><span id="max-layers">256</span></td></tr>
+                            <tr><td>Denoising</td><td><span id="denoising">on</span></td></tr>
+                            <tr><td>FPS</td><td><span id="freq-watch"></span>0</td></tr>
+                            <tr><td>WebGPU Status</td><td><span id="gpu-status">&#x1F630; ...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>Path Tracing</strong>
-            </div>
-
+        <div id="about" class="hud">
             <div>
+                <h1>Path Tracing</h1>
                 <p>
                     This is my first attempt at doing real-time path tracing. There is still plenty of room for improvements.
                     I was inspired by the work of <a href="https://reindernijhoff.net/" target="_blank">Reinder Nijhoff</a>,
@@ -90,13 +56,8 @@
                     which I find stunning it was implemented with WebGL 1! I am trying to do something similar as an exercise 
                     to learn WebGPU and miscellaneous rendering techniques.
                 </p>
-            </div>
 
-            <div class="section">
-                <strong>Noise</strong>
-            </div>
-
-            <div>
+                <h2>Noise</h2>
                 <p>
                     In order to experiment with different ways for pseudo-random number generation, I used this 
                     <a href="./noise.html" target="_blank">toy</a>.
@@ -104,9 +65,21 @@
                     and a counter that is incremented with each frame.
                 </p>
             </div>
-
         </div>
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <table>
+                    <tr><td width="96px">&#x1F5B1; (drag)</td><td>to look around</td></tr>
+                    <tr><td>&#x1F5B1; (wheel)</td><td>to change focal length</td></tr>
+                    <tr><td><kbd>1</kbd> ... <kbd>8</kbd></td><td>to change the number of samples per pixel</td></tr>
+                    <tr><td><kbd>W</kbd> &nbsp;/&nbsp; <kbd>S</kbd></td><td>to move forward/backward</td></tr>
+                    <tr><td><kbd>D</kbd> &nbsp;/&nbsp; <kbd>A</kbd></td><td>to move right/left</td></tr>
+                    <tr><td><kbd>E</kbd> &nbsp;/&nbsp; <kbd>C</kbd></td><td>to move up/down</td></tr>
+                    <tr><td><kbd>L</kbd></td><td>to toggle maximum layering</td></tr>
+                    <tr><td><kbd>N</kbd></td><td>to toggle denoising</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

@@ -14,15 +14,15 @@
     <body>
         <div class="menu">
             <div class="items">
-                <div id="logo" title="Ghadeer's Playcloud" style="background-image: url('./icons/gh32px.png'); margin-bottom: 32px;"></div>
-                <div id="controls-button" title="Controls" style="background-image: url('./icons/controls.svg')"></div>
-                <div id="about-button" title="About / Info" style="background-image: url('./icons/about.svg')"></div>
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
             </div>
             <div class="links">
-                <div id="github" title="Fork me!" style="background-image: url('./icons/github.png')"></div>
-                <div id="linkedin" title="Contact me!" style="background-image: url('./icons/linkedin.png')"></div>
-                <div id="twitter" title="Follow me!" style="background-image: url('./icons/twitter.svg')"></div>
-                <div id="youtube" title="Subscribe to my channel!" style="background-image: url('./icons/youtube.png')"></div>
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="twitter" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
         </div>
         <div class="tiles">
@@ -46,13 +46,13 @@
                 <p>Please feel free to play with them! Feedback, including bug reports, is appreciated.</p>
                 <p>Cheers!</p>
             </div>
-            <div class="toy" id="gravity"><span><p>Gravity <sub>Requires WebGPU</sub></p></span></div>
-            <div class="toy" id="path-tracing"><span><p>Path Tracing <sub>Requires WebGPU</sub></p></span></div>
+            <div class="toy" id="path-tracing"><span><p>Path Tracing <sub>GPU</sub></p></span></div>
+            <div class="toy" id="gravity"><span><p>Gravity <sub>GPU</sub></p></span></div>
             <div class="toy" id="sculpting"><span><p>Sculpting</p></span></div>
+            <div class="toy" id="gltf"><span><p>glTF Renderer</p></span></div>
+            <div class="toy" id="scalar-field"><span><p>Scalar Field</p></span></div>
             <div class="toy" id="mandelbrot"><span><p>Mandelbrot</p></span></div>
             <div class="toy" id="tree"><span><p>Tree</p></span></div>
-            <div class="toy" id="scalar-field"><span><p>Scalar Field</p></span></div>
-            <div class="toy" id="gltf"><span><p>glTF Renderer</p></span></div>
             <div class="toy" id="sierpinski"><span><p>Sierpinski Triangles</p></span></div>
             <div class="toy" id="webgl-lab"><span><p>WebGL Lab</p></span></div>
             <div class="toy" id="scanner"><span><p>Scanner</p></span></div>
@@ -61,19 +61,30 @@
         <div id="about" class="hud">
             <div>
                 <h1>Ghadeer's Playcloud Home Page</h1>
+                    <p>
+                        The "toys" presented in this site were mainly vehicles for me to experiment with different
+                        ideas and web technologies. Most of the toys are about graphics, but there are and there 
+                        will be some toys focusing on other interests such as simulation, audio/music, parsing,
+                        and retro-computing (MSX).
+                    </p>
+                    <p>
+                        Some of the toys have the <span style="color: red; font-weight: bold;">GPU</span> suffix.
+                        These toys use the new and promising WebGPU API, which is still not officially released, but
+                        is accessible either through Origin Trials or a browser experimental feature flag.
+                    </p>
                 <h2>Credits</h2>
                 Not all artwork is mine:
-                <ul>
-                    <li>
-                        <img src="./icons/controls.svg" style="width: 1em; height: 1em; background-color: white;"/> 
-                        &#x27A1; 
-                        <a href="https://freeicons.io/profile/2257">www.wishforge.games</a>
-                    </li><li>
-                        <img src="./icons/about.svg" style="width: 1em; height: 1em; background-color: white;"/> 
-                        &#x27A1; 
-                        <a href="https://freeicons.io/profile/103149">Rolas Design</a>
-                    </li>
-                </ul>
+                <p><table style="position: relative; left: 2em;">
+                    <tr>
+                        <td><img src="./icons/controls.svg" class="img-char" /> <img src="./icons/monitor.svg" class="img-char" /></td>
+                        <td>&#x27A1;</td>
+                        <td>icons by <a href="https://freeicons.io/profile/2257">www.wishforge.games</a> on <a href="https://freeicons.io">freeicons.io</a></td>
+                    </tr><tr>
+                        <td><img src="./icons/about.svg" class="img-char" /></td>
+                        <td>&#x27A1;</td>
+                        <td>icon by <a href="https://freeicons.io/profile/103149">Rolas Design</a> on <a href="https://freeicons.io">freeicons.io</a></td>
+                    </tr>
+                </table></p>
                 And the other social media icons were obtained from the respective sites they refer to.
             </div>
         </div>

@@ -17,10 +17,12 @@ import { Tracer } from "./tracer.js";
 import { volume } from "./scene.js";
 import { buildScene } from "./scene-builder.js";
 import { Denoiser } from "./denoiser.js";
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/path-tracing";
+export const video = "https://youtu.be/xlMvArfR2do";
+export const huds = {
+    "monitor": "monitor-button"
+};
 export function init() {
-    window.onload = doInit;
-}
-function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const scene = buildScene();
         const device = yield gpuDevice();
@@ -61,30 +63,29 @@ function doInit() {
         setTwoLayersOnly(misc.required(maxLayersCountElement.textContent) == "2");
         setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on");
         const handleKey = (e, down) => {
-            const m = aether.mat3.transpose(tracer.matrix);
             const s = down ? 0.2 : 0;
             if (e.key == 'w') {
-                state.speed = aether.vec3.scale(m[2], -s);
+                state.speed[2] = -s;
                 e.preventDefault();
             }
             else if (e.key == 's') {
-                state.speed = aether.vec3.scale(m[2], s);
+                state.speed[2] = s;
                 e.preventDefault();
             }
             else if (e.key == 'd') {
-                state.speed = aether.vec3.scale(m[0], s);
+                state.speed[0] = s;
                 e.preventDefault();
             }
             else if (e.key == 'a') {
-                state.speed = aether.vec3.scale(m[0], -s);
+                state.speed[0] = -s;
                 e.preventDefault();
             }
             else if (e.key == 'e') {
-                state.speed = aether.vec3.scale(m[1], s);
+                state.speed[1] = s;
                 e.preventDefault();
             }
             else if (e.key == 'c') {
-                state.speed = aether.vec3.scale(m[1], -s);
+                state.speed[1] = -s;
                 e.preventDefault();
             }
             else if (down && e.key >= '1' && e.key <= '8') {
@@ -119,13 +120,14 @@ function doInit() {
         });
         tracer.position = [36, 36, 36];
         const draw = () => {
-            const speed = aether.vec3.length(state.speed);
+            const velocity = aether.vec3.prod(state.speed, tracer.matrix);
+            const speed = aether.vec3.length(velocity);
             state.wasAnimating = state.animating;
             state.animating = state.twoLayersOnly || state.changingView || speed !== 0;
             state.changingView = false;
             render(setLayersCount, tracer, denoiser, stacker, canvas, state);
             if (speed > 0) {
-                tracer.position = move(tracer.position, state.speed, scene);
+                tracer.position = move(tracer.position, velocity, scene);
             }
         };
         const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch");

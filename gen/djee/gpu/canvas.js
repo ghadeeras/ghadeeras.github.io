@@ -9,8 +9,8 @@ export class Canvas {
         const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1;
         this.sampleCount = Math.pow(Math.ceil(pixelRatio), 2);
         this.size = {
-            width: Math.round(this.element.clientWidth * pixelRatio),
-            height: Math.round(this.element.clientHeight * pixelRatio),
+            width: Math.round(this.element.width * pixelRatio),
+            height: Math.round(this.element.height * pixelRatio),
         };
         this.format = this.context.getPreferredFormat(device.adapter);
         this.context.configure({

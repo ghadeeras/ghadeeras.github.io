@@ -1,8 +1,9 @@
 import { required } from "./utils/misc.js"
 
 type Toy = {
-    gitHubRepo: string
-    video: string
+    gitHubRepo: string | null
+    video: string | null
+    huds: Record<string, string> | null
     init: () => void
 }
 
@@ -14,7 +15,7 @@ export default function init(toy: Toy) {
         link("github",  "https://github.com/ghadeeras/" + (toy.gitHubRepo ?? "ghadeeras.github.io"), true)
         link("linkedin", "https://www.linkedin.com/in/ghadeer-abousaleh", true)
         link("twitter", "https://twitter.com/gee8sh", true)
-        link("youtube", "https://www.youtube.com/channel/UCxeQ_6WQ7Zjth8bmCaZ4E7Q/" + (toy.video ?? ""), true)
+        link("youtube", toy.video ?? "https://www.youtube.com/channel/UCxeQ_6WQ7Zjth8bmCaZ4E7Q", true)
 
         for (const element of document.getElementsByClassName("toy")) {
             doLink(element as HTMLElement, "/pages/" + element.id)
@@ -22,6 +23,10 @@ export default function init(toy: Toy) {
 
         setupHud("about", "about-button")
         setupHud("controls", "controls-button")
+        const huds = (toy.huds ?? {})
+        for (const hudId of Object.keys(huds)) {
+            setupHud(hudId, huds[hudId])
+        }
 
         toy.init()
     }
