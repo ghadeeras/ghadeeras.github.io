@@ -20,17 +20,16 @@ export class Canvas {
         const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1
         this.sampleCount = Math.ceil(pixelRatio) ** 2
         this.size = {
-            width: Math.round(this.element.width * pixelRatio),
-            height: Math.round(this.element.height * pixelRatio),
+            width: this.element.width,
+            height: this.element.height,
         }
 
-        this.format = this.context.getPreferredFormat(device.adapter)
+        this.format = navigator.gpu.getPreferredCanvasFormat()
         this.context.configure({
-            size: this.size,
             format: this.format,
             device: device.device,
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
-            compositingAlphaMode: "opaque",
+            alphaMode: "opaque",
         })
         this.colorTexture = this.sampleCount !== 1 ? device.texture({
             size: this.size,
