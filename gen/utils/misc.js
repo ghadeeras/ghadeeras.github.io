@@ -52,4 +52,16 @@ export class FrequencyMeter {
         return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6));
     }
 }
+export function throttled(freqInHz, logic) {
+    const periodInMilliseconds = 1000 / freqInHz;
+    const lastTime = [performance.now()];
+    return time => {
+        const t = time !== null && time !== void 0 ? time : performance.now();
+        const elapsed = t - lastTime[0];
+        if (elapsed > periodInMilliseconds) {
+            logic();
+            lastTime[0] = t - (elapsed % periodInMilliseconds);
+        }
+    };
+}
 //# sourceMappingURL=misc.js.map

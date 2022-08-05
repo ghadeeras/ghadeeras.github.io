@@ -1,86 +1,50 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="origin-trial" content="AlsoSctAUm+avq6eEklYNqzb6Pu/VAWyCIB2/j6t7oAk7ct6UwAr+qPzEVtXnyVHHog0GDUeOoegfb193O+fswkAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY2MzcxODM5OX0=">
-    <title>Gravity</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="module">
-        import * as Gravity from "../gen/gravity/toy.js"
-        Gravity.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Controls / Key Mappings</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="AlsoSctAUm+avq6eEklYNqzb6Pu/VAWyCIB2/j6t7oAk7ct6UwAr+qPzEVtXnyVHHog0GDUeOoegfb193O+fswkAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY2MzcxODM5OX0=">
+        <title>Gravity</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+    </style>
+        <script type="module">
+            import * as Gravity from "../gen/gravity/toy.js"
+            import init from "../gen/initializer.js"
+            init(Gravity);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
-            <div>
-                <ul>
-                    <li id="control-r">[R] Universe Rotation</li>
-                    <li id="control-p">[P] Observer Position (on Z-axis)</li>
-                    <li id="control-z">[Z] Zoom</li>
-                    <li id="control-s">[S] Body Radius Scaling</li>
-                    <li id="control-b">[B] Body Mass Pointedness</li>
-                    <li id="control-g">[G] Gravity Constant</li>
-                </ul>
-            </div>
-
-            <div class="section">
-                <strong>Actions</strong>
-            </div>
-
-            <div>
-                <p><button id="action-reset" style="width: 100%;">Reset Rendering Settings</button></p>
-                <p><button id="action-pause" style="width: 100%;">Pause/Resume</button></p>
-                <p><button id="action-collapse" style="width: 100%;">Random Collapse</button></p>
-                <p><button id="action-kaboom" style="width: 100%;">Random Kaboom!</button></p>
-            </div>
-
-            <div class="section"></div>
-
-            <div>
-                <p>
-                    <strong>WebGPU Status</strong>: <span id="gpu-status">&#x1F630; ...</span>
-                </p>
-            </div>
-
-            <div>
-                <p>
-                    The source code of this simulation toy could be found in 
-                    <a href="https://github.com/ghadeeras/ghadeeras.github.io/tree/master/src/gravity">
-                        my GitHub repository
-                    </a> 
-                </p>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="twitter" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640" style="cursor: all-scroll;">
+        <div class="tiles">
+            <div style="width: 93.75%;">
+                <canvas id="canvas" width="1536" height="768" style="cursor: all-scroll; width: 100%; aspect-ratio: 2 / 1;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><td>FPS</td><td><span id="freq-watch"></span>0</td></tr>
+                            <tr><td>WebGPU Status</td><td><span id="gpu-status">&#x1F630; ...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>Gravity Toy</strong>
-            </div>
-
+        <div id="about" class="hud">
             <div>
+                <h1>Gravity Toy</h1>
                 <p>
                     This is an example of a particle system implemented using WebGPU. It simulates gravity between "heavenly
                     bodies" of random masses and sizes using an arithmetically safe variation of Newton's laws of gravity; 
@@ -100,10 +64,27 @@
                     simulation using the buttons in the Actions section.  
                 </p>
             </div>
-
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd>R</kbd></td><td id="control-r">Universe Rotation</td></tr>
+                    <tr><td><kbd>P</kbd></td><td id="control-p">Observer Position (on Z-axis)</td></tr>
+                    <tr><td><kbd>Z</kbd></td><td id="control-z">Zoom</td></tr>
+                    <tr><td><kbd>S</kbd></td><td id="control-s">Body Radius Scaling</td></tr>
+                    <tr><td><kbd>B</kbd></td><td id="control-b">Body Mass Pointedness</td></tr>
+                    <tr><td><kbd>G</kbd></td><td id="control-g">Gravity Constant</td></tr>
+                </table>
+                <p>The following keys perform the specified actions:</p>
+                <table>
+                    <tr><td width="48px"><kbd>1</kbd></td><td>Random Collapse</td></tr>
+                    <tr><td><kbd>2</kbd></td><td>Random Kaboom!</td></tr>
+                    <tr><td><kbd>3</kbd></td><td>Reset Rendering Settings</td></tr>
+                    <tr><td><kbd>4</kbd></td><td>Pause/Resume</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

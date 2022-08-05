@@ -23,7 +23,7 @@ export class Renderer {
         this.bodySurfaceVertex = gpu.vertex({
             position: gpu.f32.x3
         });
-        this._projectionMatrix = aether.mat4.projection(1);
+        this._projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2);
         this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = aether.mat4.identity();
         this.uniformsStruct = gpu.struct({

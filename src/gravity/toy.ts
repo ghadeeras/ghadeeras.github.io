@@ -3,16 +3,18 @@ import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
 import { newUniverse, Universe } from './universe.js'
 import { newRenderer, Renderer } from './renderer.js'
-import { required } from '../utils/misc.js'
+import * as misc from '../utils/misc.js'
 
-export function init() {
-    window.onload = doInit
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
+export const video = "https://youtu.be/BrZm6LlOQlI"
+export const huds = {
+    "monitor": "monitor-button"
 }
 
-async function doInit() {
+export async function init() {
     const device = await gpuDevice()
 
-    const canvas = device.canvas("canvas-gl")
+    const canvas = device.canvas("canvas")
     
     const universe = await newUniverse(device)
     const renderer = await newRenderer(device, canvas)
@@ -21,6 +23,9 @@ async function doInit() {
     setupControls(canvas, universe, renderer)
     setupActions(universe, renderer, pauseResumeAction)
 }
+
+const pressedKey = new gear.Value((c: gear.Consumer<KeyboardEvent>) => window.onkeyup = c)
+    .map(e => e.key.toLowerCase())
 
 function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Renderer) {
     const universeRotation = new gear.Value<gear.Dragging>()
@@ -39,8 +44,7 @@ function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Rendere
         "b": bodyPointedness,
     }
 
-    const controller = new gear.Value((c: gear.Consumer<KeyboardEvent>) => window.onkeyup = c)
-        .map(e => e.key.toLowerCase())
+    const controller = pressedKey
         .filter(k => k in keyMappings)
         .defaultsTo("r")
         .reduce((previous, current) => {
@@ -81,42 +85,60 @@ function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Rendere
         .attach(s => renderer.radiusScale = s)
 
     zoom
-        .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[0][0], 0.01, 100)))
-        .map(z => aether.mat4.projection(z))
+        .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[1][1], 0.01, 100)))
+        .map(z => aether.mat4.projection(z, undefined, undefined, 2))
         .later()
         .attach(m => renderer.projectionMatrix = m)
 }
 
 function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction: () => void) {
-    action("pause").onclick = pauseResumeAction
-    action("reset").onclick = () => {
+    const collapse = new gear.Value<string>()
+    const kaboom = new gear.Value<string>()
+    const reset = new gear.Value<string>()
+    const pause = new gear.Value<string>()
+
+    const keyMappings = {
+        "1": collapse,
+        "2": kaboom,
+        "3": reset,
+        "4": pause,
+    }
+
+    const controller = pressedKey
+        .map(k => k in keyMappings ? k : "")
+        .defaultsTo("")
+
+    pressedKey.switch(controller, keyMappings)
+
+    pause.attach(pauseResumeAction)
+    reset.attach(() => {
         renderer.modelMatrix = aether.mat4.identity()
         renderer.viewMatrix = aether.mat4.lookAt([0, 0, -24])
-        renderer.projectionMatrix = aether.mat4.projection()
+        renderer.projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2)
         renderer.radiusScale = 0.06
-    }
-    action("collapse").onclick = () => {
+    })
+    collapse.attach(() => {
         universe.bodyPointedness = 0.1
         universe.gravityConstant = 1000
         universe.recreateUniverse()
-    }
-    action("kaboom").onclick = () => {
+    })
+    kaboom.attach(() => {
         universe.bodyPointedness = 5
         universe.gravityConstant = 25
         universe.recreateUniverse(1)
-    }
+    })
 }
 
 function control(previous: string) {
-    return required(document.getElementById(`control-${previous}`))
-}
-
-function action(previous: string) {
-    return required(document.getElementById(`action-${previous}`))
+    return misc.required(document.getElementById(`control-${previous}`))
 }
 
 function animation(universe: Universe, renderer: Renderer) {
-    const rendering = throttled(60, () => renderer.render(universe))
+    const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch")
+    const rendering = () => {
+        renderer.render(universe)
+        freqMeter.tick()
+    }
 
     animate(rendering)
     const pauseResumeAction = animate(() => universe.tick())
@@ -140,21 +162,8 @@ function animate(frame: (time: number) => void): () => void {
     }
 }
 
-function throttled(freqInHz: number, logic: () => void): (time?: number) => void {
-    const periodInMilliseconds = 1000 / freqInHz
-    const lastTime = [performance.now()]
-    return time => {
-        const t = time ?? performance.now()
-        const elapsed = t - lastTime[0]
-        if (elapsed > periodInMilliseconds) {
-            logic()
-            lastTime[0] = t - (elapsed % periodInMilliseconds)
-        }
-    }
-}
-
 async function gpuDevice() {
-    const gpuStatus = required(document.getElementById("gpu-status"))
+    const gpuStatus = misc.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

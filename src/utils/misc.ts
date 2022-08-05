@@ -59,3 +59,16 @@ export class FrequencyMeter {
     }
 
 }
+
+export function throttled(freqInHz: number, logic: () => void): (time?: number) => void {
+    const periodInMilliseconds = 1000 / freqInHz
+    const lastTime = [performance.now()]
+    return time => {
+        const t = time ?? performance.now()
+        const elapsed = t - lastTime[0]
+        if (elapsed > periodInMilliseconds) {
+            logic()
+            lastTime[0] = t - (elapsed % periodInMilliseconds)
+        }
+    }
+}

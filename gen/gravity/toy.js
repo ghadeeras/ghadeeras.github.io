@@ -12,14 +12,16 @@ import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
 import { newUniverse } from './universe.js';
 import { newRenderer } from './renderer.js';
-import { required } from '../utils/misc.js';
+import * as misc from '../utils/misc.js';
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
+export const video = "https://youtu.be/BrZm6LlOQlI";
+export const huds = {
+    "monitor": "monitor-button"
+};
 export function init() {
-    window.onload = doInit;
-}
-function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpuDevice();
-        const canvas = device.canvas("canvas-gl");
+        const canvas = device.canvas("canvas");
         const universe = yield newUniverse(device);
         const renderer = yield newRenderer(device, canvas);
         const pauseResumeAction = animation(universe, renderer);
@@ -27,6 +29,8 @@ function doInit() {
         setupActions(universe, renderer, pauseResumeAction);
     });
 }
+const pressedKey = new gear.Value((c) => window.onkeyup = c)
+    .map(e => e.key.toLowerCase());
 function setupControls(canvas, universe, renderer) {
     const universeRotation = new gear.Value();
     const observerPosition = new gear.Value();
@@ -42,8 +46,7 @@ function setupControls(canvas, universe, renderer) {
         "g": gravityConstant,
         "b": bodyPointedness,
     };
-    const controller = new gear.Value((c) => window.onkeyup = c)
-        .map(e => e.key.toLowerCase())
+    const controller = pressedKey
         .filter(k => k in keyMappings)
         .defaultsTo("r")
         .reduce((previous, current) => {
@@ -74,38 +77,53 @@ function setupControls(canvas, universe, renderer) {
         .later()
         .attach(s => renderer.radiusScale = s);
     zoom
-        .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[0][0], 0.01, 100)))
-        .map(z => aether.mat4.projection(z))
+        .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[1][1], 0.01, 100)))
+        .map(z => aether.mat4.projection(z, undefined, undefined, 2))
         .later()
         .attach(m => renderer.projectionMatrix = m);
 }
 function setupActions(universe, renderer, pauseResumeAction) {
-    action("pause").onclick = pauseResumeAction;
-    action("reset").onclick = () => {
+    const collapse = new gear.Value();
+    const kaboom = new gear.Value();
+    const reset = new gear.Value();
+    const pause = new gear.Value();
+    const keyMappings = {
+        "1": collapse,
+        "2": kaboom,
+        "3": reset,
+        "4": pause,
+    };
+    const controller = pressedKey
+        .map(k => k in keyMappings ? k : "")
+        .defaultsTo("");
+    pressedKey.switch(controller, keyMappings);
+    pause.attach(pauseResumeAction);
+    reset.attach(() => {
         renderer.modelMatrix = aether.mat4.identity();
         renderer.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
-        renderer.projectionMatrix = aether.mat4.projection();
+        renderer.projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2);
         renderer.radiusScale = 0.06;
-    };
-    action("collapse").onclick = () => {
+    });
+    collapse.attach(() => {
         universe.bodyPointedness = 0.1;
         universe.gravityConstant = 1000;
         universe.recreateUniverse();
-    };
-    action("kaboom").onclick = () => {
+    });
+    kaboom.attach(() => {
         universe.bodyPointedness = 5;
         universe.gravityConstant = 25;
         universe.recreateUniverse(1);
-    };
+    });
 }
 function control(previous) {
-    return required(document.getElementById(`control-${previous}`));
-}
-function action(previous) {
-    return required(document.getElementById(`action-${previous}`));
+    return misc.required(document.getElementById(`control-${previous}`));
 }
 function animation(universe, renderer) {
-    const rendering = throttled(60, () => renderer.render(universe));
+    const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch");
+    const rendering = () => {
+        renderer.render(universe);
+        freqMeter.tick();
+    };
     animate(rendering);
     const pauseResumeAction = animate(() => universe.tick());
     return pauseResumeAction;
@@ -126,21 +144,9 @@ function animate(frame) {
         }
     };
 }
-function throttled(freqInHz, logic) {
-    const periodInMilliseconds = 1000 / freqInHz;
-    const lastTime = [performance.now()];
-    return time => {
-        const t = time !== null && time !== void 0 ? time : performance.now();
-        const elapsed = t - lastTime[0];
-        if (elapsed > periodInMilliseconds) {
-            logic();
-            lastTime[0] = t - (elapsed % periodInMilliseconds);
-        }
-    };
-}
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = required(document.getElementById("gpu-status"));
+        const gpuStatus = misc.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

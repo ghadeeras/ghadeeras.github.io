@@ -28,7 +28,7 @@ export class Renderer {
 
     private readonly bindGroup: GPUBindGroup
 
-    private _projectionMatrix = aether.mat4.projection(1)
+    private _projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2)
     private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
     private _modelMatrix = aether.mat4.identity()
 

@@ -157,6 +157,10 @@ a {
     background-image: url('/icons/about.svg');
 }
 
+#monitor-button {
+    background-image: url('/icons/monitor.svg');
+}
+
 #github { 
     background-image: url('/icons/github.png');
 }
