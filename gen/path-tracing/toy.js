@@ -138,7 +138,7 @@ function render(setLayersCount, tracer, denoiser, stacker, canvas, state) {
     const device = canvas.device;
     const clearColor = { r: 0, g: 0, b: 0, a: 1 };
     setLayersCount(state.animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1);
-    device.enqueueCommand(encoder => {
+    device.enqueueCommand("render", encoder => {
         const [colorsAttachment, normalsAttachment] = denoiser.attachments(clearColor, clearColor);
         if (stacker.layersCount > 64 || !state.denoising) {
             tracer.render(encoder, stacker.colorAttachment(clearColor), normalsAttachment);

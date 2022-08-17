@@ -96,7 +96,7 @@ export class Tracer {
 
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer()
 
-        this.group = this.device.createBindGroup(this.groupLayout, [
+        this.group = this.device.bindGroup(this.groupLayout, [
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
@@ -172,22 +172,22 @@ export class Tracer {
             aspectRatio: width / height,
             samplesPerPixel: this._samplesPerPixel,
         }])
-        return this.canvas.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
+        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
     }
     
     private createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials)
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+        return this.device.buffer("materials", GPUBufferUsage.STORAGE, dataView)
     }
     
     private createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes)
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+        return this.device.buffer("boxes", GPUBufferUsage.STORAGE, dataView)
     }
     
     private createGridBuffer() {
         const dataView = cellStruct.view(this.scene.grid)
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+        return this.device.buffer("grid", GPUBufferUsage.STORAGE, dataView)
     }
 
     private createImportantDirectionsBuffer() {
@@ -209,12 +209,12 @@ export class Tracer {
                 }]
             })
         } 
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+        return this.device.buffer("importantDirections", GPUBufferUsage.STORAGE, dataView)
     }
     
     private createClockBuffer() {
         const dataView = gpu.u32.view([0])
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView)
+        return this.device.buffer("clock", GPUBufferUsage.STORAGE, dataView)
     }
     
     private clamp(p: aether.Vec3) {

@@ -33,8 +33,8 @@ export class ViewGPU {
                 palette: 0,
                 julia: this.julia ? 1 : 0
             }]);
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array([
+        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array([
             -1, +1,
             -1, -1,
             +1, +1,
@@ -53,7 +53,7 @@ export class ViewGPU {
             },
             layout: "auto"
         });
-        this.paramsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.paramsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
         const frame = () => {
             this.draw();
             requestAnimationFrame(frame);
@@ -113,7 +113,7 @@ export class ViewGPU {
         this.uniforms.syncFrom(this.uniformsView, member);
     }
     draw() {
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("render", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
             };

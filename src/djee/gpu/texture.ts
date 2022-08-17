@@ -82,6 +82,10 @@ export class TextureView {
         }
     }
 
+    asBindingResource(): GPUBindingResource {
+        return this.view
+    }
+    
 }
 
 export class Sampler {
@@ -92,4 +96,8 @@ export class Sampler {
         this.sampler = this.device.device.createSampler(descriptor)
     }
    
+    asBindingResource(): GPUBindingResource {
+        return this.sampler
+    }
+    
 }

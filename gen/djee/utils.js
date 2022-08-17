@@ -1,6 +1,12 @@
 export function failure(message) {
     throw new Error(message);
 }
+export function required(value) {
+    if (!value) {
+        throw new Error(`Required value is ${value}!`);
+    }
+    return value;
+}
 export function lazily(constructor) {
     const ref = {};
     return () => ref.value === undefined ?

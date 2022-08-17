@@ -59,12 +59,18 @@ export class TextureView {
             stencilReadOnly: true,
         };
     }
+    asBindingResource() {
+        return this.view;
+    }
 }
 export class Sampler {
     constructor(device, descriptor = undefined) {
         this.device = device;
         this.descriptor = descriptor;
         this.sampler = this.device.device.createSampler(descriptor);
+    }
+    asBindingResource() {
+        return this.sampler;
     }
 }
 //# sourceMappingURL=texture.js.map

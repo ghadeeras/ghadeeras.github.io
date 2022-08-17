@@ -7,13 +7,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { gear } from '/gen/libs.js';
-import { required } from "../../utils/misc.js";
+import { required } from "../utils.js";
 import { Buffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";
 import { CommandEncoder } from "./encoder.js";
 import { ShaderModule } from "./shader.js";
-import { Texture, Sampler, TextureView } from "./texture.js";
+import { Texture, Sampler } from "./texture.js";
 export class Device {
     constructor(device, adapter) {
         this.device = device;
@@ -21,31 +20,37 @@ export class Device {
     }
     loadShaderModule(shaderName, templateFunction = s => s, basePath = "/shaders") {
         return __awaiter(this, void 0, void 0, function* () {
-            const shaderCodes = yield gear.fetchTextFiles({ shader: shaderName }, basePath);
-            const shaderCode = templateFunction(shaderCodes["shader"]); // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
-            const shaderModule = new ShaderModule(this, shaderCode);
+            const response = yield fetch(`${basePath}/${shaderName}`, { method: "get", mode: "no-cors" });
+            const rawShaderCode = yield response.text();
+            return yield this.shaderModule(shaderName, rawShaderCode, templateFunction);
+        });
+    }
+    shaderModule(shaderName, rawShaderCode, templateFunction = s => s) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const shaderCode = templateFunction(rawShaderCode);
+            const shaderModule = new ShaderModule(shaderName, this, shaderCode);
             if (yield shaderModule.hasCompilationErrors()) {
                 throw new Error("Module compilation failed!");
             }
             return shaderModule;
         });
     }
-    encodeCommand(encoding) {
-        const encoder = new CommandEncoder(this);
-        encoding(encoder);
-        return encoder.finish();
+    enqueueCommands(name, ...encodings) {
+        this.enqueue(...this.commands(name, ...encodings));
     }
-    encodeCommands(...encodings) {
-        return encodings.map(encoding => this.encodeCommand(encoding));
-    }
-    enqueueCommand(encoding) {
-        this.enqueue(this.encodeCommand(encoding));
-    }
-    enqueueCommands(...encodings) {
-        this.enqueue(...this.encodeCommands(...encodings));
+    enqueueCommand(name, encoding) {
+        this.enqueue(this.command(name, encoding));
     }
     enqueue(...commands) {
         this.device.queue.submit(commands);
+    }
+    commands(name, ...encodings) {
+        return encodings.map((encoding, i) => this.command(`${name}#${i}`, encoding));
+    }
+    command(name, encoding) {
+        const encoder = new CommandEncoder(name, this);
+        encoding(encoder);
+        return encoder.finish();
     }
     canvas(element, withMultiSampling = true) {
         return new Canvas(this, element, withMultiSampling);
@@ -56,21 +61,17 @@ export class Device {
     sampler(descriptor = undefined) {
         return new Sampler(this, descriptor);
     }
-    buffer(usage, dataOrSize, stride = 0) {
+    buffer(label, usage, dataOrSize, stride = 0) {
         return stride > 0 ?
-            new Buffer(this, usage, dataOrSize, stride) :
-            new Buffer(this, usage, dataOrSize);
+            new Buffer(label, this, usage, dataOrSize, stride) :
+            new Buffer(label, this, usage, dataOrSize);
     }
-    createBindGroup(bindGroupLayout, resources) {
+    bindGroup(bindGroupLayout, resources) {
         return this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: resources.map((resource, index) => ({
                 binding: index,
-                resource: resource instanceof Buffer ? {
-                    buffer: resource.buffer
-                } : resource instanceof TextureView ?
-                    resource.view :
-                    resource.sampler,
+                resource: resource,
             }))
         });
     }

@@ -58,11 +58,11 @@ export class Denoiser {
             })
         })
 
-        this._group = this.device.createBindGroup(
+        this._group = this.device.bindGroup(
             this.groupLayout, 
             [
-                this.colorsTexture.createView(),
-                this.normalsTexture.createView(),
+                this.colorsTexture.createView().asBindingResource(),
+                this.normalsTexture.createView().asBindingResource(),
             ]
         )
     }

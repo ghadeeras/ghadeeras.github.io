@@ -44,8 +44,8 @@ export class GPUView implements v.View {
         canvasId: string,
         shaderModule: gpu.ShaderModule,
     ) {
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
-        this.vertices = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
+        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
 
         this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
@@ -63,7 +63,7 @@ export class GPUView implements v.View {
             layout: "auto"
         })
 
-        this.uniformsGroup = device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
 
         this.frame = () => {
             this.draw()
@@ -171,7 +171,7 @@ export class GPUView implements v.View {
     }
 
     private draw() {
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("render", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()

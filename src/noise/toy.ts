@@ -29,7 +29,7 @@ async function doInit() {
 
     const uniformsBuffer = createUniformsBuffer(device)
     const clockBuffer = createClockBuffer(device)
-    const bindGroup = device.createBindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer, clockBuffer])
+    const bindGroup = device.bindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer, clockBuffer])
 
     const samplesPerPixelElement = misc.required(document.getElementById("spp"))
     window.onkeyup = e => {
@@ -43,7 +43,7 @@ async function doInit() {
     }
 
     const draw = () => {
-        device.enqueueCommand(encoding => {
+        device.enqueueCommand("render", encoding => {
             encoding.renderPass({ colorAttachments: [canvas.attachment({r: 1, g: 1, b: 1, a: 1})] }, pass => {
                 pass.setBindGroup(0, bindGroup)
                 pass.setPipeline(pipeline)
@@ -81,10 +81,10 @@ function createUniformsBuffer(device: gpu.Device) {
         samplesPerPixel: 1,
     }])
 
-    return device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
+    return device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
 }
 
 function createClockBuffer(device: gpu.Device) {
     const dataView = gpu.u32.view([0])
-    return device.buffer(GPUBufferUsage.STORAGE, dataView)
+    return device.buffer("clock", GPUBufferUsage.STORAGE, dataView)
 }

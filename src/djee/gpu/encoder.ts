@@ -3,9 +3,11 @@ import { Device } from "./device.js"
 export class CommandEncoder {
 
     readonly encoder: GPUCommandEncoder
+    readonly descriptor: Readonly<GPUCommandEncoderDescriptor>
 
-    constructor(readonly device: Device) {
-        this.encoder = this.device.device.createCommandEncoder()
+    constructor(label: string, readonly device: Device) {
+        this.descriptor = { label }
+        this.encoder = this.device.device.createCommandEncoder(this.descriptor)
     }
 
     finish(): GPUCommandBuffer {

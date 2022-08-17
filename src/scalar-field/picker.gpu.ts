@@ -25,8 +25,8 @@ export class GPUPicker implements Picker {
         private vertices: () => gpu.Buffer,
     ) {
         this.device = canvas.device
-        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
-        this.pickDestination = this.device.buffer(GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16)
+        this.uniforms = this.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
+        this.pickDestination = this.device.buffer("pickDestination", GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16)
 
         this.colorTexture = this.device.texture({
             format: "rgba32float",
@@ -49,13 +49,13 @@ export class GPUPicker implements Picker {
             layout: "auto"
         })
 
-        this.uniformsGroup = this.device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = this.device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
     }
 
     async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
         this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
 
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("pick", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()

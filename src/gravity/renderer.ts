@@ -24,7 +24,7 @@ export class Renderer {
 
     private readonly uniformsBuffer: gpu.Buffer
     private readonly meshIndicesBuffer: gpu.Buffer
-    private readonly meshVertexBuffer: gpu.Buffer
+    private readonly meshVerticesBuffer: gpu.Buffer
 
     private readonly bindGroup: GPUBindGroup
 
@@ -60,12 +60,12 @@ export class Renderer {
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
-        this.meshIndicesBuffer = device.buffer(GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)))
-        this.meshVertexBuffer = device.buffer(GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
+        this.uniformsBuffer = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
+        this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)))
+        this.meshVerticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
 
         /* Bind Groups */
-        this.bindGroup = this.device.createBindGroup(bindGroupLayout, [this.uniformsBuffer])
+        this.bindGroup = this.device.bindGroup(bindGroupLayout, [this.uniformsBuffer])
     }
 
     get projectionViewMatrix() {
@@ -160,13 +160,13 @@ export class Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         }
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.bindGroup)
                 pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer)
                 pass.setVertexBuffer(1, universe.currentState.buffer)
-                pass.setVertexBuffer(2, this.meshVertexBuffer.buffer)
+                pass.setVertexBuffer(2, this.meshVerticesBuffer.buffer)
                 pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat)
                 pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0)
             })

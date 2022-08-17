@@ -39,15 +39,15 @@ export class GPUAdapter implements renderer.APIAdapter<Buffer, Buffer, Buffer, G
 
     matricesBuffer(matrices: renderer.Matrix[]): Buffer {
         const dataView = matricesStruct.view(matrices)
-        return this.device.buffer(GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride)
+        return this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride)
     }
 
     vertexBuffer(dataView: DataView, stride: number): Buffer {
-        return this.device.buffer(GPUBufferUsage.VERTEX, dataView, stride)
+        return this.device.buffer("vertex", GPUBufferUsage.VERTEX, dataView, stride)
     }
 
     indexBuffer(dataView: DataView, stride: number): Buffer {
-        return this.device.buffer(GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride)
+        return this.device.buffer("index", GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride)
     }
 
     matrixBinder(matrixBuffer: Buffer, index: number): renderer.Binder<GPURenderPassEncoder> {

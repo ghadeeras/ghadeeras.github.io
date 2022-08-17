@@ -1,10 +1,9 @@
-import { gear } from '/gen/libs.js'
-import { required } from "../../utils/misc.js"
+import { required } from "../utils.js"
 import { Buffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
-import { Texture, Sampler, TextureView } from "./texture.js"
+import { Texture, Sampler } from "./texture.js"
 
 export class Device {
 
@@ -12,40 +11,44 @@ export class Device {
     }
 
     async loadShaderModule(shaderName: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
-        const shaderCodes = await gear.fetchTextFiles({ shader: shaderName }, basePath)
-        
-        const shaderCode = templateFunction(shaderCodes["shader"]) // .replace(/\[\[block\]\]/g, "")  // [[block]] attribute is deprecated
-        const shaderModule = new ShaderModule(this, shaderCode)
+        const response = await fetch(`${basePath}/${shaderName}`, { method : "get", mode : "no-cors" })
+        const rawShaderCode = await response.text()
+        return await this.shaderModule(shaderName, rawShaderCode, templateFunction)
+    }
+    
+    async shaderModule(shaderName: string, rawShaderCode: string, templateFunction: (code: string) => string = s => s): Promise<ShaderModule> {
+        const shaderCode = templateFunction(rawShaderCode)
+        const shaderModule = new ShaderModule(shaderName, this, shaderCode)
 
         if (await shaderModule.hasCompilationErrors()) {
             throw new Error("Module compilation failed!")
         }
-    
+
         return shaderModule
     }
+
+    enqueueCommands(name: string, ...encodings: ((encoder: CommandEncoder) => void)[]) {
+        this.enqueue(...this.commands(name, ...encodings))
+    }
     
-    encodeCommand(encoding: (encoder: CommandEncoder) => void): GPUCommandBuffer {
-        const encoder = new CommandEncoder(this)
-        encoding(encoder)
-        return encoder.finish()
+    enqueueCommand(name: string, encoding: (encoder: CommandEncoder) => void) {
+        this.enqueue(this.command(name, encoding))
     }
 
-    encodeCommands(...encodings: ((encoder: CommandEncoder) => void)[]): GPUCommandBuffer[] {
-        return encodings.map(encoding => this.encodeCommand(encoding))
-    }
-    
-    enqueueCommand(encoding: (encoder: CommandEncoder) => void) {
-        this.enqueue(this.encodeCommand(encoding))
-    }
-
-    enqueueCommands(...encodings: ((encoder: CommandEncoder) => void)[]) {
-        this.enqueue(...this.encodeCommands(...encodings))
-    }
-    
     enqueue(...commands: GPUCommandBuffer[]) {
         this.device.queue.submit(commands)
     }
     
+    commands(name: string, ...encodings: ((encoder: CommandEncoder) => void)[]): GPUCommandBuffer[] {
+        return encodings.map((encoding, i) => this.command(`${name}#${i}`, encoding))
+    }
+    
+    command(name: string, encoding: (encoder: CommandEncoder) => void): GPUCommandBuffer {
+        const encoder = new CommandEncoder(name, this)
+        encoding(encoder)
+        return encoder.finish()
+    }
+
     canvas(element: HTMLCanvasElement | string, withMultiSampling = true): Canvas {
         return new Canvas(this, element, withMultiSampling)
     }
@@ -58,22 +61,18 @@ export class Device {
         return new Sampler(this, descriptor)
     }
 
-    buffer(usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride = 0): Buffer {
+    buffer(label: string, usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride = 0): Buffer {
         return stride > 0 ? 
-            new Buffer(this, usage, dataOrSize, stride) : 
-            new Buffer(this, usage, dataOrSize) 
+            new Buffer(label, this, usage, dataOrSize, stride) : 
+            new Buffer(label, this, usage, dataOrSize) 
     }
 
-    createBindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Buffer | TextureView | Sampler)[]) {
+    bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: GPUBindingResource[]) {
         return this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: resources.map((resource, index) => ({
                 binding: index,
-                resource: resource instanceof Buffer ? { 
-                    buffer: resource.buffer 
-                } : resource instanceof TextureView ? 
-                    resource.view :
-                    resource.sampler,
+                resource:  resource,
             }))
         })
     }

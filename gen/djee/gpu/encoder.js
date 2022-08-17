@@ -1,7 +1,8 @@
 export class CommandEncoder {
-    constructor(device) {
+    constructor(label, device) {
         this.device = device;
-        this.encoder = this.device.device.createCommandEncoder();
+        this.descriptor = { label };
+        this.encoder = this.device.device.createCommandEncoder(this.descriptor);
     }
     finish() {
         return this.encoder.finish();

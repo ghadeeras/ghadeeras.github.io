@@ -7,11 +7,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { formatOf } from "./utils.js";
+import { asColorTargetState } from "./utils.js";
 export class ShaderModule {
-    constructor(device, code) {
+    constructor(label, device, code) {
         this.device = device;
-        this.shaderModule = this.device.device.createShaderModule({ code });
+        this.descriptor = { code, label };
+        this.shaderModule = this.device.device.createShaderModule(this.descriptor);
         if (this.shaderModule === null) {
             throw new Error("Module compilation failed!");
         }
@@ -40,21 +41,28 @@ export class ShaderModule {
             return info.messages.some(m => m.type == "error");
         });
     }
-    createComputePipeline(entryPoint) {
+    computePipeline(entryPoint) {
         return this.device.device.createComputePipeline({
             compute: {
                 module: this.shaderModule,
                 entryPoint: entryPoint,
             },
-            layout: "auto"
+            layout: "auto",
+            label: `${this.shaderModule.label}/${entryPoint}`
         });
     }
-    vertexState(entryPoint, buffers, rewriteLocations = true) {
+    vertexState(entryPoint, buffers) {
         const index = [0];
         return {
             module: this.shaderModule,
             entryPoint: entryPoint,
-            buffers: rewriteLocations ? buffers.map(buffer => (Object.assign(Object.assign({}, buffer), { attributes: [...buffer.attributes].map(attribute => (Object.assign(Object.assign({}, attribute), { shaderLocation: index[0]++ }))) }))) : buffers
+            buffers: buffers.map(buffer => {
+                if (typeof buffer == 'number') {
+                    index[0] += buffer;
+                    return null;
+                }
+                return Object.assign(Object.assign({}, buffer), { attributes: [...buffer.attributes].map(attribute => (Object.assign(Object.assign({}, attribute), { shaderLocation: index[0]++ }))) });
+            })
         };
     }
     fragmentState(entryPoint, targets) {
@@ -62,7 +70,7 @@ export class ShaderModule {
             module: this.shaderModule,
             entryPoint: entryPoint,
             targets: targets.map(target => target !== null
-                ? { format: formatOf(target) }
+                ? asColorTargetState(target)
                 : null)
         };
     }

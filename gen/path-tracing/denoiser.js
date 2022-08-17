@@ -54,9 +54,9 @@ export class Denoiser {
                 bindGroupLayouts: [this.groupLayout]
             })
         });
-        this._group = this.device.createBindGroup(this.groupLayout, [
-            this.colorsTexture.createView(),
-            this.normalsTexture.createView(),
+        this._group = this.device.bindGroup(this.groupLayout, [
+            this.colorsTexture.createView().asBindingResource(),
+            this.normalsTexture.createView().asBindingResource(),
         ]);
     }
     attachments(clearColor, clearNormal) {

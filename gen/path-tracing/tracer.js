@@ -72,7 +72,7 @@ export class Tracer {
         this.gridBuffer = this.createGridBuffer();
         this.clockBuffer = this.createClockBuffer();
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
-        this.group = this.device.createBindGroup(this.groupLayout, [
+        this.group = this.device.bindGroup(this.groupLayout, [
             this.uniformsBuffer,
             this.materialsBuffer,
             this.boxesBuffer,
@@ -137,19 +137,19 @@ export class Tracer {
                 aspectRatio: width / height,
                 samplesPerPixel: this._samplesPerPixel,
             }]);
-        return this.canvas.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
+        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
     }
     createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials);
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+        return this.device.buffer("materials", GPUBufferUsage.STORAGE, dataView);
     }
     createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes);
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+        return this.device.buffer("boxes", GPUBufferUsage.STORAGE, dataView);
     }
     createGridBuffer() {
         const dataView = cellStruct.view(this.scene.grid);
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+        return this.device.buffer("grid", GPUBufferUsage.STORAGE, dataView);
     }
     createImportantDirectionsBuffer() {
         const dataView = boxDirectionsStruct.view(this.scene.boxes.length);
@@ -170,11 +170,11 @@ export class Tracer {
                     }]
             });
         }
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+        return this.device.buffer("importantDirections", GPUBufferUsage.STORAGE, dataView);
     }
     createClockBuffer() {
         const dataView = gpu.u32.view([0]);
-        return this.device.buffer(GPUBufferUsage.STORAGE, dataView);
+        return this.device.buffer("clock", GPUBufferUsage.STORAGE, dataView);
     }
     clamp(p) {
         const min = 0.5;

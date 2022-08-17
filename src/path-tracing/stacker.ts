@@ -73,15 +73,15 @@ export class Stacker {
     }
 
     private newGroup(layersCount: number): GPUBindGroup {
-        return this.device.createBindGroup(
+        return this.device.bindGroup(
             this.groupLayout, 
             [
                 this.texture.createView({
                     dimension: "2d-array",
                     baseArrayLayer: 0,
                     arrayLayerCount: layersCount
-                }),
-                this.sampler
+                }).asBindingResource(),
+                this.sampler.asBindingResource()
             ]
         )
     }

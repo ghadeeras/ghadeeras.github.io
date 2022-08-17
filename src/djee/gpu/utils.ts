@@ -16,6 +16,12 @@ export type TypedArray =
     Uint16Array |
     Uint8Array
 
+export function asColorTargetState(formatted: TextureFormatSource): GPUColorTargetState {
+    return typeof formatted != 'string' && ("blend" in formatted || "writeMask" in formatted) 
+        ? formatted 
+        :  { format: formatOf(formatted) }
+}
+
 export function formatOf(formatted: TextureFormatSource): GPUTextureFormat {
     return typeof formatted !== 'string' ?
         formatted instanceof Texture ?

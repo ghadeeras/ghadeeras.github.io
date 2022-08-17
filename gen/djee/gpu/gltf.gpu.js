@@ -20,13 +20,13 @@ export class GPUAdapter {
     }
     matricesBuffer(matrices) {
         const dataView = matricesStruct.view(matrices);
-        return this.device.buffer(GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
+        return this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
     }
     vertexBuffer(dataView, stride) {
-        return this.device.buffer(GPUBufferUsage.VERTEX, dataView, stride);
+        return this.device.buffer("vertex", GPUBufferUsage.VERTEX, dataView, stride);
     }
     indexBuffer(dataView, stride) {
-        return this.device.buffer(GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride);
+        return this.device.buffer("index", GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride);
     }
     matrixBinder(matrixBuffer, index) {
         const bindGroup = this.bindGroupSupplier(matrixBuffer, index * matricesStruct.stride);

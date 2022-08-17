@@ -60,13 +60,13 @@ export class Stacker {
         this._layer = this.layersCount - 1;
     }
     newGroup(layersCount) {
-        return this.device.createBindGroup(this.groupLayout, [
+        return this.device.bindGroup(this.groupLayout, [
             this.texture.createView({
                 dimension: "2d-array",
                 baseArrayLayer: 0,
                 arrayLayerCount: layersCount
-            }),
-            this.sampler
+            }).asBindingResource(),
+            this.sampler.asBindingResource()
         ]);
     }
     get layer() {

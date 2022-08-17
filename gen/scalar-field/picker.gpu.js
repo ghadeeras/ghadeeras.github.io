@@ -18,8 +18,8 @@ export class GPUPicker {
             mvpMat: gpu.mat4x4
         });
         this.device = canvas.device;
-        this.uniforms = this.device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
-        this.pickDestination = this.device.buffer(GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16);
+        this.uniforms = this.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
+        this.pickDestination = this.device.buffer("pickDestination", GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16);
         this.colorTexture = this.device.texture({
             format: "rgba32float",
             size: canvas.size,
@@ -39,12 +39,12 @@ export class GPUPicker {
             },
             layout: "auto"
         });
-        this.uniformsGroup = this.device.createBindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = this.device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
     }
     pick(matModelViewProjection, x, y) {
         return __awaiter(this, void 0, void 0, function* () {
             this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));
-            this.device.enqueueCommand(encoder => {
+            this.device.enqueueCommand("pick", encoder => {
                 var _a;
                 const passDescriptor = {
                     colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],

@@ -50,21 +50,21 @@ export class Universe {
         const initialStateView = Universe.bodyState.view(initialState)
         
         /* Pipeline */
-        this.pipeline = computeShader.createComputePipeline("c_main")
+        this.pipeline = computeShader.computePipeline("c_main")
         const computeBindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.bodyDescriptionsBuffer = device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, Universe.bodyDescription.view(bodyDescriptions))
-        this.uniformsBuffer = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
+        this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, Universe.bodyDescription.view(bodyDescriptions))
+        this.uniformsBuffer = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
         this.stateBuffers = [
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView),
-            device.buffer(GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView.byteLength),
+            device.buffer("state0", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView),
+            device.buffer("state1", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView.byteLength),
         ]
 
         /* Bind Groups */
         this.bindGroups = [
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.uniformsBuffer]),
-            this.device.createBindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.uniformsBuffer]),
+            this.device.bindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[0], this.stateBuffers[1], this.uniformsBuffer]),
+            this.device.bindGroup(computeBindGroupLayout, [this.bodyDescriptionsBuffer, this.stateBuffers[1], this.stateBuffers[0], this.uniformsBuffer]),
         ]
         
         this.currentBuffer = 0
@@ -132,7 +132,7 @@ export class Universe {
     }
 
     tick() {
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("compute", encoder => {
             encoder.computePass(pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.bindGroups[this.currentBuffer])

@@ -1,4 +1,9 @@
 import { Texture } from "./texture.js";
+export function asColorTargetState(formatted) {
+    return typeof formatted != 'string' && ("blend" in formatted || "writeMask" in formatted)
+        ? formatted
+        : { format: formatOf(formatted) };
+}
 export function formatOf(formatted) {
     return typeof formatted !== 'string' ?
         formatted instanceof Texture ?

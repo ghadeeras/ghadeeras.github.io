@@ -64,7 +64,7 @@ export class GPUView implements View {
         this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
 
-        this.uniforms = device.buffer(GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
         this.uniformsGroupLayout = device.device.createBindGroupLayout({
             entries: [{
                 binding: 0,
@@ -74,7 +74,7 @@ export class GPUView implements View {
                 },
             }],
         })
-        this.uniformsGroup = device.createBindGroup(this.uniformsGroupLayout, [this.uniforms]);
+        this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
         
         this.nodeGroupLayout = device.device.createBindGroupLayout({
             entries: [{
@@ -172,7 +172,7 @@ export class GPUView implements View {
     }
 
     draw() {
-        this.device.enqueueCommand(encoder => {
+        this.device.enqueueCommand("render", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()
