@@ -3,7 +3,7 @@ struct Varyings {
     @location(0) c: vec2<f32>,
 };
 
-@stage(vertex)
+@vertex
 fn v_main(@location(0) pos: vec2<f32>) -> Varyings {
     return Varyings(vec4<f32>(pos, 0.0, 1.0), pos);
 }
@@ -22,15 +22,15 @@ struct Params {
 @binding(0)
 var<uniform> params: Params;
 
-let PI = 3.1415926535897932384626433832795;
+const PI = 3.1415926535897932384626433832795;
 
-let colorAngle = 2.0943951023931954923084289221863;
+const colorAngle = 2.0943951023931954923084289221863;
 
-let redVec = vec2<f32>(1.0, 0.0);
-let greenVec = vec2<f32>(-0.5, 0.86602540378443864676372317075294);
-let blueVec = vec2<f32>(-0.5, -0.86602540378443864676372317075294);
+const redVec = vec2<f32>(1.0, 0.0);
+const greenVec = vec2<f32>(-0.5, 0.86602540378443864676372317075294);
+const blueVec = vec2<f32>(-0.5, -0.86602540378443864676372317075294);
 
-let white = vec3<f32>(1.0, 1.0, 1.0);
+const white = vec3<f32>(1.0, 1.0, 1.0);
 
 fn component(v: vec2<f32>, c: vec2<f32>) -> f32 {
     return (dot(v, c) + 1.0) / 2.0;
@@ -78,7 +78,7 @@ fn mandelbrotOrJulia(p: vec2<f32>) -> f32 {
     return mandelbrot(params.scale * p + params.center, vec2<f32>(0.0));
 }
 
-@stage(fragment)
+@fragment
 fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
     var color = rgbColor();
     return vec4<f32>(mandelbrotOrJulia(varyings.c) * color, 1.0);

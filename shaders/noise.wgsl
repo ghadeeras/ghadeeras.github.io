@@ -5,7 +5,7 @@ var<private> vertices: array<vec2<f32>, 4> = array<vec2<f32>, 4>(
     vec2( 1.0, -1.0),
 );
 
-@stage(vertex)
+@vertex
 fn v_main(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
     return vec4(vertices[i & 3u], 0.0, 1.0);
 }
@@ -49,7 +49,7 @@ fn newRNG(position: vec2<f32>) -> vec4<u32> {
     return r;
 }
 
-@stage(fragment)
+@fragment
 fn f_main(@builtin(position) position: vec4<f32>) -> @location(0) vec4<f32> {
     rng = newRNG(position.xy);
     

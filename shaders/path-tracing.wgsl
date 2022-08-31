@@ -25,7 +25,7 @@ var<private> vertices: array<vec2<f32>, 4> = array<vec2<f32>, 4>(
     vec2( 1.0, -1.0),
 );
 
-@stage(vertex)
+@vertex
 fn v_main(@builtin(vertex_index) i: u32) -> Vertex {
     let xy = vertices[i & 3u];
     return Vertex(
@@ -74,20 +74,20 @@ var<storage, read_write> clock: atomic<u32>;
 var<private> rng: vec4<u32>;
 var<private> pixelSize: f32;
 
-let EPSILON: f32 = 0x1P-11;
-let RND_PRECISION: f32 = 0x1P-22;
-let MAX_BOXES_PER_CELL: u32 = 8u;
-let GRID_LIMIT_LO: vec3<i32> = vec3<i32>(-4096, -64, -1);
-let GRID_LIMIT_HI: vec3<i32> = vec3<i32>(262144, 4096, 64);
-let GRID_BITS_SHIFT: vec3<u32> = vec3<u32>(12u, 6u, 0u);
-let ZERO_F3D = vec3(0.0);
-let ZERO_I3D = vec3(0);
-let NULL: u32 = 0xFFFFFFFFu;
-let OBSERVER: u32 = 0x7FFFFFFFu;
-let OBSERVER_RADIUS: f32 = 0.5;
-let OBSERVER_RADIUS_SQUARED: f32 = 0.25;
-let TWO_PI = 6.283185307179586476925286766559;
-let ONE_BY_PI = 0.31830988618379067153776752674503;
+const EPSILON: f32 = 0x1P-11;
+const RND_PRECISION: f32 = 0x1P-22;
+const MAX_BOXES_PER_CELL: u32 = 8u;
+const GRID_LIMIT_LO: vec3<i32> = vec3<i32>(-4096, -64, -1);
+const GRID_LIMIT_HI: vec3<i32> = vec3<i32>(262144, 4096, 64);
+const GRID_BITS_SHIFT: vec3<u32> = vec3<u32>(12u, 6u, 0u);
+const ZERO_F3D = vec3(0.0);
+const ZERO_I3D = vec3(0);
+const NIL: u32 = 0xFFFFFFFFu;
+const OBSERVER: u32 = 0x7FFFFFFFu;
+const OBSERVER_RADIUS: f32 = 0.5;
+const OBSERVER_RADIUS_SQUARED: f32 = 0.25;
+const TWO_PI = 6.283185307179586476925286766559;
+const ONE_BY_PI = 0.31830988618379067153776752674503;
 
 // Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
 fn next_u32() -> u32 {
@@ -211,7 +211,7 @@ fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
         let axis = vec3(uniforms.matrix[0][2], uniforms.matrix[1][2], uniforms.matrix[2][2]);
         let cosTheta = -dot(normal, axis);
         let color = select(vec3(1.0), select(vec3(0.5, 0.5, 1.0), ZERO_F3D, cosTheta > 0.95), cosTheta > 0.8);
-        return HitDetails(ray, position, normal, vec4(color, 0.75), OBSERVER, NULL);
+        return HitDetails(ray, position, normal, vec4(color, 0.75), OBSERVER, NIL);
     } else {
         let box = boxes[hit.boxId];
         let faceId = faceIdOf(box.volume, position);
@@ -285,7 +285,7 @@ fn diffuseDirection(normal: vec3<f32>) -> Direction {
 
     let direction = matrix * vec3(sinTheta * sin(phi), cosTheta, sinTheta * cos(phi)); 
     let pdf = ONE_BY_PI * cosTheta;
-    return Direction(direction, pdf, 0.0, NULL);
+    return Direction(direction, pdf, 0.0, NIL);
 }
 
 fn diffusePDF(normal: vec3<f32>, direction: vec3<f32>) -> f32 {
@@ -293,7 +293,7 @@ fn diffusePDF(normal: vec3<f32>, direction: vec3<f32>) -> f32 {
     return ONE_BY_PI * cosTheta;
 }
 
-fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction {
+fn lightDirection(lightId: u32, fromSP: vec3<f32>, normal: vec3<f32>) -> Direction {
     let boxId = lightId >> 3u;
     let volume = boxes[boxId].volume;
     let size = volume.max - volume.min;
@@ -304,7 +304,7 @@ fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction
     let matrix = mat3x3(lightNormal.zxy, abs(lightNormal.yzx), lightNormal);
 
     let to = (matrix * vec3(next_vec2() - vec2(0.5), 0.5)) * size + center;
-    let fromTo = to - from;
+    let fromTo = to - fromSP;
     let distanceSquared = dot(fromTo, fromTo);
     let direction = fromTo / sqrt(distanceSquared);
 
@@ -315,9 +315,9 @@ fn lightDirection(lightId: u32, from: vec3<f32>, normal: vec3<f32>) -> Direction
     return Direction(direction, diffusePDF(normal, direction), pdf, lightId);
 }
 
-fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
-    if (lightId == NULL | lightId == direction.lightId) {
-        return select(direction.lightPDF, direction.diffusePDF, lightId == NULL);
+fn lightPDF(lightId: u32, fromSP: vec3<f32>, direction: Direction) -> f32 {
+    if (lightId == NIL || lightId == direction.lightId) {
+        return select(direction.lightPDF, direction.diffusePDF, lightId == NIL);
     }
 
     let boxId = lightId >> 3u;
@@ -334,32 +334,32 @@ fn lightPDF(lightId: u32, from: vec3<f32>, direction: Direction) -> f32 {
 
     let area = -localSize.x * localSize.y * dot(direction.direction, lightNormal);
     
-    let localFrom = (from - faceCenter) * matrix;
+    let localFrom = (fromSP - faceCenter) * matrix;
     let localDirection = direction.direction * matrix;
     let distance = -localFrom.z / localDirection.z;
     
     let localTo = localFrom.xy + distance * localDirection.xy;
-    let hit = area > 0.0 & all(abs(localTo) <= (localSize.xy * 0.5));
+    let hit = area > 0.0 && all(abs(localTo) <= (localSize.xy * 0.5));
 
     return select(0.0, distance * distance  / area, hit);
 }
 
-fn importantDirection(importantLights: vec4<u32>, from: vec3<f32>, normal: vec3<f32>) -> Direction {
+fn importantDirection(importantLights: vec4<u32>, fromSP: vec3<f32>, normal: vec3<f32>) -> Direction {
     let r = next_unorm() * 6.0 - 2.0;
     let lightId = importantLights[i32(r) & 3];
-    if (r < 0.0 | lightId == NULL) {
+    if (r < 0.0 || lightId == NIL) {
         return diffuseDirection(normal);
     } else {
-        return lightDirection(lightId, from, normal);
+        return lightDirection(lightId, fromSP, normal);
     }
 }
 
-fn importantPDF(importantLights: vec4<u32>, from: vec3<f32>, direction: Direction) -> f32 {
+fn importantPDF(importantLights: vec4<u32>, fromSP: vec3<f32>, direction: Direction) -> f32 {
     return 0.333  * direction.diffusePDF + 0.167 * (
-        lightPDF(importantLights[0], from, direction) +
-        lightPDF(importantLights[1], from, direction) +
-        lightPDF(importantLights[2], from, direction) +
-        lightPDF(importantLights[3], from, direction)
+        lightPDF(importantLights[0], fromSP, direction) +
+        lightPDF(importantLights[1], fromSP, direction) +
+        lightPDF(importantLights[2], fromSP, direction) +
+        lightPDF(importantLights[3], fromSP, direction)
     );
 }
 
@@ -377,7 +377,7 @@ fn diffuseRay(hitDetails: HitDetails) -> WeightedRay {
     if (hitDetails.boxId == OBSERVER) {
         let direction = diffuseDirection(hitDetails.normal);
         let ray = newRay(hitDetails.position, direction.direction);
-        return WeightedRay(ray, 1.0, NULL);
+        return WeightedRay(ray, 1.0, NIL);
     } else {
         let importantLights = loadLights(hitDetails.boxId, hitDetails.faceId);
         let direction = importantDirection(importantLights, hitDetails.position, hitDetails.normal);
@@ -392,7 +392,7 @@ fn reflectionRay(hitDetails: HitDetails) -> WeightedRay {
     return WeightedRay(
         newRay(hitDetails.position, direction),
         1.0,
-        NULL,
+        NIL,
     );
 }
 
@@ -415,18 +415,18 @@ fn shootObserver(ray: Ray) -> Hit {
     let sqrtD = select(halfB, sqrt(d), d > 0.0);
     let distance = halfB - sqrtD;
     let hit = distance > 0.0; 
-    return Hit(select(NULL, OBSERVER, hit), select(128.0, distance, hit));
+    return Hit(select(NIL, OBSERVER, hit), select(128.0, distance, hit));
 }
 
 fn shootInGrid(ray: Ray) -> Hit {
     var t = traverser(ray);
     var hit = shootObserver(ray);
     var done = false;
-    for (var i = 0; i < 128 & !done; i = i + 1) {
+    for (var i = 0; i < 128 && !done; i = i + 1) {
         let cell = grid[t.cell.x + t.cell.y + t.cell.z];
         let distance = next(&t);
         hit = shoot(cell, ray, hit);
-        done = hit.boxId < OBSERVER | any(t.cell == t.limit) | distance >= hit.distance;
+        done = hit.boxId < OBSERVER || any(t.cell == t.limit) || distance >= hit.distance;
     }
     return hit;
 }
@@ -435,9 +435,9 @@ fn exchangeLight(boxId: u32, faceId: u32, oldLightId: u32, newLightId: u32) {
     let light = ((next_u32() + 0x7FFFFFu) >> 24u) & 3u;
     let lightPtr = &importantDirections[boxId].faces[faceId].lights[light];
     let result = atomicCompareExchangeWeak(lightPtr, oldLightId, newLightId);
-    // if (result.old_value == oldLightId  !result.exchanged) {
-    //     atomicStore(lightPtr, newLightId);
-    // }
+    if (result.old_value == oldLightId && !result.exchanged) {
+        atomicStore(lightPtr, newLightId);
+    }
 }
 
 struct Result {
@@ -447,28 +447,28 @@ struct Result {
 
 fn trace(ray: Ray) -> Result {
     var color = vec3(1.0);
-    var weightedRay = WeightedRay(ray, 1.0, NULL);
-    var prevBoxId = NULL;
-    var prevFaceId = NULL;
+    var weightedRay = WeightedRay(ray, 1.0, NIL);
+    var prevBoxId = NIL;
+    var prevFaceId = NIL;
     var firstNormal = vec4(-ray.direction, 128.0);
     for (var i = 0; i < 4; i = i + 1) {
         let hit = shootInGrid(weightedRay.ray);
-        if (hit.boxId == NULL) {
+        if (hit.boxId == NIL) {
             return Result(ZERO_F3D, firstNormal);
         }
         let hitDetails = detailsOf(hit, weightedRay.ray);
         firstNormal = select(firstNormal, vec4(hitDetails.normal, hit.distance), i == 0);
         color = color * hitDetails.material.xyz * weightedRay.weight;
         if (hitDetails.material.w < 0.0) {
-            if (weightedRay.lightId == NULL & prevBoxId < OBSERVER) {
+            if (weightedRay.lightId == NIL && prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
-                exchangeLight(prevBoxId, prevFaceId, NULL, lightId);
+                exchangeLight(prevBoxId, prevFaceId, NIL, lightId);
             }
             return Result(color, firstNormal); 
         } else {
-            if (weightedRay.lightId != NULL & prevBoxId < OBSERVER) {
+            if (weightedRay.lightId != NIL && prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
-                exchangeLight(prevBoxId, prevFaceId, lightId, NULL);
+                exchangeLight(prevBoxId, prevFaceId, lightId, NIL);
             }
         }
         prevBoxId = hitDetails.boxId;
@@ -509,7 +509,7 @@ struct Output {
     @location(1) normal: vec4<f32>,
 }
 
-@stage(fragment)
+@fragment
 fn f_main(vertex: Vertex) -> Output {
     init(vertex);
     let r = estimateColor(vertex.xy);

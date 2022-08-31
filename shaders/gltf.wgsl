@@ -71,7 +71,7 @@ fn v_main_common(
         newNormal.xyz
     );
 }
-@stage(vertex)
+@vertex
 fn v_main(
     @location(0) pos: vec3<f32>, 
     @location(1) normal: vec3<f32>
@@ -79,14 +79,14 @@ fn v_main(
     return v_main_common(pos, normal);
 }
 
-@stage(vertex)
+@vertex
 fn v_main_no_normals(
     @location(0) pos: vec3<f32>
 ) -> VertexOutput {
     return v_main_common(pos, vec3<f32>(0.0, 1.0, 0.0));
 }
 
-@stage(fragment)
+@fragment
 fn f_main(
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,

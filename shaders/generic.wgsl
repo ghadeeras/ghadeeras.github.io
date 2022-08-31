@@ -50,7 +50,7 @@ fn color(
     return vec4<f32>(mix(vec3<f32>(1.0), shade * materialColor, fogFactor), uniforms.color.a);
 }
 
-@stage(vertex)
+@vertex
 fn v_main(
     @location(0) pos: vec3<f32>, 
     @location(1) normal: vec3<f32>
@@ -64,7 +64,7 @@ fn v_main(
     );
 }
 
-@stage(fragment)
+@fragment
 fn f_main(
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,

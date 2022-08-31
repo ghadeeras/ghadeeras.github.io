@@ -14,7 +14,7 @@ var<uniform> uniforms: Uniforms;
 var<private> zero: vec4<f32> = vec4<f32>(0.0, 0.0, 0.0, 1.0);
 var<private> one: vec4<f32> = vec4<f32>(1.0, 1.0, 1.0, 1.0);
 
-@stage(vertex)
+@vertex
 fn v_main(
     @location(0) pos: vec3<f32>
 ) -> VertexOutput {
@@ -23,7 +23,7 @@ fn v_main(
     return VertexOutput(projPos, modelPos);
 }
 
-@stage(fragment)
+@fragment
 fn f_main(
     @location(0) pos: vec4<f32>
 ) -> @location(0) vec4<f32> {

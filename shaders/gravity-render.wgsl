@@ -19,7 +19,7 @@ var<private> lightDir: vec3<f32> = vec3<f32>(
      0.57735026918962576450914878050196
 );
 
-@stage(vertex)
+@vertex
 fn v_main(
     @location(0) bodyDesc: vec2<f32>,
     @location(1) bodyPosition: vec3<f32>,
@@ -40,7 +40,7 @@ fn v_main(
     return Varyings(projectedPosition, color); 
 }
 
-@stage(fragment)
+@fragment
 fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
     return vec4<f32>(varyings.color, 1.0);
 }

@@ -70,7 +70,7 @@ fn accelerationAt(position: vec3<f32>, bodiesCount: u32) -> vec3<f32> {
     return acceleration;
 }
 
-@stage(compute)
+@compute
 @workgroup_size([[workgroup_size]])
 fn c_main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
     var bodiesCount = calculateBodiesCount();

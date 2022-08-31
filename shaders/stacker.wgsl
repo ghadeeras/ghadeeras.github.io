@@ -14,7 +14,7 @@ fn toUV(xy: vec2<f32>) -> vec2<f32> {
     return (xy + vec2(1.0, -1.0)) * vec2(0.5, -0.5); 
 }
 
-@stage(vertex)
+@vertex
 fn v_main(@builtin(vertex_index) i: u32) -> Vertex {
     var xy = vertices[i & 3u];
     return Vertex(vec4(xy, 0.0, 1.0), toUV(xy));
@@ -28,7 +28,7 @@ var textureLayers: texture_2d_array<f32>;
 @group(0) @binding(1)
 var textureSampler: sampler;
 
-@stage(fragment)
+@fragment
 fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     var c = vec3(0.0);
     var n = textureNumLayers(textureLayers);
