@@ -18,8 +18,8 @@ export class Buffer {
 
     constructor(label: string, readonly device: Device, readonly usage: GPUBufferUsageFlags, dataOrSize: DataView | number, readonly stride: number = size(dataOrSize)) {
         [this._buffer, this._descriptor, this._size] = typeof dataOrSize === 'number' ?
-            [...this.newBlankBuffer(label, dataOrSize), dataOrSize] :
-            [...this.newBuffer(label, dataOrSize), dataOrSize.byteLength]
+            this.newBlankBuffer(label, dataOrSize) :
+            this.newBuffer(label, dataOrSize)
 
         this._strideCount = Math.ceil(this._size / stride)
 
@@ -32,8 +32,43 @@ export class Buffer {
             (bufferOffset, data, dataOffset, size) => this.readFromCopySrcBuffer(bufferOffset, data, dataOffset, size)
     }
 
+    get buffer(): GPUBuffer {
+        return this._buffer
+    }
+
+    get descriptor(): Readonly<GPUBufferDescriptor> {
+        return this._descriptor
+    }
+
+    get label() {
+        return required(this._descriptor.label)
+    }
+
+    get stridesCount(): number {
+        return this._strideCount
+    }
+
     destroy() {
         this._buffer.destroy()
+    }
+
+    asBindingResource(size = this._descriptor.size, offset = 0): GPUBindingResource {
+        return {
+            buffer: this._buffer,
+            size,
+            offset,
+        }
+    }
+    
+    setData(data: DataView) {
+        this._size = data.byteLength
+        this._strideCount = Math.ceil(this._size / this.stride)
+        if (this._size > this._descriptor.size) {
+            this._buffer.destroy();
+            [this._buffer, this._descriptor] = this.newBuffer(this.label, data)
+        } else {
+            this.writeAt(0, data)
+        }
     }
 
     async syncFrom<T>(data: DataView, element: Element<T>, index = 0, count = 1): Promise<Buffer> {
@@ -55,11 +90,6 @@ export class Buffer {
     }
 
     copyAt(thisOffset: number, that: Buffer, thatOffset: number, size: number) {
-        const encoding = this.copyingAt(thisOffset, that, thatOffset, size) 
-        this.device.enqueueCommand(`copy-${that._buffer.label}-to-${this._buffer.label}`, encoding)
-    }
-    
-    copyingAt(thisOffset: number, that: Buffer, thatOffset: number, size: number) {
         const thisValidOffset = lowerMultipleOf(4, thisOffset)
         const thatValidOffset = lowerMultipleOf(4, thatOffset)
         const thisOffsetCorrection = thisOffset - thisValidOffset
@@ -68,22 +98,21 @@ export class Buffer {
             throw new Error("Copying between unaligned buffers is not possible!")
         }
         const validSize = upperMultipleOf(4, size + thisOffsetCorrection)
-        const encoding = (encoder: CommandEncoder) => {
+        this.device.enqueueCommand(`copy-${that._buffer.label}-to-${this._buffer.label}`, (encoder: CommandEncoder) => {
             encoder.encoder.copyBufferToBuffer(that.buffer, thatValidOffset, this.buffer, thisValidOffset, validSize)
-        }
-        return encoding
+        })
     }
-
-    private newBlankBuffer(label: string, size: number): [GPUBuffer, GPUBufferDescriptor] {
+    
+    private newBlankBuffer(label: string, size: number): [GPUBuffer, GPUBufferDescriptor, number] {
         const descriptor = {
             usage: this.usage,
             size: upperMultipleOf(4, size),
             label: label
         }
-        return [this.device.device.createBuffer(descriptor), descriptor]
+        return [this.device.device.createBuffer(descriptor), descriptor, size]
     }
 
-    private newBuffer(label: string, data: DataView): [GPUBuffer, GPUBufferDescriptor] {
+    private newBuffer(label: string, data: DataView): [GPUBuffer, GPUBufferDescriptor, number] {
         const validSize = upperMultipleOf(4, data.byteLength)
         const descriptor = {
             usage: this.usage,
@@ -97,7 +126,7 @@ export class Buffer {
         const dst = new Uint8Array(range, 0, data.byteLength)
         dst.set(src)
         buffer.unmap()
-        return [buffer, descriptor]
+        return [buffer, descriptor, data.byteLength]
     }
 
     private async writeToMapWriteBuffer(bufferOffset: number, data: DataView, dataOffset: number, size: number) {
@@ -147,41 +176,6 @@ export class Buffer {
             return await temp.readFromMapReadBuffer(0, data, dataOffset, size)
         } finally {
             temp.destroy()
-        }
-    }
-
-    asBindingResource(size = this._descriptor.size, offset = 0): GPUBindingResource {
-        return {
-            buffer: this._buffer,
-            size,
-            offset,
-        }
-    }
-    
-    get buffer(): GPUBuffer {
-        return this._buffer
-    }
-
-    get descriptor(): Readonly<GPUBufferDescriptor> {
-        return this._descriptor
-    }
-
-    get label() {
-        return required(this._descriptor.label)
-    }
-
-    get stridesCount(): number {
-        return this._strideCount
-    }
-
-    setData(data: DataView) {
-        this._size = data.byteLength
-        this._strideCount = Math.ceil(this._size / this.stride)
-        if (this._size > this._descriptor.size) {
-            this._buffer.destroy();
-            [this._buffer, this._descriptor] = this.newBuffer(this.label, data)
-        } else {
-            this.writeAt(0, data)
         }
     }
 

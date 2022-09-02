@@ -14,8 +14,8 @@ export class Buffer {
         this.usage = usage;
         this.stride = stride;
         [this._buffer, this._descriptor, this._size] = typeof dataOrSize === 'number' ?
-            [...this.newBlankBuffer(label, dataOrSize), dataOrSize] :
-            [...this.newBuffer(label, dataOrSize), dataOrSize.byteLength];
+            this.newBlankBuffer(label, dataOrSize) :
+            this.newBuffer(label, dataOrSize);
         this._strideCount = Math.ceil(this._size / stride);
         this.writer = (usage & GPUBufferUsage.MAP_WRITE) != 0 ?
             (bufferOffset, data, dataOffset, size) => this.writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) :
@@ -24,8 +24,38 @@ export class Buffer {
             (bufferOffset, data, dataOffset, size) => this.readFromMapReadBuffer(bufferOffset, data, dataOffset, size) :
             (bufferOffset, data, dataOffset, size) => this.readFromCopySrcBuffer(bufferOffset, data, dataOffset, size);
     }
+    get buffer() {
+        return this._buffer;
+    }
+    get descriptor() {
+        return this._descriptor;
+    }
+    get label() {
+        return required(this._descriptor.label);
+    }
+    get stridesCount() {
+        return this._strideCount;
+    }
     destroy() {
         this._buffer.destroy();
+    }
+    asBindingResource(size = this._descriptor.size, offset = 0) {
+        return {
+            buffer: this._buffer,
+            size,
+            offset,
+        };
+    }
+    setData(data) {
+        this._size = data.byteLength;
+        this._strideCount = Math.ceil(this._size / this.stride);
+        if (this._size > this._descriptor.size) {
+            this._buffer.destroy();
+            [this._buffer, this._descriptor] = this.newBuffer(this.label, data);
+        }
+        else {
+            this.writeAt(0, data);
+        }
     }
     syncFrom(data, element, index = 0, count = 1) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -50,10 +80,6 @@ export class Buffer {
         });
     }
     copyAt(thisOffset, that, thatOffset, size) {
-        const encoding = this.copyingAt(thisOffset, that, thatOffset, size);
-        this.device.enqueueCommand(`copy-${that._buffer.label}-to-${this._buffer.label}`, encoding);
-    }
-    copyingAt(thisOffset, that, thatOffset, size) {
         const thisValidOffset = lowerMultipleOf(4, thisOffset);
         const thatValidOffset = lowerMultipleOf(4, thatOffset);
         const thisOffsetCorrection = thisOffset - thisValidOffset;
@@ -62,10 +88,9 @@ export class Buffer {
             throw new Error("Copying between unaligned buffers is not possible!");
         }
         const validSize = upperMultipleOf(4, size + thisOffsetCorrection);
-        const encoding = (encoder) => {
+        this.device.enqueueCommand(`copy-${that._buffer.label}-to-${this._buffer.label}`, (encoder) => {
             encoder.encoder.copyBufferToBuffer(that.buffer, thatValidOffset, this.buffer, thisValidOffset, validSize);
-        };
-        return encoding;
+        });
     }
     newBlankBuffer(label, size) {
         const descriptor = {
@@ -73,7 +98,7 @@ export class Buffer {
             size: upperMultipleOf(4, size),
             label: label
         };
-        return [this.device.device.createBuffer(descriptor), descriptor];
+        return [this.device.device.createBuffer(descriptor), descriptor, size];
     }
     newBuffer(label, data) {
         const validSize = upperMultipleOf(4, data.byteLength);
@@ -89,7 +114,7 @@ export class Buffer {
         const dst = new Uint8Array(range, 0, data.byteLength);
         dst.set(src);
         buffer.unmap();
-        return [buffer, descriptor];
+        return [buffer, descriptor, data.byteLength];
     }
     writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -143,36 +168,6 @@ export class Buffer {
                 temp.destroy();
             }
         });
-    }
-    asBindingResource(size = this._descriptor.size, offset = 0) {
-        return {
-            buffer: this._buffer,
-            size,
-            offset,
-        };
-    }
-    get buffer() {
-        return this._buffer;
-    }
-    get descriptor() {
-        return this._descriptor;
-    }
-    get label() {
-        return required(this._descriptor.label);
-    }
-    get stridesCount() {
-        return this._strideCount;
-    }
-    setData(data) {
-        this._size = data.byteLength;
-        this._strideCount = Math.ceil(this._size / this.stride);
-        if (this._size > this._descriptor.size) {
-            this._buffer.destroy();
-            [this._buffer, this._descriptor] = this.newBuffer(this.label, data);
-        }
-        else {
-            this.writeAt(0, data);
-        }
     }
 }
 function size(dataOrSize) {
