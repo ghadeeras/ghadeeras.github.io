@@ -137,7 +137,7 @@ export class Tracer {
                 aspectRatio: width / height,
                 samplesPerPixel: this._samplesPerPixel,
             }]);
-        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
+        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, dataView);
     }
     createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials);

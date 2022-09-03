@@ -8,7 +8,7 @@ export class Denoiser {
     private readonly groupLayout: GPUBindGroupLayout
 
     private readonly colorsTexture: gpu.Texture
-    private readonly normalsTexture: gpu.Texture
+    readonly normalsTexture: gpu.Texture
 
     private _group: GPUBindGroup
 

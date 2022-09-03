@@ -32,18 +32,20 @@ struct Sample {
     color: vec3<f32>,
     normal: vec3<f32>,
     position: vec3<f32>,
+    depth: f32
 };
 
 fn loadSample(xy: vec2<i32>, pos: vec2<f32>) -> Sample {
     let c = textureLoad(colorsTexture, xy, i32(0));
     let n = textureLoad(normalsTexture, xy, i32(0));
-    let p = n.w * 128.0 * vec3(pos, -focalLength);
-    return Sample(c.rgb, 2.0 * (n.xyz - 0.5), p);
+    let p = n.w * normalize(vec3(pos, -focalLength));
+    return Sample(c.rgb, 2.0 * (n.xyz - 0.5), p, n.w);
 }
 
 fn weightOf(sample: Sample, refSample: Sample, pixelSize: f32) -> f32 {
+    let dp = sample.position - refSample.position;
+    let proximity = pixelSize / (pixelSize + dot(dp, dp));
     let coplanarity = pow(dot(sample.normal, refSample.normal), 2.0);
-    let proximity = 16.0 * pixelSize / length(sample.position - refSample.position);
     return coplanarity * proximity;
 }
 
@@ -58,7 +60,7 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     for (var i = -filterWidth; i <= filterWidth; i = i + 1) {
         for (var j = -filterWidth; j <= filterWidth; j = j + 1) {
             let sXY = xy + vec2(i, j);
-            if ((i == 0 && j == 0) || any(sXY < vec2(0)) || any(sXY > maxXY)) {
+            if (((i | j) == 0) | any(sXY < vec2(0)) | any(sXY > maxXY)) {
                 continue;
             }
             let sPos = vertex.pos + pixelSize * vec2<f32>(sXY - xy); 
@@ -71,5 +73,5 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     color = color / weight;
     let diff = abs(color - refSample.color);
     let maxDiff = max(diff.r, max(diff.g, diff.b));
-    return vec4(mix(refSample.color, color, sqrt(maxDiff)), 1.0);
+    return vec4(mix(refSample.color, color, maxDiff), 1.0 / (refSample.depth + 1.0));
 }

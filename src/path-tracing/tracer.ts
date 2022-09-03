@@ -58,7 +58,7 @@ export class Tracer {
     readonly materialsBuffer: gpu.Buffer
     readonly boxesBuffer: gpu.Buffer
 
-    private readonly uniformsBuffer: gpu.Buffer 
+    readonly uniformsBuffer: gpu.Buffer 
     private readonly gridBuffer: gpu.Buffer
     private readonly clockBuffer: gpu.Buffer
 
@@ -172,7 +172,7 @@ export class Tracer {
             aspectRatio: width / height,
             samplesPerPixel: this._samplesPerPixel,
         }])
-        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView)
+        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, dataView)
     }
     
     private createMaterialsBuffer() {

@@ -26,8 +26,8 @@ export class Stacker {
         this.sampler = this.device.sampler({
             addressModeU: "repeat",
             addressModeV: "repeat",
-            magFilter: "linear",
-            minFilter: "linear",
+            magFilter: "nearest",
+            minFilter: "nearest",
         });
         this.frameViews = this.device.buffer("frameViews", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize * 256, uniformsStruct.paddedSize);
         this.groupLayout = this.device.device.createBindGroupLayout({
@@ -121,8 +121,8 @@ export class Stacker {
     }
     static create(device, size, uniforms, normalsTexture, inputFormat, outputFormat) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Stacker(yield device.loadShaderModule("stacker.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat);
+            return new Stacker(yield device.loadShaderModule("stacker2.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat);
         });
     }
 }
-//# sourceMappingURL=stacker.js.map
+//# sourceMappingURL=stacker2.js.map

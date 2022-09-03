@@ -6,11 +6,11 @@ export function buildScene() {
     return scene;
 }
 function setup(scene) {
-    scene.material([0.6, 0.9, 0.3, 1.0]);
-    scene.material([0.3, 0.6, 0.9, 1.0]);
-    scene.material([0.9, 0.3, 0.6, 1.0]);
-    scene.material([0.6, 0.6, 0.6, 0.1]);
-    scene.material([2.0, 2.0, 2.0, -1.0]);
+    scene.material([0.66, 0.66, 0.66, 1.0]);
+    scene.material([0.33, 0.66, 0.99, 1.0]);
+    scene.material([0.99, 0.33, 0.66, 1.0]);
+    scene.material([0.66, 0.66, 0.66, 0.1]);
+    scene.material([2.00, 2.00, 2.00, -1.0]);
     populateGrid(scene);
 }
 function populateGrid(scene) {

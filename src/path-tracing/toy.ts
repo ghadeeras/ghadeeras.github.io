@@ -13,9 +13,10 @@ type State = {
     wasAnimating: boolean,
     animating: boolean,
     changingView: boolean,
-    twoLayersOnly: boolean,
+    minLayersOnly: boolean,
     denoising: boolean,  
     speed: aether.Vec3,
+    minLayersCount: number,
 }
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/path-tracing"
@@ -32,15 +33,16 @@ export async function init() {
 
     const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
     const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
-    const stacker = await Stacker.create(device, canvas.size, canvas.format, canvas.format)
+    const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format)
 
     const state: State = {
         wasAnimating: false,
         animating: false,
         changingView: false,
-        twoLayersOnly: false,
+        minLayersOnly: false,
         denoising: true,  
         speed: aether.vec3.of(0, 0, 0),
+        minLayersCount: 4,
     }
     const samplesPerPixelElement = misc.required(document.getElementById("spp"))
     const layersCountElement = misc.required(document.getElementById("layers"))
@@ -57,9 +59,14 @@ export async function init() {
         layersCountElement.innerText = stacker.layersCount.toString()
     }
 
-    const setTwoLayersOnly = (b: boolean) => {
-        state.twoLayersOnly = b
-        maxLayersCountElement.innerText = b ? "2" : "256"
+    const setMinLayersOnly = (b: boolean) => {
+        state.minLayersOnly = b
+        maxLayersCountElement.innerText = b ? state.minLayersCount.toString() : "256"
+    }
+
+    const setMinLayersCount = (c: number) => {
+        state.minLayersCount = c
+        setMinLayersOnly(state.minLayersOnly)
     }
 
     const setDenoising = (b: boolean) => {
@@ -69,7 +76,7 @@ export async function init() {
 
     setSamplesPerPixel(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
     setLayersCount(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
-    setTwoLayersOnly(misc.required(maxLayersCountElement.textContent) == "2")
+    setMinLayersOnly(misc.required(maxLayersCountElement.textContent) != "256")
     setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on")
 
     const handleKey = (e: KeyboardEvent, down: boolean) => {
@@ -93,10 +100,12 @@ export async function init() {
             state.speed[1] = -s
             e.preventDefault()
         } else if (down && e.key >= '1' && e.key <= '8') {
-            setSamplesPerPixel(Number.parseInt(e.key))
+            const count = Number.parseInt(e.key)
+            const setter = e.altKey ? setMinLayersCount : setSamplesPerPixel
+            setter(count)
             e.preventDefault()
         } else if (down && e.key == 'l') {
-            setTwoLayersOnly(!state.twoLayersOnly)
+            setMinLayersOnly(!state.minLayersOnly)
             e.preventDefault()
         } else if (down && e.key == 'n') {
             setDenoising(!state.denoising)
@@ -129,7 +138,7 @@ export async function init() {
         const velocity = aether.vec3.prod(state.speed, tracer.matrix)
         const speed = aether.vec3.length(velocity)
         state.wasAnimating = state.animating
-        state.animating = state.twoLayersOnly || state.changingView || speed !== 0
+        state.animating = state.minLayersOnly || state.changingView || speed !== 0
         state.changingView = false
         render(setLayersCount, tracer, denoiser, stacker, canvas, state)
         if (speed > 0) {
@@ -144,7 +153,13 @@ export async function init() {
 function render(setLayersCount: (c: number) => void, tracer: Tracer, denoiser: Denoiser, stacker: Stacker, canvas: gpu.Canvas, state: State) {
     const device = canvas.device
     const clearColor = { r: 0, g: 0, b: 0, a: 1 }
-    setLayersCount(state.animating ? 2 : state.wasAnimating ? 1 : stacker.layersCount + 1)
+    setLayersCount(
+        state.animating 
+            ? state.minLayersCount 
+            : state.wasAnimating 
+                ? 1 
+                : stacker.layersCount + 1
+    )
     device.enqueueCommand("render", encoder => {
         const [colorsAttachment, normalsAttachment] = denoiser.attachments(clearColor, clearColor)
         if (stacker.layersCount > 64 || !state.denoising) {
@@ -153,7 +168,7 @@ function render(setLayersCount: (c: number) => void, tracer: Tracer, denoiser: D
             tracer.render(encoder, colorsAttachment, normalsAttachment)
             denoiser.render(encoder, stacker.colorAttachment(clearColor))
         }
-        if (stacker.layersCount >= 2) {
+        if (stacker.layersCount >= state.minLayersCount) {
             stacker.render(encoder, canvas.attachment(clearColor))
         }
     })
