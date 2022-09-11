@@ -1,5 +1,5 @@
 export function required<T>(value: T | null | undefined): T {
-    if (!value) {
+    if (value === null || value === undefined) {
         throw new Error(`Required value is ${value}!`)
     }
     return value
@@ -56,6 +56,61 @@ export class FrequencyMeter {
     static create(unitTime: number, elementId: string) {
         const element = required(document.getElementById(elementId))
         return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6))
+    }
+
+}
+
+export class CanvasRecorder {
+
+    readonly videoStream: MediaStream
+    readonly videoRecorder: MediaRecorder
+
+    private chunks: Blob[] = []
+    private fileName: string = "video.webm"
+    
+    constructor(readonly canvas: HTMLCanvasElement, readonly fps: number = 0) {
+        const bps = 2 ** Math.floor(Math.log2(canvas.width * canvas.height * 24)) // just a heuristic
+        this.videoStream = canvas.captureStream(0)
+        this.videoRecorder = new MediaRecorder(this.videoStream, { audioBitsPerSecond: 0, videoBitsPerSecond: bps, mimeType: "video/webm" })
+        this.videoRecorder.ondataavailable = e => {
+            this.chunks.push(e.data)
+        }
+        console.log(`Recorder mime type: ${this.videoRecorder.mimeType}`)
+        console.log(`Recorder video bps: ${this.videoRecorder.videoBitsPerSecond}`)
+        this.videoRecorder.onstop = () => {
+            const blob = new Blob(this.chunks)
+            const url = URL.createObjectURL(blob)
+            save(url, this.videoRecorder.mimeType, this.fileName)
+            this.chunks = []
+        }
+    }
+
+    get state() {
+        return this.videoRecorder.state
+    }
+
+    startStop() {
+        if (this.videoRecorder.state === "recording") {
+            this.videoRecorder.stop()
+        } else {
+            this.videoRecorder.start()
+        }
+    }
+
+    start() {
+        this.videoRecorder.start()
+    }
+
+    stop(fileName: string = "video.mp4") {
+        this.fileName = fileName
+        this.videoRecorder.stop()
+    }
+
+    requestFrame() {
+        const track = this.videoStream.getVideoTracks()[0]
+        if (track instanceof CanvasCaptureMediaStreamTrack) {
+            track.requestFrame()
+        }
     }
 
 }

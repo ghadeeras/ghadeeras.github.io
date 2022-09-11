@@ -27,6 +27,7 @@ export function init() {
         const scene = buildScene();
         const device = yield gpuDevice();
         const canvas = device.canvas("canvas", false);
+        const recorder = new misc.CanvasRecorder(canvas.element);
         const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
         const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
         const stacker = yield Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
@@ -107,6 +108,9 @@ export function init() {
                 setDenoising(!state.denoising);
                 e.preventDefault();
             }
+            else if (down && e.key == 'r' && !e.ctrlKey) {
+                recorder.startStop();
+            }
         };
         window.onkeyup = e => handleKey(e, false);
         window.onkeydown = e => handleKey(e, true);
@@ -136,6 +140,7 @@ export function init() {
             if (speed > 0) {
                 tracer.position = move(tracer.position, velocity, scene);
             }
+            recorder.requestFrame();
         };
         const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch");
         freqMeter.animateForever(draw);

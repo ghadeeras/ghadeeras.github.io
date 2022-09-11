@@ -30,6 +30,7 @@ export async function init() {
 
     const device = await gpuDevice()
     const canvas = device.canvas("canvas", false)
+    const recorder = new misc.CanvasRecorder(canvas.element)
 
     const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
     const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
@@ -110,6 +111,8 @@ export async function init() {
         } else if (down && e.key == 'n') {
             setDenoising(!state.denoising)
             e.preventDefault()
+        } else if (down && e.key == 'r' && !e.ctrlKey) {
+            recorder.startStop()
         }
     }
     window.onkeyup = e => handleKey(e, false)
@@ -144,6 +147,7 @@ export async function init() {
         if (speed > 0) {
             tracer.position = move(tracer.position, velocity, scene)
         }
+        recorder.requestFrame()
     }
     
     const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch")
