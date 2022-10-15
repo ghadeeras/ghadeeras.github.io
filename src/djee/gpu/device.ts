@@ -1,5 +1,5 @@
 import { required } from "../utils.js"
-import { Buffer } from "./buffer.js"
+import { Buffer, SyncBuffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
@@ -65,6 +65,12 @@ export class Device {
         return stride > 0 ? 
             new Buffer(label, this, usage, dataOrSize, stride) : 
             new Buffer(label, this, usage, dataOrSize) 
+    }
+
+    syncBuffer(label: string, usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride = 0): SyncBuffer {
+        return stride > 0 ? 
+            SyncBuffer.create(label, this, usage, dataOrSize, stride) : 
+            SyncBuffer.create(label, this, usage, dataOrSize) 
     }
 
     bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: GPUBindingResource[]) {

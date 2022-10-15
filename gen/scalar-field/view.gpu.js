@@ -25,12 +25,11 @@ export class GPUView {
             lightRadius: gpu.f32,
             fogginess: gpu.f32,
         });
-        this.uniformsView = this.uniformsStruct.view();
         this._matPositions = aether.mat4.identity();
         this._matNormals = aether.mat4.identity();
         this._matView = aether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
-        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride);
         this.canvas = device.canvas(canvasId);
         this.depthTexture = this.canvas.depthTexture();
@@ -73,54 +72,47 @@ export class GPUView {
         const matNormals = modelPositions === modelNormals ?
             matPositions :
             aether.mat4.mul(this.matView, modelNormals);
-        this.setMember(this.uniformsStruct.members.mat, {
+        this.uniforms.set(this.uniformsStruct.members.mat, {
             positions: matPositions,
             normals: matNormals
         });
     }
     get matProjection() {
-        return this.getMember(this.uniformsStruct.members.projectionMat);
+        return this.uniforms.get(this.uniformsStruct.members.projectionMat);
     }
     set matProjection(m) {
-        this.setMember(this.uniformsStruct.members.projectionMat, m);
+        this.uniforms.set(this.uniformsStruct.members.projectionMat, m);
     }
     get color() {
-        return this.getMember(this.uniformsStruct.members.color);
+        return this.uniforms.get(this.uniformsStruct.members.color);
     }
     set color(c) {
-        this.setMember(this.uniformsStruct.members.color, c);
+        this.uniforms.set(this.uniformsStruct.members.color, c);
     }
     get lightPosition() {
         return this._lightPosition;
     }
     set lightPosition(p) {
         this._lightPosition = p;
-        this.setMember(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p));
+        this.uniforms.set(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p));
     }
     get shininess() {
-        return this.getMember(this.uniformsStruct.members.shininess);
+        return this.uniforms.get(this.uniformsStruct.members.shininess);
     }
     set shininess(s) {
-        this.setMember(this.uniformsStruct.members.shininess, s);
+        this.uniforms.set(this.uniformsStruct.members.shininess, s);
     }
     get lightRadius() {
-        return this.getMember(this.uniformsStruct.members.lightRadius);
+        return this.uniforms.get(this.uniformsStruct.members.lightRadius);
     }
     set lightRadius(r) {
-        this.setMember(this.uniformsStruct.members.lightRadius, r);
+        this.uniforms.set(this.uniformsStruct.members.lightRadius, r);
     }
     get fogginess() {
-        return this.getMember(this.uniformsStruct.members.fogginess);
+        return this.uniforms.get(this.uniformsStruct.members.fogginess);
     }
     set fogginess(f) {
-        this.setMember(this.uniformsStruct.members.fogginess, f);
-    }
-    getMember(member) {
-        return member.read(this.uniformsView);
-    }
-    setMember(member, value) {
-        member.write(this.uniformsView, value);
-        this.uniforms.syncFrom(this.uniformsView, member);
+        this.uniforms.set(this.uniformsStruct.members.fogginess, f);
     }
     setMesh(_primitives, vertices) {
         this.vertices.setData(gpu.dataView(vertices));

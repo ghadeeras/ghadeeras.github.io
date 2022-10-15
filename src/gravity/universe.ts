@@ -1,4 +1,3 @@
-import { gear } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 
 export class Universe {
@@ -20,7 +19,7 @@ export class Universe {
     private readonly pipeline: GPUComputePipeline
     
     readonly bodyDescriptionsBuffer: gpu.Buffer
-    private readonly uniformsBuffer: gpu.Buffer
+    private readonly uniformsBuffer: gpu.SyncBuffer
     private readonly stateBuffers: [gpu.Buffer, gpu.Buffer]
 
     private readonly bindGroups: [GPUBindGroup, GPUBindGroup]
@@ -33,16 +32,6 @@ export class Universe {
         dT: gpu.f32,
     })
     
-    private readonly uniformsView = this.uniformsStruct.view([{
-        bodyPointedness: 0.1,
-        gravityConstant: 1000,
-        dT: 0.0001
-    }])
-
-    private updateUniformsData = new gear.DeferredComputation(() => {
-        this.uniformsBuffer.writeAt(0, this.uniformsView)
-    })
-
     constructor(private device: gpu.Device, private workgroupSize: number, computeShader: gpu.ShaderModule) {
         this.workGroupsCount = Math.ceil(this.bodiesCount / this.workgroupSize)
 
@@ -55,7 +44,11 @@ export class Universe {
 
         /* Buffers */
         this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, Universe.bodyDescription.view(bodyDescriptions))
-        this.uniformsBuffer = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
+        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
+            bodyPointedness: 0.1,
+            gravityConstant: 1000,
+            dT: 0.0001
+        }]))
         this.stateBuffers = [
             device.buffer("state0", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView),
             device.buffer("state1", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, initialStateView.byteLength),
@@ -75,36 +68,27 @@ export class Universe {
     }
 
     get bodyPointedness() {
-        return this.getMember(this.uniformsStruct.members.bodyPointedness)
+        return this.uniformsBuffer.get(this.uniformsStruct.members.bodyPointedness)
     }
 
     set bodyPointedness(v: number) {
-        this.setMember(this.uniformsStruct.members.bodyPointedness, v)
+        this.uniformsBuffer.set(this.uniformsStruct.members.bodyPointedness, v)
     }
 
     get gravityConstant() {
-        return this.getMember(this.uniformsStruct.members.gravityConstant)
+        return this.uniformsBuffer.get(this.uniformsStruct.members.gravityConstant)
     }
 
     set gravityConstant(v: number) {
-        this.setMember(this.uniformsStruct.members.gravityConstant, v)
+        this.uniformsBuffer.set(this.uniformsStruct.members.gravityConstant, v)
     }
 
     get dT() {
-        return this.getMember(this.uniformsStruct.members.dT)
+        return this.uniformsBuffer.get(this.uniformsStruct.members.dT)
     }
 
     set dT(v: number) {
-        this.setMember(this.uniformsStruct.members.dT, v)
-    }
-
-    private getMember<T>(member: gpu.Element<T>): T {
-        return member.read(this.uniformsView)
-    }
-
-    private setMember<T>(member: gpu.Element<T>, value: T) {
-        member.write(this.uniformsView, value)
-        this.updateUniformsData.perform()
+        this.uniformsBuffer.set(this.uniformsStruct.members.dT, v)
     }
 
     recreateUniverse(universeRadius = 12) {

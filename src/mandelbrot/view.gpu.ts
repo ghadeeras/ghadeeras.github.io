@@ -9,7 +9,7 @@ export class ViewGPU implements View {
     })
 
     private canvas: gpu.Canvas
-    private uniforms: gpu.Buffer
+    private uniforms: gpu.SyncBuffer
     private vertices: gpu.Buffer
     private pipeline: GPURenderPipeline
     private paramsGroup: GPUBindGroup
@@ -23,7 +23,6 @@ export class ViewGPU implements View {
         palette: gpu.f32,
         julia: gpu.f32,
     }) 
-    private readonly uniformsView: DataView
 
     constructor(
         readonly julia: boolean,
@@ -33,7 +32,7 @@ export class ViewGPU implements View {
         center: aether.Vec<2>,
         scale: number
     ) {
-        this.uniformsView = this.uniformsStruct.view([{
+        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
             center: center,
             color: [5 / 4, Math.sqrt(2) / 2],
             juliaNumber: [0, 0],
@@ -41,9 +40,7 @@ export class ViewGPU implements View {
             intensity: 0.5,
             palette: 0,
             julia: this.julia ? 1 : 0
-        }])
-
-        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        }]));
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array([
             -1, +1,
             -1, -1,
@@ -76,72 +73,63 @@ export class ViewGPU implements View {
     }
     
     get center(): aether.Vec<2> {
-        return this.getMember(this.uniformsStruct.members.center)
+        return this.uniforms.get(this.uniformsStruct.members.center)
     }
 
     set center(c: aether.Vec<2>) {
-        this.setMember(this.uniformsStruct.members.center, c)
+        this.uniforms.set(this.uniformsStruct.members.center, c)
     }
 
     setColor(h: number, s: number): void {
-        this.setMember(this.uniformsStruct.members.color, [h, s])
+        this.uniforms.set(this.uniformsStruct.members.color, [h, s])
     }
     
     get hue(): number {
-        return this.getMember(this.uniformsStruct.members.color.x)
+        return this.uniforms.get(this.uniformsStruct.members.color.x)
     }
 
     set hue(h: number) {
-        this.setMember(this.uniformsStruct.members.color.x, h)
+        this.uniforms.set(this.uniformsStruct.members.color.x, h)
     }
 
     get saturation(): number {
-        return this.getMember(this.uniformsStruct.members.color.y)
+        return this.uniforms.get(this.uniformsStruct.members.color.y)
     }
 
     set saturation(s: number) {
-        this.setMember(this.uniformsStruct.members.color.y, s)
+        this.uniforms.set(this.uniformsStruct.members.color.y, s)
     }
 
     get juliaNumber(): aether.Vec<2> {
-        return this.getMember(this.uniformsStruct.members.juliaNumber)
+        return this.uniforms.get(this.uniformsStruct.members.juliaNumber)
     }
     
     set juliaNumber(j: aether.Vec<2>) {
-        this.setMember(this.uniformsStruct.members.juliaNumber, j)
+        this.uniforms.set(this.uniformsStruct.members.juliaNumber, j)
     }
     
     get scale(): number {
-        return this.getMember(this.uniformsStruct.members.scale)
+        return this.uniforms.get(this.uniformsStruct.members.scale)
     }
 
     set scale(s: number) {
-        this.setMember(this.uniformsStruct.members.scale, s)
+        this.uniforms.set(this.uniformsStruct.members.scale, s)
     }
 
     get intensity(): number {
-        return this.getMember(this.uniformsStruct.members.intensity)
+        return this.uniforms.get(this.uniformsStruct.members.intensity)
     }
 
     set intensity(i: number) {
-        this.setMember(this.uniformsStruct.members.intensity, i)
+        this.uniforms.set(this.uniformsStruct.members.intensity, i)
     }
 
     get palette(): number {
-        return this.getMember(this.uniformsStruct.members.palette)
+        return this.uniforms.get(this.uniformsStruct.members.palette)
     }
 
     set palette(p: number) {
-        this.setMember(this.uniformsStruct.members.palette, p)
-    }
-
-    private getMember<T>(member: gpu.Element<T>): T {
-        return member.read(this.uniformsView)
-    }
-
-    private setMember<T>(member: gpu.Element<T>, value: T) {
-        member.write(this.uniformsView, value)
-        this.uniforms.syncFrom(this.uniformsView, member)
+        this.uniforms.set(this.uniformsStruct.members.palette, p)
     }
 
     private draw() {

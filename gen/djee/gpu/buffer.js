@@ -170,6 +170,44 @@ export class Buffer {
         });
     }
 }
+export class SyncBuffer {
+    constructor(gpuBuffer, cpuBuffer) {
+        this.gpuBuffer = gpuBuffer;
+        this.cpuBuffer = cpuBuffer;
+        this.dirtyRange = [cpuBuffer.byteLength, 0];
+    }
+    get buffer() {
+        return this.gpuBuffer.buffer;
+    }
+    get(element) {
+        return element.read(this.cpuBuffer);
+    }
+    set(element, value) {
+        element.write(this.cpuBuffer, value);
+        this.dirty(element.range());
+    }
+    dirty(range) {
+        if (this.dirtyRange[0] > this.dirtyRange[1]) {
+            setTimeout(() => this.clean());
+        }
+        if (range[0] < this.dirtyRange[0]) {
+            this.dirtyRange[0] = range[0];
+        }
+        if (range[1] > this.dirtyRange[1]) {
+            this.dirtyRange[1] = range[1];
+        }
+    }
+    clean() {
+        this.gpuBuffer.writeAt(this.dirtyRange[0], this.cpuBuffer, this.dirtyRange[0], this.dirtyRange[1] - this.dirtyRange[0]);
+        this.dirtyRange[0] = this.cpuBuffer.byteLength;
+        this.dirtyRange[1] = 0;
+    }
+    static create(label, device, usage, dataOrSize, stride = size(dataOrSize)) {
+        const gpuBuffer = new Buffer(label, device, usage, dataOrSize, stride);
+        const cpuBuffer = typeof dataOrSize === 'number' ? new DataView(new ArrayBuffer(dataOrSize)) : dataOrSize;
+        return new SyncBuffer(gpuBuffer, cpuBuffer);
+    }
+}
 function size(dataOrSize) {
     return typeof dataOrSize === 'number' ? dataOrSize : dataOrSize.byteLength;
 }

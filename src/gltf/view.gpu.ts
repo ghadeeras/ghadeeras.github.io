@@ -31,10 +31,9 @@ export class GPUView implements View {
     private canvas: gpu.Canvas
     private depthTexture: gpu.Texture
 
-    private uniforms: gpu.Buffer
+    private uniforms: gpu.SyncBuffer
     private uniformsGroupLayout: GPUBindGroupLayout
     private uniformsGroup: GPUBindGroup
-    private uniformsView: DataView = uniformsStruct.view()
 
     private nodeGroupLayout: GPUBindGroupLayout
     private pipelineLayout: GPUPipelineLayout
@@ -64,7 +63,7 @@ export class GPUView implements View {
         this.canvas = device.canvas(canvasId)
         this.depthTexture = this.canvas.depthTexture()
 
-        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
         this.uniformsGroupLayout = device.device.createBindGroupLayout({
             entries: [{
                 binding: 0,
@@ -165,10 +164,7 @@ export class GPUView implements View {
     }
 
     private setter<T>(member: gpu.Element<T>) {
-        return (value: T) => {
-            member.write(this.uniformsView, value)
-            this.uniforms.syncFrom(this.uniformsView, member)
-        }
+        return (value: T) => this.uniforms.set(member, value)
     }
 
     draw() {

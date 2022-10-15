@@ -1,4 +1,4 @@
-import { aether, gear } from '/gen/libs.js'
+import { aether } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe } from './universe.js'
@@ -22,7 +22,7 @@ export class Renderer {
 
     private readonly depthTexture: gpu.Texture
 
-    private readonly uniformsBuffer: gpu.Buffer
+    private readonly uniformsBuffer: gpu.SyncBuffer
     private readonly meshIndicesBuffer: gpu.Buffer
     private readonly meshVerticesBuffer: gpu.Buffer
 
@@ -38,16 +38,6 @@ export class Renderer {
         radiusScale: gpu.f32,
     })
 
-    private readonly uniformsView = this.uniformsStruct.view([{
-        mvpMatrix: this.mvpMatrix(),
-        mMatrix: this.mMatrix(),
-        radiusScale: 0.06
-    }])
-
-    private updateUniformsData = new gear.DeferredComputation(() => {
-        this.uniformsBuffer.writeAt(0, this.uniformsView)
-    })
-
     constructor(private device: gpu.Device, private canvas: gpu.Canvas, renderShader: gpu.ShaderModule) {
         const mesh = geo.sphere(18, 9)
         this.meshIndexFormat = mesh.indexFormat ?? "uint16"
@@ -60,7 +50,11 @@ export class Renderer {
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
-        this.uniformsBuffer = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView)
+        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
+            mvpMatrix: this.mvpMatrix(),
+            mMatrix: this.mMatrix(),
+            radiusScale: 0.06
+        }]))
         this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)))
         this.meshVerticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
 
@@ -103,25 +97,16 @@ export class Renderer {
     }
 
     get radiusScale() {
-        return this.getMember(this.uniformsStruct.members.radiusScale)
+        return this.uniformsBuffer.get(this.uniformsStruct.members.radiusScale)
     }
 
     set radiusScale(v: number) {
-        this.setMember(this.uniformsStruct.members.radiusScale, v)
+        this.uniformsBuffer.set(this.uniformsStruct.members.radiusScale, v)
     }
 
     private updateMvpMatrix() {
-        this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix())
-        this.setMember(this.uniformsStruct.members.mMatrix, this.mMatrix())
-    }
-
-    private getMember<T>(member: gpu.Element<T>): T {
-        return member.read(this.uniformsView)
-    }
-
-    private setMember<T>(member: gpu.Element<T>, value: T) {
-        member.write(this.uniformsView, value)
-        this.updateUniformsData.perform()
+        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix())
+        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.mMatrix())
     }
 
     private mvpMatrix() {

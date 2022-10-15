@@ -24,7 +24,7 @@ export class ViewGPU {
             palette: gpu.f32,
             julia: gpu.f32,
         });
-        this.uniformsView = this.uniformsStruct.view([{
+        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
                 center: center,
                 color: [5 / 4, Math.sqrt(2) / 2],
                 juliaNumber: [0, 0],
@@ -32,8 +32,7 @@ export class ViewGPU {
                 intensity: 0.5,
                 palette: 0,
                 julia: this.julia ? 1 : 0
-            }]);
-        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+            }]));
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array([
             -1, +1,
             -1, -1,
@@ -61,56 +60,49 @@ export class ViewGPU {
         frame();
     }
     get center() {
-        return this.getMember(this.uniformsStruct.members.center);
+        return this.uniforms.get(this.uniformsStruct.members.center);
     }
     set center(c) {
-        this.setMember(this.uniformsStruct.members.center, c);
+        this.uniforms.set(this.uniformsStruct.members.center, c);
     }
     setColor(h, s) {
-        this.setMember(this.uniformsStruct.members.color, [h, s]);
+        this.uniforms.set(this.uniformsStruct.members.color, [h, s]);
     }
     get hue() {
-        return this.getMember(this.uniformsStruct.members.color.x);
+        return this.uniforms.get(this.uniformsStruct.members.color.x);
     }
     set hue(h) {
-        this.setMember(this.uniformsStruct.members.color.x, h);
+        this.uniforms.set(this.uniformsStruct.members.color.x, h);
     }
     get saturation() {
-        return this.getMember(this.uniformsStruct.members.color.y);
+        return this.uniforms.get(this.uniformsStruct.members.color.y);
     }
     set saturation(s) {
-        this.setMember(this.uniformsStruct.members.color.y, s);
+        this.uniforms.set(this.uniformsStruct.members.color.y, s);
     }
     get juliaNumber() {
-        return this.getMember(this.uniformsStruct.members.juliaNumber);
+        return this.uniforms.get(this.uniformsStruct.members.juliaNumber);
     }
     set juliaNumber(j) {
-        this.setMember(this.uniformsStruct.members.juliaNumber, j);
+        this.uniforms.set(this.uniformsStruct.members.juliaNumber, j);
     }
     get scale() {
-        return this.getMember(this.uniformsStruct.members.scale);
+        return this.uniforms.get(this.uniformsStruct.members.scale);
     }
     set scale(s) {
-        this.setMember(this.uniformsStruct.members.scale, s);
+        this.uniforms.set(this.uniformsStruct.members.scale, s);
     }
     get intensity() {
-        return this.getMember(this.uniformsStruct.members.intensity);
+        return this.uniforms.get(this.uniformsStruct.members.intensity);
     }
     set intensity(i) {
-        this.setMember(this.uniformsStruct.members.intensity, i);
+        this.uniforms.set(this.uniformsStruct.members.intensity, i);
     }
     get palette() {
-        return this.getMember(this.uniformsStruct.members.palette);
+        return this.uniforms.get(this.uniformsStruct.members.palette);
     }
     set palette(p) {
-        this.setMember(this.uniformsStruct.members.palette, p);
-    }
-    getMember(member) {
-        return member.read(this.uniformsView);
-    }
-    setMember(member, value) {
-        member.write(this.uniformsView, value);
-        this.uniforms.syncFrom(this.uniformsView, member);
+        this.uniforms.set(this.uniformsStruct.members.palette, p);
     }
     draw() {
         this.device.enqueueCommand("render", encoder => {

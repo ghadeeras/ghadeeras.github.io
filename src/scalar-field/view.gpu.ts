@@ -7,7 +7,7 @@ export class GPUView implements v.View {
 
     private canvas: gpu.Canvas
     private depthTexture: gpu.Texture
-    private uniforms: gpu.Buffer
+    private uniforms: gpu.SyncBuffer
     private vertices: gpu.Buffer
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
@@ -30,8 +30,6 @@ export class GPUView implements v.View {
         fogginess: gpu.f32,
     })
 
-    private uniformsView: DataView = this.uniformsStruct.view()
-
     private frame: () => void
 
     private _matPositions: aether.Mat<4> = aether.mat4.identity()
@@ -44,7 +42,7 @@ export class GPUView implements v.View {
         canvasId: string,
         shaderModule: gpu.ShaderModule,
     ) {
-        this.uniforms = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
 
         this.canvas = device.canvas(canvasId)
@@ -98,26 +96,26 @@ export class GPUView implements v.View {
             matPositions :
             aether.mat4.mul(this.matView, modelNormals)
 
-        this.setMember(this.uniformsStruct.members.mat, {
+        this.uniforms.set(this.uniformsStruct.members.mat, {
             positions: matPositions,
             normals: matNormals
         })
     }
 
     get matProjection(): aether.Mat<4> {
-        return this.getMember(this.uniformsStruct.members.projectionMat)
+        return this.uniforms.get(this.uniformsStruct.members.projectionMat)
     }
 
     set matProjection(m: aether.Mat<4>) {
-        this.setMember(this.uniformsStruct.members.projectionMat, m)
+        this.uniforms.set(this.uniformsStruct.members.projectionMat, m)
     }
 
     get color(): aether.Vec<4> {
-        return this.getMember(this.uniformsStruct.members.color)
+        return this.uniforms.get(this.uniformsStruct.members.color)
     }
 
     set color(c: aether.Vec<4>) {
-        this.setMember(this.uniformsStruct.members.color, c)
+        this.uniforms.set(this.uniformsStruct.members.color, c)
     }
 
     get lightPosition(): aether.Vec<4> {
@@ -126,40 +124,31 @@ export class GPUView implements v.View {
 
     set lightPosition(p: aether.Vec<4>) {
         this._lightPosition = p
-        this.setMember(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p))
+        this.uniforms.set(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p))
     }
 
     get shininess(): number {
-        return this.getMember(this.uniformsStruct.members.shininess)
+        return this.uniforms.get(this.uniformsStruct.members.shininess)
     }
 
     set shininess(s: number) {
-        this.setMember(this.uniformsStruct.members.shininess, s)
+        this.uniforms.set(this.uniformsStruct.members.shininess, s)
     }
 
     get lightRadius(): number {
-        return this.getMember(this.uniformsStruct.members.lightRadius)
+        return this.uniforms.get(this.uniformsStruct.members.lightRadius)
     }
 
     set lightRadius(r: number) {
-        this.setMember(this.uniformsStruct.members.lightRadius, r)
+        this.uniforms.set(this.uniformsStruct.members.lightRadius, r)
     }
 
     get fogginess(): number {
-        return this.getMember(this.uniformsStruct.members.fogginess)
+        return this.uniforms.get(this.uniformsStruct.members.fogginess)
     }
 
     set fogginess(f: number) {
-        this.setMember(this.uniformsStruct.members.fogginess, f)
-    }
-
-    private getMember<T>(member: gpu.Element<T>): T {
-        return member.read(this.uniformsView)
-    }
-
-    private setMember<T>(member: gpu.Element<T>, value: T) {
-        member.write(this.uniformsView, value)
-        this.uniforms.syncFrom(this.uniformsView, member)
+        this.uniforms.set(this.uniformsStruct.members.fogginess, f)
     }
 
     setMesh(_primitives: GLenum, vertices: Float32Array) {

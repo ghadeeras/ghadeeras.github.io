@@ -6,7 +6,7 @@ import { Element } from "./types.js"
 type Writer = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<Buffer>
 type Reader = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<DataView>
 
-export class Buffer {
+export class Buffer implements GPUBufferBinding {
 
     private _buffer: GPUBuffer
     private _descriptor: GPUBufferDescriptor
@@ -177,6 +177,53 @@ export class Buffer {
         } finally {
             temp.destroy()
         }
+    }
+
+}
+
+export class SyncBuffer implements GPUBufferBinding {
+
+    private dirtyRange: [number, number]
+
+    private constructor(readonly gpuBuffer: Buffer, readonly cpuBuffer: DataView) {
+        this.dirtyRange = [cpuBuffer.byteLength, 0]
+    }
+
+    get buffer() {
+        return this.gpuBuffer.buffer
+    }
+
+    get<T>(element: Element<T>): T {
+        return element.read(this.cpuBuffer)
+    }
+
+    set<T>(element: Element<T>, value: T) {
+        element.write(this.cpuBuffer, value)
+        this.dirty(element.range())
+    }
+
+    private dirty(range: [number, number]) {
+        if (this.dirtyRange[0] > this.dirtyRange[1]) {
+            setTimeout(() => this.clean())
+        }
+        if (range[0] < this.dirtyRange[0]) {
+            this.dirtyRange[0] = range[0]
+        }
+        if (range[1] > this.dirtyRange[1]) {
+            this.dirtyRange[1] = range[1]
+        }
+    }
+
+    private clean() {
+        this.gpuBuffer.writeAt(this.dirtyRange[0], this.cpuBuffer, this.dirtyRange[0], this.dirtyRange[1] - this.dirtyRange[0])
+        this.dirtyRange[0] = this.cpuBuffer.byteLength
+        this.dirtyRange[1] = 0
+    }
+
+    static create(label: string, device: Device, usage: GPUBufferUsageFlags, dataOrSize: DataView | number, stride: number = size(dataOrSize)) {
+        const gpuBuffer = new Buffer(label, device, usage, dataOrSize, stride)
+        const cpuBuffer = typeof dataOrSize === 'number' ? new DataView(new ArrayBuffer(dataOrSize)) : dataOrSize
+        return new SyncBuffer(gpuBuffer, cpuBuffer)
     }
 
 }

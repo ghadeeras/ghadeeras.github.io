@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { aether, gear } from '/gen/libs.js';
+import { aether } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { Universe } from './universe.js';
@@ -31,14 +31,6 @@ export class Renderer {
             mMatrix: gpu.f32.x4.x4,
             radiusScale: gpu.f32,
         });
-        this.uniformsView = this.uniformsStruct.view([{
-                mvpMatrix: this.mvpMatrix(),
-                mMatrix: this.mMatrix(),
-                radiusScale: 0.06
-            }]);
-        this.updateUniformsData = new gear.DeferredComputation(() => {
-            this.uniformsBuffer.writeAt(0, this.uniformsView);
-        });
         const mesh = geo.sphere(18, 9);
         this.meshIndexFormat = (_a = mesh.indexFormat) !== null && _a !== void 0 ? _a : "uint16";
         this.meshSize = mesh.indices.length;
@@ -47,7 +39,11 @@ export class Renderer {
         this.pipeline = this.createPipeline(renderShader, canvas, mesh);
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0);
         /* Buffers */
-        this.uniformsBuffer = device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsView);
+        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
+                mvpMatrix: this.mvpMatrix(),
+                mMatrix: this.mMatrix(),
+                radiusScale: 0.06
+            }]));
         this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)));
         this.meshVerticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)));
         /* Bind Groups */
@@ -78,21 +74,14 @@ export class Renderer {
         this.updateMvpMatrix();
     }
     get radiusScale() {
-        return this.getMember(this.uniformsStruct.members.radiusScale);
+        return this.uniformsBuffer.get(this.uniformsStruct.members.radiusScale);
     }
     set radiusScale(v) {
-        this.setMember(this.uniformsStruct.members.radiusScale, v);
+        this.uniformsBuffer.set(this.uniformsStruct.members.radiusScale, v);
     }
     updateMvpMatrix() {
-        this.setMember(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix());
-        this.setMember(this.uniformsStruct.members.mMatrix, this.mMatrix());
-    }
-    getMember(member) {
-        return member.read(this.uniformsView);
-    }
-    setMember(member, value) {
-        member.write(this.uniformsView, value);
-        this.updateUniformsData.perform();
+        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix());
+        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.mMatrix());
     }
     mvpMatrix() {
         return aether.mat4.mul(aether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
