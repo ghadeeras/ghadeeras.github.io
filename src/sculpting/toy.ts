@@ -6,14 +6,16 @@ import * as dragging from "../utils/dragging.js"
 import * as misc from "../utils/misc.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = aether.mat4.projection(4)
+const projectionMatrix = aether.mat4.projection(4, undefined, undefined, 2)
 
-export function init() {
-    window.onload = doInit
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting"
+export const video = "https://youtu.be/eeZ6qSAXo2o"
+export const huds = {
+    "monitor": "monitor-button"
 }
 
-async function doInit() {
-    const view = await v.newView("canvas-gl")
+export async function init() {
+    const view = await v.newView("canvas")
     view.matView = viewMatrix
     view.matProjection = projectionMatrix
 
@@ -28,15 +30,18 @@ async function doInit() {
     new Toy(stone, scalarFieldModule, view, picker)
 }
 
+const pressedKey = new gear.Value((c: gear.Consumer<KeyboardEvent>) => window.onkeyup = c)
+    .map(e => e.key.toLowerCase())
+
 class Toy {
 
     private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
     private carving: Carving
 
     constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker) {
-        const canvas = gear.elementEvents("canvas-gl")
+        const canvas = gear.elementEvents("canvas")
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
-        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
+        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1])
 
         this.carving = new Carving(
             () => this.stone,
@@ -47,33 +52,40 @@ class Toy {
         )    
 
         const cases = {
-            contourValue: gear.Value.from<gear.Dragging>(),
             carving: gear.Value.from<gear.Dragging>(),
             rotation: gear.Value.from<gear.Dragging>(),
             focalRatio: gear.Value.from<gear.Dragging>(),
             shininess: gear.Value.from<gear.Dragging>(),
-            fogginess: gear.Value.from<gear.Dragging>(),
             lightPosition: gear.Value.from<gear.Dragging>(),
             lightRadius: gear.Value.from<gear.Dragging>(),
         }
-        
-        canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases) 
 
-        const contourValue = gear.Value.from(
-            cases.contourValue
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => this.clamp((y + 1) / 2, 0, 1))
-                .defaultsTo(this.stone.contourValue),
-            gear.elementEvents("reset-contour").click.value.map(() => 0.5)
-        )
+        const keyMappings = {
+            "c": cases.carving,
+            "r": cases.rotation,
+            "z": cases.focalRatio,
+            "h": cases.shininess,
+            "d": cases.lightPosition,
+            "l": cases.lightRadius,
+        }
+    
+        const controller = pressedKey
+            .filter(k => k in keyMappings)
+            .defaultsTo("r")
+            .reduce((previous, current) => {
+                control(previous).removeAttribute("style")
+                control(current).setAttribute("style", "font-weight: bold")
+                return current
+            }, "r")
+    
+        gear.elementEvents(canvas.element.id).dragging.value.switch(controller, keyMappings)
 
         const resolution = this.levelOfDetails()
 
         const stoneValue = gear.Value.from(
             cases.carving.then(gear.drag(this.carving)),
             resolution.map(r => this.stoneWithResolution(r)),
-            contourValue.map(v => this.stoneWithContourValue(v)),
-            gear.elementEvents("undo").click.value.map(() => this.carving.undo()),
+            pressedKey.filter(k => k === 'u').map(() => this.carving.undo()),
             dropOn(canvas.element)
                 .filter(e => e.dataTransfer != null)
                 .then(asyncEffect(data))
@@ -91,20 +103,16 @@ class Toy {
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => aether.mat4.projection(ratio)),
+                .map(ratio => aether.mat4.projection(ratio, undefined, undefined, 2)),
 
-            color: contourValue
-                .map(v => this.fieldColor(v)),
+            color: new gear.Value<aether.Vec4>().defaultsTo([0.5, 0.5, 0.5, 1.0]),
 
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
                 .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.shininess),
 
-            fogginess: cases.fogginess
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(view.fogginess),
+            fogginess: new gear.Value<number>().defaultsTo(0.0),
             
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
@@ -123,13 +131,13 @@ class Toy {
         
         gear.text("lod").value = stoneValue.map(s => s.resolution).map(lod => lod.toString())
         
-        gear.elementEvents("export").click.value.attach(() => this.exportModel())
-        gear.elementEvents("save").click.value.attach(() => this.saveModel())
+        pressedKey.filter(k => k === 'x').attach(() => this.exportModel())
+        pressedKey.filter(k => k === 's').attach(() => this.saveModel())
     }
 
     levelOfDetails() {
-        const inc = gear.elementEvents("lod-inc").click.value.map(() => +8)
-        const dec = gear.elementEvents("lod-dec").click.value.map(() => -8)
+        const inc = pressedKey.filter(k => k === '+').map(() => +8)
+        const dec = pressedKey.filter(k => k === '-').map(() => -8)
         const flow = gear.Value.from(inc, dec)
             .map(i => this.clamp(this.stone.resolution + i, 32, 96))
             .defaultsTo(this.stone.resolution)
@@ -140,18 +148,9 @@ class Toy {
         return n < min ? min : (n > max ? max : n)
     }
 
-    fieldColor(contourValue: number = this.stone.contourValue): aether.Vec<4> {
-        return [0.5, contourValue, 0.5, 1] 
-    }
-
     contourSurfaceDataForStone(stone: aether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
         this.stone = stone
         this.meshComputer.perform().then(meshConsumer)
-    }
-
-    stoneWithContourValue(value: number) {
-        this.stone.contourValue = value
-        return this.stone
     }
 
     stoneWithResolution(resolution: number) {
@@ -160,18 +159,15 @@ class Toy {
     }
 
     exportModel() {
-        const fileName = document.getElementById("file-name") as HTMLInputElement
+        const model = gltf.createModel("Model", this.stone.vertices)
 
-        const model = gltf.createModel(fileName.value, this.stone.vertices)
-
-        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`)
-        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`)
+        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
+        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
     }
 
     saveModel() {
-        const fileName = document.getElementById("file-name") as HTMLInputElement
         const buffer = this.serializeStone()
-        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `${fileName.value}.ssf`)
+        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
     }
 
     private serializeStone() {
@@ -239,6 +235,10 @@ class Toy {
         return newStone
     }
 
+}
+
+function control(previous: string) {
+    return misc.required(document.getElementById(`control-${previous}`))
 }
 
 function dropOn(element: HTMLElement) {

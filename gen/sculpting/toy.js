@@ -14,13 +14,15 @@ import * as v from "../scalar-field/view.js";
 import * as dragging from "../utils/dragging.js";
 import * as misc from "../utils/misc.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = aether.mat4.projection(4);
+const projectionMatrix = aether.mat4.projection(4, undefined, undefined, 2);
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting";
+export const video = "https://youtu.be/eeZ6qSAXo2o";
+export const huds = {
+    "monitor": "monitor-button"
+};
 export function init() {
-    window.onload = doInit;
-}
-function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
-        const view = yield v.newView("canvas-gl");
+        const view = yield v.newView("canvas");
         view.matView = viewMatrix;
         view.matProjection = projectionMatrix;
         const picker = yield view.picker();
@@ -32,32 +34,44 @@ function doInit() {
         new Toy(stone, scalarFieldModule, view, picker);
     });
 }
+const pressedKey = new gear.Value((c) => window.onkeyup = c)
+    .map(e => e.key.toLowerCase());
 class Toy {
     constructor(stone, scalarFieldModule, view, picker) {
         this.stone = stone;
         this.scalarFieldModule = scalarFieldModule;
         this.meshComputer = new gear.DeferredComputation(() => this.stone.vertices);
-        const canvas = gear.elementEvents("canvas-gl");
+        const canvas = gear.elementEvents("canvas");
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4);
-        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0]);
+        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1]);
         this.carving = new Carving(() => this.stone, () => modelViewProjectionMatrixOf(view), picker, scalarFieldModule, brush);
         const cases = {
-            contourValue: gear.Value.from(),
             carving: gear.Value.from(),
             rotation: gear.Value.from(),
             focalRatio: gear.Value.from(),
             shininess: gear.Value.from(),
-            fogginess: gear.Value.from(),
             lightPosition: gear.Value.from(),
             lightRadius: gear.Value.from(),
         };
-        canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases);
-        const contourValue = gear.Value.from(cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => this.clamp((y + 1) / 2, 0, 1))
-            .defaultsTo(this.stone.contourValue), gear.elementEvents("reset-contour").click.value.map(() => 0.5));
+        const keyMappings = {
+            "c": cases.carving,
+            "r": cases.rotation,
+            "z": cases.focalRatio,
+            "h": cases.shininess,
+            "d": cases.lightPosition,
+            "l": cases.lightRadius,
+        };
+        const controller = pressedKey
+            .filter(k => k in keyMappings)
+            .defaultsTo("r")
+            .reduce((previous, current) => {
+            control(previous).removeAttribute("style");
+            control(current).setAttribute("style", "font-weight: bold");
+            return current;
+        }, "r");
+        gear.elementEvents(canvas.element.id).dragging.value.switch(controller, keyMappings);
         const resolution = this.levelOfDetails();
-        const stoneValue = gear.Value.from(cases.carving.then(gear.drag(this.carving)), resolution.map(r => this.stoneWithResolution(r)), contourValue.map(v => this.stoneWithContourValue(v)), gear.elementEvents("undo").click.value.map(() => this.carving.undo()), dropOn(canvas.element)
+        const stoneValue = gear.Value.from(cases.carving.then(gear.drag(this.carving)), resolution.map(r => this.stoneWithResolution(r)), pressedKey.filter(k => k === 'u').map(() => this.carving.undo()), dropOn(canvas.element)
             .filter(e => e.dataTransfer != null)
             .then(asyncEffect(data))
             .map(buffer => this.deserializeStone(buffer))).defaultsTo(this.stone);
@@ -70,17 +84,13 @@ class Toy {
             matProjection: cases.focalRatio
                 .then(gear.drag(focalRatioDragging))
                 .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => aether.mat4.projection(ratio)),
-            color: contourValue
-                .map(v => this.fieldColor(v)),
+                .map(ratio => aether.mat4.projection(ratio, undefined, undefined, 2)),
+            color: new gear.Value().defaultsTo([0.5, 0.5, 0.5, 1.0]),
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))
                 .map(([_, y]) => (y + 1) / 2)
                 .defaultsTo(view.shininess),
-            fogginess: cases.fogginess
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(view.fogginess),
+            fogginess: new gear.Value().defaultsTo(0.0),
             lightPosition: cases.lightPosition
                 .then(gear.drag(dragging.positionDragging))
                 .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
@@ -94,12 +104,12 @@ class Toy {
             vertices: stoneValue.then((s, c) => this.contourSurfaceDataForStone(s, c)),
         });
         gear.text("lod").value = stoneValue.map(s => s.resolution).map(lod => lod.toString());
-        gear.elementEvents("export").click.value.attach(() => this.exportModel());
-        gear.elementEvents("save").click.value.attach(() => this.saveModel());
+        pressedKey.filter(k => k === 'x').attach(() => this.exportModel());
+        pressedKey.filter(k => k === 's').attach(() => this.saveModel());
     }
     levelOfDetails() {
-        const inc = gear.elementEvents("lod-inc").click.value.map(() => +8);
-        const dec = gear.elementEvents("lod-dec").click.value.map(() => -8);
+        const inc = pressedKey.filter(k => k === '+').map(() => +8);
+        const dec = pressedKey.filter(k => k === '-').map(() => -8);
         const flow = gear.Value.from(inc, dec)
             .map(i => this.clamp(this.stone.resolution + i, 32, 96))
             .defaultsTo(this.stone.resolution);
@@ -108,31 +118,22 @@ class Toy {
     clamp(n, min, max) {
         return n < min ? min : (n > max ? max : n);
     }
-    fieldColor(contourValue = this.stone.contourValue) {
-        return [0.5, contourValue, 0.5, 1];
-    }
     contourSurfaceDataForStone(stone, meshConsumer) {
         this.stone = stone;
         this.meshComputer.perform().then(meshConsumer);
-    }
-    stoneWithContourValue(value) {
-        this.stone.contourValue = value;
-        return this.stone;
     }
     stoneWithResolution(resolution) {
         this.stone.resolution = resolution;
         return this.stone;
     }
     exportModel() {
-        const fileName = document.getElementById("file-name");
-        const model = gltf.createModel(fileName.value, this.stone.vertices);
-        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `${fileName.value}.gltf`);
-        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `${fileName.value}.bin`);
+        const model = gltf.createModel("Model", this.stone.vertices);
+        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`);
+        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`);
     }
     saveModel() {
-        const fileName = document.getElementById("file-name");
         const buffer = this.serializeStone();
-        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `${fileName.value}.ssf`);
+        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`);
     }
     serializeStone() {
         const samplesCount = Math.pow((this.stone.resolution + 1), 3);
@@ -195,6 +196,9 @@ class Toy {
         newStone.sampler = (x, y, z) => stone.get(x, y, z);
         return newStone;
     }
+}
+function control(previous) {
+    return misc.required(document.getElementById(`control-${previous}`));
 }
 function dropOn(element) {
     element.ondragover = e => {

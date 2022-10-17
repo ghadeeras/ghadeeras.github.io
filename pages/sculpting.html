@@ -1,94 +1,50 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
-    <title>Sculpting</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="module">
-        import * as Sculpting from "../gen/sculpting/toy.js"
-        Sculpting.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Sculpting</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
+        <title>Sculpting</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+      </style>
+        <script type="module">
+            import * as Sculpting from "../gen/sculpting/toy.js"
+            import init from "../gen/initializer.js"
+            init(Sculpting);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
-            <div>
-                <p>
-                    Graphics API: <span id="graphics-api">...</span>
-                </p>
-                <p>
-                    <span>LOD: </span>
-                    <button id="lod-inc">+</button>
-                    <span id="lod">64</span>
-                    <button id="lod-dec">-</button>
-                </p>
-                <p>
-                    <div>Mouse Binding: 
-                        <select id="mouse-binding" name="mouse-binding">
-                            <option value="rotation" selected>Rotation</option>
-                            <option value="focalRatio">Focal Ratio</option>
-                            <option value="contourValue">Contour Value (Mouse Y)</option>
-                            <option value="carving">Carving (Mouse Y)</option>
-                            <option value="shininess">Shininess (Mouse Y)</option>
-                            <option value="lightPosition">Light Position</option>
-                            <option value="lightRadius">Light Radius (Mouse Y)</option>
-                            <option value="fogginess">Fogginess (Mouse Y)</option>
-                        </select>
-                    </div>
-                </p>
-                <p>
-                    <button id="export" style="width: 100%;">Export</button>
-                    <span style="font-size: smaller;">The button above will attempt to save two files with the extensions "gltf" and "bin".</span> 
-                </p>
-                <p>
-                    <button id="save" style="width: 100%;">Save</button>
-                    <span style="font-size: smaller;">The button above will attempt to save one file with the extensions "ssf" (Sampled Scalar Field).</span>
-                </p>
-                <p>
-                    <span>File Name: </span><input id="file-name" type="text" value="Model" />
-                </p>
-                <p>
-                    <button id="undo" style="width: 100%;">Undo / Redo</button>
-                </p>
-                <p>
-                    <button id="reset-contour" style="width: 100%;">Reset Contour Value</button>
-                </p>
-                <p>
-                    You could drag and drop SSF files on the canvas (to the right of this panel) to load saved sculptures.  
-                </p>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="twitter" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
-
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
+        <div class="tiles">
+            <div>
+                <canvas id="canvas" width="1280px" height="640px" style="aspect-ratio: 2 / 1;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><td style="text-align: right;">LOD: </td><td><span id="lod">64</span></td></tr>
+                            <tr><td style="text-align: right;">Graphics API: </td><td><span id="graphics-api">...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>Description</strong>
-            </div>
-
+        <div id="about" class="hud">
             <div>
+                <h1>Sculpting</h1>
                 <p>
                     This toy is meant to experiment with the idea of using the marching cubes algorithm / scalar field 
                     tessellation (see <a href="/pages/scalar-field.html">this other toy</a>) as means towards creating a simple 
@@ -144,10 +100,31 @@
                     cause some surfaces to appear unexpectedly in surrounding spaces.
                 </p>
             </div>
-
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd>C</kbd></td><td id="control-c">Carving</td></tr>
+                    <tr><td><kbd>R</kbd></td><td id="control-r">Rotation</td></tr>
+                    <tr><td><kbd>Z</kbd></td><td id="control-z">Zoom</td></tr>
+                    <tr><td><kbd>H</kbd></td><td id="control-h">Shininess</td></tr>
+                    <tr><td><kbd>D</kbd></td><td id="control-d">Light Direction</td></tr>
+                    <tr><td><kbd>L</kbd></td><td id="control-l">Light Radius</td></tr>
+                </table>
+                <p>The following keys perform the specified actions:</p>
+                <table>
+                    <tr><td width="48px"><kbd>-</kbd></td><td>Reduce level of detail</td></tr>
+                    <tr><td><kbd>+</kbd></td><td>Increase level of detail</td></tr>
+                    <tr><td><kbd>U</kbd></td><td>Undo/Redo</td></tr>
+                    <tr><td><kbd>S</kbd></td><td>Save (file with the extensions "ssf", i.e. Sampled Scalar Field)</td></tr>
+                    <tr><td><kbd>X</kbd></td><td>Export (two files with the extensions "gltf" and "bin")</td></tr>
+                </table>
+                <p>
+                    You could also drag and drop SSF files on the canvas to load saved sculptures.  
+                </p>
+            </div>
+        </div>
+    </body>
 </html>

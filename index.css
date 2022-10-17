@@ -132,7 +132,7 @@ canvas {
     font-weight: bold;
 }
 
-sub {
+.tiles > div sub {
     color: red;
     font-size: xx-small;
     font-weight: bold;
