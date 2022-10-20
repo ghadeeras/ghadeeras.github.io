@@ -1,9 +1,10 @@
 import { aether, gear } from '/gen/libs.js'
 import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
+import * as misc from '../utils/misc.js'
+import { Controller, ControllerEvent } from '../initializer.js'
 import { newUniverse, Universe } from './universe.js'
 import { newRenderer, Renderer } from './renderer.js'
-import * as misc from '../utils/misc.js'
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
 export const video = "https://youtu.be/BrZm6LlOQlI"
@@ -11,7 +12,7 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init() {
+export async function init(controller: Controller) {
     const device = await gpuDevice()
 
     const canvas = device.canvas("canvas")
@@ -19,15 +20,17 @@ export async function init() {
     const universe = await newUniverse(device)
     const renderer = await newRenderer(device, canvas)
 
+    const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => controller.handler = e => {
+        c(e)
+        return false
+    }).filter(e => e.down).map(e => e.key)
     const pauseResumeAction = animation(universe, renderer)
-    setupControls(canvas, universe, renderer)
-    setupActions(universe, renderer, pauseResumeAction)
+
+    setupControls(canvas, universe, renderer, pressedKey)
+    setupActions(universe, renderer, pauseResumeAction, pressedKey)
 }
 
-const pressedKey = new gear.Value((c: gear.Consumer<KeyboardEvent>) => window.onkeyup = c)
-    .map(e => e.key.toLowerCase())
-
-function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Renderer) {
+function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Renderer, pressedKey: gear.Value<string>) {
     const universeRotation = new gear.Value<gear.Dragging>()
     const observerPosition = new gear.Value<gear.Dragging>()
     const bodyPointedness = new gear.Value<gear.Dragging>()
@@ -91,7 +94,7 @@ function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Rendere
         .attach(m => renderer.projectionMatrix = m)
 }
 
-function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction: () => void) {
+function setupActions(universe: Universe, renderer: Renderer, pauseResumeAction: () => void, pressedKey: gear.Value<string>) {
     const collapse = new gear.Value<string>()
     const kaboom = new gear.Value<string>()
     const reset = new gear.Value<string>()

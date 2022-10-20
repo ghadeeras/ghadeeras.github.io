@@ -10,28 +10,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
+import * as misc from '../utils/misc.js';
 import { newUniverse } from './universe.js';
 import { newRenderer } from './renderer.js';
-import * as misc from '../utils/misc.js';
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
 export const video = "https://youtu.be/BrZm6LlOQlI";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
+export function init(controller) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpuDevice();
         const canvas = device.canvas("canvas");
         const universe = yield newUniverse(device);
         const renderer = yield newRenderer(device, canvas);
+        const pressedKey = new gear.Value((c) => controller.handler = e => {
+            c(e);
+            return false;
+        }).filter(e => e.down).map(e => e.key);
         const pauseResumeAction = animation(universe, renderer);
-        setupControls(canvas, universe, renderer);
-        setupActions(universe, renderer, pauseResumeAction);
+        setupControls(canvas, universe, renderer, pressedKey);
+        setupActions(universe, renderer, pauseResumeAction, pressedKey);
     });
 }
-const pressedKey = new gear.Value((c) => window.onkeyup = c)
-    .map(e => e.key.toLowerCase());
-function setupControls(canvas, universe, renderer) {
+function setupControls(canvas, universe, renderer, pressedKey) {
     const universeRotation = new gear.Value();
     const observerPosition = new gear.Value();
     const bodyPointedness = new gear.Value();
@@ -82,7 +84,7 @@ function setupControls(canvas, universe, renderer) {
         .later()
         .attach(m => renderer.projectionMatrix = m);
 }
-function setupActions(universe, renderer, pauseResumeAction) {
+function setupActions(universe, renderer, pauseResumeAction, pressedKey) {
     const collapse = new gear.Value();
     const kaboom = new gear.Value();
     const reset = new gear.Value();

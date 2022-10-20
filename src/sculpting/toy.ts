@@ -1,5 +1,6 @@
 import { aether, gear } from "/gen/libs.js"
 import { gltf } from "../djee/index.js"
+import { Controller, ControllerEvent } from "../initializer.js"
 import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
@@ -14,7 +15,7 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init() {
+export async function init(controller: Controller) {
     const view = await v.newView("canvas")
     view.matView = viewMatrix
     view.matProjection = projectionMatrix
@@ -27,21 +28,24 @@ export async function init() {
     stone.sampler = field
     stone.contourValue = 0.5
 
-    new Toy(stone, scalarFieldModule, view, picker)
+    new Toy(stone, scalarFieldModule, view, picker, controller)
 }
-
-const pressedKey = new gear.Value((c: gear.Consumer<KeyboardEvent>) => window.onkeyup = c)
-    .map(e => e.key.toLowerCase())
 
 class Toy {
 
     private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
     private carving: Carving
+    private pressedKey: gear.Value<string>
 
-    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker) {
+    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker, toyController: Controller) {
         const canvas = gear.elementEvents("canvas")
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1])
+
+        this.pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
+            c(e)
+            return false
+        }).filter(e => e.down).map(e => e.key)
 
         this.carving = new Carving(
             () => this.stone,
@@ -69,7 +73,7 @@ class Toy {
             "l": cases.lightRadius,
         }
     
-        const controller = pressedKey
+        const controller = this.pressedKey
             .filter(k => k in keyMappings)
             .defaultsTo("r")
             .reduce((previous, current) => {
@@ -85,7 +89,7 @@ class Toy {
         const stoneValue = gear.Value.from(
             cases.carving.then(gear.drag(this.carving)),
             resolution.map(r => this.stoneWithResolution(r)),
-            pressedKey.filter(k => k === 'u').map(() => this.carving.undo()),
+            this.pressedKey.filter(k => k === 'u').map(() => this.carving.undo()),
             dropOn(canvas.element)
                 .filter(e => e.dataTransfer != null)
                 .then(asyncEffect(data))
@@ -131,13 +135,13 @@ class Toy {
         
         gear.text("lod").value = stoneValue.map(s => s.resolution).map(lod => lod.toString())
         
-        pressedKey.filter(k => k === 'x').attach(() => this.exportModel())
-        pressedKey.filter(k => k === 's').attach(() => this.saveModel())
+        this.pressedKey.filter(k => k === 'x').attach(() => this.exportModel())
+        this.pressedKey.filter(k => k === 's').attach(() => this.saveModel())
     }
 
     levelOfDetails() {
-        const inc = pressedKey.filter(k => k === '+').map(() => +8)
-        const dec = pressedKey.filter(k => k === '-').map(() => -8)
+        const inc = this.pressedKey.filter(k => k === '+').map(() => +8)
+        const dec = this.pressedKey.filter(k => k === '-').map(() => -8)
         const flow = gear.Value.from(inc, dec)
             .map(i => this.clamp(this.stone.resolution + i, 32, 96))
             .defaultsTo(this.stone.resolution)

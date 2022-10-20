@@ -22,7 +22,7 @@ export const video = "https://youtu.be/xlMvArfR2do";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
+export function init(controller) {
     return __awaiter(this, void 0, void 0, function* () {
         const scene = buildScene();
         const device = yield gpuDevice();
@@ -68,52 +68,52 @@ export function init() {
         setLayersCount(Number.parseInt(misc.required(samplesPerPixelElement.textContent)));
         setMinLayersOnly(misc.required(maxLayersCountElement.textContent) != "256");
         setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on");
-        const handleKey = (e, down) => {
-            const s = down ? 0.2 : 0;
+        controller.handler = (e) => {
+            const s = e.down ? 0.2 : 0;
             if (e.key == 'w') {
                 state.speed[2] = -s;
-                e.preventDefault();
+                return true;
             }
             else if (e.key == 's') {
                 state.speed[2] = s;
-                e.preventDefault();
+                return true;
             }
             else if (e.key == 'd') {
                 state.speed[0] = s;
-                e.preventDefault();
+                return true;
             }
             else if (e.key == 'a') {
                 state.speed[0] = -s;
-                e.preventDefault();
+                return true;
             }
             else if (e.key == 'e') {
                 state.speed[1] = s;
-                e.preventDefault();
+                return true;
             }
             else if (e.key == 'c') {
                 state.speed[1] = -s;
-                e.preventDefault();
+                return true;
             }
-            else if (down && e.key >= '1' && e.key <= '8') {
+            else if (e.down && e.key >= '1' && e.key <= '8') {
                 const count = Number.parseInt(e.key);
-                const setter = e.altKey ? setMinLayersCount : setSamplesPerPixel;
+                const setter = e.alt ? setMinLayersCount : setSamplesPerPixel;
                 setter(count);
-                e.preventDefault();
+                return true;
             }
-            else if (down && e.key == 'l') {
+            else if (e.down && e.key == 'l') {
                 setMinLayersOnly(!state.minLayersOnly);
-                e.preventDefault();
+                return true;
             }
-            else if (down && e.key == 'n') {
+            else if (e.down && e.key == 'n') {
                 setDenoising(!state.denoising);
-                e.preventDefault();
+                return true;
             }
-            else if (down && e.key == 'r' && !e.ctrlKey) {
+            else if (e.down && e.key == 'r' && !e.ctrl) {
                 recorder.startStop();
+                return true;
             }
+            return false;
         };
-        window.onkeyup = e => handleKey(e, false);
-        window.onkeydown = e => handleKey(e, true);
         canvas.element.onwheel = e => {
             state.changingView = true;
             e.preventDefault();

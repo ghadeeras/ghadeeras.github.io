@@ -2,6 +2,7 @@ import * as gpu from "../djee/gpu/index.js"
 import * as aether from "/aether/latest/index.js"
 import * as gear from "/gear/latest/index.js"
 import * as misc from "../utils/misc.js"
+import { Controller, ControllerEvent } from "../initializer.js"
 import { RotationDragging } from "../utils/dragging.js"
 import { Stacker } from "./stacker.js"
 import { Tracer, VolumeStruct } from "./tracer.js"
@@ -25,7 +26,7 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init() {
+export async function init(controller: Controller) {
     const scene = buildScene()
 
     const device = await gpuDevice()
@@ -80,43 +81,43 @@ export async function init() {
     setMinLayersOnly(misc.required(maxLayersCountElement.textContent) != "256")
     setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on")
 
-    const handleKey = (e: KeyboardEvent, down: boolean) => {
-        const s = down ? 0.2 : 0
+    controller.handler = (e: ControllerEvent) => {
+        const s = e.down ? 0.2 : 0
         if (e.key == 'w') {
             state.speed[2] = -s
-            e.preventDefault()
+            return true
         } else if (e.key == 's') {
             state.speed[2] = s
-            e.preventDefault()
+            return true
         } else if (e.key == 'd') {
             state.speed[0] = s
-            e.preventDefault()
+            return true
         } else if (e.key == 'a') {
             state.speed[0] = -s
-            e.preventDefault()
+            return true
         } else if (e.key == 'e') {
             state.speed[1] = s
-            e.preventDefault()
+            return true
         } else if (e.key == 'c') {
             state.speed[1] = -s
-            e.preventDefault()
-        } else if (down && e.key >= '1' && e.key <= '8') {
+            return true
+        } else if (e.down && e.key >= '1' && e.key <= '8') {
             const count = Number.parseInt(e.key)
-            const setter = e.altKey ? setMinLayersCount : setSamplesPerPixel
+            const setter = e.alt ? setMinLayersCount : setSamplesPerPixel
             setter(count)
-            e.preventDefault()
-        } else if (down && e.key == 'l') {
+            return true
+        } else if (e.down && e.key == 'l') {
             setMinLayersOnly(!state.minLayersOnly)
-            e.preventDefault()
-        } else if (down && e.key == 'n') {
+            return true
+        } else if (e.down && e.key == 'n') {
             setDenoising(!state.denoising)
-            e.preventDefault()
-        } else if (down && e.key == 'r' && !e.ctrlKey) {
+            return true
+        } else if (e.down && e.key == 'r' && !e.ctrl) {
             recorder.startStop()
+            return true
         }
+        return false
     }
-    window.onkeyup = e => handleKey(e, false)
-    window.onkeydown = e => handleKey(e, true)
 
     canvas.element.onwheel = e => {
         state.changingView = true
