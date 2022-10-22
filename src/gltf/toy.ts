@@ -1,6 +1,8 @@
 import { aether, gear } from "/gen/libs.js";
+import * as misc from "../utils/misc.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
+import { Controller, ControllerEvent } from "../initializer.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -13,28 +15,30 @@ type ModelIndexEntry = {
     }
 }
 
-let modelIndex: ModelIndexEntry[]
+let models: [string, string][]
 let viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
 let modelMatrix: aether.Mat<4> = aether.mat4.identity()
+let modelIndex = 1
 
-const projectionMatrix = aether.mat4.projection(2);
+const projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
 
-export function init() {
-    window.onload = () => doInit();
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf"
+export const huds = {
+    "monitor": "monitor-button"
 }
 
-async function doInit() {
+export async function init(toyController: Controller) {
     const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
-    modelIndex = await modelIndexResponse.json() as ModelIndexEntry[]
+    models = (await modelIndexResponse.json() as ModelIndexEntry[])
+        .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`])
+    models.unshift(
+        ["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href],
+        ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href],
+        ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href],
+        ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href],
+    )
 
-    const viewFactory = await newViewFactory("canvas-gl")
-
-    const modelElement = document.getElementById("model") as HTMLSelectElement
-    for (const entry of modelIndex) {
-        modelElement.appendChild(new Option(entry.name, entry.name))
-    }
-
-    const canvas = gear.elementEvents("canvas-gl");
+    const canvas = gear.elementEvents("canvas");
     const viewRotation = new dragging.RotationDragging(() => viewMatrix, () => projectionMatrix)
     const modelRotation = new dragging.RotationDragging(
         () => modelMatrix, 
@@ -51,9 +55,17 @@ async function doInit() {
         4
     )
 
-    const mouseBinding = gear.readableValue("mouse-binding");
+    const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
+        c(e)
+        return false
+    }).filter(e => e.down).map(e => e.key)
 
-    const model = gear.readableValue("model");
+    const model = pressedKey
+        .map(k => ['[', ']'].indexOf(k))
+        .filter(i => i >= 0)
+        .map(i => i * 2 - 1)
+        .map(i => modelIndex = (modelIndex + i + models.length) % models.length)
+        .defaultsTo(1)
 
     const cases = {
         lightPosition: new gear.Value<gear.Dragging>(),
@@ -64,11 +76,31 @@ async function doInit() {
         modelRotation: new gear.Value<gear.Dragging>(),
         modelMove: new gear.Value<gear.Dragging>(),
         modelScale: new gear.Value<gear.Dragging>(),
-        viewRotation: new gear.Value<gear.Dragging>(),
     }
 
-    canvas.dragging.value.switch(mouseBinding, cases)
+    const keyMappings = {
+        "m": cases.modelMove,
+        "r": cases.modelRotation,
+        "s": cases.modelScale,
+        "c": cases.color,
+        "h": cases.shininess,
+        "d": cases.lightPosition,
+        "l": cases.lightRadius,
+        "f": cases.fogginess,
+    }
 
+    const mouseBinding = pressedKey
+        .filter(k => k in keyMappings)
+        .defaultsTo("r")
+        .reduce((previous, current) => {
+            control(previous).removeAttribute("style")
+            control(current).setAttribute("style", "font-weight: bold")
+            return current
+        }, "r")
+
+    canvas.dragging.value.switch(mouseBinding, keyMappings)
+
+    const viewFactory = await newViewFactory(canvas.element.id)
     const view = await viewFactory({
         matModel: gear.Value.from(
                 cases.modelRotation.then(gear.drag(modelRotation)),
@@ -76,10 +108,7 @@ async function doInit() {
                 cases.modelScale.then(gear.drag(modelScale)),
                 model.map(() => aether.mat4.identity())
             ).defaultsTo(modelMatrix).attach(mat => modelMatrix = mat),
-        matView: gear.Value.from(
-                cases.viewRotation.then(gear.drag(viewRotation)),
-                model.map(() => aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]))
-            ).defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
+        matView: new gear.Value<aether.Mat4>().defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
         color: cases.color
             .then(gear.drag(dragging.positionDragging))
             .map(positionToColor())
@@ -102,19 +131,23 @@ async function doInit() {
             .then(gear.drag(dragging.positionDragging))
             .map(([_, y]) => (y + 1) / 2)
             .defaultsTo(0),
-        modelUri: model.map(getModelUri),
+        modelUri: model.map(i => models[i][1]),
     })
 
+    gear.text("model-name").value = model.map(i => models[i][0])
     gear.text("status").value = view.status
 
-    mouseBinding.flow("modelRotation")
-    model.flow("ScalarField")
+    model.flow(modelIndex)
     const frame = () => {
         view.draw()
         requestAnimationFrame(frame)
     }
     frame()
 
+}
+
+function control(previous: string) {
+    return misc.required(document.getElementById(`control-${previous}`))
 }
 
 function positionToLightPosition(): gear.Mapper<[number, number], [number, number, number]> {
@@ -135,18 +168,4 @@ function positionToColor(): gear.Mapper<gear.PointerPosition, [number, number, n
         const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
         return [red, green, blue, 1.0];
     };
-}
-
-function getModelUri(modelId: string) {
-    switch (modelId) {
-        case "ScalarFieldIn": return new URL('/models/ScalarFieldIn.gltf', window.location.href).href;
-        case "ScalarField": return new URL('/models/ScalarField.gltf', window.location.href).href;
-        case "ScalarFieldOut": return new URL('/models/ScalarFieldOut.gltf', window.location.href).href;
-        case "SculptTorso": return new URL('/models/SculptTorso.gltf', window.location.href).href;
-        case "SculptHead": return new URL('/models/SculptHead.gltf', window.location.href).href;
-        default: {
-            const modelIndexEntry = modelIndex.find(entry => entry.name === modelId);
-            return `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${modelId}/glTF/${modelIndexEntry?.variants.glTF}`;
-        }
-    }
 }

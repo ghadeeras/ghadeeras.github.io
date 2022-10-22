@@ -50,7 +50,7 @@ export class GPUView implements View {
             aether.mat4.scaling(1, 1, 0.5),
             aether.mat4.translation([0, 0, 1])
         ),
-        aether.mat4.projection(2)
+        aether.mat4.projection(2, undefined, undefined, 2)
     );
 
     constructor(

@@ -1,95 +1,59 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
-    <title>glTF Renderer</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="module">
-        import * as GLTF from "../gen/gltf/toy.js"
-        GLTF.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>glTF Renderer</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
+        <title>glTF Renderer</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+      </style>
+        <script type="module">
+            import * as GLTF from "../gen/gltf/toy.js"
+            import init from "../gen/initializer.js"
+            init(GLTF);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
-            <div>
-                <p>
-                    Graphics API: <span id="graphics-api">...</span>
-                </p>
-                <p>
-                    <div>Mouse/Touch Binding: <br/>
-                        <select id="mouse-binding" name="mouse-binding">
-                            <option value="modelScale">Scale (Mouse Y)</option>
-                            <option value="modelMove">Move</option>
-                            <option value="modelRotation" selected>Rotation</option>
-                            <option value="viewRotation">Camera Rotation</option>
-                            <option value="color">Color</option>
-                            <option value="shininess">Shininess (Mouse Y)</option>
-                            <option value="fogginess">Fogginess (Mouse Y)</option>
-                            <option value="lightPosition">Light Position</option>
-                            <option value="lightRadius">Light Radius (Mouse Y)</option>
-                        </select>
-                    </div>
-                </p>
-                <p>
-                    <div>Model: <br/>
-                        <select id="model" name="model">
-                            <option value="ScalarFieldIn">ScalarFieldIn</option>
-                            <option value="ScalarField" selected="true">ScalarField</option>
-                            <option value="ScalarFieldOut">ScalarFieldOut</option>
-                            <option value="SculptTorso">SculptTorso</option>
-                            <option value="SculptHead">SculptHead</option>
-                        </select>
-                    </div>
-                </p>
-                <p>
-                    Status: <span id="status">Loading model ...</span>
-                </p>
-                <p>
-                    You could do basic manipulation to the model by selecting an effect from the 
-                    Mouse/Touch Binding drop-down, and by dragging the pointer across the canvas on 
-                    the right side in order to apply the selected effect.   
-                </p>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="twitter" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
-
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
+        <div class="tiles">
+            <div style="width: 93.75%;">
+                <canvas id="canvas" width="1536" height="768" style="cursor: all-scroll; width: 100%; aspect-ratio: 2 / 1;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><td style="text-align: right;">Model Name: </td><td><span id="model-name">Model Name</span></td></tr>
+                            <tr><td style="text-align: right;">Status: </td><td><span id="status">Loading model ...</span></td></tr>
+                            <tr><td style="text-align: right;">Graphics API: </td><td><span id="graphics-api">...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>Description</strong>
-            </div>
-
+        <div id="about" class="hud">
             <div>
+                <h1>glTF Renderer</h1>
                 <p>
                     This is a basic model renderer that implements a small subset of glTF 2.0 
                     (a data format used to transmit and store models). You could select one of 
                     the models from the Model drop-down above. These models are fetched from this 
                     <a href="https://github.com/KhronosGroup/glTF-Sample-Models" target="_blank">Khronos repository</a>, 
-                    except the first three which were generated from 
-                    <a href="https://ghadeeras.github.io/pages/scalar-field.html">my other toy</a>. 
+                    except the three "ScalarField" models which were generated from my 
+                    <a href="https://ghadeeras.github.io/pages/scalar-field.html">other toy</a>, and the "SculptTorso" one, 
+                    generated from my <a href="https://ghadeeras.github.io/pages/scalar-field.html">sculpting toy</a>. 
                 </p>
                 <p>
                     Please bear in mind that this only implements a subset of the aforementioned data format. 
@@ -98,10 +62,27 @@
                     (rotated, scaled, moved ... etc.) in order to fit nicely in the canvas.
                 </p>
             </div>
-
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd>M</kbd></td><td id="control-m">Model Movement</td></tr>
+                    <tr><td><kbd>R</kbd></td><td id="control-r">Model Rotation</td></tr>
+                    <tr><td><kbd>S</kbd></td><td id="control-s">Model Scaling</td></tr>
+                    <tr><td><kbd>C</kbd></td><td id="control-c">Color</td></tr>
+                    <tr><td><kbd>H</kbd></td><td id="control-h">Shininess</td></tr>
+                    <tr><td><kbd>D</kbd></td><td id="control-d">Light Direction</td></tr>
+                    <tr><td><kbd>L</kbd></td><td id="control-l">Light Radius</td></tr>
+                    <tr><td><kbd>F</kbd></td><td id="control-f">Fog</td></tr>
+                </table>
+                <p>The following keys perform the specified actions:</p>
+                <table>
+                    <tr><td width="48px"><kbd>[</kbd></td><td>Previous model</td></tr>
+                    <tr><td><kbd>]</kbd></td><td>Next model</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

@@ -35,7 +35,7 @@ export class GLView implements View {
     private viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
     private modelMatrix: aether.Mat<4> = aether.mat4.identity()
 
-    private projectionMatrix = aether.mat4.projection(2);
+    private projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
 
     constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string, inputs: ViewInputs) {
         this.context = wgl.Context.of(canvasId);

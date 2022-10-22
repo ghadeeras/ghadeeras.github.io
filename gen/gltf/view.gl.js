@@ -14,7 +14,7 @@ export class GLView {
         this.renderer = null;
         this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.modelMatrix = aether.mat4.identity();
-        this.projectionMatrix = aether.mat4.projection(2);
+        this.projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
         this.statusUpdater = () => { };
         this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.context = wgl.Context.of(canvasId);
