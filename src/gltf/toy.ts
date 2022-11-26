@@ -2,7 +2,7 @@ import { aether, gear } from "/gen/libs.js";
 import * as misc from "../utils/misc.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
-import { Controller, ControllerEvent } from "../initializer.js";
+import { Controller, ControllerEvent, Toy } from "../initializer.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -27,7 +27,16 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init(toyController: Controller) {
+export function wires(): Toy {
+    return {
+        gitHubRepo,
+        huds,
+        video: null,
+        init: controller => init(controller, true)
+    }
+}
+
+export async function init(toyController: Controller, wires: boolean = false) {
     const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
     models = (await modelIndexResponse.json() as ModelIndexEntry[])
         .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`])
@@ -100,8 +109,8 @@ export async function init(toyController: Controller) {
 
     canvas.dragging.value.switch(mouseBinding, keyMappings)
 
-    const viewFactory = await newViewFactory(canvas.element.id)
-    const view = await viewFactory({
+    const viewFactory = await newViewFactory(canvas.element.id, wires)
+    const view = viewFactory({
         matModel: gear.Value.from(
                 cases.modelRotation.then(gear.drag(modelRotation)),
                 cases.modelMove.then(gear.drag(modelTranslation)),

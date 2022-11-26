@@ -20,7 +20,15 @@ export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init(toyController) {
+export function wires() {
+    return {
+        gitHubRepo,
+        huds,
+        video: null,
+        init: controller => init(controller, true)
+    };
+}
+export function init(toyController, wires = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const modelIndexResponse = yield fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json");
         models = (yield modelIndexResponse.json())
@@ -70,8 +78,8 @@ export function init(toyController) {
             return current;
         }, "r");
         canvas.dragging.value.switch(mouseBinding, keyMappings);
-        const viewFactory = yield newViewFactory(canvas.element.id);
-        const view = yield viewFactory({
+        const viewFactory = yield newViewFactory(canvas.element.id, wires);
+        const view = viewFactory({
             matModel: gear.Value.from(cases.modelRotation.then(gear.drag(modelRotation)), cases.modelMove.then(gear.drag(modelTranslation)), cases.modelScale.then(gear.drag(modelScale)), model.map(() => aether.mat4.identity())).defaultsTo(modelMatrix).attach(mat => modelMatrix = mat),
             matView: new gear.Value().defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
             color: cases.color

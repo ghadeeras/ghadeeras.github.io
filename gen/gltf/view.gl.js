@@ -89,7 +89,7 @@ export function newViewFactory(canvasId) {
             vertexShaderCode: "gltf.vert",
             fragmentShaderCode: "generic.frag"
         }, "/shaders");
-        return inputs => Promise.resolve(new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs));
+        return inputs => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs);
     });
 }
 //# sourceMappingURL=view.gl.js.map

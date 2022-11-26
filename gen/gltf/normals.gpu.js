@@ -15,26 +15,20 @@ const uniformsStruct = gpu.struct({
         normals: gpu.mat4x4,
     }),
     projectionMat: gpu.mat4x4,
-    color: gpu.f32.x4,
-    lightPos: gpu.f32.x4,
-    shininess: gpu.f32,
-    lightRadius: gpu.f32,
-    fogginess: gpu.f32,
 });
-export class GPUView {
-    constructor(device, shaderModule, canvasId, inputs) {
-        this.device = device;
+export class NormalsRenderer {
+    constructor(shaderModule, depthTexture, inputs) {
         this.shaderModule = shaderModule;
+        this.depthTexture = depthTexture;
         this.renderer = null;
         this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.modelMatrix = aether.mat4.identity();
         this.projectionMatrix = aether.mat4.mul(aether.mat4.mul(aether.mat4.scaling(1, 1, 0.5), aether.mat4.translation([0, 0, 1])), aether.mat4.projection(2, undefined, undefined, 2));
         this.statusUpdater = () => { };
         this.status = new gear.Value(consumer => this.statusUpdater = consumer);
-        this.canvas = device.canvas(canvasId);
-        this.depthTexture = this.canvas.depthTexture();
-        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
-        this.uniformsGroupLayout = device.device.createBindGroupLayout({
+        this.device = shaderModule.device;
+        this.uniforms = this.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
+        const uniformsGroupLayout = this.device.device.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -43,8 +37,8 @@ export class GPUView {
                     },
                 }],
         });
-        this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
-        this.nodeGroupLayout = device.device.createBindGroupLayout({
+        this.uniformsGroup = this.device.bindGroup(uniformsGroupLayout, [this.uniforms]);
+        this.nodeGroupLayout = this.device.device.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX,
@@ -54,19 +48,14 @@ export class GPUView {
                 }],
         });
         this.pipelineLayout = this.device.device.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout]
+            bindGroupLayouts: [uniformsGroupLayout, this.nodeGroupLayout]
         });
-        this.fragmentState = this.shaderModule.fragmentState("f_main", [this.canvas]),
+        this.fragmentState = this.shaderModule.fragmentState("f_main", ["rgba32float"]),
             this.depthState = this.depthTexture.depthState(),
-            inputs.lightPosition.map(p => aether.vec4.from([...p, 1])).attach(this.setter(uniformsStruct.members.lightPos));
-        inputs.lightRadius.attach(this.setter(uniformsStruct.members.lightRadius));
-        inputs.color.attach(this.setter(uniformsStruct.members.color));
-        inputs.shininess.attach(this.setter(uniformsStruct.members.shininess));
-        inputs.fogginess.attach(this.setter(uniformsStruct.members.fogginess));
-        gear.Value.from(inputs.matModel.map(m => aether.mat4.mul(this.viewMatrix, this.modelMatrix = m)), inputs.matView.map(m => aether.mat4.mul(this.viewMatrix = m, this.modelMatrix))).map(m => ({
-            positions: m,
-            normals: m,
-        })).attach(this.setter(uniformsStruct.members.mat));
+            gear.Value.from(inputs.matModel.map(m => aether.mat4.mul(this.viewMatrix, this.modelMatrix = m)), inputs.matView.map(m => aether.mat4.mul(this.viewMatrix = m, this.modelMatrix))).map(m => ({
+                positions: m,
+                normals: m,
+            })).attach(this.setter(uniformsStruct.members.mat));
         this.setter(uniformsStruct.members.projectionMat)(this.projectionMatrix);
         inputs.modelUri.attach((modelUri) => this.loadModel(modelUri));
     }
@@ -95,9 +84,6 @@ export class GPUView {
             layout: this.pipelineLayout,
             fragment: this.fragmentState,
             depthStencil: this.depthState,
-            multisample: {
-                count: this.canvas.sampleCount
-            },
             vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
             primitive: primitiveState,
         });
@@ -118,26 +104,17 @@ export class GPUView {
     setter(member) {
         return (value) => this.uniforms.set(member, value);
     }
-    draw() {
-        this.device.enqueueCommand("render", encoder => {
-            const passDescriptor = {
-                colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
-            };
-            encoder.renderPass(passDescriptor, pass => {
-                if (this.renderer !== null) {
-                    pass.setBindGroup(0, this.uniformsGroup);
-                    this.renderer.render(pass);
-                }
-            });
+    render(encoder, attachment) {
+        const passDescriptor = {
+            colorAttachments: [attachment],
+            depthStencilAttachment: this.depthTexture.createView().depthAttachment()
+        };
+        encoder.renderPass(passDescriptor, pass => {
+            if (this.renderer !== null) {
+                pass.setBindGroup(0, this.uniformsGroup);
+                this.renderer.render(pass);
+            }
         });
     }
 }
-export function newViewFactory(canvasId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const device = yield gpu.Device.instance();
-        const shaderModule = yield device.loadShaderModule("gltf.wgsl");
-        return inputs => new GPUView(device, shaderModule, canvasId, inputs);
-    });
-}
-//# sourceMappingURL=view.gpu.js.map
+//# sourceMappingURL=normals.gpu.js.map

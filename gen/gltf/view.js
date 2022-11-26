@@ -9,17 +9,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { required } from "../utils/misc.js";
 import * as gpuView from "./view.gpu.js";
+import * as gpuWiresView from "./view.wires.gpu.js";
 import * as glView from "./view.gl.js";
-export function newViewFactory(canvasId) {
+export function newViewFactory(canvasId, wires = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));
         try {
-            const view = yield gpuView.newViewFactory(canvasId);
+            const view = wires ? yield gpuWiresView.newViewFactory(canvasId) : yield gpuView.newViewFactory(canvasId);
             apiElement.innerHTML = "WebGPU";
             return view;
         }
         catch (e) {
             console.warn("Falling back to WebGL because of exception!", e);
+            if (wires) {
+                throw "Wire frame rendering is not supported yet in WebGL!";
+            }
             apiElement.innerHTML = "WebGL";
             return yield glView.newViewFactory(canvasId);
         }

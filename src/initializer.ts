@@ -8,7 +8,7 @@ export type ControllerEvent = {
     shift: boolean
 }
 
-type Toy = {
+export type Toy = {
     gitHubRepo: string | null
     video: string | null
     huds: Record<string, string> | null
