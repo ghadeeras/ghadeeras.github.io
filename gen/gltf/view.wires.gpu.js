@@ -32,7 +32,7 @@ export function newViewFactory(canvasId) {
         const filterShaderModule = yield device.loadShaderModule("gltf-wires-filter.wgsl");
         return inputs => {
             const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture(), inputs);
-            const normalsFilter = new NormalsFilter(filterShaderModule, canvas.size, canvas.format);
+            const normalsFilter = new NormalsFilter(filterShaderModule, canvas.size, canvas.format, normalsRenderer.uniforms.gpuBuffer);
             return new GPUView(normalsRenderer, normalsFilter, canvas);
         };
     });

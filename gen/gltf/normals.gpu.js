@@ -84,7 +84,7 @@ export class NormalsRenderer {
             layout: this.pipelineLayout,
             fragment: this.fragmentState,
             depthStencil: this.depthState,
-            vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
+            vertex: this.shaderModule.vertexState("v_main", vertexLayouts),
             primitive: primitiveState,
         });
     }

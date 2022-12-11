@@ -33,6 +33,12 @@ fn v_main(
     );
 }
 
+fn focalLength() -> f32 {
+    let zoom = uniforms.projectionMat[1][1];
+    let near = uniforms.projectionMat[3][2] * uniforms.projectionMat[2][3];
+    return zoom * near;
+}
+
 @fragment
 fn f_main(
     @location(0) pos: vec3<f32>,
@@ -40,5 +46,5 @@ fn f_main(
     let tx = dpdxCoarse(pos);
     let ty = -dpdyCoarse(pos);
     let normal = normalize(cross(tx, ty));
-    return vec4(normal, abs(pos.z));
+    return vec4(normal, abs(pos.z / focalLength()));
 }

@@ -7,7 +7,7 @@ export class NormalsFilter {
 
     readonly normalsTexture: gpu.Texture
 
-    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly outputFormat: GPUTextureFormat) {
+    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly outputFormat: GPUTextureFormat, readonly uniforms: gpu.Buffer) {
         const device = shaderModule.device
 
         this.normalsTexture = device.texture({
@@ -17,14 +17,23 @@ export class NormalsFilter {
         })
 
         const groupLayout = device.device.createBindGroupLayout({
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: {
-                    sampleType: "unfilterable-float",
-                    viewDimension: "2d"
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "uniform"                        
+                    }
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    texture: {
+                        sampleType: "unfilterable-float",
+                        viewDimension: "2d"
+                    }
                 }
-            }]
+            ]
         })
 
         this.pipeline =  device.device.createRenderPipeline({
@@ -41,7 +50,10 @@ export class NormalsFilter {
             })
         })
 
-        this.group = device.bindGroup(groupLayout, [this.normalsTexture.createView().asBindingResource()])
+        this.group = device.bindGroup(groupLayout, [
+            this.uniforms.asBindingResource(),
+            this.normalsTexture.createView().asBindingResource()
+        ])
     }
 
     attachment() {
