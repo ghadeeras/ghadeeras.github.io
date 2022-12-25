@@ -1,85 +1,98 @@
-struct Varyings {
-    @builtin(position) pos: vec4<f32>,
-    @location(0) c: vec2<f32>,
-};
-
-@vertex
-fn v_main(@location(0) pos: vec2<f32>) -> Varyings {
-    return Varyings(vec4<f32>(pos, 0.0, 1.0), pos);
-}
-
 struct Params {
   center: vec2<f32>,
   color: vec2<f32>,
-  juliaNumber: vec2<f32>,
   scale: f32,
   intensity: f32,
   palette: f32,
-  julia: f32,
 };
 
 @group(0)
 @binding(0)
 var<uniform> params: Params;
 
+const depth = 1024;
+
 const PI = 3.1415926535897932384626433832795;
 
-const colorAngle = 2.0943951023931954923084289221863;
+const colorAngle = 2.0 * PI / 3.0;
+const sinColorAngle = 0.86602540378443864676372317075294;
+const colorMatrix = 0.5 * mat3x3<f32>(
+    vec3<f32>( 1.0,            0.0, 1.0),
+    vec3<f32>(-0.5,  sinColorAngle, 1.0),
+    vec3<f32>(-0.5, -sinColorAngle, 1.0),
+);
 
-const redVec = vec2<f32>(1.0, 0.0);
-const greenVec = vec2<f32>(-0.5, 0.86602540378443864676372317075294);
-const blueVec = vec2<f32>(-0.5, -0.86602540378443864676372317075294);
+const black = vec3<f32>(0.0);
+const white = vec3<f32>(1.0);
+const grey  = vec3<f32>(0.5);
 
-const white = vec3<f32>(1.0, 1.0, 1.0);
+const margin = 0.03125;
+const juliaWindowSize = 1.0 - 2.0 * margin; 
+const juliaWindowHalfSize = 0.5 * juliaWindowSize;
+const juliaScale = 2.0 / juliaWindowHalfSize;
 
-fn component(v: vec2<f32>, c: vec2<f32>) -> f32 {
-    return (dot(v, c) + 1.0) / 2.0;
+fn rgbColor(hsColor: vec2<f32>) -> vec3<f32> {
+    var hue = PI * hsColor.x;
+    var saturation = hsColor.y;
+    var c = vec3<f32>(cos(hue), sin(hue), 1.0);
+    return mix(white, c * colorMatrix, saturation);
 }
 
-fn rgbColor() -> vec3<f32> {
-    var hue = PI * params.color.x;
-    var saturation = params.color.y;
-    var c = vec2<f32>(cos(hue), sin(hue));
-    return mix(
-        white, 
-        vec3<f32>(
-            component(c, redVec), 
-            component(c, greenVec), 
-            component(c, blueVec)
-        ), 
-        saturation
-    );
+fn mul(c1: vec2<f32>, c2: vec2<f32>) -> vec2<f32> {
+    let r = c1 * c2;
+    let i = c1 * c2.yx;
+    return vec2(r.x - r.y, i.x + i.y);
 }
 
-fn mul(c1: vec2<f32>,c2: vec2<f32>) -> vec2<f32> {
-    return vec2<f32>(
-        c1.x * c2.x - c1.y * c2.y,
-        c1.x * c2.y + c1.y * c2.x
-    );
-}
-
-fn mandelbrot(c: vec2<f32>, zz: vec2<f32>) -> f32 {
-    var z = zz;
-    for (var i = 0; i < 1024; i = i + 1) {
+fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
+    var z = z0;
+    for (var i = 0; i < depth; i += 1) {
         z = mul(z, z) + c;
-        var l = length(z);
-        if (l > 2.0) {
-            var a = (32.0 * params.intensity + 1.0) * PI * f32(i) / 1024.0;
-            return mix((cos(a) + 1.0) / 2.0, exp(-a), params.palette);
+        var l2 = dot(z, z);
+        if (l2 > 4.0) {
+            var a = (32.0 * params.intensity + 1.0) * f32(i) * PI / f32(depth);
+            return mix(0.5 * (cos(a) + 1.0), exp(-a), params.palette);
         }
     }
     return 0.0;
 }
 
-fn mandelbrotOrJulia(p: vec2<f32>) -> f32 {
-    if (params.julia != 0.0) {
-        return mandelbrot(params.juliaNumber.xy, 2.0 * p);
-    }
-    return mandelbrot(params.scale * p + params.center, vec2<f32>(0.0));
+fn mandelbrotOrJulia(p: vec2<f32>, julia: bool) -> f32 {
+    let c = select(params.scale * p + params.center, params.center, julia);
+    let z = select(vec2<f32>(0.0), p, julia);
+    return mandelbrot(c, z);
 }
 
-@fragment
-fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
-    var color = rgbColor();
-    return vec4<f32>(mandelbrotOrJulia(varyings.c) * color, 1.0);
+fn adaptToJuliaWindow(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec3<f32> {
+    let min = select(vec2(-1.0, -1.0 / aspect), vec2(-aspect, -1.0), aspect >= 1.0) + margin;
+    let max = min + juliaWindowSize;
+    let center = min + juliaWindowHalfSize;
+    let innerMin = min + pixelSize;
+    let innerMax = max - pixelSize;
+    if (all(position > innerMin) && all(position < innerMax)) {
+        return vec3(juliaScale * (position - center), 1.0);
+    } if (any(position < min) || any(position > max)) {
+        return vec3(position, -1.0);
+    } else {
+        let farPoint = (vec2(2.0) - params.center) / params.scale;
+        return vec3(farPoint, 0.0);
+    }
+}
+
+fn underCrossHairs(position: vec2<f32>, pixelSize: f32) -> bool {
+    let pixelSize2 = pixelSize * pixelSize;
+    let posXY = abs(position.x * position.y);
+    return pixelSize2 < posXY && posXY < (4.0 * pixelSize2);
+}
+
+fn colorAt(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec4<f32> {
+    let color = rgbColor(params.color);
+    let pos = adaptToJuliaWindow(position, aspect, pixelSize);
+    let inJuliaWindow = pos.z > 0.0;
+    let result = mandelbrotOrJulia(pos.xy, inJuliaWindow) * color * abs(pos.z);
+    return vec4(select(
+        result, 
+        vec3(select(white, black, any(result > grey))), 
+        underCrossHairs(position, pixelSize)
+    ), 1.0);    
 }

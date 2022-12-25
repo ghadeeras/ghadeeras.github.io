@@ -1,27 +1,21 @@
 import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { View } from "./view.js";
+import { fetchTextFile } from "../utils/gear.js";
 
 export class ViewGPU implements View {
 
-    private vertex = gpu.vertex({
-        position: gpu.f32.x2
-    })
-
-    private canvas: gpu.Canvas
+    private gpuCanvas: gpu.Canvas
     private uniforms: gpu.SyncBuffer
-    private vertices: gpu.Buffer
     private pipeline: GPURenderPipeline
     private paramsGroup: GPUBindGroup
 
     private readonly uniformsStruct = gpu.struct({
         center: gpu.f32.x2,
         color: gpu.f32.x2,
-        juliaNumber: gpu.f32.x2,
         scale: gpu.f32,
         intensity: gpu.f32,
         palette: gpu.f32,
-        julia: gpu.f32,
     }) 
 
     constructor(
@@ -35,30 +29,22 @@ export class ViewGPU implements View {
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
             center: center,
             color: [5 / 4, Math.sqrt(2) / 2],
-            juliaNumber: [0, 0],
             scale: scale,
             intensity: 0.5,
             palette: 0,
-            julia: this.julia ? 1 : 0
         }]));
-        this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array([
-            -1, +1,
-            -1, -1,
-            +1, +1,
-            +1, -1
-        ])))
 
-        this.canvas = device.canvas(canvasId)
+        this.gpuCanvas = device.canvas(canvasId)
 
         this.pipeline = device.device.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
+            vertex: shaderModule.vertexState("v_main", []),
+            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             primitive: {
                 stripIndexFormat: "uint16",
                 topology: "triangle-strip"
             },
             multisample: {
-                count: this.canvas.sampleCount
+                count: this.gpuCanvas.sampleCount
             },
             layout: "auto"
         })
@@ -70,6 +56,10 @@ export class ViewGPU implements View {
             requestAnimationFrame(frame)
         }
         frame()
+    }
+
+    get canvas() {
+        return this.gpuCanvas.element
     }
     
     get center(): aether.Vec<2> {
@@ -100,14 +90,6 @@ export class ViewGPU implements View {
         this.uniforms.set(this.uniformsStruct.members.color.y, s)
     }
 
-    get juliaNumber(): aether.Vec<2> {
-        return this.uniforms.get(this.uniformsStruct.members.juliaNumber)
-    }
-    
-    set juliaNumber(j: aether.Vec<2>) {
-        this.uniforms.set(this.uniformsStruct.members.juliaNumber, j)
-    }
-    
     get scale(): number {
         return this.uniforms.get(this.uniformsStruct.members.scale)
     }
@@ -135,11 +117,10 @@ export class ViewGPU implements View {
     private draw() {
         this.device.enqueueCommand("render", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [this.canvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
+                colorAttachments: [this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
             };
             encoder.renderPass(passDescriptor, pass => {
                 pass.setPipeline(this.pipeline)
-                pass.setVertexBuffer(0, this.vertices.buffer)
                 pass.setBindGroup(0, this.paramsGroup)
                 pass.draw(4)
             })
@@ -150,7 +131,8 @@ export class ViewGPU implements View {
 
 export async function viewGPU(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
-    const shaderModule = await device.loadShaderModule("mandelbrot.wgsl")
+    const code = await fetchTextFile("/shaders/mandelbrot.wgsl")
+    const shaderModule = await device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code))
     return new ViewGPU(julia, device, canvasId, shaderModule, center, scale)
 }
 

@@ -1,26 +1,17 @@
-import { gear } from "/gen/libs.js"
 import { wgl } from "../djee/index.js"
 import { required } from "../utils/misc.js"
+import { fetchTextFile } from "../utils/gear.js"
 
 const mySketch = new Image()
 
-const square = [
-    -1, +1,
-    -1, -1,
-    +1, +1,
-    +1, -1
-]
-
 export async function init() {
-    const shaders = await gear.fetchTextFiles({
-        vertexShaderCode: "mandelbrot.vert",
-        fragmentShaderCode: "home.frag"
-    }, "/shaders")
+    const vertexShaderCode = wgl.vertexShaders.fullScreenPass
+    const fragmentShaderCode = await fetchTextFile("/shaders/home.frag")
 
     const context = wgl.Context.of("canvas")
 
-    const vertexShader = context.shader(wgl.ShaderType.VertexShader, shaders.vertexShaderCode)
-    const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, shaders.fragmentShaderCode)
+    const vertexShader = context.shader(wgl.ShaderType.VertexShader, vertexShaderCode)
+    const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, wgl.fragmentShaders.fullScreenPass(fragmentShaderCode))
     const program = vertexShader.linkTo(fragmentShader)
     program.use()
 
@@ -35,9 +26,6 @@ export async function init() {
         ])
     })
 
-    const buffer = context.newAttributesBuffer()
-    buffer.float32Data = square
-
     const effect = program.uniform("effect")
     effect.data = [0]
 
@@ -46,9 +34,6 @@ export async function init() {
 
     const sampler = program.uniform("sampler")
     sampler.data = [texture.unit]
-
-    const vertex = program.attribute("vertex")
-    vertex.pointTo(buffer)
 
     draw(context)
 
@@ -67,7 +52,7 @@ export async function init() {
 function draw(context: wgl.Context) {
     const gl = context.gl
     gl.viewport(0, 0, context.canvas.width, context.canvas.height)
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3)
     gl.flush()
 }
 

@@ -1,4 +1,5 @@
 import { aether, gear } from "/gen/libs.js"
+import * as gearx from "../utils/gear.js"
 import { wgl } from "../djee/index.js"
 import { View } from "./view.js"
 
@@ -10,7 +11,6 @@ export class ViewGL implements View {
     private uniformColor: wgl.Uniform
     private uniformIntensity: wgl.Uniform
     private uniformPalette: wgl.Uniform
-    private uniformJuliaNumber: wgl.Uniform
 
     private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
 
@@ -30,23 +30,11 @@ export class ViewGL implements View {
         )
         program.use()
 
-        const buffer = this.context.newAttributesBuffer()
-        buffer.float32Data = [
-            -1, -1, 
-            +1, -1, 
-            -1, +1,
-            +1, +1, 
-        ]
-
-        const vertex = program.attribute("vertex")
-        vertex.pointTo(buffer)
-
         this.uniformColor = program.uniform("color")
         this.uniformIntensity = program.uniform("intensity")
         this.uniformPalette = program.uniform("palette")
         this.uniformCenter = program.uniform("center")
         this.uniformScale = program.uniform("scale")
-        this.uniformJuliaNumber = program.uniform("juliaNumber")
 
         this.hue = 5 / 4
         this.saturation = Math.sqrt(2) / 2
@@ -54,7 +42,10 @@ export class ViewGL implements View {
         this.palette = 0
         this.center = _center
         this.scale = _scale
-        this.juliaNumber = [0, 0]
+    }
+
+    get canvas() {
+        return this.context.canvas
     }
 
     get center() {
@@ -114,30 +105,20 @@ export class ViewGL implements View {
         this.draw()
     }
 
-    get juliaNumber() {
-        return [this.uniformJuliaNumber.data[0], this.uniformJuliaNumber.data[1]]
-    }
-    
-    set juliaNumber(j: aether.Vec<2>) {
-        this.uniformJuliaNumber.data = [...j, this.julia ? 1 : 0]
-        this.draw()
-    }
-    
     private draw() {
         this.drawCall.perform();
     }
     
     private doDraw() {
         const gl = this.context.gl
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3)
     }
 
 } 
 
 export async function viewGL(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
-    const shaders = await gear.fetchTextFiles({ 
-        vertexShaderCode: "mandelbrot.vert", 
-        fragmentShaderCode: "mandelbrot.frag"
-    }, "/shaders")
-    return new ViewGL(julia, canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, center, scale)
+    const shader = await gearx.fetchTextFile("/shaders/mandelbrot.frag")
+    const vertexShader = wgl.vertexShaders.fullScreenPass
+    const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader)
+    return new ViewGL(julia, canvasId, vertexShader, fragmentShader, center, scale)
 }

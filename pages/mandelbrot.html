@@ -1,105 +1,62 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
-    <title>Mandelbrot</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="module">
-        import * as Mandelbrot from "../gen/mandelbrot/toy.js"
-        Mandelbrot.init();
-    </script>
-</head>
-
-<body>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="AsSBpvHAfro0i7R9Hn1JDOTcDk6tHmz9GmFRUQqOAlW2mIAI0SLpjj/OFJVJVlfiZm+J+QGwhC0ZMA1DzcqihAAAAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0=">
+        <title>Mandelbrot</title>
+        <link type="text/css" rel="stylesheet" href="../index.css" />
+      </style>
+        <script type="module">
+            import * as Mandelbrot from "../gen/mandelbrot/toy.js"
+            import init from "../gen/initializer.js"
+            init(Mandelbrot);
+        </script>
+    </head>
     
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Mandelbrot</strong>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
+            </div>
+        </div>
+        <div class="tiles">
+            <div style="width: 93.75%;">
+                <canvas id="canvas" width="1280px" height="640px" style="cursor: all-scroll; width: 100%; aspect-ratio: 2 / 1;">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><th>Center Pos</th><td><span id="center">1.0</span></span></td></tr>
+                            <tr><th>Scale</th><td><span id="scale">1.0</span></span></td></tr>
+                            <tr><th>Color</th><td>(Hue: <span id="hue">0.8</span>, Saturation: <span id="saturation">0.7</span>)</td></tr>
+                            <tr><th>Intensity</th><td><span id="intensity">0.5</span></td></tr>
+                            <tr><th>Palette</th><td><span id="palette">0.0</span></td></tr>
+                            <tr><th>Click Pos</th><td><span id="clickPos">0.0, 0.0</span></td></tr>
+                            <tr><th>Graphics API</th><td><span id="graphics-api">...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="about" class="hud">
             <div>
-                <p>
-                    Graphics API: <span id="graphics-api">...</span>
-                </p>
+                <h1>Mandelbrot</h1>
                 <p>
                     This classic WebGL example renders the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set" target="_blank">Mandelbrot fractal</a> 
                     by performing its complex number calculations in the fragment shader (i.e. by the GPU).
                 </p>
-                <p>
-                    <div>Mouse/Touch Binding: 
-                        <select id="mouse-binding" name="mouse-binding">
-                            <option value="move" selected>[M]ove</option>
-                            <option value="zoom">[Z]oom (in: up, out: down)</option>
-                            <option value="julia">[J]uia Sets</option>
-                            <option value="color">[C]olor (hue: horizontal, saturation: vertical)</option>
-                            <option value="intensity">[I]ntensity (more: up, less: down)</option>
-                            <option value="palette">[P]alette (exp: up, cos: down)</option>
-                            <option value="music">Music [N]ote (click/touch)</option>
-                        </select>
-                    </div>
-                </p>
-                <p>
-                    <div>
-                        <span>Center Pos = <span id="center">1.0</span></span>
-                    </div>
-                    <div>
-                        <span>Scale = <span id="scale">1.0</span></span>
-                    </div>
-                    <div>
-                        <span>Color = (Hue: <span id="hue">0.8</span>, Saturation: <span id="saturation">0.7</span>)</span>
-                    </div>
-                    <div>
-                        <span>Intensity = <span id="intensity">0.5</span></span>
-                    </div>
-                    <div>
-                        <span>Palette = <span id="palette">0.0</span></span>
-                    </div>
-                    <div>
-                        <span>Click Pos = <span id="clickPos">0.0, 0.0</span></span>
-                    </div>
-                </p>
-            </div>
-            <div>
-                <div class="view">
-                    <canvas id="julia-gl" width="320" height="320">
-                        Your browser seems not to support HTML 5 Canvas!
-                    </canvas>
-                </div>
-            </div><div>
-                <p>
-                    Some actions can be performed on the canvas to the right. This is done by dragging the mouse 
-                    (or the finger for touch screens) across the canvas. Only one action can be bound to the mouse at a time.
-                    You could select that action from the drop-down above. Each of these actions is also mapped to a key for 
-                    more convenient use of the keyboard. The key is emphasized in the drop-down between two brackets.
-                </p>
-            </div>
-            
-        </div>
 
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
-                    Your browser seems not to support HTML 5 Canvas!
-                </canvas>
-            </div>
-        </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>As a Muscial Instrument!</strong>
-            </div>
-
-            <div>
+                <h2>As a Muscial Instrument</h2>
                 <p>
                     One of the mouse-bindings could turn the Mandelbrot set into a (unusable) musical instrument :-). 
                     By clicking on a point that belongs to the set, the complex sequence that defines the Mandelbrot set
@@ -128,10 +85,20 @@
                     mathematics.
                 </p>
             </div>
-
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td></td><td><kbd>M</kbd></td><td id="control-m">Move</td></tr>
+                    <tr><td></td><td><kbd>Z</kbd></td><td id="control-z">Zoom (in: up, out: down)</td></tr>
+                    <tr><td></td><td><kbd>C</kbd></td><td id="control-c">Color (hue: horizontal, saturation: vertical)</td></tr>
+                    <tr><td></td><td><kbd>I</kbd></td><td id="control-i">Intensity (more: up, less: down)</td></tr>
+                    <tr><td></td><td><kbd>P</kbd></td><td id="control-p">Palette (exp: up, cos: down)</td></tr>
+                    <tr><td></td><td><kbd>N</kbd></td><td id="control-n">Music Note (click/touch)</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

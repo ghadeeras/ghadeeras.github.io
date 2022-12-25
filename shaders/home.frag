@@ -1,17 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-#endif
-
-in vec2 pos;
-
-out vec4 fragColor; 
-
 uniform int effect;
 uniform vec2 mousePos;
 uniform sampler2D sampler;
@@ -58,7 +44,7 @@ mat2 distort(float force) {
     }
 }
 
-void main() {
+vec4 colorAt(vec2 pos, float aspect, float pixelSize) {
     vec2 newPos = pos;
 
     if (inVisibleArea(mousePos)) {
@@ -77,9 +63,9 @@ void main() {
 
     if (inVisibleArea(newPos)) {
         vec2 texturePos = (newPos + vec2(1.0, -1.0)) / vec2(2.0, -2.0);
-        fragColor = texture(sampler, texturePos);
+        return texture(sampler, texturePos);
     } else {
-        fragColor = vec4(1.0);
+        return vec4(1.0);
     }
 
 }

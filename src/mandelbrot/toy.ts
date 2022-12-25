@@ -1,26 +1,42 @@
+import * as misc from "../utils/misc.js"
 import { aether, gear } from "/gen/libs.js"
 import { view, View } from "./view.js"
 import { positionDragging } from "../utils/dragging.js"
+import { Controller, ControllerEvent } from "../initializer.js"
 
 let audioContext: AudioContext
 
-export function init() {
-    window.onload = () => doInit()
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/mandelbrot"
+export const huds = {
+    "monitor": "monitor-button"
 }
 
-async function doInit() {
-    const mandelbrotView = await view(false, "canvas-gl", [-0.75, 0], 2)
-    const juliaView = await view(true, "julia-gl", [0, 0], 4)
-    const toComplexNumber = (p: gear.PointerPosition) => aether.vec2.add(aether.vec2.scale(p, mandelbrotView.scale), mandelbrotView.center)
+export async function init(controller: Controller) {
+    const canvas = gear.ElementEvents.create("canvas")
+    const mandelbrotView = await view(false, canvas.element.id, [-0.75, 0], 2)
+    const toComplexNumber = (p: gear.PointerPosition) => aether.vec2.add(
+        aether.vec2.scale(aether.vec2.mul(
+            p, 
+            [canvas.element.clientWidth / canvas.element.clientHeight, 1]
+        ), mandelbrotView.scale), 
+        mandelbrotView.center
+    )
 
     const transformation = transformationTarget(mandelbrotView)
-    const color = colorTarget(mandelbrotView, juliaView)
-    const intensity = intensityTarget(mandelbrotView, juliaView)
-    const palette = paletteTarget(mandelbrotView, juliaView)
-    const julia = juliaTarget(juliaView)
+    const color = colorTarget(mandelbrotView)
+    const intensity = intensityTarget(mandelbrotView)
+    const palette = paletteTarget(mandelbrotView)
 
-    const canvas = gear.ElementEvents.create("canvas-gl")
-    const mouseBinding = mouseBindingValue()
+    const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => controller.handler = e => { c(e); return false })
+        .filter(e => e.down)
+        .map(e => e.key)
+        .filter(k => k in keyMappings || k === "n")
+        .defaultsTo("m")
+        .reduce((previous, current) => {
+            control(previous).removeAttribute("style")
+            control(current).setAttribute("style", "font-weight: bold")
+            return current
+        }, "m")
 
     const cases = {
         move: new gear.Value<gear.Dragging>(),
@@ -28,9 +44,17 @@ async function doInit() {
         color: new gear.Value<gear.Dragging>(),
         intensity: new gear.Value<gear.Dragging>(),
         palette: new gear.Value<gear.Dragging>(),
-        julia: new gear.Value<gear.Dragging>(),
     }
-    canvas.dragging.value.switch(mouseBinding, cases)
+
+    const keyMappings = {
+        "m": cases.move,
+        "z": cases.zoom,
+        "c": cases.color,
+        "i": cases.intensity,
+        "p": cases.palette,
+    }
+
+    canvas.dragging.value.switch(pressedKey, keyMappings)
 
     transformation.value = gear.Value.from(
         cases.move.then(gear.drag(new Move(mandelbrotView))),
@@ -52,59 +76,49 @@ async function doInit() {
         .map(([_, y]) => y * 2)
         .defaultsTo(mandelbrotView.palette)
 
-    julia.value = cases.julia
-        .then(gear.drag(positionDragging))
-        .map(toComplexNumber)
-        .defaultsTo(juliaView.juliaNumber)
-
     const clickPos = canvas.pointerDown.value.map(canvas.positionNormalizer)
 
     gear.text("clickPos").value = clickPos
-        .map(pos => toString(pos, 9))
-        .defaultsTo(toString([0, 0], 9))
+        .map(pos => toFixedVec(pos, 9))
+        .defaultsTo(toFixedVec([0, 0], 9))
 
     clickPos
-        .then(gear.flowSwitch(mouseBinding.map(v => v === "music")))
+        .then(gear.flowSwitch(pressedKey.map(v => v === "n")))
         .map(toComplexNumber)
         .attach(play)
 }
 
-function juliaTarget(juliaView: View) {
-    return new gear.Target<aether.Vec<2>>(c => {
-        juliaView.juliaNumber = c
-    })
+function control(previous: string) {
+    return misc.required(document.getElementById(`control-${previous}`))
 }
 
-function paletteTarget(mandelbrotView: View, juliaView: View) {
+function paletteTarget(mandelbrotView: View) {
     const paletteWatch = text("palette")
     const palette = new gear.Target<number>(p => {
         const palette = p > 0.75 ? 1 : p < -0.75 ? 0 : (p + 0.75) / 1.5
         mandelbrotView.palette = palette
-        juliaView.palette = palette
-        paletteWatch(palette.toPrecision(3))
+        paletteWatch(toFixed(palette))
     })
     return palette
 }
 
-function intensityTarget(mandelbrotView: View, juliaView: View) {
+function intensityTarget(mandelbrotView: View) {
     const intensityWatch = text("intensity")
     const intensity = new gear.Target<number>(intensity => {
         mandelbrotView.intensity = intensity
-        juliaView.intensity = intensity
-        intensityWatch(intensity.toPrecision(3))
+        intensityWatch(toFixed(intensity))
     })
     return intensity
 }
 
-function colorTarget(mandelbrotView: View, juliaView: View) {
+function colorTarget(mandelbrotView: View) {
     const hueWatch = text("hue")
     const saturationWatch = text("saturation")
     const color = new gear.Target<aether.Vec<2>>(color => {
         const [hue, saturation] = color
         mandelbrotView.setColor(hue, saturation)
-        juliaView.setColor(hue, saturation)
-        hueWatch(hue.toPrecision(3))
-        saturationWatch(saturation.toPrecision(3))
+        hueWatch(toFixed(hue))
+        saturationWatch(toFixed(saturation))
     })
     return color
 }
@@ -115,27 +129,10 @@ function transformationTarget(mandelbrotView: View) {
     const transformation = new gear.Target<Transformation>(t => {
         mandelbrotView.scale = t.scale
         mandelbrotView.center = t.center
-        centerWatch(toString(t.center))
-        scaleWatch(t.scale.toPrecision(3))
+        centerWatch(toFixedVec(t.center))
+        scaleWatch(toFixed(t.scale))
     })
     return transformation
-}
-
-function mouseBindingValue() {
-    const mouseBinding = gear.readableValue("mouse-binding")
-    const mouseBindingElement = document.getElementById("mouse-binding") as HTMLInputElement
-    mouseBindingElement.onkeyup = mouseBindingElement.onkeydown = e => {
-        e.preventDefault()
-    }
-    window.onkeypress = (e: KeyboardEvent) => {
-        const key = e.key.toUpperCase()
-        const act = action(key)
-        if (act != null) {
-            mouseBindingElement.value = act
-            mouseBinding.flow(act)
-        }
-    }
-    return mouseBinding.defaultsTo("move")
 }
 
 function text(elementId: string): gear.Consumer<string> {
@@ -155,9 +152,15 @@ function text(elementId: string): gear.Consumer<string> {
     }
 }
 
-function toString(v: aether.Vec<2>, precision = 3) {
-    const [x, y] = v.map(c => c.toPrecision(precision))
-    return `(${x}, ${y})`
+function toFixedVec<D extends aether.Dim>(v: aether.Vec<D>, digits = 3) {
+    const coords = v.map(c => toFixed(c, digits))
+    const commaSeparatedCoords = coords[0].concat(...coords.slice(1).map(s => `, ${s}`))
+    return `(${commaSeparatedCoords})`
+}
+
+function toFixed(c: number, digits: number = 3) {
+    let s = c.toFixed(digits)
+    return s.startsWith("-") ? s : " " + s
 }
 
 function play(c: aether.Vec<2>) {
@@ -199,19 +202,6 @@ function playBuffer(audioContext: AudioContext, audioBuffer: AudioBuffer) {
     source.start()
 }
 
-function action(key: string) {
-    switch (key.toUpperCase()) {
-        case "M": return "move"
-        case "Z": return "zoom"
-        case "C": return "color"
-        case "I": return "intensity"
-        case "P": return "palette"
-        case "J": return "julia"
-        case "N": return "music"
-        default: return null
-    }
-}
-
 type Transformation = {
     scale: number,
     center: aether.Vec<2>
@@ -231,7 +221,8 @@ class Zoom implements gear.DraggingHandler<Transformation> {
 
     mapper(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
         return to => {
-            const delta = calculateDelta(from, to)
+            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight
+            const delta = aether.vec2.mul(calculateDelta(from, to), [aspect, 1])
             const power = -delta[1]
             const factor = 16 ** power
             return power == 0 ? value : {
@@ -239,7 +230,7 @@ class Zoom implements gear.DraggingHandler<Transformation> {
                 center: aether.vec2.sub(
                     value.center, 
                     aether.vec2.scale(
-                        calculateDelta([0, 0], from, value.scale), 
+                        calculateDelta([0, 0], aether.vec2.mul(from, [aspect, 1]), value.scale), 
                         factor - 1
                     )
                 )
@@ -267,7 +258,8 @@ class Move implements gear.DraggingHandler<Transformation> {
 
     mapper(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
         return to => {
-            const delta = calculateDelta(from, to, value.scale)
+            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight
+            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), [aspect, 1])
             return {
                 scale: value.scale,
                 center: aether.vec2.max(

@@ -95,7 +95,7 @@ export default function init(toy: Toy) {
         link("github",  "https://github.com/ghadeeras/" + (toy.gitHubRepo ?? "ghadeeras.github.io"), true)
         link("linkedin", "https://www.linkedin.com/in/ghadeer-abousaleh", true)
         link("mastodon", "https://techhub.social/@gee8sh", true)
-        link("youtube", toy.video ?? "https://www.youtube.com/channel/UCxeQ_6WQ7Zjth8bmCaZ4E7Q", true)
+        link("youtube", toy.video ?? "https://www.youtube.com/@gee8sh", true)
 
         for (const element of document.getElementsByClassName("toy")) {
             doLink(element as HTMLElement, "/pages/" + element.id)

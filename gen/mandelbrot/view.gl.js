@@ -8,6 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { gear } from "/gen/libs.js";
+import * as gearx from "../utils/gear.js";
 import { wgl } from "../djee/index.js";
 export class ViewGL {
     constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
@@ -16,28 +17,20 @@ export class ViewGL {
         this.context = wgl.Context.of(_canvasId);
         const program = this.context.link(this.context.vertexShader(_vertexShaderCode), this.context.fragmentShader(_fragmentShaderCode));
         program.use();
-        const buffer = this.context.newAttributesBuffer();
-        buffer.float32Data = [
-            -1, -1,
-            +1, -1,
-            -1, +1,
-            +1, +1,
-        ];
-        const vertex = program.attribute("vertex");
-        vertex.pointTo(buffer);
         this.uniformColor = program.uniform("color");
         this.uniformIntensity = program.uniform("intensity");
         this.uniformPalette = program.uniform("palette");
         this.uniformCenter = program.uniform("center");
         this.uniformScale = program.uniform("scale");
-        this.uniformJuliaNumber = program.uniform("juliaNumber");
         this.hue = 5 / 4;
         this.saturation = Math.sqrt(2) / 2;
         this.intensity = 0.5;
         this.palette = 0;
         this.center = _center;
         this.scale = _scale;
-        this.juliaNumber = [0, 0];
+    }
+    get canvas() {
+        return this.context.canvas;
     }
     get center() {
         return [this.uniformCenter.data[0], this.uniformCenter.data[1]];
@@ -83,28 +76,20 @@ export class ViewGL {
         this.uniformPalette.data = [p];
         this.draw();
     }
-    get juliaNumber() {
-        return [this.uniformJuliaNumber.data[0], this.uniformJuliaNumber.data[1]];
-    }
-    set juliaNumber(j) {
-        this.uniformJuliaNumber.data = [...j, this.julia ? 1 : 0];
-        this.draw();
-    }
     draw() {
         this.drawCall.perform();
     }
     doDraw() {
         const gl = this.context.gl;
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
     }
 }
 export function viewGL(julia, canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShaderCode: "mandelbrot.vert",
-            fragmentShaderCode: "mandelbrot.frag"
-        }, "/shaders");
-        return new ViewGL(julia, canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, center, scale);
+        const shader = yield gearx.fetchTextFile("/shaders/mandelbrot.frag");
+        const vertexShader = wgl.vertexShaders.fullScreenPass;
+        const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
+        return new ViewGL(julia, canvasId, vertexShader, fragmentShader, center, scale);
     });
 }
 //# sourceMappingURL=view.gl.js.map

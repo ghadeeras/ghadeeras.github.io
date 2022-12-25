@@ -75,3 +75,41 @@ export class ShaderModule {
     }
 
 }
+
+export const renderingShaders = {
+    
+    fullScreenPass: (shader: string) => `
+        struct Varyings {
+            @builtin(position) position: vec4<f32>,
+            @location(0) clipPosition: vec2<f32>,
+        };
+        
+        const triangle: array<vec2<f32>, 3> = array<vec2<f32>, 3>(
+            vec2(-1.0, -1.0),
+            vec2( 3.0, -1.0),
+            vec2(-1.0,  3.0),
+        );
+        
+        @vertex
+        fn v_main(@builtin(vertex_index) i: u32) -> Varyings {
+            let clipPosition: vec2<f32> = triangle[i];
+            return Varyings(vec4<f32>(clipPosition, 0.0, 1.0), clipPosition);
+        }
+    
+        ${shader}
+
+        @fragment
+        fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
+            let pixelSizeX =  dpdx(varyings.clipPosition.x); 
+            let pixelSizeY = -dpdy(varyings.clipPosition.y); 
+            let aspect = pixelSizeY / pixelSizeX;
+            let position = select(
+                vec2(varyings.clipPosition.x, varyings.clipPosition.y / aspect),
+                vec2(varyings.clipPosition.x * aspect, varyings.clipPosition.y),
+                aspect >= 1.0
+            );
+            return colorAt(position, aspect, select(pixelSizeX, pixelSizeY, aspect >= 1.0));
+        }  
+    `
+    
+}

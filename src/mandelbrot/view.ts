@@ -4,6 +4,8 @@ import { required, viewGPU } from "./view.gpu.js"
 
 export interface View {
 
+    canvas: HTMLElement
+
     center: aether.Vec<2>
 
     scale: number
@@ -18,8 +20,6 @@ export interface View {
 
     palette: number
 
-    juliaNumber: aether.Vec<2>
-    
 }
 
 export async function view(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {

@@ -53,4 +53,50 @@ function makeShader(context, type, code) {
     }
     return shader;
 }
+export const vertexShaders = {
+    fullScreenPass: `#version 300 es
+
+        precision highp float;
+        
+        out vec2 _position;
+        
+        const vec2[3] triangle = vec2[] (
+            vec2(-1.0, -1.0),
+            vec2( 3.0, -1.0),
+            vec2(-1.0,  3.0)
+        );
+        
+        void main() {
+            _position = triangle[gl_VertexID];
+            gl_Position = vec4(_position, 0.0, 1);
+        }    
+    `
+};
+export const fragmentShaders = {
+    fullScreenPass: (shader) => `#version 300 es
+
+        #ifdef GL_ES
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+        precision highp float;
+        #else
+        precision mediump float;
+        #endif
+        #endif
+        
+        in vec2 _position;
+        out vec4 _fragColor;
+
+        ${shader}
+
+        void main() {
+            float pixelSizeX = dFdx(_position.x); 
+            float pixelSizeY = dFdy(_position.y); 
+            float aspect = pixelSizeY / pixelSizeX;
+            vec2 position = aspect >= 1.0
+                ? vec2(_position.x * aspect, _position.y)
+                : vec2(_position.x, _position.y / aspect);
+            _fragColor = colorAt(position, aspect, aspect >= 1.0 ? pixelSizeY : pixelSizeX);
+        }
+    `
+};
 //# sourceMappingURL=shader.js.map
