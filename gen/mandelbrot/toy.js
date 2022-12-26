@@ -24,10 +24,19 @@ export function init(controller) {
         const transformation = transformationTarget(mandelbrotView);
         const color = colorTarget(mandelbrotView);
         const intensity = intensityTarget(mandelbrotView);
-        const palette = paletteTarget(mandelbrotView);
         const pressedKey = new gear.Value((c) => controller.handler = e => { c(e); return false; })
             .filter(e => e.down)
             .map(e => e.key)
+            .attach(k => {
+            switch (k) {
+                case "x":
+                    mandelbrotView.xray = !mandelbrotView.xray;
+                    break;
+                case "h":
+                    mandelbrotView.crosshairs = !mandelbrotView.crosshairs;
+                    break;
+            }
+        })
             .filter(k => k in keyMappings || k === "n")
             .defaultsTo("m")
             .reduce((previous, current) => {
@@ -40,14 +49,12 @@ export function init(controller) {
             zoom: new gear.Value(),
             color: new gear.Value(),
             intensity: new gear.Value(),
-            palette: new gear.Value(),
         };
         const keyMappings = {
             "m": cases.move,
             "z": cases.zoom,
             "c": cases.color,
             "i": cases.intensity,
-            "p": cases.palette,
         };
         canvas.dragging.value.switch(pressedKey, keyMappings);
         transformation.value = gear.Value.from(cases.move.then(gear.drag(new Move(mandelbrotView))), cases.zoom.then(gear.drag(new Zoom(mandelbrotView)))).defaultsTo(mandelbrotView);
@@ -59,10 +66,6 @@ export function init(controller) {
             .then(gear.drag(positionDragging))
             .map(([_, y]) => (y + 1) / 2)
             .defaultsTo(mandelbrotView.intensity);
-        palette.value = cases.palette
-            .then(gear.drag(positionDragging))
-            .map(([_, y]) => y * 2)
-            .defaultsTo(mandelbrotView.palette);
         const clickPos = canvas.pointerDown.value.map(canvas.positionNormalizer);
         gear.text("clickPos").value = clickPos
             .map(pos => toFixedVec(pos, 9))
@@ -75,15 +78,6 @@ export function init(controller) {
 }
 function control(previous) {
     return misc.required(document.getElementById(`control-${previous}`));
-}
-function paletteTarget(mandelbrotView) {
-    const paletteWatch = text("palette");
-    const palette = new gear.Target(p => {
-        const palette = p > 0.75 ? 1 : p < -0.75 ? 0 : (p + 0.75) / 1.5;
-        mandelbrotView.palette = palette;
-        paletteWatch(toFixed(palette));
-    });
-    return palette;
 }
 function intensityTarget(mandelbrotView) {
     const intensityWatch = text("intensity");
@@ -110,8 +104,8 @@ function transformationTarget(mandelbrotView) {
     const transformation = new gear.Target(t => {
         mandelbrotView.scale = t.scale;
         mandelbrotView.center = t.center;
-        centerWatch(toFixedVec(t.center));
-        scaleWatch(toFixed(t.scale));
+        centerWatch(toFixedVec(t.center, 9));
+        scaleWatch(toFixed(t.scale, 9));
     });
     return transformation;
 }

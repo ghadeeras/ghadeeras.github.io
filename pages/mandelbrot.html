@@ -29,8 +29,8 @@
             </div>
         </div>
         <div class="tiles">
-            <div style="width: 93.75%;">
-                <canvas id="canvas" width="1280px" height="640px" style="cursor: all-scroll; width: 100%; aspect-ratio: 2 / 1;">
+            <div>
+                <canvas id="canvas" width="1280px" height="640px" style="cursor: all-scroll; width: 1280px; height: 640px;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
                 <div id="monitor" class="hud top-right">
@@ -89,7 +89,7 @@
         <div id="controls" class="hud">
             <div>
                 <h1>The Controls / Key Mappings</h1>
-                <p>The following keys change the function of mouse-dragging:</p>
+                <p>The following keys change the function of mouse dragging/click:</p>
                 <table>
                     <tr><td></td><td><kbd>M</kbd></td><td id="control-m">Move</td></tr>
                     <tr><td></td><td><kbd>Z</kbd></td><td id="control-z">Zoom (in: up, out: down)</td></tr>
@@ -97,6 +97,11 @@
                     <tr><td></td><td><kbd>I</kbd></td><td id="control-i">Intensity (more: up, less: down)</td></tr>
                     <tr><td></td><td><kbd>P</kbd></td><td id="control-p">Palette (exp: up, cos: down)</td></tr>
                     <tr><td></td><td><kbd>N</kbd></td><td id="control-n">Music Note (click/touch)</td></tr>
+                </table>
+                <p>The following keys perform the folowing actions:</p>
+                <table>
+                    <tr><td></td><td><kbd>X</kbd></td><td>Toggle X-ray mode</td></tr>
+                    <tr><td></td><td><kbd>H</kbd></td><td>Toggle crosshairs visibility</td></tr>
                 </table>
             </div>
         </div>

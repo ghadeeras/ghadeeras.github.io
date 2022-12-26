@@ -18,7 +18,9 @@ export interface View {
 
     intensity: number
 
-    palette: number
+    xray: boolean
+
+    crosshairs: boolean
 
 }
 

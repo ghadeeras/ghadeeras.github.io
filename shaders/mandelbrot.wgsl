@@ -3,7 +3,8 @@ struct Params {
   color: vec2<f32>,
   scale: f32,
   intensity: f32,
-  palette: f32,
+  xray: u32,
+  crosshairs: u32,
 };
 
 @group(0)
@@ -50,8 +51,8 @@ fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
         z = mul(z, z) + c;
         var l2 = dot(z, z);
         if (l2 > 4.0) {
-            var a = (32.0 * params.intensity + 1.0) * f32(i) * PI / f32(depth);
-            return mix(0.5 * (cos(a) + 1.0), exp(-a), params.palette);
+            let e = exp(-f32(i) * (1.0 + params.intensity * 255.0) / f32(depth));
+            return select(e, 1.0 - e, params.xray != 0);
         }
     }
     return 0.0;
@@ -82,7 +83,7 @@ fn adaptToJuliaWindow(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec3<
 fn underCrossHairs(position: vec2<f32>, pixelSize: f32) -> bool {
     let pixelSize2 = pixelSize * pixelSize;
     let posXY = abs(position.x * position.y);
-    return pixelSize2 < posXY && posXY < (4.0 * pixelSize2);
+    return params.crosshairs != 0 && pixelSize2 < posXY && posXY < (4.0 * pixelSize2);
 }
 
 fn colorAt(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec4<f32> {
@@ -91,8 +92,8 @@ fn colorAt(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec4<f32> {
     let inJuliaWindow = pos.z > 0.0;
     let result = mandelbrotOrJulia(pos.xy, inJuliaWindow) * color * abs(pos.z);
     return vec4(select(
-        result, 
-        vec3(select(white, black, any(result > grey))), 
+        select(result, select(black, color, params.xray != 0), pos.z == 0.0), 
+        vec3(select(color, black, any(result > grey))), 
         underCrossHairs(position, pixelSize)
     ), 1.0);    
 }

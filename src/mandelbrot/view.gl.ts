@@ -10,7 +10,8 @@ export class ViewGL implements View {
     private uniformScale: wgl.Uniform
     private uniformColor: wgl.Uniform
     private uniformIntensity: wgl.Uniform
-    private uniformPalette: wgl.Uniform
+    private uniformXray: wgl.Uniform
+    private uniformCrosshairs: wgl.Uniform
 
     private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
 
@@ -32,14 +33,16 @@ export class ViewGL implements View {
 
         this.uniformColor = program.uniform("color")
         this.uniformIntensity = program.uniform("intensity")
-        this.uniformPalette = program.uniform("palette")
         this.uniformCenter = program.uniform("center")
         this.uniformScale = program.uniform("scale")
+        this.uniformXray = program.uniform("xray")
+        this.uniformCrosshairs = program.uniform("crosshairs")
 
         this.hue = 5 / 4
         this.saturation = Math.sqrt(2) / 2
         this.intensity = 0.5
-        this.palette = 0
+        this.xray = false
+        this.crosshairs = true
         this.center = _center
         this.scale = _scale
     }
@@ -96,12 +99,21 @@ export class ViewGL implements View {
         this.draw()
     }
 
-    get palette() {
-        return this.uniformPalette.data[0] 
+    get xray() {
+        return this.uniformXray.data[0] != 0 
     }
     
-    set palette(p: number) {
-        this.uniformPalette.data = [p]
+    set xray(b: boolean) {
+        this.uniformXray.data = [b ? 1 : 0]
+        this.draw()
+    }
+
+    get crosshairs() {
+        return this.uniformCrosshairs.data[0] != 0 
+    }
+    
+    set crosshairs(b: boolean) {
+        this.uniformCrosshairs.data = [b ? 1 : 0]
         this.draw()
     }
 

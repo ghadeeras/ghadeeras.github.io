@@ -15,7 +15,8 @@ export class ViewGPU implements View {
         color: gpu.f32.x2,
         scale: gpu.f32,
         intensity: gpu.f32,
-        palette: gpu.f32,
+        xray: gpu.u32,
+        crosshairs: gpu.u32
     }) 
 
     constructor(
@@ -31,7 +32,8 @@ export class ViewGPU implements View {
             color: [5 / 4, Math.sqrt(2) / 2],
             scale: scale,
             intensity: 0.5,
-            palette: 0,
+            xray: 0,
+            crosshairs: 1,
         }]));
 
         this.gpuCanvas = device.canvas(canvasId)
@@ -106,12 +108,20 @@ export class ViewGPU implements View {
         this.uniforms.set(this.uniformsStruct.members.intensity, i)
     }
 
-    get palette(): number {
-        return this.uniforms.get(this.uniformsStruct.members.palette)
+    get xray(): boolean {
+        return this.uniforms.get(this.uniformsStruct.members.xray) != 0
     }
 
-    set palette(p: number) {
-        this.uniforms.set(this.uniformsStruct.members.palette, p)
+    set xray(b: boolean) {
+        this.uniforms.set(this.uniformsStruct.members.xray, b ? 1 : 0)
+    }
+
+    get crosshairs(): boolean {
+        return this.uniforms.get(this.uniformsStruct.members.crosshairs) != 0
+    }
+
+    set crosshairs(b: boolean) {
+        this.uniforms.set(this.uniformsStruct.members.crosshairs, b ? 1 : 0)
     }
 
     private draw() {

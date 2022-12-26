@@ -2,7 +2,8 @@ uniform vec2 center;
 uniform float scale;
 uniform vec2 color;
 uniform float intensity;
-uniform float palette;
+uniform int xray;
+uniform int crosshairs;
 
 const int depth = 1024; 
 
@@ -42,8 +43,8 @@ float mandelbrot(vec2 c, vec2 z) {
         z = mul(z, z) + c;
         float l2 = dot(z, z);
         if (l2 > 4.0) {
-            float a = (32.0 * intensity + 1.0) * float(i) * PI / float(depth);
-            return mix((cos(a) + 1.0) / 2.0, exp(-a), palette);
+            float e = exp(-float(i) * (1.0 + intensity * 255.0) / float(depth));
+            return xray != 0 ? 1.0 - e : e;
         }
     }
     return 0.0;
@@ -74,7 +75,7 @@ vec3 adaptToJuliaWindow(vec2 position, float aspect, float pixelSize) {
 bool underCrossHairs(vec2 position, float pixelSize) {
     float pixelSize2 = pixelSize * pixelSize;
     float xy = abs(position.x * position.y);
-    return pixelSize2 < xy && xy < 4.0 * pixelSize2;
+    return crosshairs != 0 && pixelSize2 < xy && xy < 4.0 * pixelSize2;
 }
 
 vec4 colorAt(vec2 position, float aspect, float pixelSize) {
@@ -84,8 +85,10 @@ vec4 colorAt(vec2 position, float aspect, float pixelSize) {
     vec3 result = mandelbrotOrJulia(pos.xy, inJuliaWindow) * c * abs(pos.z);
     return vec4(
         underCrossHairs(position, pixelSize)
-            ? result.x > grey.x || result.y > grey.y || result.z > grey.z ? black : white
-            : result, 
+            ? result.x > grey.x || result.y > grey.y || result.z > grey.z ? black : c
+            : pos.z != 0.0
+                ? result 
+                : xray != 0 ? c : black, 
         1.0
     );
 }

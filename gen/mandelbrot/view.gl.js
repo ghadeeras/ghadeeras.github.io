@@ -19,13 +19,15 @@ export class ViewGL {
         program.use();
         this.uniformColor = program.uniform("color");
         this.uniformIntensity = program.uniform("intensity");
-        this.uniformPalette = program.uniform("palette");
         this.uniformCenter = program.uniform("center");
         this.uniformScale = program.uniform("scale");
+        this.uniformXray = program.uniform("xray");
+        this.uniformCrosshairs = program.uniform("crosshairs");
         this.hue = 5 / 4;
         this.saturation = Math.sqrt(2) / 2;
         this.intensity = 0.5;
-        this.palette = 0;
+        this.xray = false;
+        this.crosshairs = true;
         this.center = _center;
         this.scale = _scale;
     }
@@ -69,11 +71,18 @@ export class ViewGL {
         this.uniformIntensity.data = [i];
         this.draw();
     }
-    get palette() {
-        return this.uniformPalette.data[0];
+    get xray() {
+        return this.uniformXray.data[0] != 0;
     }
-    set palette(p) {
-        this.uniformPalette.data = [p];
+    set xray(b) {
+        this.uniformXray.data = [b ? 1 : 0];
+        this.draw();
+    }
+    get crosshairs() {
+        return this.uniformCrosshairs.data[0] != 0;
+    }
+    set crosshairs(b) {
+        this.uniformCrosshairs.data = [b ? 1 : 0];
         this.draw();
     }
     draw() {

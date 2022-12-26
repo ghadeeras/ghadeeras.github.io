@@ -18,14 +18,16 @@ export class ViewGPU {
             color: gpu.f32.x2,
             scale: gpu.f32,
             intensity: gpu.f32,
-            palette: gpu.f32,
+            xray: gpu.u32,
+            crosshairs: gpu.u32
         });
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
                 center: center,
                 color: [5 / 4, Math.sqrt(2) / 2],
                 scale: scale,
                 intensity: 0.5,
-                palette: 0,
+                xray: 0,
+                crosshairs: 1,
             }]));
         this.gpuCanvas = device.canvas(canvasId);
         this.pipeline = device.device.createRenderPipeline({
@@ -83,11 +85,17 @@ export class ViewGPU {
     set intensity(i) {
         this.uniforms.set(this.uniformsStruct.members.intensity, i);
     }
-    get palette() {
-        return this.uniforms.get(this.uniformsStruct.members.palette);
+    get xray() {
+        return this.uniforms.get(this.uniformsStruct.members.xray) != 0;
     }
-    set palette(p) {
-        this.uniforms.set(this.uniformsStruct.members.palette, p);
+    set xray(b) {
+        this.uniforms.set(this.uniformsStruct.members.xray, b ? 1 : 0);
+    }
+    get crosshairs() {
+        return this.uniforms.get(this.uniformsStruct.members.crosshairs) != 0;
+    }
+    set crosshairs(b) {
+        this.uniforms.set(this.uniformsStruct.members.crosshairs, b ? 1 : 0);
     }
     draw() {
         this.device.enqueueCommand("render", encoder => {

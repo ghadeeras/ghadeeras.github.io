@@ -25,11 +25,16 @@ export async function init(controller: Controller) {
     const transformation = transformationTarget(mandelbrotView)
     const color = colorTarget(mandelbrotView)
     const intensity = intensityTarget(mandelbrotView)
-    const palette = paletteTarget(mandelbrotView)
 
     const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => controller.handler = e => { c(e); return false })
         .filter(e => e.down)
         .map(e => e.key)
+        .attach(k => {
+            switch (k) {
+                case "x": mandelbrotView.xray = !mandelbrotView.xray; break;
+                case "h": mandelbrotView.crosshairs = !mandelbrotView.crosshairs; break;
+            }
+        })
         .filter(k => k in keyMappings || k === "n")
         .defaultsTo("m")
         .reduce((previous, current) => {
@@ -43,7 +48,6 @@ export async function init(controller: Controller) {
         zoom: new gear.Value<gear.Dragging>(),
         color: new gear.Value<gear.Dragging>(),
         intensity: new gear.Value<gear.Dragging>(),
-        palette: new gear.Value<gear.Dragging>(),
     }
 
     const keyMappings = {
@@ -51,7 +55,6 @@ export async function init(controller: Controller) {
         "z": cases.zoom,
         "c": cases.color,
         "i": cases.intensity,
-        "p": cases.palette,
     }
 
     canvas.dragging.value.switch(pressedKey, keyMappings)
@@ -71,11 +74,6 @@ export async function init(controller: Controller) {
         .map(([_, y]) => (y + 1) / 2)
         .defaultsTo(mandelbrotView.intensity)
 
-    palette.value = cases.palette
-        .then(gear.drag(positionDragging))
-        .map(([_, y]) => y * 2)
-        .defaultsTo(mandelbrotView.palette)
-
     const clickPos = canvas.pointerDown.value.map(canvas.positionNormalizer)
 
     gear.text("clickPos").value = clickPos
@@ -90,16 +88,6 @@ export async function init(controller: Controller) {
 
 function control(previous: string) {
     return misc.required(document.getElementById(`control-${previous}`))
-}
-
-function paletteTarget(mandelbrotView: View) {
-    const paletteWatch = text("palette")
-    const palette = new gear.Target<number>(p => {
-        const palette = p > 0.75 ? 1 : p < -0.75 ? 0 : (p + 0.75) / 1.5
-        mandelbrotView.palette = palette
-        paletteWatch(toFixed(palette))
-    })
-    return palette
 }
 
 function intensityTarget(mandelbrotView: View) {
@@ -129,8 +117,8 @@ function transformationTarget(mandelbrotView: View) {
     const transformation = new gear.Target<Transformation>(t => {
         mandelbrotView.scale = t.scale
         mandelbrotView.center = t.center
-        centerWatch(toFixedVec(t.center))
-        scaleWatch(toFixed(t.scale))
+        centerWatch(toFixedVec(t.center, 9))
+        scaleWatch(toFixed(t.scale, 9))
     })
     return transformation
 }
