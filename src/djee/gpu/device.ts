@@ -49,8 +49,8 @@ export class Device {
         return encoder.finish()
     }
 
-    canvas(element: HTMLCanvasElement | string, withMultiSampling = true): Canvas {
-        return new Canvas(this, element, withMultiSampling)
+    canvas(element: HTMLCanvasElement | string, sampleCount = 1): Canvas {
+        return new Canvas(this, element, sampleCount)
     }
 
     texture(descriptor: GPUTextureDescriptor): Texture {

@@ -11,7 +11,7 @@ const uniformsStruct = gpu.struct({
 
 async function doInit() {
     const device = await gpuDevice()
-    const canvas = device.canvas("canvas", false)
+    const canvas = device.canvas("canvas")
 
     const shaderModule = await device.loadShaderModule("noise.wgsl")
     const pipeline = device.device.createRenderPipeline({

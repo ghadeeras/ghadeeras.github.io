@@ -45,7 +45,7 @@ export class GPUView implements v.View {
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
 
-        this.canvas = device.canvas(canvasId)
+        this.canvas = device.canvas(canvasId, 4)
         this.depthTexture = this.canvas.depthTexture()
 
         this.pipeline = device.device.createRenderPipeline({
@@ -100,6 +100,11 @@ export class GPUView implements v.View {
             positions: matPositions,
             normals: matNormals
         })
+    }
+
+    resize() {
+        this.canvas.resize()
+        this.depthTexture.resize(this.canvas.size)
     }
 
     get matProjection(): aether.Mat<4> {

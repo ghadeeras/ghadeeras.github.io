@@ -15,7 +15,7 @@ export const huds = {
 export async function init(controller: Controller) {
     const device = await gpuDevice()
 
-    const canvas = device.canvas("canvas")
+    const canvas = device.canvas("canvas", 4)
     
     const universe = await newUniverse(device)
     const renderer = await newRenderer(device, canvas)

@@ -11,6 +11,7 @@ import { aether } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { Universe } from './universe.js';
+import { CanvasSizeManager } from '../utils/gear.js';
 export class Renderer {
     constructor(device, canvas, renderShader) {
         var _a;
@@ -35,6 +36,11 @@ export class Renderer {
         this.meshIndexFormat = (_a = mesh.indexFormat) !== null && _a !== void 0 ? _a : "uint16";
         this.meshSize = mesh.indices.length;
         this.depthTexture = canvas.depthTexture();
+        const sizeManager = new CanvasSizeManager(true);
+        sizeManager.observe(canvas.element, () => {
+            this.canvas.resize();
+            this.depthTexture.resize(this.canvas.size);
+        });
         /* Pipeline */
         this.pipeline = this.createPipeline(renderShader, canvas, mesh);
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0);

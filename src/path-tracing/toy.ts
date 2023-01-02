@@ -30,7 +30,7 @@ export async function init(controller: Controller) {
     const scene = buildScene()
 
     const device = await gpuDevice()
-    const canvas = device.canvas("canvas", false)
+    const canvas = device.canvas("canvas")
     const recorder = new misc.CanvasRecorder(canvas.element)
 
     const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")

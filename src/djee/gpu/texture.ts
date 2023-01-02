@@ -3,21 +3,33 @@ import { formatOf } from "./utils.js"
 
 export class Texture {
 
-    readonly texture: GPUTexture
-    readonly size: GPUExtent3DDictStrict
+    private _texture: GPUTexture
 
     constructor(readonly device: Device, readonly descriptor: GPUTextureDescriptor) {
-        this.texture = this.device.device.createTexture(descriptor)
-        if ('width' in descriptor.size) {
-            this.size = descriptor.size
+        this._texture = this.device.device.createTexture(descriptor)
+    }
+
+    get texture() {
+        return this._texture
+    }
+
+    get size() {
+        if ('width' in this.descriptor.size) {
+            return this.descriptor.size
         } else {
-            const [width, height] = descriptor.size
-            this.size = { width, height }
+            const [width, height] = this.descriptor.size
+            return { width, height }
         }
     }
 
     destroy() {
-        this.texture.destroy()
+        this._texture.destroy()
+    }
+
+    resize(size: GPUExtent3DDictStrict) {
+        this.descriptor.size = size
+        this._texture.destroy()
+        this._texture = this.device.device.createTexture(this.descriptor)
     }
 
     depthState(state: Partial<GPUDepthStencilState> = {

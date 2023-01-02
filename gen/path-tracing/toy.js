@@ -26,7 +26,7 @@ export function init(controller) {
     return __awaiter(this, void 0, void 0, function* () {
         const scene = buildScene();
         const device = yield gpuDevice();
-        const canvas = device.canvas("canvas", false);
+        const canvas = device.canvas("canvas");
         const recorder = new misc.CanvasRecorder(canvas.element);
         const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
         const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);

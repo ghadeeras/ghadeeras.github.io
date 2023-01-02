@@ -104,6 +104,9 @@ export class NormalsRenderer {
     setter(member) {
         return (value) => this.uniforms.set(member, value);
     }
+    resize(width, height) {
+        this.depthTexture.resize({ width, height });
+    }
     render(encoder, attachment) {
         const passDescriptor = {
             colorAttachments: [attachment],

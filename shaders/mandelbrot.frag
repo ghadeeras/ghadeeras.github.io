@@ -73,9 +73,8 @@ vec3 adaptToJuliaWindow(vec2 position, float aspect, float pixelSize) {
 }
 
 bool underCrossHairs(vec2 position, float pixelSize) {
-    float pixelSize2 = pixelSize * pixelSize;
-    float xy = abs(position.x * position.y);
-    return crosshairs != 0 && pixelSize2 < xy && xy < 4.0 * pixelSize2;
+    vec2 xy = abs(position / pixelSize);
+    return crosshairs != 0 && ((xy.x < 8.0 && xy.y <= 1.0) || (xy.y <= 8.0 && xy.x <= 1.0));
 }
 
 vec4 colorAt(vec2 position, float aspect, float pixelSize) {

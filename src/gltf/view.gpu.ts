@@ -60,7 +60,7 @@ export class GPUView implements View {
         inputs: ViewInputs,
     ) {
  
-        this.canvas = device.canvas(canvasId)
+        this.canvas = device.canvas(canvasId, 4)
         this.depthTexture = this.canvas.depthTexture()
 
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
@@ -165,6 +165,11 @@ export class GPUView implements View {
 
     private setter<T>(member: gpu.Element<T>) {
         return (value: T) => this.uniforms.set(member, value)
+    }
+
+    resize() {
+        this.canvas.resize();
+        this.depthTexture.resize(this.canvas.size);
     }
 
     draw() {

@@ -2,8 +2,9 @@ import * as gpu from "../djee/gpu/index.js"
 
 export class NormalsFilter {
 
+    private readonly groupLayout: GPUBindGroupLayout
     private readonly pipeline: GPURenderPipeline
-    private readonly group: GPUBindGroup
+    private group: GPUBindGroup
 
     readonly normalsTexture: gpu.Texture
 
@@ -16,7 +17,7 @@ export class NormalsFilter {
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         })
 
-        const groupLayout = device.device.createBindGroupLayout({
+        this.groupLayout = device.device.createBindGroupLayout({
             entries: [
                 {
                     binding: 0,
@@ -46,11 +47,11 @@ export class NormalsFilter {
                 stripIndexFormat: "uint32"
             },
             layout: device.device.createPipelineLayout({
-                bindGroupLayouts: [groupLayout]
+                bindGroupLayouts: [this.groupLayout]
             })
         })
 
-        this.group = device.bindGroup(groupLayout, [
+        this.group = device.bindGroup(this.groupLayout, [
             this.uniforms.asBindingResource(),
             this.normalsTexture.createView().asBindingResource()
         ])
@@ -58,6 +59,14 @@ export class NormalsFilter {
 
     attachment() {
         return this.normalsTexture.createView().colorAttachment({r: 0.0, g: 0.0, b: 1.0, a: 256.0})
+    }
+
+    resize(width: number, height: number): void {
+        this.normalsTexture.resize({ width, height })
+        this.group = this.normalsTexture.device.bindGroup(this.groupLayout, [
+            this.uniforms.asBindingResource(),
+            this.normalsTexture.createView().asBindingResource()
+        ])
     }
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment) {

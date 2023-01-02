@@ -11,6 +11,7 @@ import { aether, gear } from "/gen/libs.js";
 import * as misc from "../utils/misc.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
+import { CanvasSizeManager } from "../utils/gear.js";
 let models;
 let viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
 let modelMatrix = aether.mat4.identity();
@@ -35,7 +36,6 @@ export function init(toyController, wires = false) {
             .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`]);
         models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
         const canvas = gear.elementEvents("canvas");
-        const viewRotation = new dragging.RotationDragging(() => viewMatrix, () => projectionMatrix);
         const modelRotation = new dragging.RotationDragging(() => modelMatrix, () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const modelTranslation = new dragging.TranslationDragging(() => modelMatrix, () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
         const modelScale = new dragging.ScaleDragging(() => modelMatrix, 4);
@@ -106,6 +106,8 @@ export function init(toyController, wires = false) {
                 .defaultsTo(0),
             modelUri: model.map(i => models[i][1]),
         });
+        const sizeManager = new CanvasSizeManager(true);
+        sizeManager.observe(canvas.element, () => view.resize());
         gear.text("model-name").value = model.map(i => models[i][0]);
         gear.text("status").value = view.status;
         model.flow(modelIndex);

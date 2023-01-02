@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import { fetchTextFile } from "../utils/gear.js";
+import { CanvasSizeManager, fetchTextFile } from "../utils/gear.js";
 export class ViewGPU {
     constructor(julia, device, canvasId, shaderModule, center, scale) {
         this.julia = julia;
@@ -29,7 +29,9 @@ export class ViewGPU {
                 xray: 0,
                 crosshairs: 1,
             }]));
-        this.gpuCanvas = device.canvas(canvasId);
+        this.gpuCanvas = device.canvas(canvasId, 4);
+        const sizeManager = new CanvasSizeManager(true);
+        sizeManager.observe(this.canvas, () => this.gpuCanvas.resize());
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),

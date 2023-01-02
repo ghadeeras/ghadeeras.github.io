@@ -3,6 +3,7 @@ import { gltf } from "../djee/index.js"
 import { save } from "../utils/misc.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
+import { CanvasSizeManager } from "../utils/gear.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 const projectionMatrix = aether.mat4.projection(Math.pow(2, 1.5))
@@ -26,6 +27,9 @@ class Toy {
 
     constructor(view: v.View, private scalarFieldInstance: aether.ScalarFieldInstance) {
         const canvas = gear.elementEvents("canvas-gl")
+        const sizeManager = new CanvasSizeManager(true)
+        sizeManager.observe(canvas.element as HTMLCanvasElement, () => view.resize())
+
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
 

@@ -12,6 +12,7 @@ import * as gpu from "../djee/gpu/index.js";
 import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
     constructor(canvas, shaderModule, vertices) {
+        this.canvas = canvas;
         this.vertices = vertices;
         this.vertex = GPUView.vertex.sub(['position']);
         this.uniformsStruct = gpu.struct({
@@ -74,6 +75,10 @@ export class GPUPicker {
             const view = yield this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view());
             return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
         });
+    }
+    resize() {
+        this.colorTexture.resize(this.canvas.size);
+        this.depthTexture.resize(this.canvas.size);
     }
 }
 export function picker(canvas, vertices) {

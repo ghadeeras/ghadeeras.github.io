@@ -12,7 +12,6 @@ import { wgl } from "../djee/index.js";
 import { picker } from "./picker.gl.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
-        this._frame = null;
         this._matPositions = aether.mat4.identity();
         this._matNormals = aether.mat4.identity();
         this._matView = aether.mat4.identity();
@@ -46,6 +45,14 @@ export class GLView {
         this.position.pointTo(this._vertices);
         this.normal.pointTo(this._vertices, 3 * 4);
         this.bind();
+        this._frame = () => {
+            const gl = this.context.gl;
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6);
+            gl.flush();
+            requestAnimationFrame(this._frame);
+        };
+        this._frame();
     }
     picker() {
         return picker(this, () => this._vertices);
@@ -64,6 +71,9 @@ export class GLView {
         this._matModelNormals.data = modelPositions === modelNormals ?
             this._matModelPositions.data :
             aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals));
+    }
+    resize() {
+        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
     }
     get matPositions() {
         return this._matPositions;
@@ -118,18 +128,6 @@ export class GLView {
     setMesh(primitives, vertices) {
         this._primitives = primitives;
         this._vertices.data = vertices;
-        if (!this._frame) {
-            this._frame = () => {
-                const gl = this.context.gl;
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6);
-                if (this._frame) {
-                    requestAnimationFrame(this._frame);
-                }
-                gl.flush();
-            };
-            this._frame();
-        }
     }
 }
 export function newView(canvasId) {

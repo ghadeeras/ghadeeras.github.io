@@ -6,22 +6,20 @@ export class Canvas {
 
     readonly element: HTMLCanvasElement
     readonly context: GPUCanvasContext
-    readonly colorTexture: Texture | null 
-    readonly size: Readonly<GPUExtent3DDict>
-    readonly sampleCount: number
     readonly configs: Readonly<GPUCanvasConfiguration>
 
-    constructor(readonly device: Device, canvas: HTMLCanvasElement | string, withMultiSampling = true, configs: Partial<GPUCanvasConfiguration> = {}) {
+    private _size: GPUExtent3DDict
+    private _colorTexture: Texture | null = null
+
+    constructor(readonly device: Device, canvas: HTMLCanvasElement | string, readonly sampleCount: number, configs: Partial<GPUCanvasConfiguration> = {}) {
         this.element = typeof canvas === 'string' ? 
             required(document.getElementById(canvas)) as HTMLCanvasElement : 
             canvas
         this.context = required(this.element.getContext("webgpu"))
 
-        const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1
-        this.sampleCount = Math.ceil(pixelRatio) ** 2
-        this.size = {
-            width: this.element.width,
-            height: this.element.height,
+        this._size = { 
+            width: this.element.width, 
+            height: this.element.height, 
         }
 
         this.configs = {
@@ -34,7 +32,28 @@ export class Canvas {
         }
         this.context.configure(this.configs)
 
-        this.colorTexture = this.sampleCount !== 1 ? device.texture({
+        this.resize()
+    }
+
+    get size() {
+        return this._size
+    }
+
+    get colorTexture() {
+        return this._colorTexture
+    }
+
+    resize() {
+        if (this._colorTexture !== null) {
+            this._colorTexture.destroy()
+        }
+
+        this._size = {
+            width: this.element.width,
+            height: this.element.height,
+        }
+
+        this._colorTexture = this.sampleCount !== 1 ? this.device.texture({
             format: this.configs.format,
             usage: (this.configs.usage ?? 0) | GPUTextureUsage.RENDER_ATTACHMENT,
             viewFormats: this.configs.viewFormats,

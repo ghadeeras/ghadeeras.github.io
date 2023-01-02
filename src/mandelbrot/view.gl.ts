@@ -25,6 +25,12 @@ export class ViewGL implements View {
     ) {
         this.context = wgl.Context.of(_canvasId)
 
+        const sizeManager = new gearx.CanvasSizeManager(true)
+        sizeManager.observe(this.canvas, () => {
+            this.context.gl.viewport(0, 0, this.canvas.width, this.canvas.height)
+            this.drawCall.perform()
+        })
+
         const program = this.context.link(
             this.context.vertexShader(_vertexShaderCode),
             this.context.fragmentShader(_fragmentShaderCode)

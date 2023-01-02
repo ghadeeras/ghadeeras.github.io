@@ -2,6 +2,7 @@ import { aether } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe } from './universe.js'
+import { CanvasSizeManager } from '../utils/gear.js'
 
 export class Renderer {
 
@@ -20,13 +21,13 @@ export class Renderer {
     private readonly meshIndexFormat: GPUIndexFormat
     private readonly meshSize: number
 
-    private readonly depthTexture: gpu.Texture
-
     private readonly uniformsBuffer: gpu.SyncBuffer
     private readonly meshIndicesBuffer: gpu.Buffer
     private readonly meshVerticesBuffer: gpu.Buffer
 
     private readonly bindGroup: GPUBindGroup
+
+    private depthTexture: gpu.Texture
 
     private _projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2)
     private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
@@ -44,6 +45,11 @@ export class Renderer {
         this.meshSize = mesh.indices.length
 
         this.depthTexture = canvas.depthTexture()
+        const sizeManager = new CanvasSizeManager(true)
+        sizeManager.observe(canvas.element, () => {
+            this.canvas.resize()
+            this.depthTexture.resize(this.canvas.size)
+        })
 
         /* Pipeline */
         this.pipeline = this.createPipeline(renderShader, canvas, mesh)

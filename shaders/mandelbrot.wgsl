@@ -81,9 +81,8 @@ fn adaptToJuliaWindow(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec3<
 }
 
 fn underCrossHairs(position: vec2<f32>, pixelSize: f32) -> bool {
-    let pixelSize2 = pixelSize * pixelSize;
-    let posXY = abs(position.x * position.y);
-    return params.crosshairs != 0 && pixelSize2 < posXY && posXY < (4.0 * pixelSize2);
+    let xy = abs(position / pixelSize);
+    return params.crosshairs != 0 && ((xy.x < 8.0 && xy.y <= 1.0) || (xy.y <= 8.0 && xy.x <= 1.0));
 }
 
 fn colorAt(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec4<f32> {

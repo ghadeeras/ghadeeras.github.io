@@ -21,7 +21,7 @@ export const huds = {
 export function init(controller) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpuDevice();
-        const canvas = device.canvas("canvas");
+        const canvas = device.canvas("canvas", 4);
         const universe = yield newUniverse(device);
         const renderer = yield newRenderer(device, canvas);
         const pressedKey = new gear.Value((c) => controller.handler = e => {

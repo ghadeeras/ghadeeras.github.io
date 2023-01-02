@@ -1,7 +1,7 @@
 import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { View } from "./view.js";
-import { fetchTextFile } from "../utils/gear.js";
+import { CanvasSizeManager, fetchTextFile } from "../utils/gear.js";
 
 export class ViewGPU implements View {
 
@@ -36,7 +36,9 @@ export class ViewGPU implements View {
             crosshairs: 1,
         }]));
 
-        this.gpuCanvas = device.canvas(canvasId)
+        this.gpuCanvas = device.canvas(canvasId, 4)
+        const sizeManager = new CanvasSizeManager(true)
+        sizeManager.observe(this.canvas, () => this.gpuCanvas.resize())
 
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),

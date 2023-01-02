@@ -5,6 +5,7 @@ import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
 import * as misc from "../utils/misc.js"
+import { CanvasSizeManager } from "../utils/gear.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 const projectionMatrix = aether.mat4.projection(4, undefined, undefined, 2)
@@ -39,6 +40,12 @@ class Toy {
 
     constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker, toyController: Controller) {
         const canvas = gear.elementEvents("canvas")
+        const sizeManager = new CanvasSizeManager(true)
+        sizeManager.observe(canvas.element as HTMLCanvasElement, () => {
+            view.resize()
+            picker.resize()
+        })
+
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1])
 

@@ -73,6 +73,9 @@ export class GLView {
     updateModelViewMatrix() {
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this.viewMatrix, this.modelMatrix));
     }
+    resize() {
+        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+    }
     draw() {
         const gl = this.context.gl;
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

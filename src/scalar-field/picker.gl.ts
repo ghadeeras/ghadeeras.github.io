@@ -27,20 +27,7 @@ export class GLPicker implements Picker {
         this.posAttribute = this.program.attribute("aModelPos")
         this.mvpMatrixUniform = this.program.uniform("mvpMat")
 
-        const canvas = context.canvas
-        const colorTexture = context.newTexture2D()
-        colorTexture.setRawImage({
-            format: WebGL2RenderingContext.RGBA,
-            width: canvas.width,
-            height: canvas.height
-        })
-        this.frameBuffer = context.newFrameBuffer()
-        this.frameBuffer.colorBuffer = colorTexture
-        this.frameBuffer.depthBuffer = context.newRenderBuffer(
-            WebGL2RenderingContext.DEPTH_COMPONENT16, 
-            canvas.width, 
-            canvas.height
-        )
+        this.frameBuffer = newFrameBuffer(context)
 
         this.unbind()
     }
@@ -85,6 +72,31 @@ export class GLPicker implements Picker {
         return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]))
     }
 
+    resize(): void {
+        this.bind()
+        this.frameBuffer.delete()
+        this.frameBuffer = newFrameBuffer(this.mainView.context)
+        this.unbind()
+    }
+
+}
+
+function newFrameBuffer(context: wgl.Context) {
+    const canvas = context.canvas
+    const colorTexture = context.newTexture2D()
+    colorTexture.setRawImage({
+        format: WebGL2RenderingContext.RGBA,
+        width: canvas.width,
+        height: canvas.height
+    })
+    const frameBuffer = context.newFrameBuffer()
+    frameBuffer.colorBuffer = colorTexture
+    frameBuffer.depthBuffer = context.newRenderBuffer(
+        WebGL2RenderingContext.DEPTH_COMPONENT16,
+        canvas.width,
+        canvas.height
+    )
+    return frameBuffer
 }
 
 export async function picker(mainView: GLView, vertices: () => wgl.AttributesBuffer): Promise<Picker> {

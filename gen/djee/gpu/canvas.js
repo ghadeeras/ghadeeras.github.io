@@ -1,15 +1,15 @@
 import { required } from "../utils.js";
 export class Canvas {
-    constructor(device, canvas, withMultiSampling = true, configs = {}) {
-        var _a, _b, _c, _d, _e, _f, _g;
+    constructor(device, canvas, sampleCount, configs = {}) {
+        var _a, _b, _c, _d, _e;
         this.device = device;
+        this.sampleCount = sampleCount;
+        this._colorTexture = null;
         this.element = typeof canvas === 'string' ?
             required(document.getElementById(canvas)) :
             canvas;
         this.context = required(this.element.getContext("webgpu"));
-        const pixelRatio = withMultiSampling ? window.devicePixelRatio : 1;
-        this.sampleCount = Math.pow(Math.ceil(pixelRatio), 2);
-        this.size = {
+        this._size = {
             width: this.element.width,
             height: this.element.height,
         };
@@ -22,15 +22,32 @@ export class Canvas {
             viewFormats: (_e = configs.viewFormats) !== null && _e !== void 0 ? _e : [],
         };
         this.context.configure(this.configs);
-        this.colorTexture = this.sampleCount !== 1 ? device.texture({
+        this.resize();
+    }
+    get size() {
+        return this._size;
+    }
+    get colorTexture() {
+        return this._colorTexture;
+    }
+    resize() {
+        var _a, _b;
+        if (this._colorTexture !== null) {
+            this._colorTexture.destroy();
+        }
+        this._size = {
+            width: this.element.width,
+            height: this.element.height,
+        };
+        this._colorTexture = this.sampleCount !== 1 ? this.device.texture({
             format: this.configs.format,
-            usage: ((_f = this.configs.usage) !== null && _f !== void 0 ? _f : 0) | GPUTextureUsage.RENDER_ATTACHMENT,
+            usage: ((_a = this.configs.usage) !== null && _a !== void 0 ? _a : 0) | GPUTextureUsage.RENDER_ATTACHMENT,
             viewFormats: this.configs.viewFormats,
             size: this.size,
             sampleCount: this.sampleCount,
             dimension: "2d",
             mipLevelCount: 1,
-            label: `${(_g = this.element.id) !== null && _g !== void 0 ? _g : "canvas"}-multi-sample-texture`
+            label: `${(_b = this.element.id) !== null && _b !== void 0 ? _b : "canvas"}-multi-sample-texture`
         }) : null;
     }
     get format() {

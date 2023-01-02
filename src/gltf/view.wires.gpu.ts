@@ -12,6 +12,14 @@ export class GPUView implements View {
         private canvas: gpu.Canvas,
     ) {}
 
+    resize(): void {
+        const width = this.canvas.element.width
+        const height = this.canvas.element.height
+        this.canvas.resize()
+        this.normalsRenderer.resize(width, height)
+        this.normalsFilter.resize(width, height)
+    }
+
     draw() {
         this.canvas.device.enqueueCommand("Draw", encoder => {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment())
@@ -25,7 +33,7 @@ export class GPUView implements View {
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const device = await gpu.Device.instance()
-    const canvas = device.canvas(canvasId, false)
+    const canvas = device.canvas(canvasId, 1)
     const normalsShaderModule = await device.loadShaderModule("gltf-wires-normals.wgsl")
     const filterShaderModule = await device.loadShaderModule("gltf-wires-filter.wgsl")
     return inputs => {

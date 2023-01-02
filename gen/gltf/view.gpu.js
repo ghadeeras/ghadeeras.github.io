@@ -31,7 +31,7 @@ export class GPUView {
         this.projectionMatrix = aether.mat4.mul(aether.mat4.mul(aether.mat4.scaling(1, 1, 0.5), aether.mat4.translation([0, 0, 1])), aether.mat4.projection(2, undefined, undefined, 2));
         this.statusUpdater = () => { };
         this.status = new gear.Value(consumer => this.statusUpdater = consumer);
-        this.canvas = device.canvas(canvasId);
+        this.canvas = device.canvas(canvasId, 4);
         this.depthTexture = this.canvas.depthTexture();
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
         this.uniformsGroupLayout = device.device.createBindGroupLayout({
@@ -117,6 +117,10 @@ export class GPUView {
     }
     setter(member) {
         return (value) => this.uniforms.set(member, value);
+    }
+    resize() {
+        this.canvas.resize();
+        this.depthTexture.resize(this.canvas.size);
     }
     draw() {
         this.device.enqueueCommand("render", encoder => {

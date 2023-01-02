@@ -6,6 +6,8 @@ import * as glView from "./view.gl.js"
 
 export interface View {
 
+    resize(): void
+    
     draw(): void
 
     status: gear.Value<string>

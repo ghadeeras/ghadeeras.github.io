@@ -140,6 +140,10 @@ export class NormalsRenderer {
 
     readonly status: gear.Value<string> = new gear.Value(consumer => this.statusUpdater = consumer)
 
+    resize(width: number, height: number): void {
+        this.depthTexture.resize({ width, height })
+    }
+
     render(encoder: gpu.CommandEncoder, attachment: GPURenderPassColorAttachment) {
         const passDescriptor: GPURenderPassDescriptor = {
             colorAttachments: [attachment],

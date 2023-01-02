@@ -3,17 +3,27 @@ export class Texture {
     constructor(device, descriptor) {
         this.device = device;
         this.descriptor = descriptor;
-        this.texture = this.device.device.createTexture(descriptor);
-        if ('width' in descriptor.size) {
-            this.size = descriptor.size;
+        this._texture = this.device.device.createTexture(descriptor);
+    }
+    get texture() {
+        return this._texture;
+    }
+    get size() {
+        if ('width' in this.descriptor.size) {
+            return this.descriptor.size;
         }
         else {
-            const [width, height] = descriptor.size;
-            this.size = { width, height };
+            const [width, height] = this.descriptor.size;
+            return { width, height };
         }
     }
     destroy() {
-        this.texture.destroy();
+        this._texture.destroy();
+    }
+    resize(size) {
+        this.descriptor.size = size;
+        this._texture.destroy();
+        this._texture = this.device.device.createTexture(this.descriptor);
     }
     depthState(state = {
         depthCompare: "less",

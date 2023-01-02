@@ -29,11 +29,15 @@ export interface View {
 
     picker(): Promise<Picker>
 
+    resize(): void
+
 }
 
 export interface Picker {
 
     pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4>
+
+    resize(): void
 
 }
 

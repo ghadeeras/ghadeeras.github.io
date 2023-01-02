@@ -20,7 +20,7 @@ export class GPUPicker implements Picker {
     })
 
     constructor(
-        canvas: gpu.Canvas,
+        readonly canvas: gpu.Canvas,
         shaderModule: gpu.ShaderModule,
         private vertices: () => gpu.Buffer,
     ) {
@@ -86,6 +86,11 @@ export class GPUPicker implements Picker {
 
         const view = await this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view())
         return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1])
+    }
+
+    resize(): void {
+        this.colorTexture.resize(this.canvas.size)
+        this.depthTexture.resize(this.canvas.size)
     }
 
 }

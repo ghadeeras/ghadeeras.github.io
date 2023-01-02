@@ -25,7 +25,7 @@ export class GLView implements v.View {
     private _vertices: wgl.AttributesBuffer
     private _primitives: GLenum
 
-    private _frame: null | (() => void) = null
+    private _frame: () => void
 
     private _matPositions: aether.Mat<4> = aether.mat4.identity()
     private _matNormals: aether.Mat<4> = aether.mat4.identity()
@@ -80,6 +80,15 @@ export class GLView implements v.View {
         this.normal.pointTo(this._vertices, 3 * 4)
 
         this.bind()
+
+        this._frame = () => {
+            const gl = this.context.gl
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+            gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6)
+            gl.flush()
+            requestAnimationFrame(this._frame)
+        }
+        this._frame()
     }
 
     picker(): Promise<v.Picker> {
@@ -102,6 +111,10 @@ export class GLView implements v.View {
         this._matModelNormals.data = modelPositions === modelNormals ? 
             this._matModelPositions.data :
             aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals))
+    }
+
+    resize() {
+        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
     }
 
     get matPositions(): aether.Mat<4> {
@@ -173,19 +186,6 @@ export class GLView implements v.View {
     setMesh(primitives: GLenum, vertices: Float32Array) {
         this._primitives = primitives
         this._vertices.data = vertices
-
-        if (!this._frame) {
-            this._frame = () => {
-                const gl = this.context.gl
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-                gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6)
-                if (this._frame) {
-                    requestAnimationFrame(this._frame)
-                }
-                gl.flush()
-            }
-            this._frame()
-        }
     }
 
 }

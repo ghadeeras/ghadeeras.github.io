@@ -18,16 +18,7 @@ export class GLPicker {
         this.program.use();
         this.posAttribute = this.program.attribute("aModelPos");
         this.mvpMatrixUniform = this.program.uniform("mvpMat");
-        const canvas = context.canvas;
-        const colorTexture = context.newTexture2D();
-        colorTexture.setRawImage({
-            format: WebGL2RenderingContext.RGBA,
-            width: canvas.width,
-            height: canvas.height
-        });
-        this.frameBuffer = context.newFrameBuffer();
-        this.frameBuffer.colorBuffer = colorTexture;
-        this.frameBuffer.depthBuffer = context.newRenderBuffer(WebGL2RenderingContext.DEPTH_COMPONENT16, canvas.width, canvas.height);
+        this.frameBuffer = newFrameBuffer(context);
         this.unbind();
     }
     bind() {
@@ -54,6 +45,25 @@ export class GLPicker {
         this.unbind();
         return Promise.resolve(aether.vec4.sub(aether.vec4.scale(aether.vec4.from(coordinatesAsColor), 2 / 255), [1, 1, 1, 1]));
     }
+    resize() {
+        this.bind();
+        this.frameBuffer.delete();
+        this.frameBuffer = newFrameBuffer(this.mainView.context);
+        this.unbind();
+    }
+}
+function newFrameBuffer(context) {
+    const canvas = context.canvas;
+    const colorTexture = context.newTexture2D();
+    colorTexture.setRawImage({
+        format: WebGL2RenderingContext.RGBA,
+        width: canvas.width,
+        height: canvas.height
+    });
+    const frameBuffer = context.newFrameBuffer();
+    frameBuffer.colorBuffer = colorTexture;
+    frameBuffer.depthBuffer = context.newRenderBuffer(WebGL2RenderingContext.DEPTH_COMPONENT16, canvas.width, canvas.height);
+    return frameBuffer;
 }
 export function picker(mainView, vertices) {
     return __awaiter(this, void 0, void 0, function* () {

@@ -18,7 +18,7 @@ const uniformsStruct = gpu.struct({
 function doInit() {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpuDevice();
-        const canvas = device.canvas("canvas", false);
+        const canvas = device.canvas("canvas");
         const shaderModule = yield device.loadShaderModule("noise.wgsl");
         const pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),

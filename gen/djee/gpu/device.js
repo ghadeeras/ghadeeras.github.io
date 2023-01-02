@@ -52,8 +52,8 @@ export class Device {
         encoding(encoder);
         return encoder.finish();
     }
-    canvas(element, withMultiSampling = true) {
-        return new Canvas(this, element, withMultiSampling);
+    canvas(element, sampleCount = 1) {
+        return new Canvas(this, element, sampleCount);
     }
     texture(descriptor) {
         return new Texture(this, descriptor);

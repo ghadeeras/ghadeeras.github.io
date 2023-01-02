@@ -17,6 +17,13 @@ export class GPUView {
         this.canvas = canvas;
         this.status = this.normalsRenderer.status;
     }
+    resize() {
+        const width = this.canvas.element.width;
+        const height = this.canvas.element.height;
+        this.canvas.resize();
+        this.normalsRenderer.resize(width, height);
+        this.normalsFilter.resize(width, height);
+    }
     draw() {
         this.canvas.device.enqueueCommand("Draw", encoder => {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment());
@@ -27,7 +34,7 @@ export class GPUView {
 export function newViewFactory(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();
-        const canvas = device.canvas(canvasId, false);
+        const canvas = device.canvas(canvasId, 1);
         const normalsShaderModule = yield device.loadShaderModule("gltf-wires-normals.wgsl");
         const filterShaderModule = yield device.loadShaderModule("gltf-wires-filter.wgsl");
         return inputs => {

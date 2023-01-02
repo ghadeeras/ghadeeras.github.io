@@ -3,6 +3,7 @@ import * as misc from "../utils/misc.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
 import { Controller, ControllerEvent, Toy } from "../initializer.js";
+import { CanvasSizeManager } from "../utils/gear.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -48,7 +49,6 @@ export async function init(toyController: Controller, wires: boolean = false) {
     )
 
     const canvas = gear.elementEvents("canvas");
-    const viewRotation = new dragging.RotationDragging(() => viewMatrix, () => projectionMatrix)
     const modelRotation = new dragging.RotationDragging(
         () => modelMatrix, 
         () => aether.mat4.mul(projectionMatrix, viewMatrix), 
@@ -142,6 +142,9 @@ export async function init(toyController: Controller, wires: boolean = false) {
             .defaultsTo(0),
         modelUri: model.map(i => models[i][1]),
     })
+
+    const sizeManager = new CanvasSizeManager(true)
+    sizeManager.observe(canvas.element as HTMLCanvasElement, () => view.resize())
 
     gear.text("model-name").value = model.map(i => models[i][0])
     gear.text("status").value = view.status
