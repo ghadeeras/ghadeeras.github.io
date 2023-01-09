@@ -21,14 +21,14 @@ const uniformsStruct = gpu.struct({
     lightRadius: gpu.f32,
     fogginess: gpu.f32,
 });
+const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class GPUView {
     constructor(device, shaderModule, canvasId, inputs) {
         this.device = device;
         this.shaderModule = shaderModule;
         this.renderer = null;
-        this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-        this.modelMatrix = aether.mat4.identity();
-        this.projectionMatrix = aether.mat4.mul(aether.mat4.mul(aether.mat4.scaling(1, 1, 0.5), aether.mat4.translation([0, 0, 1])), aether.mat4.projection(2, undefined, undefined, 2));
+        this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+        this._modelMatrix = aether.mat4.identity();
         this.statusUpdater = () => { };
         this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.canvas = device.canvas(canvasId, 4);
@@ -54,7 +54,7 @@ export class GPUView {
                 }],
         });
         this.pipelineLayout = this.device.device.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout]
+            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout],
         });
         this.fragmentState = this.shaderModule.fragmentState("f_main", [this.canvas]),
             this.depthState = this.depthTexture.depthState(),
@@ -63,12 +63,23 @@ export class GPUView {
         inputs.color.attach(this.setter(uniformsStruct.members.color));
         inputs.shininess.attach(this.setter(uniformsStruct.members.shininess));
         inputs.fogginess.attach(this.setter(uniformsStruct.members.fogginess));
-        gear.Value.from(inputs.matModel.map(m => aether.mat4.mul(this.viewMatrix, this.modelMatrix = m)), inputs.matView.map(m => aether.mat4.mul(this.viewMatrix = m, this.modelMatrix))).map(m => ({
+        gear.Value.from(inputs.matModel.map(m => aether.mat4.mul(this._viewMatrix, this._modelMatrix = m)), inputs.matView.map(m => aether.mat4.mul(this._viewMatrix = m, this._modelMatrix))).map(m => ({
             positions: m,
             normals: m,
         })).attach(this.setter(uniformsStruct.members.mat));
-        this.setter(uniformsStruct.members.projectionMat)(this.projectionMatrix);
         inputs.modelUri.attach((modelUri) => this.loadModel(modelUri));
+    }
+    get projectionMatrix() {
+        return this.uniforms.get(uniformsStruct.members.projectionMat);
+    }
+    set projectionMatrix(m) {
+        this.uniforms.set(uniformsStruct.members.projectionMat, m);
+    }
+    get viewMatrix() {
+        return this._viewMatrix;
+    }
+    get modelMatrix() {
+        return this._modelMatrix;
     }
     loadModel(modelUri) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -121,6 +132,7 @@ export class GPUView {
     resize() {
         this.canvas.resize();
         this.depthTexture.resize(this.canvas.size);
+        this.projectionMatrix = projection.matrix(2, this.canvas.element.width / this.canvas.element.height);
     }
     draw() {
         this.device.enqueueCommand("render", encoder => {

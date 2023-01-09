@@ -10,7 +10,13 @@ export interface View {
     
     draw(): void
 
-    status: gear.Value<string>
+    readonly status: gear.Value<string>
+
+    readonly projectionMatrix: aether.Mat4
+
+    readonly viewMatrix: aether.Mat4
+
+    readonly modelMatrix: aether.Mat4
 
 }
 

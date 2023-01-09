@@ -17,11 +17,7 @@ type ModelIndexEntry = {
 }
 
 let models: [string, string][]
-let viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
-let modelMatrix: aether.Mat<4> = aether.mat4.identity()
 let modelIndex = 1
-
-const projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf"
 export const huds = {
@@ -50,17 +46,17 @@ export async function init(toyController: Controller, wires: boolean = false) {
 
     const canvas = gear.elementEvents("canvas");
     const modelRotation = new dragging.RotationDragging(
-        () => modelMatrix, 
-        () => aether.mat4.mul(projectionMatrix, viewMatrix), 
+        () => view.modelMatrix, 
+        () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 
         4
     )
     const modelTranslation = new dragging.TranslationDragging(
-        () => modelMatrix, 
-        () => aether.mat4.mul(projectionMatrix, viewMatrix), 
+        () => view.modelMatrix, 
+        () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 
         4
     )
     const modelScale = new dragging.ScaleDragging(
-        () => modelMatrix, 
+        () => view.modelMatrix, 
         4
     )
 
@@ -116,8 +112,8 @@ export async function init(toyController: Controller, wires: boolean = false) {
                 cases.modelMove.then(gear.drag(modelTranslation)),
                 cases.modelScale.then(gear.drag(modelScale)),
                 model.map(() => aether.mat4.identity())
-            ).defaultsTo(modelMatrix).attach(mat => modelMatrix = mat),
-        matView: new gear.Value<aether.Mat4>().defaultsTo(viewMatrix).attach(mat => viewMatrix = mat),
+            ),
+        matView: new gear.Value<aether.Mat4>(),
         color: cases.color
             .then(gear.drag(dragging.positionDragging))
             .map(positionToColor())
@@ -126,7 +122,7 @@ export async function init(toyController: Controller, wires: boolean = false) {
             .then(gear.drag(dragging.positionDragging))
             .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
             .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-            .map(positionToLightPosition())
+            .map(toLightPosition)
             .defaultsTo(aether.vec3.of(2, 2, 2)),
         lightRadius: cases.lightRadius
             .then(gear.drag(dragging.positionDragging))
@@ -156,20 +152,18 @@ export async function init(toyController: Controller, wires: boolean = false) {
     }
     frame()
 
+    function toLightPosition([x, y]: gear.PointerPosition) {
+        const p: aether.Vec3 = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)];
+        return aether.vec3.add(aether.vec3.from(view.viewMatrix[3]), p);
+    }
+
 }
 
 function control(previous: string) {
     return misc.required(document.getElementById(`control-${previous}`))
 }
 
-function positionToLightPosition(): gear.Mapper<[number, number], [number, number, number]> {
-    return ([x, y]) => {
-        const p: aether.Vec4 = [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1];
-        return aether.vec3.from(aether.vec4.add(viewMatrix[3], p));
-    };
-}
-
-function positionToColor(): gear.Mapper<gear.PointerPosition, [number, number, number, number]> {
+function positionToColor(): gear.Mapper<gear.PointerPosition, aether.Vec4> {
     const third = 2 * Math.PI / 3
     const redVec: aether.Vec<2> = [1, 0];
     const greenVec: aether.Vec<2> = [Math.cos(third), Math.sin(third)];

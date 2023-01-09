@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether, gear } from "/gen/libs.js";
 import { wgl, gltf } from "../djee/index.js";
+const projection = new aether.PerspectiveProjection(1, null, false, true);
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode, inputs) {
         this.renderer = null;
-        this.viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-        this.modelMatrix = aether.mat4.identity();
-        this.projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
+        this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+        this._modelMatrix = aether.mat4.identity();
         this.statusUpdater = () => { };
         this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.context = wgl.Context.of(canvasId);
@@ -32,7 +32,6 @@ export class GLView {
         this.uColor = program.uniform("color");
         this.uShininess = program.uniform("shininess");
         this.uFogginess = program.uniform("fogginess");
-        this.uProjectionMat.data = aether.mat4.columnMajorArray(this.projectionMatrix);
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
@@ -43,11 +42,11 @@ export class GLView {
         inputs.shininess.attach(s => this.uShininess.data = [s]);
         inputs.fogginess.attach(f => this.uFogginess.data = [f]);
         inputs.matModel.attach(m => {
-            this.modelMatrix = m;
+            this._modelMatrix = m;
             this.updateModelViewMatrix();
         });
         inputs.matView.attach(v => {
-            this.viewMatrix = v;
+            this._viewMatrix = v;
             this.updateModelViewMatrix();
         });
         inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
@@ -70,11 +69,24 @@ export class GLView {
             }
         }));
     }
+    get projectionMatrix() {
+        return aether.mat4.from(this.uProjectionMat.data);
+    }
+    set projectionMatrix(m) {
+        this.uProjectionMat.data = aether.mat4.columnMajorArray(m);
+    }
+    get viewMatrix() {
+        return this._viewMatrix;
+    }
+    get modelMatrix() {
+        return this._modelMatrix;
+    }
     updateModelViewMatrix() {
-        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this.viewMatrix, this.modelMatrix));
+        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
     resize() {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+        this.projectionMatrix = projection.matrix(2, this.context.canvas.width / this.context.canvas.height);
     }
     draw() {
         const gl = this.context.gl;

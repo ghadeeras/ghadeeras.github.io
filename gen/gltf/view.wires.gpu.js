@@ -17,6 +17,15 @@ export class GPUView {
         this.canvas = canvas;
         this.status = this.normalsRenderer.status;
     }
+    get projectionMatrix() {
+        return this.normalsRenderer.projectionMatrix;
+    }
+    get viewMatrix() {
+        return this.normalsRenderer.viewMatrix;
+    }
+    get modelMatrix() {
+        return this.normalsRenderer.modelMatrix;
+    }
     resize() {
         const width = this.canvas.element.width;
         const height = this.canvas.element.height;

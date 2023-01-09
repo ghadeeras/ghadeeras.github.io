@@ -1,14 +1,15 @@
 import { aether } from "../libs.js";
 export function anti(matrix) {
     const inverse = aether.mat4.inverse(matrix);
-    const antiMatrix = aether.mat4.transpose([inverse[0], inverse[1], inverse[2], [0, 0, 0, 1]]);
+    inverse[3] = [0, 0, 0, 1];
+    const antiMatrix = aether.mat4.transpose(inverse);
     return antiMatrix;
 }
 export function centeringMatrix(range) {
     const [min, max] = range;
     const scale = 2 / Math.max(...aether.vec3.sub(max, min));
-    const center = aether.vec3.scale(aether.vec3.add(min, max), -0.5);
-    const matrix = aether.mat4.mul(aether.mat4.scaling(scale, scale, scale), aether.mat4.translation(center));
+    const center = aether.vec3.scale(aether.vec3.add(min, max), -0.5 * scale);
+    const matrix = aether.mat4.affine(aether.mat3.scaling(scale, scale, scale), center);
     return matrix;
 }
 export function union(ranges) {

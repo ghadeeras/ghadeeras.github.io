@@ -12,6 +12,18 @@ export class GPUView implements View {
         private canvas: gpu.Canvas,
     ) {}
 
+    get projectionMatrix() {
+        return this.normalsRenderer.projectionMatrix
+    }
+
+    get viewMatrix() {
+        return this.normalsRenderer.viewMatrix
+    }
+
+    get modelMatrix() {
+        return this.normalsRenderer.modelMatrix
+    }
+
     resize(): void {
         const width = this.canvas.element.width
         const height = this.canvas.element.height

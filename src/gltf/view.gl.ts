@@ -13,6 +13,8 @@ export type ModelIndexEntry = {
     }
 }
 
+const projection = new aether.PerspectiveProjection(1, null, false, true)
+
 export class GLView implements View {
 
     private context: wgl.Context;
@@ -32,10 +34,8 @@ export class GLView implements View {
 
     private renderer: wgl.GLRenderer | null = null
 
-    private viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
-    private modelMatrix: aether.Mat<4> = aether.mat4.identity()
-
-    private projectionMatrix = aether.mat4.projection(2, undefined, undefined, 2);
+    private _viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
+    private _modelMatrix: aether.Mat<4> = aether.mat4.identity()
 
     constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string, inputs: ViewInputs) {
         this.context = wgl.Context.of(canvasId);
@@ -62,8 +62,6 @@ export class GLView implements View {
         this.uShininess = program.uniform("shininess");
         this.uFogginess = program.uniform("fogginess");
 
-        this.uProjectionMat.data = aether.mat4.columnMajorArray(this.projectionMatrix);
-
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
@@ -75,11 +73,11 @@ export class GLView implements View {
         inputs.shininess.attach(s => this.uShininess.data = [s])
         inputs.fogginess.attach(f => this.uFogginess.data = [f])
         inputs.matModel.attach(m => {
-            this.modelMatrix = m
+            this._modelMatrix = m
             this.updateModelViewMatrix();
         })
         inputs.matView.attach(v => {
-            this.viewMatrix = v
+            this._viewMatrix = v
             this.updateModelViewMatrix();
         })
 
@@ -104,12 +102,29 @@ export class GLView implements View {
 
     }
 
+    get projectionMatrix() {
+        return aether.mat4.from(this.uProjectionMat.data)
+    }
+
+    set projectionMatrix(m: aether.Mat4) {
+        this.uProjectionMat.data = aether.mat4.columnMajorArray(m)
+    }
+
+    get viewMatrix() {
+        return this._viewMatrix
+    }
+
+    get modelMatrix() {
+        return this._modelMatrix
+    }
+
     private updateModelViewMatrix() {
-        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this.viewMatrix, this.modelMatrix));
+        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
 
     resize(): void {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
+        this.projectionMatrix = projection.matrix(2, this.context.canvas.width / this.context.canvas.height)
     }
 
     draw() {

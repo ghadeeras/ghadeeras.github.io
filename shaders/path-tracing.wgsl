@@ -437,14 +437,9 @@ fn shootInGrid(ray: Ray) -> Hit {
 
 fn exchangeLight(boxId: u32, faceId: u32, oldLightId: u32, newLightId: u32) {
     let lightsPtr = &importantDirections[boxId].faces[faceId].lights;
-    for (var i = 0; i < 4; i++) {
-        let lightPtr = &(*lightsPtr)[i];
-        let lightId = atomicLoad(lightPtr);
-        if (lightId == oldLightId) {
-            atomicStore(lightPtr, newLightId);
-            return;
-        }
-    }
+    let i = (next_u32() >> 10u) & 3u;
+    let lightPtr = &(*lightsPtr)[i];
+    atomicCompareExchangeWeak(lightPtr, oldLightId, newLightId);
 }
 
 struct Result {
