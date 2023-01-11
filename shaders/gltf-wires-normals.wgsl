@@ -34,9 +34,9 @@ fn v_main(
 }
 
 fn focalLength() -> f32 {
-    let zoom = uniforms.projectionMat[1][1];
-    let near = uniforms.projectionMat[3][2] * uniforms.projectionMat[2][3];
-    return zoom * near;
+    let scaleX = uniforms.projectionMat[0][0];
+    let scaleY = uniforms.projectionMat[1][1];
+    return max(scaleX, scaleY);
 }
 
 @fragment

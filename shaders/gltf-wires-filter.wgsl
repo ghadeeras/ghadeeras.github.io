@@ -42,9 +42,9 @@ struct Sample {
 };
 
 fn calculateFocalLength() -> f32 {
-    let zoom = uniforms.projectionMat[1][1];
-    let near = uniforms.projectionMat[3][2] * uniforms.projectionMat[2][3];
-    return abs(zoom * near);
+    let scaleX = uniforms.projectionMat[0][0];
+    let scaleY = uniforms.projectionMat[1][1];
+    return max(scaleX, scaleY);
 }
 
 fn loadSample(xy: vec2<i32>, pos: vec2<f32>) -> Sample {
@@ -61,7 +61,7 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     let pixelSize = vec2(dpdx(vertex.pos.x), dpdy(vertex.pos.y));
     let xy = vec2<i32>(vertex.position.xy);
     let refSample = loadSample(xy, vertex.pos);
-    let factor = focalLength / (pixelSize.x * refSample.position.z);
+    let factor = 1.0 / (pixelSize.x * refSample.position.z);
     var sameNormal = 0.0;
     var samePlane = 0.0;
     for (var i = -filterWidth; i <= filterWidth; i = i + 1) {
