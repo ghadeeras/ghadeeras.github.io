@@ -3,6 +3,9 @@ import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe } from './universe.js'
 import { CanvasSizeManager } from '../utils/gear.js'
+import { PerspectiveProjection } from '/aether/latest/index.js'
+
+const projection = new PerspectiveProjection(1, null, false, false)
 
 export class Renderer {
 
@@ -29,7 +32,8 @@ export class Renderer {
 
     private depthTexture: gpu.Texture
 
-    private _projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2)
+    private _zoom = 1
+    private _aspectRatio = 1
     private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
     private _modelMatrix = aether.mat4.identity()
 
@@ -46,19 +50,17 @@ export class Renderer {
 
         this.depthTexture = canvas.depthTexture()
         const sizeManager = new CanvasSizeManager(true)
-        sizeManager.observe(canvas.element, () => {
-            this.canvas.resize()
-            this.depthTexture.resize(this.canvas.size)
-        })
-
+        sizeManager.observe(canvas.element, () => this.resize())
+        this._aspectRatio = canvas.element.width / canvas.element.height
+    
         /* Pipeline */
         this.pipeline = this.createPipeline(renderShader, canvas, mesh)
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0)
 
         /* Buffers */
         this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
-            mvpMatrix: this.mvpMatrix(),
-            mMatrix: this.mMatrix(),
+            mvpMatrix: this.mvpMatrix,
+            mMatrix: this.modelMatrix,
             radiusScale: 0.06
         }]))
         this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)))
@@ -68,19 +70,21 @@ export class Renderer {
         this.bindGroup = this.device.bindGroup(bindGroupLayout, [this.uniformsBuffer])
     }
 
-    get projectionViewMatrix() {
-        return aether.mat4.mul(
-            this.projectionMatrix,
-            this.viewMatrix
-        )
+    get zoom() {
+        return this._zoom
     }
 
-    get projectionMatrix() {
-        return this._projectionMatrix
+    set zoom(z: number) {
+        this._zoom = z
+        this.updateMvpMatrix()
     }
 
-    set projectionMatrix(m: aether.Mat<4>) {
-        this._projectionMatrix = m
+    get aspectRatio() {
+        return this._aspectRatio
+    }
+
+    set aspectRatio(r: number) {
+        this._aspectRatio = r
         this.updateMvpMatrix()
     }
 
@@ -110,20 +114,23 @@ export class Renderer {
         this.uniformsBuffer.set(this.uniformsStruct.members.radiusScale, v)
     }
 
-    private updateMvpMatrix() {
-        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix())
-        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.mMatrix())
-    }
-
-    private mvpMatrix() {
+    get mvpMatrix() {
         return aether.mat4.mul(
-            aether.mat4.mul(this._projectionMatrix, this._viewMatrix),
+            this.projectionViewMatrix,
             this._modelMatrix
         )
     }
 
-    private mMatrix() {
-        return this._modelMatrix
+    get projectionViewMatrix(): aether.Mat4 {
+        return aether.mat4.mul(
+            projection.matrix(this.zoom, this.aspectRatio),
+            this.viewMatrix
+        )
+    }
+
+    private updateMvpMatrix() {
+        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix)
+        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.modelMatrix)
     }
 
     private createPipeline(shaderModule: gpu.ShaderModule, canvas: gpu.Canvas, mesh: geo.Mesh): GPURenderPipeline {
@@ -144,6 +151,12 @@ export class Renderer {
             },
             layout: "auto"
         })
+    }
+
+    resize() {
+        this.canvas.resize()
+        this.depthTexture.resize(this.canvas.size)
+        this.aspectRatio = this.canvas.element.width / this.canvas.element.height
     }
 
     render(universe: Universe) {

@@ -12,6 +12,8 @@ import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { Universe } from './universe.js';
 import { CanvasSizeManager } from '../utils/gear.js';
+import { PerspectiveProjection } from '/aether/latest/index.js';
+const projection = new PerspectiveProjection(1, null, false, false);
 export class Renderer {
     constructor(device, canvas, renderShader) {
         var _a;
@@ -24,7 +26,8 @@ export class Renderer {
         this.bodySurfaceVertex = gpu.vertex({
             position: gpu.f32.x3
         });
-        this._projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2);
+        this._zoom = 1;
+        this._aspectRatio = 1;
         this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = aether.mat4.identity();
         this.uniformsStruct = gpu.struct({
@@ -37,17 +40,15 @@ export class Renderer {
         this.meshSize = mesh.indices.length;
         this.depthTexture = canvas.depthTexture();
         const sizeManager = new CanvasSizeManager(true);
-        sizeManager.observe(canvas.element, () => {
-            this.canvas.resize();
-            this.depthTexture.resize(this.canvas.size);
-        });
+        sizeManager.observe(canvas.element, () => this.resize());
+        this._aspectRatio = canvas.element.width / canvas.element.height;
         /* Pipeline */
         this.pipeline = this.createPipeline(renderShader, canvas, mesh);
         const bindGroupLayout = this.pipeline.getBindGroupLayout(0);
         /* Buffers */
         this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
-                mvpMatrix: this.mvpMatrix(),
-                mMatrix: this.mMatrix(),
+                mvpMatrix: this.mvpMatrix,
+                mMatrix: this.modelMatrix,
                 radiusScale: 0.06
             }]));
         this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)));
@@ -55,14 +56,18 @@ export class Renderer {
         /* Bind Groups */
         this.bindGroup = this.device.bindGroup(bindGroupLayout, [this.uniformsBuffer]);
     }
-    get projectionViewMatrix() {
-        return aether.mat4.mul(this.projectionMatrix, this.viewMatrix);
+    get zoom() {
+        return this._zoom;
     }
-    get projectionMatrix() {
-        return this._projectionMatrix;
+    set zoom(z) {
+        this._zoom = z;
+        this.updateMvpMatrix();
     }
-    set projectionMatrix(m) {
-        this._projectionMatrix = m;
+    get aspectRatio() {
+        return this._aspectRatio;
+    }
+    set aspectRatio(r) {
+        this._aspectRatio = r;
         this.updateMvpMatrix();
     }
     get viewMatrix() {
@@ -85,15 +90,15 @@ export class Renderer {
     set radiusScale(v) {
         this.uniformsBuffer.set(this.uniformsStruct.members.radiusScale, v);
     }
+    get mvpMatrix() {
+        return aether.mat4.mul(this.projectionViewMatrix, this._modelMatrix);
+    }
+    get projectionViewMatrix() {
+        return aether.mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);
+    }
     updateMvpMatrix() {
-        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix());
-        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.mMatrix());
-    }
-    mvpMatrix() {
-        return aether.mat4.mul(aether.mat4.mul(this._projectionMatrix, this._viewMatrix), this._modelMatrix);
-    }
-    mMatrix() {
-        return this._modelMatrix;
+        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix);
+        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.modelMatrix);
     }
     createPipeline(shaderModule, canvas, mesh) {
         return shaderModule.device.device.createRenderPipeline({
@@ -113,6 +118,11 @@ export class Renderer {
             },
             layout: "auto"
         });
+    }
+    resize() {
+        this.canvas.resize();
+        this.depthTexture.resize(this.canvas.size);
+        this.aspectRatio = this.canvas.element.width / this.canvas.element.height;
     }
     render(universe) {
         const descriptor = {

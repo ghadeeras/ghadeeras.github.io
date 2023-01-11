@@ -59,30 +59,23 @@ function setupControls(canvas, universe, renderer, pressedKey) {
     gear.elementEvents(canvas.element.id).dragging.value.switch(controller, keyMappings);
     universeRotation
         .then(gear.drag(new dragging.RotationDragging(() => renderer.modelMatrix, () => renderer.projectionViewMatrix)))
-        .later()
         .attach(m => renderer.modelMatrix = m);
     observerPosition
         .then(gear.drag(new dragging.LinearDragging(() => renderer.viewMatrix[3][2], -64, -1, 16)))
         .map(z => aether.mat4.lookAt([0, 0, z]))
-        .later()
         .attach(m => renderer.viewMatrix = m);
     bodyPointedness
         .then(gear.drag(new dragging.RatioDragging(() => universe.bodyPointedness, 0.001, 1000)))
-        .later()
         .attach(p => universe.bodyPointedness = p);
     gravityConstant
         .then(gear.drag(new dragging.RatioDragging(() => universe.gravityConstant, 1, 10000)))
-        .later()
         .attach(g => universe.gravityConstant = g);
     radiusScale
         .then(gear.drag(new dragging.RatioDragging(() => renderer.radiusScale, 0.001, 1)))
-        .later()
         .attach(s => renderer.radiusScale = s);
     zoom
-        .then(gear.drag(new dragging.RatioDragging(() => renderer.projectionMatrix[1][1], 0.01, 100)))
-        .map(z => aether.mat4.projection(z, undefined, undefined, 2))
-        .later()
-        .attach(m => renderer.projectionMatrix = m);
+        .then(gear.drag(new dragging.RatioDragging(() => renderer.zoom, 0.01, 100)))
+        .attach(z => renderer.zoom = z);
 }
 function setupActions(universe, renderer, pauseResumeAction, pressedKey) {
     const collapse = new gear.Value();
@@ -103,8 +96,9 @@ function setupActions(universe, renderer, pauseResumeAction, pressedKey) {
     reset.attach(() => {
         renderer.modelMatrix = aether.mat4.identity();
         renderer.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
-        renderer.projectionMatrix = aether.mat4.projection(1, undefined, undefined, 2);
         renderer.radiusScale = 0.06;
+        renderer.zoom = 1;
+        renderer.resize();
     });
     collapse.attach(() => {
         universe.bodyPointedness = 0.1;
