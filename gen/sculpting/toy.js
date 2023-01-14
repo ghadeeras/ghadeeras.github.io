@@ -15,7 +15,6 @@ import * as dragging from "../utils/dragging.js";
 import * as misc from "../utils/misc.js";
 import { CanvasSizeManager } from "../utils/gear.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = aether.mat4.projection(4, undefined, undefined, 2);
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting";
 export const video = "https://youtu.be/eeZ6qSAXo2o";
 export const huds = {
@@ -25,7 +24,7 @@ export function init(controller) {
     return __awaiter(this, void 0, void 0, function* () {
         const view = yield v.newView("canvas");
         view.matView = viewMatrix;
-        view.matProjection = projectionMatrix;
+        view.focalLength = 4;
         const picker = yield view.picker();
         const scalarFieldModule = yield aether.loadScalarFieldModule();
         const stone = scalarFieldModule.newInstance();
@@ -47,7 +46,7 @@ class Toy {
             picker.resize();
         });
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4);
-        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1]);
+        const focalLengthDragging = new dragging.RatioDragging(() => view.focalLength);
         this.pressedKey = new gear.Value((c) => toyController.handler = e => {
             c(e);
             return false;
@@ -56,7 +55,7 @@ class Toy {
         const cases = {
             carving: gear.Value.from(),
             rotation: gear.Value.from(),
-            focalRatio: gear.Value.from(),
+            focalLength: gear.Value.from(),
             shininess: gear.Value.from(),
             lightPosition: gear.Value.from(),
             lightRadius: gear.Value.from(),
@@ -64,7 +63,7 @@ class Toy {
         const keyMappings = {
             "c": cases.carving,
             "r": cases.rotation,
-            "z": cases.focalRatio,
+            "z": cases.focalLength,
             "h": cases.shininess,
             "d": cases.lightPosition,
             "l": cases.lightRadius,
@@ -89,10 +88,9 @@ class Toy {
                 .defaultsTo(rotationDragging.currentValue()),
             matView: gear.Value.from()
                 .defaultsTo(view.matView),
-            matProjection: cases.focalRatio
-                .then(gear.drag(focalRatioDragging))
-                .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => aether.mat4.projection(ratio, undefined, undefined, 2)),
+            focalLength: cases.focalLength
+                .then(gear.drag(focalLengthDragging))
+                .defaultsTo(focalLengthDragging.currentValue()),
             color: new gear.Value().defaultsTo([0.5, 0.5, 0.5, 1.0]),
             shininess: cases.shininess
                 .then(gear.drag(dragging.positionDragging))

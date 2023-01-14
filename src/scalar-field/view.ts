@@ -7,13 +7,15 @@ export interface View {
 
     setMatModel(modelPositions: aether.Mat<4>, modelNormals?: aether.Mat<4>): void
 
+    readonly matProjection: aether.Mat<4>
+
     readonly matPositions: aether.Mat<4>
 
     readonly matNormals: aether.Mat<4>
 
     matView: aether.Mat<4>
 
-    matProjection: aether.Mat<4>
+    focalLength: number
 
     color: aether.Vec<4>
 
@@ -47,7 +49,7 @@ export type ViewInputs = {
 
     matView: gear.Value<aether.Mat<4>>
 
-    matProjection: gear.Value<aether.Mat<4>>
+    focalLength: gear.Value<number>
 
     color: gear.Value<aether.Vec<4>>
 
@@ -66,7 +68,7 @@ export type ViewInputs = {
 export function wire(view: View, inputs: ViewInputs, primitives: GLenum = WebGL2RenderingContext.TRIANGLES) {
     inputs.matModel.attach(mat => view.setMatModel(mat, mat))
     inputs.matView.attach(mat => view.matView = mat)
-    inputs.matProjection.attach(mat => view.matProjection = mat)
+    inputs.focalLength.attach(l => view.focalLength = l)
     inputs.color.attach(c => view.color = c)
     inputs.shininess.attach(s => view.shininess = s)
     inputs.lightPosition.attach(pos => view.lightPosition = pos)

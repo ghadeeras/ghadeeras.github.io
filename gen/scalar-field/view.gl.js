@@ -10,12 +10,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether, gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 import { picker } from "./picker.gl.js";
+const projection = new aether.PerspectiveProjection(1, null, false, true);
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this._matPositions = aether.mat4.identity();
         this._matNormals = aether.mat4.identity();
         this._matView = aether.mat4.identity();
         this._globalLightPosition = [2, 2, 2, 1];
+        this._focalLength = 2;
+        this._aspectRatio = 1;
         this.context = wgl.Context.of(canvasId);
         this.program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         this.program.use();
@@ -73,6 +76,8 @@ export class GLView {
             aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals));
     }
     resize() {
+        this._aspectRatio = this.context.canvas.width / this.context.canvas.height;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
     }
     get matPositions() {
@@ -87,6 +92,13 @@ export class GLView {
     set matView(m) {
         this._matView = m;
         this.lightPosition = this._globalLightPosition;
+    }
+    get focalLength() {
+        return this._focalLength;
+    }
+    set focalLength(l) {
+        this._focalLength = l;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
     }
     get matProjection() {
         return aether.mat4.from(this._matProjection.data);

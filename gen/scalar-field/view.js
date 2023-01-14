@@ -13,7 +13,7 @@ import { required } from "../utils/misc.js";
 export function wire(view, inputs, primitives = WebGL2RenderingContext.TRIANGLES) {
     inputs.matModel.attach(mat => view.setMatModel(mat, mat));
     inputs.matView.attach(mat => view.matView = mat);
-    inputs.matProjection.attach(mat => view.matProjection = mat);
+    inputs.focalLength.attach(l => view.focalLength = l);
     inputs.color.attach(c => view.color = c);
     inputs.shininess.attach(s => view.shininess = s);
     inputs.lightPosition.attach(pos => view.lightPosition = pos);

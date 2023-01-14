@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { picker } from "./picker.gpu.js";
+const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class GPUView {
     constructor(device, canvasId, shaderModule) {
         this.device = device;
@@ -29,6 +30,8 @@ export class GPUView {
         this._matNormals = aether.mat4.identity();
         this._matView = aether.mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
+        this._focalLength = 2;
+        this._aspectRatio = 1;
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride);
         this.canvas = device.canvas(canvasId, 4);
@@ -78,8 +81,17 @@ export class GPUView {
         });
     }
     resize() {
+        this._aspectRatio = this.canvas.element.width / this.canvas.element.height;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
         this.canvas.resize();
         this.depthTexture.resize(this.canvas.size);
+    }
+    get focalLength() {
+        return this._focalLength;
+    }
+    set focalLength(l) {
+        this._focalLength = l;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
     }
     get matProjection() {
         return this.uniforms.get(this.uniformsStruct.members.projectionMat);

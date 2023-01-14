@@ -3,6 +3,8 @@ import * as gpu from "../djee/gpu/index.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gpu.js"
 
+const projection = new aether.PerspectiveProjection(1, null, false, false)
+
 export class GPUView implements v.View {
 
     private canvas: gpu.Canvas
@@ -36,6 +38,9 @@ export class GPUView implements v.View {
     private _matNormals: aether.Mat<4> = aether.mat4.identity()
     private _matView: aether.Mat<4> = aether.mat4.identity()
     private _lightPosition: aether.Vec<4> = [2, 2, 2, 1]
+
+    private _focalLength = 2
+    private _aspectRatio = 1
 
     constructor(
         private device: gpu.Device,
@@ -103,15 +108,26 @@ export class GPUView implements v.View {
     }
 
     resize() {
+        this._aspectRatio = this.canvas.element.width / this.canvas.element.height
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
         this.canvas.resize()
         this.depthTexture.resize(this.canvas.size)
+    }
+
+    get focalLength() {
+        return this._focalLength
+    }
+
+    set focalLength(l: number) {
+        this._focalLength = l
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
     }
 
     get matProjection(): aether.Mat<4> {
         return this.uniforms.get(this.uniformsStruct.members.projectionMat)
     }
 
-    set matProjection(m: aether.Mat<4>) {
+    private set matProjection(m: aether.Mat<4>) {
         this.uniforms.set(this.uniformsStruct.members.projectionMat, m)
     }
 

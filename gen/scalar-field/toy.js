@@ -14,7 +14,6 @@ import * as v from "./view.js";
 import * as dragging from "../utils/dragging.js";
 import { CanvasSizeManager } from "../utils/gear.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-const projectionMatrix = aether.mat4.projection(Math.pow(2, 1.5));
 export function init() {
     window.onload = () => doInit();
 }
@@ -24,7 +23,7 @@ function doInit() {
         const scalarFieldInstance = scalarFieldModule.newInstance();
         const view = yield v.newView("canvas-gl");
         view.matView = viewMatrix;
-        view.matProjection = projectionMatrix;
+        view.focalLength = Math.pow(2, 1.5);
         new Toy(view, scalarFieldInstance);
     });
 }
@@ -40,7 +39,7 @@ class Toy {
         const cases = {
             contourValue: gear.Value.from(),
             rotation: gear.Value.from(),
-            focalRatio: gear.Value.from(),
+            focalLength: gear.Value.from(),
             shininess: gear.Value.from(),
             fogginess: gear.Value.from(),
             lightPosition: gear.Value.from(),
@@ -58,10 +57,9 @@ class Toy {
                 .defaultsTo(rotationDragging.currentValue()),
             matView: gear.Value.from()
                 .defaultsTo(view.matView),
-            matProjection: cases.focalRatio
+            focalLength: cases.focalLength
                 .then(gear.drag(focalRatioDragging))
-                .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => aether.mat4.projection(ratio)),
+                .defaultsTo(focalRatioDragging.currentValue()),
             color: contourValue
                 .map(v => this.fieldColor(v)),
             shininess: cases.shininess

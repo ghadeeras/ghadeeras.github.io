@@ -8,7 +8,6 @@ import * as misc from "../utils/misc.js"
 import { CanvasSizeManager } from "../utils/gear.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-const projectionMatrix = aether.mat4.projection(4, undefined, undefined, 2)
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting"
 export const video = "https://youtu.be/eeZ6qSAXo2o"
@@ -19,7 +18,7 @@ export const huds = {
 export async function init(controller: Controller) {
     const view = await v.newView("canvas")
     view.matView = viewMatrix
-    view.matProjection = projectionMatrix
+    view.focalLength = 4
 
     const picker = await view.picker()
 
@@ -47,7 +46,7 @@ class Toy {
         })
 
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
-        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[1][1])
+        const focalLengthDragging = new dragging.RatioDragging(() => view.focalLength)
 
         this.pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
             c(e)
@@ -65,7 +64,7 @@ class Toy {
         const cases = {
             carving: gear.Value.from<gear.Dragging>(),
             rotation: gear.Value.from<gear.Dragging>(),
-            focalRatio: gear.Value.from<gear.Dragging>(),
+            focalLength: gear.Value.from<gear.Dragging>(),
             shininess: gear.Value.from<gear.Dragging>(),
             lightPosition: gear.Value.from<gear.Dragging>(),
             lightRadius: gear.Value.from<gear.Dragging>(),
@@ -74,7 +73,7 @@ class Toy {
         const keyMappings = {
             "c": cases.carving,
             "r": cases.rotation,
-            "z": cases.focalRatio,
+            "z": cases.focalLength,
             "h": cases.shininess,
             "d": cases.lightPosition,
             "l": cases.lightRadius,
@@ -111,10 +110,9 @@ class Toy {
             matView: gear.Value.from<aether.Mat<4>>()
                 .defaultsTo(view.matView),
             
-            matProjection: cases.focalRatio
-                .then(gear.drag(focalRatioDragging))
-                .defaultsTo(focalRatioDragging.currentValue())
-                .map(ratio => aether.mat4.projection(ratio, undefined, undefined, 2)),
+            focalLength: cases.focalLength
+                .then(gear.drag(focalLengthDragging))
+                .defaultsTo(focalLengthDragging.currentValue()),
 
             color: new gear.Value<aether.Vec4>().defaultsTo([0.5, 0.5, 0.5, 1.0]),
 

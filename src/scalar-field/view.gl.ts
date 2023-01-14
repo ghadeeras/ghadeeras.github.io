@@ -3,6 +3,8 @@ import { wgl } from "../djee/index.js"
 import * as v from "./view.js"
 import { picker } from "./picker.gl.js"
 
+const projection = new aether.PerspectiveProjection(1, null, false, true)
+
 export class GLView implements v.View {
 
     readonly context: wgl.Context
@@ -31,6 +33,9 @@ export class GLView implements v.View {
     private _matNormals: aether.Mat<4> = aether.mat4.identity()
     private _matView: aether.Mat<4> = aether.mat4.identity()
     private _globalLightPosition: aether.Vec<4> = [2, 2, 2, 1]
+
+    private _focalLength = 2
+    private _aspectRatio = 1
 
     constructor(
         canvasId: string,
@@ -114,6 +119,8 @@ export class GLView implements v.View {
     }
 
     resize() {
+        this._aspectRatio = this.context.canvas.width / this.context.canvas.height
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
     }
 
@@ -134,11 +141,20 @@ export class GLView implements v.View {
         this.lightPosition = this._globalLightPosition
     }    
 
+    get focalLength() {
+        return this._focalLength
+    }
+
+    set focalLength(l: number) {
+        this._focalLength = l
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
+    }
+
     get matProjection(): aether.Mat<4> {
         return aether.mat4.from(this._matProjection.data)
     }
 
-    set matProjection(m: aether.Mat<4>) {
+    private set matProjection(m: aether.Mat<4>) {
         this._matProjection.data = aether.mat4.columnMajorArray(m)
     }
 
