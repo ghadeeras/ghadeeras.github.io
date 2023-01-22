@@ -59,6 +59,7 @@ export async function init(toyController: Controller, wires: boolean = false) {
         () => view.modelMatrix, 
         4
     )
+    const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix])
 
     const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
         c(e)
@@ -81,12 +82,14 @@ export async function init(toyController: Controller, wires: boolean = false) {
         modelRotation: new gear.Value<gear.Dragging>(),
         modelMove: new gear.Value<gear.Dragging>(),
         modelScale: new gear.Value<gear.Dragging>(),
+        zoom: new gear.Value<gear.Dragging>(),
     }
 
     const keyMappings = {
         "m": cases.modelMove,
         "r": cases.modelRotation,
         "s": cases.modelScale,
+        "z": cases.zoom,
         "c": cases.color,
         "h": cases.shininess,
         "d": cases.lightPosition,
@@ -113,7 +116,8 @@ export async function init(toyController: Controller, wires: boolean = false) {
                 cases.modelScale.then(gear.drag(modelScale)),
                 model.map(() => aether.mat4.identity())
             ),
-        matView: new gear.Value<aether.Mat4>(),
+        matProjection: cases.zoom.then(gear.drag(zoom)).map(([p, _]) => p), 
+        matView: cases.zoom.then(gear.drag(zoom)).map(([_, v]) => v),
         color: cases.color
             .then(gear.drag(dragging.positionDragging))
             .map(positionToColor())

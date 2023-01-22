@@ -81,25 +81,41 @@ export class GLView implements View {
             this.updateModelViewMatrix();
         })
 
+        inputs.matProjection.attach(m => this.projectionMatrix = m)
+
         inputs.modelUri.attach(async (modelUri) => {
             this.statusUpdater("Loading model ...")
             try {
-            const model = await gltf.graph.Model.create(modelUri)
-            if (this.renderer) {
-                this.renderer.destroy()
-                this.renderer = null
-            }
-            this.renderer = new wgl.GLRenderer(model, this.context, {
-                "POSITION" : this.position,
-                "NORMAL" : this.normal,
-            }, this.uPositionsMat, this.uNormalsMat)
-            this.statusUpdater("Rendering model ...")
+                this._modelMatrix = aether.mat4.identity()
+                this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
+                this.updateModelViewMatrix()
+                this.projectionMatrix =  projection.matrix(2, this.aspectRatio)
+                const model = await gltf.graph.Model.create(modelUri)
+                if (this.renderer) {
+                    this.renderer.destroy()
+                    this.renderer = null
+                }
+                this.renderer = new wgl.GLRenderer(model, this.context, {
+                    "POSITION" : this.position,
+                    "NORMAL" : this.normal,
+                }, this.uPositionsMat, this.uNormalsMat)
+                this.statusUpdater("Rendering model ...")
             } catch (e) {
                 this.statusUpdater(`Error: ${e}`)
                 console.error(e)
             }
         })
 
+    }
+
+    get aspectRatio(): number {
+        return this.context.canvas.width / this.context.canvas.height;
+    }
+
+    get focalLength() {
+        const m = this.projectionMatrix
+        const fl = Math.max(m[0][0], m[1][1]);
+        return fl > 0 ? fl : 2
     }
 
     get projectionMatrix() {
@@ -124,7 +140,7 @@ export class GLView implements View {
 
     resize(): void {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
-        this.projectionMatrix = projection.matrix(2, this.context.canvas.width / this.context.canvas.height)
+        this.projectionMatrix = projection.matrix(this.focalLength, this.aspectRatio)
     }
 
     draw() {

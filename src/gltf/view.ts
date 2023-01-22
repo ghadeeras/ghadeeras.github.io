@@ -26,6 +26,8 @@ export type ViewInputs = {
 
     matView: gear.Value<aether.Mat<4>>
 
+    matProjection: gear.Value<aether.Mat<4>>
+
     color: gear.Value<aether.Vec<4>>
 
     shininess: gear.Value<number>

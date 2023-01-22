@@ -36,6 +36,7 @@ export function init(toyController, wires = false) {
         const modelRotation = new dragging.RotationDragging(() => view.modelMatrix, () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 4);
         const modelTranslation = new dragging.TranslationDragging(() => view.modelMatrix, () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 4);
         const modelScale = new dragging.ScaleDragging(() => view.modelMatrix, 4);
+        const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix]);
         const pressedKey = new gear.Value((c) => toyController.handler = e => {
             c(e);
             return false;
@@ -55,11 +56,13 @@ export function init(toyController, wires = false) {
             modelRotation: new gear.Value(),
             modelMove: new gear.Value(),
             modelScale: new gear.Value(),
+            zoom: new gear.Value(),
         };
         const keyMappings = {
             "m": cases.modelMove,
             "r": cases.modelRotation,
             "s": cases.modelScale,
+            "z": cases.zoom,
             "c": cases.color,
             "h": cases.shininess,
             "d": cases.lightPosition,
@@ -78,7 +81,8 @@ export function init(toyController, wires = false) {
         const viewFactory = yield newViewFactory(canvas.element.id, wires);
         const view = viewFactory({
             matModel: gear.Value.from(cases.modelRotation.then(gear.drag(modelRotation)), cases.modelMove.then(gear.drag(modelTranslation)), cases.modelScale.then(gear.drag(modelScale)), model.map(() => aether.mat4.identity())),
-            matView: new gear.Value(),
+            matProjection: cases.zoom.then(gear.drag(zoom)).map(([p, _]) => p),
+            matView: cases.zoom.then(gear.drag(zoom)).map(([_, v]) => v),
             color: cases.color
                 .then(gear.drag(dragging.positionDragging))
                 .map(positionToColor())

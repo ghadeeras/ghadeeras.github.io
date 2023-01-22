@@ -1,4 +1,5 @@
 import { aether, gear } from "/gen/libs.js";
+import * as aetherx from "./aether.js";
 export class ModelMatrixDragging {
     constructor(matrix, projViewMatrix, speed = 1) {
         this.matrix = matrix;
@@ -10,10 +11,10 @@ export class ModelMatrixDragging {
     }
     mapper(matrix, from) {
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix());
-        const actualFrom = aether.vec3.swizzle(aether.mat4.apply(invProjViewMatrix, [...from, -1, 1]), 0, 1, 2);
+        const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...from, -1, 1]));
         const speed = this.speed * aether.vec3.length(actualFrom);
         return to => {
-            const actualTo = aether.vec3.swizzle(aether.mat4.apply(invProjViewMatrix, [...to, -1, 1]), 0, 1, 2);
+            const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, -1, 1]));
             const delta = this.delta(actualFrom, actualTo, speed);
             const translation = aether.mat4.translation(aether.vec3.from(matrix[3]));
             const rotation = [
@@ -27,14 +28,12 @@ export class ModelMatrixDragging {
     }
     finalize(matrix) {
         const s = Math.pow(aether.mat4.determinant(matrix), (1 / 3));
-        const x = aether.vec4.unit(matrix[0]);
-        const y = aether.vec4.unit(aether.vec4.subAll(matrix[1], aether.vec4.project(matrix[1], x)));
-        const z = aether.vec4.unit(aether.vec4.subAll(matrix[2], aether.vec4.project(matrix[2], x), aether.vec4.project(matrix[2], y)));
+        const [x, y, z, w] = aetherx.orthogonal(matrix);
         return [
             aether.vec4.scale(x, s),
             aether.vec4.scale(y, s),
             aether.vec4.scale(z, s),
-            matrix[3]
+            w
         ];
     }
 }
@@ -105,5 +104,35 @@ class PositionDragging extends gear.SimpleDraggingHandler {
 export const positionDragging = new PositionDragging();
 function clamp(n, min, max) {
     return Math.min(Math.max(n, min), max);
+}
+export class ZoomDragging {
+    constructor(projectViewMatrices, speed = 1) {
+        this.projectViewMatrices = projectViewMatrices;
+        this.speed = speed;
+    }
+    currentValue() {
+        return this.projectViewMatrices();
+    }
+    mapper([projectionMat, viewMat], from) {
+        const [sx, sy] = [projectionMat[0][0], projectionMat[1][1]];
+        const [focalLength, aspectRatio] = [Math.max(sx, sy), sy / sx];
+        const toVec3 = aspectRatio > 1
+            ? v => [v[0] * aspectRatio, v[1], -focalLength]
+            : v => [v[0], v[1] / aspectRatio, -focalLength];
+        const actualFrom = toVec3(from);
+        return to => {
+            const scale = Math.pow(2, this.speed * (to[1] - from[1]));
+            const actualTo = toVec3(aether.vec2.scale(from, 1 / scale));
+            const rotation = aether.mat4.crossProdRotation(actualFrom, actualTo);
+            const scaling = aether.mat4.scaling(scale, scale, 1);
+            return [
+                aether.mat4.mul(projectionMat, scaling),
+                aether.mat4.mul(rotation, viewMat)
+            ];
+        };
+    }
+    finalize([projectionMat, viewMat]) {
+        return [projectionMat, aetherx.orthogonal(viewMat)];
+    }
 }
 //# sourceMappingURL=dragging.js.map

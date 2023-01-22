@@ -49,9 +49,14 @@ export class GLView {
             this._viewMatrix = v;
             this.updateModelViewMatrix();
         });
+        inputs.matProjection.attach(m => this.projectionMatrix = m);
         inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
             this.statusUpdater("Loading model ...");
             try {
+                this._modelMatrix = aether.mat4.identity();
+                this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+                this.updateModelViewMatrix();
+                this.projectionMatrix = projection.matrix(2, this.aspectRatio);
                 const model = yield gltf.graph.Model.create(modelUri);
                 if (this.renderer) {
                     this.renderer.destroy();
@@ -68,6 +73,14 @@ export class GLView {
                 console.error(e);
             }
         }));
+    }
+    get aspectRatio() {
+        return this.context.canvas.width / this.context.canvas.height;
+    }
+    get focalLength() {
+        const m = this.projectionMatrix;
+        const fl = Math.max(m[0][0], m[1][1]);
+        return fl > 0 ? fl : 2;
     }
     get projectionMatrix() {
         return aether.mat4.from(this.uProjectionMat.data);
@@ -86,7 +99,7 @@ export class GLView {
     }
     resize() {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
-        this.projectionMatrix = projection.matrix(2, this.context.canvas.width / this.context.canvas.height);
+        this.projectionMatrix = projection.matrix(this.focalLength, this.aspectRatio);
     }
     draw() {
         const gl = this.context.gl;

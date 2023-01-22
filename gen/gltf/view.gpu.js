@@ -67,7 +67,16 @@ export class GPUView {
             positions: m,
             normals: m,
         })).attach(this.setter(uniformsStruct.members.mat));
+        inputs.matProjection.attach(this.setter(uniformsStruct.members.projectionMat));
         inputs.modelUri.attach((modelUri) => this.loadModel(modelUri));
+    }
+    get aspectRatio() {
+        return this.canvas.element.width / this.canvas.element.height;
+    }
+    get focalLength() {
+        const m = this.projectionMatrix;
+        const fl = Math.max(m[0][0], m[1][1]);
+        return fl > 0 ? fl : 2;
     }
     get projectionMatrix() {
         return this.uniforms.get(uniformsStruct.members.projectionMat);
@@ -85,6 +94,11 @@ export class GPUView {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 this.statusUpdater("Loading model ...");
+                this._modelMatrix = aether.mat4.identity();
+                this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+                const modelView = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+                this.uniforms.set(uniformsStruct.members.mat, { positions: modelView, normals: modelView });
+                this.projectionMatrix = projection.matrix(2, this.aspectRatio);
                 const model = yield gltf.graph.Model.create(modelUri);
                 this.statusUpdater("Parsing model ...");
                 if (this.renderer !== null) {
@@ -132,7 +146,7 @@ export class GPUView {
     resize() {
         this.canvas.resize();
         this.depthTexture.resize(this.canvas.size);
-        this.projectionMatrix = projection.matrix(2, this.canvas.element.width / this.canvas.element.height);
+        this.projectionMatrix = projection.matrix(this.focalLength, this.aspectRatio);
     }
     draw() {
         this.device.enqueueCommand("render", encoder => {
