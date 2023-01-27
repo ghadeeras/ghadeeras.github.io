@@ -39,12 +39,8 @@ export class Buffer {
     destroy() {
         this._buffer.destroy();
     }
-    asBindingResource(size = this._descriptor.size, offset = 0) {
-        return {
-            buffer: this._buffer,
-            size,
-            offset,
-        };
+    asBindingResource(binding = {}) {
+        return Object.assign(Object.assign({}, binding), { buffer: this._buffer });
     }
     setData(data) {
         this._size = data.byteLength;
@@ -56,18 +52,6 @@ export class Buffer {
         else {
             this.writeAt(0, data);
         }
-    }
-    syncFrom(data, element, index = 0, count = 1) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const [from, to] = element.range(index, count);
-            return yield this.writeAt(from, data, from, to - from);
-        });
-    }
-    syncTo(data, element, index = 0, count = 1) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const [from, to] = element.range(index, count);
-            return yield this.readAt(from, data, from, to - from);
-        });
     }
     writeAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
         return __awaiter(this, void 0, void 0, function* () {

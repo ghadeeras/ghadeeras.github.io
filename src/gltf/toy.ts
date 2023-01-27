@@ -59,7 +59,7 @@ export async function init(toyController: Controller, wires: boolean = false) {
         () => view.modelMatrix, 
         4
     )
-    const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix])
+    const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix], 2)
 
     const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
         c(e)

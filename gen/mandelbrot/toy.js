@@ -183,13 +183,14 @@ class Zoom {
     }
     mapper(value, from) {
         return to => {
-            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight;
-            const delta = aether.vec2.mul(calculateDelta(from, to), [aspect, 1]);
+            const aspect = this.view.canvas.width / this.view.canvas.height;
+            const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
+            const delta = aether.vec2.mul(calculateDelta(from, to), bounds);
             const power = -delta[1];
             const factor = Math.pow(16, power);
             return power == 0 ? value : {
                 scale: value.scale * factor,
-                center: aether.vec2.sub(value.center, aether.vec2.scale(calculateDelta([0, 0], aether.vec2.mul(from, [aspect, 1]), value.scale), factor - 1))
+                center: aether.vec2.sub(value.center, aether.vec2.scale(calculateDelta([0, 0], aether.vec2.mul(from, bounds), value.scale), factor - 1))
             };
         };
     }
@@ -209,8 +210,9 @@ class Move {
     }
     mapper(value, from) {
         return to => {
-            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight;
-            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), [aspect, 1]);
+            const aspect = this.view.canvas.width / this.view.canvas.height;
+            const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
+            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), bounds);
             return {
                 scale: value.scale,
                 center: aether.vec2.max(aether.vec2.min(aether.vec2.sub(value.center, delta), [+4, +4]), [-4, -4])

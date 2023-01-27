@@ -36,7 +36,7 @@ export function init(toyController, wires = false) {
         const modelRotation = new dragging.RotationDragging(() => view.modelMatrix, () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 4);
         const modelTranslation = new dragging.TranslationDragging(() => view.modelMatrix, () => aether.mat4.mul(view.projectionMatrix, view.viewMatrix), 4);
         const modelScale = new dragging.ScaleDragging(() => view.modelMatrix, 4);
-        const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix]);
+        const zoom = new dragging.ZoomDragging(() => [view.projectionMatrix, view.viewMatrix], 2);
         const pressedKey = new gear.Value((c) => toyController.handler = e => {
             c(e);
             return false;

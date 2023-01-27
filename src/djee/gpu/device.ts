@@ -4,6 +4,7 @@ import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
 import { Texture, Sampler } from "./texture.js"
+import { Resource } from "./utils.js"
 
 export class Device {
 
@@ -73,12 +74,13 @@ export class Device {
             SyncBuffer.create(label, this, usage, dataOrSize) 
     }
 
-    bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: GPUBindingResource[]) {
+    bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Resource | GPUBindingResource)[]) {
+        const discriminator: Exclude<keyof Resource, keyof GPUBindingResource> = "asBindingResource"
         return this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: resources.map((resource, index) => ({
                 binding: index,
-                resource:  resource,
+                resource: discriminator in resource ? resource.asBindingResource() : resource,
             }))
         })
     }

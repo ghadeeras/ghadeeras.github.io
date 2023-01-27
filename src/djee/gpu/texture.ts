@@ -1,5 +1,5 @@
 import { Device } from "./device.js"
-import { formatOf } from "./utils.js"
+import { formatOf, Resource } from "./utils.js"
 
 export class Texture {
 
@@ -67,7 +67,7 @@ export class Texture {
     
 }
 
-export class TextureView {
+export class TextureView implements Resource {
 
     readonly view: GPUTextureView
     
@@ -100,7 +100,7 @@ export class TextureView {
     
 }
 
-export class Sampler {
+export class Sampler implements Resource {
 
     readonly sampler: GPUSampler
 

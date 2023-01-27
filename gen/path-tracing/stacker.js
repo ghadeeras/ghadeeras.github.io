@@ -84,9 +84,9 @@ export class Stacker {
                 dimension: "2d-array",
                 baseArrayLayer: 0,
                 arrayLayerCount: layersCount
-            }).asBindingResource(),
-            this.normalsTexture.createView().asBindingResource(),
-            this.sampler.asBindingResource()
+            }),
+            this.normalsTexture.createView(),
+            this.sampler
         ]);
     }
     get layer() {

@@ -52,8 +52,8 @@ export class NormalsFilter {
         })
 
         this.group = device.bindGroup(this.groupLayout, [
-            this.uniforms.asBindingResource(),
-            this.normalsTexture.createView().asBindingResource()
+            this.uniforms,
+            this.normalsTexture.createView()
         ])
     }
 
@@ -64,8 +64,8 @@ export class NormalsFilter {
     resize(width: number, height: number): void {
         this.normalsTexture.resize({ width, height })
         this.group = this.normalsTexture.device.bindGroup(this.groupLayout, [
-            this.uniforms.asBindingResource(),
-            this.normalsTexture.createView().asBindingResource()
+            this.uniforms,
+            this.normalsTexture.createView()
         ])
     }
 

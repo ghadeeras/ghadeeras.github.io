@@ -1,12 +1,13 @@
-import { required } from "../utils.js"
+import { required, StrictOmit } from "../utils.js"
 import { Device } from "./device.js"
 import { CommandEncoder } from "./encoder.js"
 import { Element } from "./types.js"
+import { Resource } from "./utils.js"
 
 type Writer = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<Buffer>
 type Reader = (bufferOffset: number, data: DataView, dataOffset: number, size: number) => Promise<DataView>
 
-export class Buffer implements GPUBufferBinding {
+export class Buffer implements Resource {
 
     private _buffer: GPUBuffer
     private _descriptor: GPUBufferDescriptor
@@ -52,11 +53,10 @@ export class Buffer implements GPUBufferBinding {
         this._buffer.destroy()
     }
 
-    asBindingResource(size = this._descriptor.size, offset = 0): GPUBindingResource {
+    asBindingResource(binding: StrictOmit<GPUBufferBinding, "buffer"> = {}): GPUBindingResource {
         return {
+            ...binding,
             buffer: this._buffer,
-            size,
-            offset,
         }
     }
     
@@ -69,16 +69,6 @@ export class Buffer implements GPUBufferBinding {
         } else {
             this.writeAt(0, data)
         }
-    }
-
-    async syncFrom<T>(data: DataView, element: Element<T>, index = 0, count = 1): Promise<Buffer> {
-        const [from, to] = element.range(index, count)
-        return await this.writeAt(from, data, from, to - from)
-    }
-
-    async syncTo<T>(data: DataView, element: Element<T>, index = 0, count = 1): Promise<DataView> {
-        const [from, to] = element.range(index, count)
-        return await this.readAt(from, data, from, to - from)
     }
 
     async writeAt(bufferOffset: number, data: DataView, dataOffset = 0, size: number = data.byteLength): Promise<Buffer> {

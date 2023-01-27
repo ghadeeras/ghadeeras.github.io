@@ -4,7 +4,7 @@ import { required, viewGPU } from "./view.gpu.js"
 
 export interface View {
 
-    canvas: HTMLElement
+    canvas: HTMLCanvasElement
 
     center: aether.Vec<2>
 

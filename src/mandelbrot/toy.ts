@@ -209,8 +209,9 @@ class Zoom implements gear.DraggingHandler<Transformation> {
 
     mapper(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
         return to => {
-            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight
-            const delta = aether.vec2.mul(calculateDelta(from, to), [aspect, 1])
+            const aspect = this.view.canvas.width / this.view.canvas.height
+            const bounds: aether.Vec2 = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect]
+            const delta = aether.vec2.mul(calculateDelta(from, to), bounds)
             const power = -delta[1]
             const factor = 16 ** power
             return power == 0 ? value : {
@@ -218,7 +219,7 @@ class Zoom implements gear.DraggingHandler<Transformation> {
                 center: aether.vec2.sub(
                     value.center, 
                     aether.vec2.scale(
-                        calculateDelta([0, 0], aether.vec2.mul(from, [aspect, 1]), value.scale), 
+                        calculateDelta([0, 0], aether.vec2.mul(from, bounds), value.scale), 
                         factor - 1
                     )
                 )
@@ -246,8 +247,9 @@ class Move implements gear.DraggingHandler<Transformation> {
 
     mapper(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
         return to => {
-            const aspect = this.view.canvas.clientWidth / this.view.canvas.clientHeight
-            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), [aspect, 1])
+            const aspect = this.view.canvas.width / this.view.canvas.height
+            const bounds: aether.Vec2 = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect]
+            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), bounds)
             return {
                 scale: value.scale,
                 center: aether.vec2.max(

@@ -72,11 +72,12 @@ export class Device {
             SyncBuffer.create(label, this, usage, dataOrSize);
     }
     bindGroup(bindGroupLayout, resources) {
+        const discriminator = "asBindingResource";
         return this.device.createBindGroup({
             layout: bindGroupLayout,
             entries: resources.map((resource, index) => ({
                 binding: index,
-                resource: resource,
+                resource: discriminator in resource ? resource.asBindingResource() : resource,
             }))
         });
     }
