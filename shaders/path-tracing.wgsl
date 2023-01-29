@@ -465,13 +465,13 @@ fn trace(ray: Ray) -> Result {
         normal = select(normal, vec4(reflect(hitDetails.normal, normal.xyz), normal.w + hit.distance), reflection | (i == 0));
         color = color * hitDetails.material.xyz * weightedRay.weight;
         if (hitDetails.material.w < 0.0) {
-            if ((weightedRay.lightId == NIL) & (prevBoxId < OBSERVER)) {
+            if (hit.distance < 8.0 && weightedRay.lightId == NIL && prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
                 exchangeLight(prevBoxId, prevFaceId, NIL, lightId);
             }
             return Result(color, normal); 
         } else {
-            if ((weightedRay.lightId != NIL) & (prevBoxId < OBSERVER)) {
+            if (weightedRay.lightId != NIL && prevBoxId < OBSERVER) {
                 let lightId = (hitDetails.boxId << 3u) | hitDetails.faceId;
                 exchangeLight(prevBoxId, prevFaceId, lightId, NIL);
             }
