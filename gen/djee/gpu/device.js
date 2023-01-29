@@ -8,6 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { required } from "../utils.js";
+import { BindGroupLayout } from "./group.js";
 import { Buffer, SyncBuffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";
 import { CommandEncoder } from "./encoder.js";
@@ -70,6 +71,9 @@ export class Device {
         return stride > 0 ?
             SyncBuffer.create(label, this, usage, dataOrSize, stride) :
             SyncBuffer.create(label, this, usage, dataOrSize);
+    }
+    groupLayout(label, entries) {
+        return new BindGroupLayout(label, this, entries);
     }
     bindGroup(bindGroupLayout, resources) {
         const discriminator = "asBindingResource";

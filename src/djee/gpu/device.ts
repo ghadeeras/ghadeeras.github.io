@@ -1,4 +1,5 @@
 import { required } from "../utils.js"
+import { BindGroupLayout, BindGroupLayoutEntries } from "./group.js"
 import { Buffer, SyncBuffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
 import { CommandEncoder } from "./encoder.js"
@@ -72,6 +73,10 @@ export class Device {
         return stride > 0 ? 
             SyncBuffer.create(label, this, usage, dataOrSize, stride) : 
             SyncBuffer.create(label, this, usage, dataOrSize) 
+    }
+
+    groupLayout<L extends BindGroupLayoutEntries>(label: string, entries: L) {
+        return new BindGroupLayout(label, this, entries)
     }
 
     bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Resource | GPUBindingResource)[]) {

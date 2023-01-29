@@ -160,8 +160,8 @@ export class SyncBuffer {
         this.cpuBuffer = cpuBuffer;
         this.dirtyRange = [cpuBuffer.byteLength, 0];
     }
-    get buffer() {
-        return this.gpuBuffer.buffer;
+    asBindingResource(binding = {}) {
+        return this.gpuBuffer.asBindingResource(binding);
     }
     get(element) {
         return element.read(this.cpuBuffer);

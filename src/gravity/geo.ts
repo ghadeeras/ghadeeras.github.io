@@ -1,6 +1,32 @@
+import { gpu } from '../djee/index.js'
+
+export class ShaderMesh {
+
+    private static bodySurfaceVertex = gpu.vertex({
+        position: gpu.f32.x3
+    })
+
+    readonly indexFormat: GPUIndexFormat
+    readonly vertexLayout: GPUVertexBufferLayout
+
+    readonly indicesBuffer: gpu.Buffer
+    readonly verticesBuffer: gpu.Buffer
+
+    constructor(device: gpu.Device, readonly mesh: Mesh) {
+        this.indexFormat = mesh.positions.length > 0xFFFF ? "uint32" : "uint16"
+        this.vertexLayout = ShaderMesh.bodySurfaceVertex.asBufferLayout("vertex")
+
+        this.indicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(this.indexFormat == "uint32" 
+            ? new Uint32Array(mesh.indices)
+            : new Uint16Array(mesh.indices)
+        ))
+        this.verticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
+    }
+
+}
+
 export type Mesh = {
     topology: GPUPrimitiveTopology
-    indexFormat: GPUIndexFormat | undefined
     indices: number[]
     positions: number[]
 }
@@ -8,7 +34,6 @@ export type Mesh = {
 export function sphere(slices: number, stacks: number): Mesh {
     return {
         topology: "triangle-strip",
-        indexFormat: 'uint16',
         indices: sphereIndices(stacks, slices),
         positions: spherePositions(stacks, slices)
     }

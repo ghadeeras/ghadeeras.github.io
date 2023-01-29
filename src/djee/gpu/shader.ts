@@ -31,13 +31,13 @@ export class ShaderModule {
         return info.messages.some(m => m.type == "error")
     }
 
-    computePipeline(entryPoint: string) {
+    computePipeline(entryPoint: string, layout: GPUPipelineLayout | "auto" = "auto") {
         return this.device.device.createComputePipeline({
             compute: { 
                 module: this.shaderModule,
                 entryPoint: entryPoint, 
             },
-            layout: "auto",
+            layout,
             label: `${this.shaderModule.label}/${entryPoint}`
         })
     }

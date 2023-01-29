@@ -222,6 +222,8 @@ fn detailsOf(hit: Hit, ray: Ray) -> HitDetails {
 
 // Grid Traversing
 
+var<private> traverser: Traverser;
+
 struct Traverser {
     ray: Ray,
     step: vec3<i32>,
@@ -230,7 +232,7 @@ struct Traverser {
     cell: vec3<i32>,
 }
 
-fn traverser(ray: Ray) -> Traverser {
+fn newTraverser(ray: Ray) -> Traverser {
     let direction = sign(ray.direction);
     let step = vec3<i32>(direction) << GRID_BITS_SHIFT; 
     let rearCorner = max(-direction, ZERO_F3D);
@@ -240,12 +242,12 @@ fn traverser(ray: Ray) -> Traverser {
     return Traverser(ray, step, limit, distance, cell);
 }
 
-fn next(t: ptr<function, Traverser>) -> f32 {
-    let next = (*t).distance + abs((*t).ray.invDirection);
+fn next() -> f32 {
+    let next = traverser.distance + abs(traverser.ray.invDirection);
     let result = min(next.x, min(next.y, next.z));
     let closest = (next == vec3(result));
-    (*t).distance = select((*t).distance, next, closest);
-    (*t).cell = (*t).cell + select(ZERO_I3D, (*t).step, closest);
+    traverser.distance = select(traverser.distance, next, closest);
+    traverser.cell = traverser.cell + select(ZERO_I3D, traverser.step, closest);
     return result;
 }
 
@@ -423,14 +425,14 @@ fn shootObserver(ray: Ray) -> Hit {
 }
 
 fn shootInGrid(ray: Ray) -> Hit {
-    var t = traverser(ray);
+    traverser = newTraverser(ray);
     var hit = shootObserver(ray);
     var done = false;
     for (var i = 0; (i < 128) & !done; i = i + 1) {
-        let cell = grid[t.cell.x + t.cell.y + t.cell.z];
-        let distance = next(&t);
+        let cell = grid[traverser.cell.x + traverser.cell.y + traverser.cell.z];
+        let distance = next();
         hit = shoot(cell, ray, hit);
-        done = (hit.boxId < OBSERVER) | any(t.cell == t.limit) | (distance >= hit.distance);
+        done = (hit.boxId < OBSERVER) | any(traverser.cell == traverser.limit) | (distance >= hit.distance);
     }
     return hit;
 }

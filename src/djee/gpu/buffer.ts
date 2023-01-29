@@ -171,7 +171,7 @@ export class Buffer implements Resource {
 
 }
 
-export class SyncBuffer implements GPUBufferBinding {
+export class SyncBuffer implements Resource {
 
     private dirtyRange: [number, number]
 
@@ -179,8 +179,8 @@ export class SyncBuffer implements GPUBufferBinding {
         this.dirtyRange = [cpuBuffer.byteLength, 0]
     }
 
-    get buffer() {
-        return this.gpuBuffer.buffer
+    asBindingResource(binding: StrictOmit<GPUBufferBinding, "buffer"> = {}): GPUBindingResource {
+        return this.gpuBuffer.asBindingResource(binding)
     }
 
     get<T>(element: Element<T>): T {

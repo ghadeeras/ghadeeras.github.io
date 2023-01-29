@@ -7,122 +7,53 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { aether } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
-import { Universe } from './universe.js';
+import { UniverseLayout } from './universe.js';
 import { CanvasSizeManager } from '../utils/gear.js';
-import { PerspectiveProjection } from '/aether/latest/index.js';
-const projection = new PerspectiveProjection(1, null, false, false);
 export class Renderer {
-    constructor(device, canvas, renderShader) {
-        var _a;
+    constructor(device, canvas, visuals, renderShader) {
         this.device = device;
         this.canvas = canvas;
+        this.visuals = visuals;
         this.bodyDesc = gpu.vertex({
             massAndRadius: gpu.f32.x2
         });
-        this.bodyPosition = Universe.bodyState.asVertex(['position']);
-        this.bodySurfaceVertex = gpu.vertex({
-            position: gpu.f32.x3
-        });
-        this._zoom = 1;
-        this._aspectRatio = 1;
-        this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
-        this._modelMatrix = aether.mat4.identity();
-        this.uniformsStruct = gpu.struct({
-            mvpMatrix: gpu.f32.x4.x4,
-            mMatrix: gpu.f32.x4.x4,
-            radiusScale: gpu.f32,
-        });
-        const mesh = geo.sphere(18, 9);
-        this.meshIndexFormat = (_a = mesh.indexFormat) !== null && _a !== void 0 ? _a : "uint16";
-        this.meshSize = mesh.indices.length;
+        this.bodyPosition = UniverseLayout.bodyState.asVertex(['position']);
+        this.mesh = new geo.ShaderMesh(device, geo.sphere(18, 9));
         this.depthTexture = canvas.depthTexture();
         const sizeManager = new CanvasSizeManager(true);
         sizeManager.observe(canvas.element, () => this.resize());
-        this._aspectRatio = canvas.element.width / canvas.element.height;
+        visuals.aspectRatio = canvas.element.width / canvas.element.height;
         /* Pipeline */
-        this.pipeline = this.createPipeline(renderShader, canvas, mesh);
-        const bindGroupLayout = this.pipeline.getBindGroupLayout(0);
-        /* Buffers */
-        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
-                mvpMatrix: this.mvpMatrix,
-                mMatrix: this.modelMatrix,
-                radiusScale: 0.06
-            }]));
-        this.meshIndicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(new Uint16Array(mesh.indices)));
-        this.meshVerticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)));
-        /* Bind Groups */
-        this.bindGroup = this.device.bindGroup(bindGroupLayout, [this.uniformsBuffer]);
+        this.pipeline = this.createPipeline(renderShader);
     }
-    get zoom() {
-        return this._zoom;
-    }
-    set zoom(z) {
-        this._zoom = z;
-        this.updateMvpMatrix();
-    }
-    get aspectRatio() {
-        return this._aspectRatio;
-    }
-    set aspectRatio(r) {
-        this._aspectRatio = r;
-        this.updateMvpMatrix();
-    }
-    get viewMatrix() {
-        return this._viewMatrix;
-    }
-    set viewMatrix(m) {
-        this._viewMatrix = m;
-        this.updateMvpMatrix();
-    }
-    get modelMatrix() {
-        return this._modelMatrix;
-    }
-    set modelMatrix(m) {
-        this._modelMatrix = m;
-        this.updateMvpMatrix();
-    }
-    get radiusScale() {
-        return this.uniformsBuffer.get(this.uniformsStruct.members.radiusScale);
-    }
-    set radiusScale(v) {
-        this.uniformsBuffer.set(this.uniformsStruct.members.radiusScale, v);
-    }
-    get mvpMatrix() {
-        return aether.mat4.mul(this.projectionViewMatrix, this._modelMatrix);
-    }
-    get projectionViewMatrix() {
-        return aether.mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);
-    }
-    updateMvpMatrix() {
-        this.uniformsBuffer.set(this.uniformsStruct.members.mvpMatrix, this.mvpMatrix);
-        this.uniformsBuffer.set(this.uniformsStruct.members.mMatrix, this.modelMatrix);
-    }
-    createPipeline(shaderModule, canvas, mesh) {
+    createPipeline(shaderModule) {
         return shaderModule.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
                 this.bodyDesc.asBufferLayout('instance'),
                 this.bodyPosition.asBufferLayout('instance'),
-                this.bodySurfaceVertex.asBufferLayout('vertex')
+                this.mesh.vertexLayout
             ]),
-            fragment: shaderModule.fragmentState("f_main", [canvas]),
+            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
-                topology: mesh.topology,
-                stripIndexFormat: mesh.indexFormat,
+                topology: this.mesh.mesh.topology,
+                stripIndexFormat: this.mesh.indexFormat,
             },
             multisample: {
-                count: canvas.sampleCount
+                count: this.canvas.sampleCount
             },
-            layout: "auto"
+            layout: this.device.device.createPipelineLayout({
+                label: "rendererPipelineLayout",
+                bindGroupLayouts: [this.visuals.layout.bindGroupLayout.wrapped]
+            })
         });
     }
     resize() {
         this.canvas.resize();
         this.depthTexture.resize(this.canvas.size);
-        this.aspectRatio = this.canvas.element.width / this.canvas.element.height;
+        this.visuals.aspectRatio = this.canvas.element.width / this.canvas.element.height;
     }
     render(universe) {
         const descriptor = {
@@ -132,20 +63,20 @@ export class Renderer {
         this.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline);
-                pass.setBindGroup(0, this.bindGroup);
+                pass.setBindGroup(0, this.visuals.bindGroup.wrapped);
                 pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
                 pass.setVertexBuffer(1, universe.currentState.buffer);
-                pass.setVertexBuffer(2, this.meshVerticesBuffer.buffer);
-                pass.setIndexBuffer(this.meshIndicesBuffer.buffer, this.meshIndexFormat);
-                pass.drawIndexed(this.meshSize, universe.bodiesCount, 0, 0);
+                pass.setVertexBuffer(2, this.mesh.verticesBuffer.buffer);
+                pass.setIndexBuffer(this.mesh.indicesBuffer.buffer, this.mesh.indexFormat);
+                pass.drawIndexed(this.mesh.mesh.indices.length, universe.bodiesCount, 0, 0);
             });
         });
     }
 }
-export function newRenderer(device, canvas) {
+export function newRenderer(device, canvas, visuals) {
     return __awaiter(this, void 0, void 0, function* () {
         const shaderModule = yield device.loadShaderModule("gravity-render.wgsl");
-        return new Renderer(device, canvas, shaderModule);
+        return new Renderer(device, canvas, visuals, shaderModule);
     });
 }
 //# sourceMappingURL=renderer.js.map

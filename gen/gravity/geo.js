@@ -1,7 +1,21 @@
+import { gpu } from '../djee/index.js';
+export class ShaderMesh {
+    constructor(device, mesh) {
+        this.mesh = mesh;
+        this.indexFormat = mesh.positions.length > 0xFFFF ? "uint32" : "uint16";
+        this.vertexLayout = ShaderMesh.bodySurfaceVertex.asBufferLayout("vertex");
+        this.indicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(this.indexFormat == "uint32"
+            ? new Uint32Array(mesh.indices)
+            : new Uint16Array(mesh.indices)));
+        this.verticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)));
+    }
+}
+ShaderMesh.bodySurfaceVertex = gpu.vertex({
+    position: gpu.f32.x3
+});
 export function sphere(slices, stacks) {
     return {
         topology: "triangle-strip",
-        indexFormat: 'uint16',
         indices: sphereIndices(stacks, slices),
         positions: spherePositions(stacks, slices)
     };

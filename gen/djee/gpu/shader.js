@@ -41,13 +41,13 @@ export class ShaderModule {
             return info.messages.some(m => m.type == "error");
         });
     }
-    computePipeline(entryPoint) {
+    computePipeline(entryPoint, layout = "auto") {
         return this.device.device.createComputePipeline({
             compute: {
                 module: this.shaderModule,
                 entryPoint: entryPoint,
             },
-            layout: "auto",
+            layout,
             label: `${this.shaderModule.label}/${entryPoint}`
         });
     }
