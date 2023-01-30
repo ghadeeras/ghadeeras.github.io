@@ -13,7 +13,7 @@ import * as gpu from '../djee/gpu/index.js';
 import * as misc from '../utils/misc.js';
 import { UniverseLayout } from './universe.js';
 import { newRenderer } from './renderer.js';
-import { newEngine } from './physics.js';
+import { EngineLayout, newEngine } from './physics.js';
 import { VisualsLayout } from './visuals.js';
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
 export const video = "https://youtu.be/BrZm6LlOQlI";
@@ -28,18 +28,19 @@ export function init(controller) {
         const universe = universeLayout.instance(...createUniverse(16384));
         const visualsLayout = new VisualsLayout(device);
         const visuals = visualsLayout.instance();
-        const engine = yield newEngine(universeLayout);
+        const engineLayout = new EngineLayout(universeLayout);
+        const engine = yield newEngine(engineLayout);
         const renderer = yield newRenderer(device, canvas, visuals);
         const pressedKey = new gear.Value((c) => controller.handler = e => {
             c(e);
             return false;
         }).filter(e => e.down).map(e => e.key);
         const pauseResumeAction = animation(universe, renderer, engine);
-        setupControls(canvas, universe, renderer, visuals, pressedKey);
+        setupControls(canvas, universe, visuals, pressedKey);
         setupActions(universe, renderer, visuals, pauseResumeAction, pressedKey);
     });
 }
-function setupControls(canvas, universe, renderer, visuals, pressedKey) {
+function setupControls(canvas, universe, visuals, pressedKey) {
     const universeRotation = new gear.Value();
     const observerPosition = new gear.Value();
     const bodyPointedness = new gear.Value();

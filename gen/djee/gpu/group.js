@@ -15,6 +15,12 @@ export class BindGroupLayout {
     instance(label, entries) {
         return new BindGroup(label, this, entries);
     }
+    asGroup(group) {
+        return {
+            group,
+            layout: this
+        };
+    }
 }
 export class BindGroup {
     constructor(label, layout, entries) {
@@ -27,11 +33,12 @@ export class BindGroup {
                 resource: entries[key].asBindingResource()
             });
         }
-        this.wrapped = layout.device.device.createBindGroup({
+        this.descriptor = {
             label,
             layout: layout.wrapped,
             entries: entryList
-        });
+        };
+        this.wrapped = layout.device.device.createBindGroup(this.descriptor);
     }
 }
 //# sourceMappingURL=group.js.map

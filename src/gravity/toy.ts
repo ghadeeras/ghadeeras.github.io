@@ -5,7 +5,7 @@ import * as misc from '../utils/misc.js'
 import { Controller, ControllerEvent } from '../initializer.js'
 import { BodyDescriptionStruct, BodyStateStruct, Universe, UniverseLayout } from './universe.js'
 import { newRenderer, Renderer } from './renderer.js'
-import { Engine, newEngine } from './physics.js'
+import { Engine, EngineLayout, newEngine } from './physics.js'
 import { Visuals, VisualsLayout } from './visuals.js'
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
@@ -23,7 +23,8 @@ export async function init(controller: Controller) {
     const universe = universeLayout.instance(...createUniverse(16384))
     const visualsLayout = new VisualsLayout(device)
     const visuals = visualsLayout.instance()
-    const engine = await newEngine(universeLayout)
+    const engineLayout = new EngineLayout(universeLayout)
+    const engine = await newEngine(engineLayout)
     const renderer = await newRenderer(device, canvas, visuals)
 
     const pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => controller.handler = e => {
@@ -32,11 +33,11 @@ export async function init(controller: Controller) {
     }).filter(e => e.down).map(e => e.key)
     const pauseResumeAction = animation(universe, renderer, engine)
 
-    setupControls(canvas, universe, renderer, visuals, pressedKey)
+    setupControls(canvas, universe, visuals, pressedKey)
     setupActions(universe, renderer, visuals, pauseResumeAction, pressedKey)
 }
 
-function setupControls(canvas: gpu.Canvas, universe: Universe, renderer: Renderer, visuals: Visuals, pressedKey: gear.Value<string>) {
+function setupControls(canvas: gpu.Canvas, universe: Universe, visuals: Visuals, pressedKey: gear.Value<string>) {
     const universeRotation = new gear.Value<gear.Dragging>()
     const observerPosition = new gear.Value<gear.Dragging>()
     const bodyPointedness = new gear.Value<gear.Dragging>()

@@ -1,5 +1,6 @@
 import { Buffer, SyncBuffer } from "./buffer";
 import { Device } from "./device";
+import { PipelineLayoutEntry } from "./pipeline";
 import { Sampler, TextureView } from "./texture";
 
 export type BindGroupLayoutEntries = Record<string, GPUBindGroupLayoutEntry>
@@ -32,11 +33,19 @@ export class BindGroupLayout<L extends BindGroupLayoutEntries> {
         return new BindGroup(label, this, entries)
     }
 
+    asGroup(group: number): PipelineLayoutEntry<BindGroupLayout<L>> {
+        return {
+            group,
+            layout: this
+        }
+    }
+
 }
 
 export class BindGroup<L extends BindGroupLayoutEntries> {
 
     readonly wrapped: GPUBindGroup
+    readonly descriptor: GPUBindGroupDescriptor
 
     constructor(label: string, readonly layout: BindGroupLayout<L>, readonly entries: BindGroupEntries<L>) {
         const entryList: GPUBindGroupEntry[] = [];
@@ -46,11 +55,12 @@ export class BindGroup<L extends BindGroupLayoutEntries> {
                 resource: entries[key].asBindingResource()
             })
         }
-        this.wrapped = layout.device.device.createBindGroup({
+        this.descriptor = {
             label,
             layout: layout.wrapped,
             entries: entryList
-        })
+        }
+        this.wrapped = layout.device.device.createBindGroup(this.descriptor)
     }
 
 }
