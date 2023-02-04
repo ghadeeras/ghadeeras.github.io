@@ -1,25 +1,27 @@
 import * as gpu from '../djee/gpu/index.js'
-import { ComputePipeline, PipelineLayout, PipelineLayoutEntry } from '../djee/gpu/pipeline.js'
-import { Universe, UniverseBindGroupLayout, UniverseLayout } from './universe.js'
+import { ComputePipeline, PipelineLayout } from '../djee/gpu/pipeline.js'
+import { Universe, UniverseLayout } from './universe.js'
 
-export type EnginePipelineLayout = {
-    universe: PipelineLayoutEntry<UniverseBindGroupLayout>
-}
+export type EnginePipelineLayout = ReturnType<typeof engineLayout>
 
 export class EngineLayout {
 
     readonly pipelineLayout: PipelineLayout<EnginePipelineLayout>
     
     constructor(universeLayout: UniverseLayout) {
-        this.pipelineLayout = new PipelineLayout("engineLayout", universeLayout.device, {
-            universe: universeLayout.bindGroupLayout.asGroup(0)
-        })
+        this.pipelineLayout = new PipelineLayout("engineLayout", universeLayout.device, engineLayout(universeLayout))
     }
 
     instance(computeShader: gpu.ShaderModule, workgroupSize: number) {
         return new Engine(this, computeShader, workgroupSize)
     }
 
+}
+
+function engineLayout(universeLayout: UniverseLayout) {
+    return {
+        universe: universeLayout.bindGroupLayout.asGroup(0)
+    }
 }
 
 export class Engine {

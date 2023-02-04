@@ -4,6 +4,9 @@ export function required(value) {
     }
     return value;
 }
+export function error(message) {
+    throw new Error(message);
+}
 export function save(url, contentType, fileName) {
     const anchor = document.createElement("a");
     anchor.href = url;

@@ -10,13 +10,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { PipelineLayout } from '../djee/gpu/pipeline.js';
 export class EngineLayout {
     constructor(universeLayout) {
-        this.pipelineLayout = new PipelineLayout("engineLayout", universeLayout.device, {
-            universe: universeLayout.bindGroupLayout.asGroup(0)
-        });
+        this.pipelineLayout = new PipelineLayout("engineLayout", universeLayout.device, engineLayout(universeLayout));
     }
     instance(computeShader, workgroupSize) {
         return new Engine(this, computeShader, workgroupSize);
     }
+}
+function engineLayout(universeLayout) {
+    return {
+        universe: universeLayout.bindGroupLayout.asGroup(0)
+    };
 }
 export class Engine {
     constructor(layout, computeShader, workgroupSize) {

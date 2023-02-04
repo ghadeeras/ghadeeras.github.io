@@ -5,6 +5,10 @@ export function required<T>(value: T | null | undefined): T {
     return value
 }
 
+export function error<T>(message: string): T {
+    throw new Error(message)
+}
+
 export function save(url: string, contentType: string, fileName: string) {
     const anchor = document.createElement("a")
     anchor.href = url
