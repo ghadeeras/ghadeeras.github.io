@@ -18,19 +18,37 @@ export class Pointer {
     private onpointerdown: typeof this.element.onpointerdown
     private onpointerup: typeof this.element.onpointerup
     private onpointermove: typeof this.element.onpointermove
+
+    private draggingTarget: DraggingTarget<any> | null = null
     
+    private observers: gear.Consumer<this>[] = []
+
     constructor(element: HTMLCanvasElement | string, types: PointerType[] = ["mouse", "touch", "pen"], aspectRatio = () => this.aspectRatio()) {
         this.types = new Set(types)
         this.element = asCanvas(element)
-        this.onpointerdown = e => this.buttonUsed(e, b => {
-            this.element.setPointerCapture(e.pointerId)
-            b.pressed = true
-        })
-        this.onpointerup = e => this.buttonUsed(e, b => {
-            this.element.releasePointerCapture(e.pointerId)
-            b.pressed = false
-        })
+        this.onpointerdown = e => this.buttonUsed(e, b => this.buttonPressed(e, b))
+        this.onpointerup = e => this.buttonUsed(e, b => this.buttonReleased(e, b))
         this.onpointermove = e => this.pointerMoved(e, aspectRatio)
+    }
+
+    register(observer: gear.Consumer<this>) {
+        this.observers.push(observer)
+    }
+
+    setDraggingTargetKey<T, K extends keyof T>(container: T, key: K, draggerConstructor: Dragging<T[K]>) {
+        this.setDraggingTarget(() => container[key], value => container[key] = value, draggerConstructor)
+    }
+
+    setDraggingTarget<T>(getter: gear.Supplier<T>, setter: gear.Consumer<T>, draggerConstructor: Dragging<T>) {
+        this.removeDraggingTarget()
+        this.draggingTarget = new DraggingTarget(this, getter, setter, draggerConstructor)
+    }
+
+    removeDraggingTarget() {
+        if (this.draggingTarget !== null) {
+            this.draggingTarget.stopDragging()
+            this.draggingTarget = null
+        }
     }
 
     use() {
@@ -47,7 +65,7 @@ export class Pointer {
         return this._y
     }
 
-    get position() {
+    get position(): gear.PointerPosition {
         return [this._x, this._y]
     }
 
@@ -76,6 +94,25 @@ export class Pointer {
         [this._x, this._y] = ar >= 1
             ? [ar * (2 * e.offsetX / this.element.clientWidth - 1), 1 - 2 * e.offsetY / this.element.clientHeight]
             : [2 * e.offsetX / this.element.clientWidth - 1, (1 - 2 * e.offsetY / this.element.clientHeight) / ar]
+        if (this.draggingTarget !== null) {
+            this.draggingTarget.keepDragging()
+        }
+    }
+
+    private buttonPressed(e: PointerEvent, b: PointerButton) {
+        this.element.setPointerCapture(e.pointerId)
+        b.pressed = true
+        if (this.draggingTarget !== null && b === this.primary) {
+            this.draggingTarget.startDragging()
+        }
+    }
+
+    private buttonReleased(e: PointerEvent, b: PointerButton) {
+        this.element.releasePointerCapture(e.pointerId)
+        b.pressed = false
+        if (this.draggingTarget !== null && b === this.primary) {
+            this.draggingTarget.stopDragging()
+        }
     }
 
     private buttonUsed(e: PointerEvent, action: (b: PointerButton) => void) {
@@ -96,6 +133,41 @@ export class Pointer {
             case 2: return this._secondary
             default: return null
         }
+    }
+
+}
+
+export type DraggingFunction<T> = (position: gear.PointerPosition) => T
+export interface Dragging<T> {
+    begin(object: T, position: gear.PointerPosition): DraggingFunction<T>
+    end(object: T): T
+}
+
+class DraggingTarget<T> {
+    
+    private initial: T
+    private drag: () => void = () => {}
+    private done: () => void = () => {}
+
+    constructor(private pointer: Pointer, private getter: gear.Supplier<T>, private setter: gear.Consumer<T>, private dragging: Dragging<T>) {
+        this.initial = getter()
+    }
+
+    startDragging() {
+        this.initial = this.getter()
+        const draggingFunction = this.dragging.begin(this.initial, this.pointer.position)
+        this.drag = () => this.setter(draggingFunction(this.pointer.position))
+        this.done = () => this.setter(this.dragging.end(this.getter()))
+    }
+
+    keepDragging() {
+        this.drag()
+    }
+    
+    stopDragging() {
+        this.done()
+        this.drag = () => {}
+        this.done = () => {}
     }
 
 }

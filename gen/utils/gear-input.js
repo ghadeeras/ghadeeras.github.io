@@ -6,17 +6,29 @@ export class Pointer {
         this._primary = null;
         this._secondary = null;
         this._auxiliary = null;
+        this.draggingTarget = null;
+        this.observers = [];
         this.types = new Set(types);
         this.element = asCanvas(element);
-        this.onpointerdown = e => this.buttonUsed(e, b => {
-            this.element.setPointerCapture(e.pointerId);
-            b.pressed = true;
-        });
-        this.onpointerup = e => this.buttonUsed(e, b => {
-            this.element.releasePointerCapture(e.pointerId);
-            b.pressed = false;
-        });
+        this.onpointerdown = e => this.buttonUsed(e, b => this.buttonPressed(e, b));
+        this.onpointerup = e => this.buttonUsed(e, b => this.buttonReleased(e, b));
         this.onpointermove = e => this.pointerMoved(e, aspectRatio);
+    }
+    register(observer) {
+        this.observers.push(observer);
+    }
+    setDraggingTargetKey(container, key, draggerConstructor) {
+        this.setDraggingTarget(() => container[key], value => container[key] = value, draggerConstructor);
+    }
+    setDraggingTarget(getter, setter, draggerConstructor) {
+        this.removeDraggingTarget();
+        this.draggingTarget = new DraggingTarget(this, getter, setter, draggerConstructor);
+    }
+    removeDraggingTarget() {
+        if (this.draggingTarget !== null) {
+            this.draggingTarget.stopDragging();
+            this.draggingTarget = null;
+        }
     }
     use() {
         this.element.onpointerdown = this.onpointerdown;
@@ -53,6 +65,23 @@ export class Pointer {
         [this._x, this._y] = ar >= 1
             ? [ar * (2 * e.offsetX / this.element.clientWidth - 1), 1 - 2 * e.offsetY / this.element.clientHeight]
             : [2 * e.offsetX / this.element.clientWidth - 1, (1 - 2 * e.offsetY / this.element.clientHeight) / ar];
+        if (this.draggingTarget !== null) {
+            this.draggingTarget.keepDragging();
+        }
+    }
+    buttonPressed(e, b) {
+        this.element.setPointerCapture(e.pointerId);
+        b.pressed = true;
+        if (this.draggingTarget !== null && b === this.primary) {
+            this.draggingTarget.startDragging();
+        }
+    }
+    buttonReleased(e, b) {
+        this.element.releasePointerCapture(e.pointerId);
+        b.pressed = false;
+        if (this.draggingTarget !== null && b === this.primary) {
+            this.draggingTarget.stopDragging();
+        }
     }
     buttonUsed(e, action) {
         if (!this.types.has(e.pointerType)) {
@@ -71,6 +100,31 @@ export class Pointer {
             case 2: return this._secondary;
             default: return null;
         }
+    }
+}
+class DraggingTarget {
+    constructor(pointer, getter, setter, dragging) {
+        this.pointer = pointer;
+        this.getter = getter;
+        this.setter = setter;
+        this.dragging = dragging;
+        this.drag = () => { };
+        this.done = () => { };
+        this.initial = getter();
+    }
+    startDragging() {
+        this.initial = this.getter();
+        const draggingFunction = this.dragging.begin(this.initial, this.pointer.position);
+        this.drag = () => this.setter(draggingFunction(this.pointer.position));
+        this.done = () => this.setter(this.dragging.end(this.getter()));
+    }
+    keepDragging() {
+        this.drag();
+    }
+    stopDragging() {
+        this.done();
+        this.drag = () => { };
+        this.done = () => { };
     }
 }
 class KeyboardEventWrapper {
