@@ -1,7 +1,7 @@
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe, UniverseLayout } from './universe.js'
-import { CanvasSizeManager } from '../utils/gear.js'
+import { CanvasSizeManager } from '../utils/gear-canvas.js'
 import { Visuals } from './visuals.js'
 
 export class Renderer {

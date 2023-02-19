@@ -1,3 +1,12 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 export function required(value) {
     if (value === null || value === undefined) {
         throw new Error(`Required value is ${value}!`);
@@ -33,6 +42,7 @@ export class FrequencyMeter {
             this.lastTime = time;
         }
         this.counter++;
+        return elapsedTime;
     }
     animateForever(frame) {
         this.animate(t => {
@@ -50,55 +60,9 @@ export class FrequencyMeter {
         };
         requestAnimationFrame(wrappedFrame);
     }
-    static create(unitTime, elementId) {
-        const element = required(document.getElementById(elementId));
-        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6));
-    }
-}
-export class CanvasRecorder {
-    constructor(canvas, fps = 0) {
-        this.canvas = canvas;
-        this.fps = fps;
-        this.chunks = [];
-        this.fileName = "video.webm";
-        const bps = Math.pow(2, Math.floor(Math.log2(canvas.width * canvas.height * 24))); // just a heuristic
-        this.videoStream = canvas.captureStream(0);
-        this.videoRecorder = new MediaRecorder(this.videoStream, { audioBitsPerSecond: 0, videoBitsPerSecond: bps, mimeType: "video/webm" });
-        this.videoRecorder.ondataavailable = e => {
-            this.chunks.push(e.data);
-        };
-        console.log(`Recorder mime type: ${this.videoRecorder.mimeType}`);
-        console.log(`Recorder video bps: ${this.videoRecorder.videoBitsPerSecond}`);
-        this.videoRecorder.onstop = () => {
-            const blob = new Blob(this.chunks);
-            const url = URL.createObjectURL(blob);
-            save(url, this.videoRecorder.mimeType, this.fileName);
-            this.chunks = [];
-        };
-    }
-    get state() {
-        return this.videoRecorder.state;
-    }
-    startStop() {
-        if (this.videoRecorder.state === "recording") {
-            this.videoRecorder.stop();
-        }
-        else {
-            this.videoRecorder.start();
-        }
-    }
-    start() {
-        this.videoRecorder.start();
-    }
-    stop(fileName = "video.mp4") {
-        this.fileName = fileName;
-        this.videoRecorder.stop();
-    }
-    requestFrame() {
-        const track = this.videoStream.getVideoTracks()[0];
-        if (track instanceof CanvasCaptureMediaStreamTrack) {
-            track.requestFrame();
-        }
+    static create(unitTime, elementOrId) {
+        const element = elementOrId instanceof HTMLElement ? elementOrId : required(document.getElementById(elementOrId));
+        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toFixed(3));
     }
 }
 export function throttled(freqInHz, logic) {
@@ -112,5 +76,21 @@ export function throttled(freqInHz, logic) {
             lastTime[0] = t - (elapsed % periodInMilliseconds);
         }
     };
+}
+export function fetchTextFile(url) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return fetch(url, { method: "get", mode: "no-cors" }).then(response => response.text());
+    });
+}
+export function property(object, key) {
+    return {
+        getter: () => object[key],
+        setter: value => object[key] = value
+    };
+}
+export function trap(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
 }
 //# sourceMappingURL=misc.js.map

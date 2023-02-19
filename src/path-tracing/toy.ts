@@ -1,7 +1,7 @@
 import * as gpu from "../djee/gpu/index.js"
 import * as aether from "/aether/latest/index.js"
 import * as gear from "/gear/latest/index.js"
-import * as misc from "../utils/misc.js"
+import * as gearx from "../utils/gear.js"
 import { Controller, ControllerEvent } from "../initializer.js"
 import { RotationDragging } from "../utils/dragging.js"
 import { Stacker } from "./stacker.js"
@@ -31,7 +31,7 @@ export async function init(controller: Controller) {
 
     const device = await gpuDevice()
     const canvas = device.canvas("canvas")
-    const recorder = new misc.CanvasRecorder(canvas.element)
+    const recorder = new gearx.CanvasRecorder(canvas.element)
 
     const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
     const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
@@ -46,10 +46,10 @@ export async function init(controller: Controller) {
         speed: aether.vec3.of(0, 0, 0),
         minLayersCount: 4,
     }
-    const samplesPerPixelElement = misc.required(document.getElementById("spp"))
-    const layersCountElement = misc.required(document.getElementById("layers"))
-    const maxLayersCountElement = misc.required(document.getElementById("max-layers"))
-    const denoisingElement = misc.required(document.getElementById("denoising"))
+    const samplesPerPixelElement = gearx.required(document.getElementById("spp"))
+    const layersCountElement = gearx.required(document.getElementById("layers"))
+    const maxLayersCountElement = gearx.required(document.getElementById("max-layers"))
+    const denoisingElement = gearx.required(document.getElementById("denoising"))
 
     const setSamplesPerPixel = (spp: number) => {
         tracer.samplesPerPixel = spp
@@ -76,10 +76,10 @@ export async function init(controller: Controller) {
         denoisingElement.innerText = b ? "on" : "off"
     }
 
-    setSamplesPerPixel(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
-    setLayersCount(Number.parseInt(misc.required(samplesPerPixelElement.textContent)))
-    setMinLayersOnly(misc.required(maxLayersCountElement.textContent) != "256")
-    setDenoising(misc.required(denoisingElement.textContent).toLowerCase() == "on")
+    setSamplesPerPixel(Number.parseInt(gearx.required(samplesPerPixelElement.textContent)))
+    setLayersCount(Number.parseInt(gearx.required(samplesPerPixelElement.textContent)))
+    setMinLayersOnly(gearx.required(maxLayersCountElement.textContent) != "256")
+    setDenoising(gearx.required(denoisingElement.textContent).toLowerCase() == "on")
 
     controller.handler = (e: ControllerEvent) => {
         const s = e.down ? 0.2 : 0
@@ -151,7 +151,7 @@ export async function init(controller: Controller) {
         recorder.requestFrame()
     }
     
-    const freqMeter = misc.FrequencyMeter.create(1000, "freq-watch")
+    const freqMeter = gearx.FrequencyMeter.create(1000, "freq-watch")
     freqMeter.animateForever(draw)
 }
 
@@ -235,7 +235,7 @@ function timeDistance(v1: VolumeStruct, v2: VolumeStruct, velocity: aether.Vec3)
 }
 
 async function gpuDevice() {
-    const gpuStatus = misc.required(document.getElementById("gpu-status"))
+    const gpuStatus = gearx.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

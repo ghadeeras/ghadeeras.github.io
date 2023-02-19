@@ -112,7 +112,7 @@ canvas {
     cursor: pointer;
 }
 
-.hud > div kbd.pressed {
+.hud .pressed kbd {
     color: rgba(0, 0, 0, 1.0);
     background-color: white;
 }

@@ -4,8 +4,7 @@ import { Controller, ControllerEvent } from "../initializer.js"
 import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
-import * as misc from "../utils/misc.js"
-import { CanvasSizeManager } from "../utils/gear.js"
+import * as gearx from "../utils/gear.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 
@@ -39,7 +38,7 @@ class Toy {
 
     constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker, toyController: Controller) {
         const canvas = gear.elementEvents("canvas")
-        const sizeManager = new CanvasSizeManager(true)
+        const sizeManager = new gearx.CanvasSizeManager(true)
         sizeManager.observe(canvas.element as HTMLCanvasElement, () => {
             view.resize()
             picker.resize()
@@ -170,13 +169,13 @@ class Toy {
     exportModel() {
         const model = gltf.createModel("Model", this.stone.vertices)
 
-        misc.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
-        misc.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
+        gearx.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
+        gearx.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
     }
 
     saveModel() {
         const buffer = this.serializeStone()
-        misc.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
+        gearx.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
     }
 
     private serializeStone() {
@@ -247,7 +246,7 @@ class Toy {
 }
 
 function control(previous: string) {
-    return misc.required(document.getElementById(`control-${previous}`))
+    return gearx.required(document.getElementById(`control-${previous}`))
 }
 
 function dropOn(element: HTMLElement) {
@@ -262,7 +261,7 @@ function data(e: DragEvent): Promise<ArrayBuffer> {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
         return item.kind == 'file' ?
-            misc.required(item.getAsFile()).arrayBuffer() :
+            gearx.required(item.getAsFile()).arrayBuffer() :
             asURL(item).then(fetch).then(response => response.arrayBuffer())
     } else {
         return Promise.reject("Not a data transfer!")

@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { UniverseLayout } from './universe.js';
-import { CanvasSizeManager } from '../utils/gear.js';
+import { CanvasSizeManager } from '../utils/gear-canvas.js';
 export class Renderer {
     constructor(device, canvas, visuals, renderShader) {
         this.device = device;

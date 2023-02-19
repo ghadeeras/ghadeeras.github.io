@@ -6,6 +6,12 @@ export class ModelMatrixDragging {
         this.projViewMatrix = projViewMatrix;
         this.speed = speed;
     }
+    begin(matrix, position) {
+        return this.mapper(matrix, position);
+    }
+    end(matrix) {
+        return this.finalize(matrix);
+    }
     currentValue() {
         return this.matrix();
     }
@@ -44,6 +50,9 @@ export class RotationDragging extends ModelMatrixDragging {
     delta(actualFrom, actualTo, speed) {
         return aether.mat4.crossProdRotation(actualFrom, actualTo, speed);
     }
+    static dragger(projViewMatrix, speed = 1) {
+        return new RotationDragging(supplyNothing, projViewMatrix, speed);
+    }
 }
 export class TranslationDragging extends ModelMatrixDragging {
     constructor(matrix, projViewMatrix, speed = 1) {
@@ -51,6 +60,9 @@ export class TranslationDragging extends ModelMatrixDragging {
     }
     delta(actualFrom, actualTo, speed) {
         return aether.mat4.translation(aether.vec3.scale(aether.vec3.sub(actualTo, actualFrom), speed));
+    }
+    static dragger(projViewMatrix, speed = 1) {
+        return new TranslationDragging(supplyNothing, projViewMatrix, speed);
     }
 }
 export class ScaleDragging extends ModelMatrixDragging {
@@ -61,6 +73,9 @@ export class ScaleDragging extends ModelMatrixDragging {
         const s = Math.pow(2, speed * (actualTo[1] - actualFrom[1]));
         return aether.mat4.scaling(s, s, s);
     }
+    static dragger(speed = 1) {
+        return new ScaleDragging(supplyNothing, speed);
+    }
 }
 export class RatioDragging {
     constructor(ratio, min = Math.pow(2, -128), max = Math.pow(2, 128), speed = 1) {
@@ -68,6 +83,12 @@ export class RatioDragging {
         this.min = min;
         this.max = max;
         this.speed = speed;
+    }
+    begin(ratio, position) {
+        return this.mapper(ratio, position);
+    }
+    end(ratio) {
+        return ratio;
     }
     currentValue() {
         return this.ratio();
@@ -78,6 +99,9 @@ export class RatioDragging {
     finalize(ratio) {
         return ratio;
     }
+    static dragger(min = Math.pow(2, -128), max = Math.pow(2, 128), speed = 1) {
+        return new RatioDragging(supplyNothing, min, max, speed);
+    }
 }
 export class LinearDragging {
     constructor(value, min = -1, max = 1, speed = 1) {
@@ -85,6 +109,12 @@ export class LinearDragging {
         this.min = min;
         this.max = max;
         this.speed = speed;
+    }
+    begin(value, position) {
+        return this.mapper(value, position);
+    }
+    end(value) {
+        return value;
     }
     currentValue() {
         return this.value();
@@ -95,10 +125,19 @@ export class LinearDragging {
     finalize(value) {
         return value;
     }
+    static dragger(min = -1, max = 1, speed = 1) {
+        return new LinearDragging(supplyNothing, min, max, speed);
+    }
 }
 class PositionDragging extends gear.SimpleDraggingHandler {
     constructor() {
         super(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)]);
+    }
+    begin(pos, position) {
+        return this.mapper(pos, position, false, false, false);
+    }
+    end(pos) {
+        return this.finalize(pos);
     }
 }
 export const positionDragging = new PositionDragging();
@@ -109,6 +148,12 @@ export class ZoomDragging {
     constructor(projectViewMatrices, speed = 1) {
         this.projectViewMatrices = projectViewMatrices;
         this.speed = speed;
+    }
+    begin(projectViewMatrices, position) {
+        return this.mapper(projectViewMatrices, position);
+    }
+    end(projectViewMatrices) {
+        return this.finalize(projectViewMatrices);
     }
     currentValue() {
         return this.projectViewMatrices();
@@ -134,5 +179,11 @@ export class ZoomDragging {
     finalize([projectionMat, viewMat]) {
         return [projectionMat, aetherx.orthogonal(viewMat)];
     }
+    static dragger(speed = 1) {
+        return new ZoomDragging(supplyNothing, speed);
+    }
+}
+function supplyNothing() {
+    throw new Error("Unsupported!");
 }
 //# sourceMappingURL=dragging.js.map

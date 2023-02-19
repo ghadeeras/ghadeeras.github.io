@@ -1,9 +1,8 @@
 import { aether, gear } from "/gen/libs.js";
-import * as misc from "../utils/misc.js"
+import * as gearx from "../utils/gear.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
 import { Controller, ControllerEvent, Toy } from "../initializer.js";
-import { CanvasSizeManager } from "../utils/gear.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -143,7 +142,7 @@ export async function init(toyController: Controller, wires: boolean = false) {
         modelUri: model.map(i => models[i][1]),
     })
 
-    const sizeManager = new CanvasSizeManager(true)
+    const sizeManager = new gearx.CanvasSizeManager(true)
     sizeManager.observe(canvas.element as HTMLCanvasElement, () => view.resize())
 
     gear.text("model-name").value = model.map(i => models[i][0])
@@ -164,7 +163,7 @@ export async function init(toyController: Controller, wires: boolean = false) {
 }
 
 function control(previous: string) {
-    return misc.required(document.getElementById(`control-${previous}`))
+    return gearx.required(document.getElementById(`control-${previous}`))
 }
 
 function positionToColor(): gear.Mapper<gear.PointerPosition, aether.Vec4> {

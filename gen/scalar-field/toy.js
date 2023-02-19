@@ -9,10 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether, gear } from "/gen/libs.js";
 import { gltf } from "../djee/index.js";
-import { save } from "../utils/misc.js";
+import * as gearx from "../utils/gear.js";
 import * as v from "./view.js";
 import * as dragging from "../utils/dragging.js";
-import { CanvasSizeManager } from "../utils/gear.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
 export function init() {
     window.onload = () => doInit();
@@ -32,7 +31,7 @@ class Toy {
         this.scalarFieldInstance = scalarFieldInstance;
         this.meshComputer = new gear.DeferredComputation(() => this.scalarFieldInstance.vertices);
         const canvas = gear.elementEvents("canvas-gl");
-        const sizeManager = new CanvasSizeManager(true);
+        const sizeManager = new gearx.CanvasSizeManager(true);
         sizeManager.observe(canvas.element, () => view.resize());
         const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4);
         const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0]);
@@ -121,9 +120,9 @@ class Toy {
     saveModel() {
         const model = gltf.createModel("ScalarField", this.scalarFieldInstance.vertices);
         const canvas = document.getElementById("canvas-gl");
-        save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf');
-        save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin');
-        save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png');
+        gearx.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf');
+        gearx.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin');
+        gearx.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png');
     }
 }
 const twoPi = 2 * Math.PI;

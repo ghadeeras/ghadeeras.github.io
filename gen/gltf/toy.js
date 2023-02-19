@@ -8,10 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import * as misc from "../utils/misc.js";
+import * as gearx from "../utils/gear.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
-import { CanvasSizeManager } from "../utils/gear.js";
 let models;
 let modelIndex = 1;
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
@@ -107,7 +106,7 @@ export function init(toyController, wires = false) {
                 .defaultsTo(0),
             modelUri: model.map(i => models[i][1]),
         });
-        const sizeManager = new CanvasSizeManager(true);
+        const sizeManager = new gearx.CanvasSizeManager(true);
         sizeManager.observe(canvas.element, () => view.resize());
         gear.text("model-name").value = model.map(i => models[i][0]);
         gear.text("status").value = view.status;
@@ -124,7 +123,7 @@ export function init(toyController, wires = false) {
     });
 }
 function control(previous) {
-    return misc.required(document.getElementById(`control-${previous}`));
+    return gearx.required(document.getElementById(`control-${previous}`));
 }
 function positionToColor() {
     const third = 2 * Math.PI / 3;

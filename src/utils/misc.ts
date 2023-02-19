@@ -37,6 +37,7 @@ export class FrequencyMeter {
             this.lastTime = time
         }
         this.counter++
+        return elapsedTime
     }
 
     animateForever(frame: (t: number) => void) {
@@ -57,64 +58,9 @@ export class FrequencyMeter {
         requestAnimationFrame(wrappedFrame)
     }
 
-    static create(unitTime: number, elementId: string) {
-        const element = required(document.getElementById(elementId))
-        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toPrecision(6))
-    }
-
-}
-
-export class CanvasRecorder {
-
-    readonly videoStream: MediaStream
-    readonly videoRecorder: MediaRecorder
-
-    private chunks: Blob[] = []
-    private fileName: string = "video.webm"
-    
-    constructor(readonly canvas: HTMLCanvasElement, readonly fps: number = 0) {
-        const bps = 2 ** Math.floor(Math.log2(canvas.width * canvas.height * 24)) // just a heuristic
-        this.videoStream = canvas.captureStream(0)
-        this.videoRecorder = new MediaRecorder(this.videoStream, { audioBitsPerSecond: 0, videoBitsPerSecond: bps, mimeType: "video/webm" })
-        this.videoRecorder.ondataavailable = e => {
-            this.chunks.push(e.data)
-        }
-        console.log(`Recorder mime type: ${this.videoRecorder.mimeType}`)
-        console.log(`Recorder video bps: ${this.videoRecorder.videoBitsPerSecond}`)
-        this.videoRecorder.onstop = () => {
-            const blob = new Blob(this.chunks)
-            const url = URL.createObjectURL(blob)
-            save(url, this.videoRecorder.mimeType, this.fileName)
-            this.chunks = []
-        }
-    }
-
-    get state() {
-        return this.videoRecorder.state
-    }
-
-    startStop() {
-        if (this.videoRecorder.state === "recording") {
-            this.videoRecorder.stop()
-        } else {
-            this.videoRecorder.start()
-        }
-    }
-
-    start() {
-        this.videoRecorder.start()
-    }
-
-    stop(fileName: string = "video.mp4") {
-        this.fileName = fileName
-        this.videoRecorder.stop()
-    }
-
-    requestFrame() {
-        const track = this.videoStream.getVideoTracks()[0]
-        if (track instanceof CanvasCaptureMediaStreamTrack) {
-            track.requestFrame()
-        }
+    static create(unitTime: number, elementOrId: HTMLElement | string) {
+        const element = elementOrId instanceof HTMLElement ? elementOrId : required(document.getElementById(elementOrId))
+        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toFixed(3))
     }
 
 }
@@ -130,4 +76,26 @@ export function throttled(freqInHz: number, logic: () => void): (time?: number) 
             lastTime[0] = t - (elapsed % periodInMilliseconds)
         }
     }
+}
+
+export async function fetchTextFile(url: string): Promise<string> {
+    return fetch(url, { method : "get", mode : "no-cors" }).then(response => response.text());
+}
+
+export type Property<V> = {
+    getter: () => V
+    setter: (value: V) => void
+}
+
+export function property<T, K extends keyof T>(object: T, key: K): Property<T[K]> {
+    return {
+        getter: () => object[key],
+        setter: value => object[key] = value
+    }
+}
+
+export function trap(e: UIEvent) {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    e.stopPropagation()
 }
