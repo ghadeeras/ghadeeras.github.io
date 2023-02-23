@@ -20,18 +20,18 @@ class LoopImpl {
             for (const keyDescriptor of loopDescriptor.input.keys) {
                 const button = this.newButton(keyDescriptor, loopDescriptor.styling);
                 if (keyDescriptor.onPressed) {
-                    const onPressed = keyDescriptor.onPressed.bind(loopAutomaton);
+                    const onPressed = keyDescriptor.onPressed;
                     button.register(b => {
                         if (b.pressed) {
-                            onPressed(this);
+                            onPressed(this, this.keyboard);
                         }
                     });
                 }
                 if (keyDescriptor.onReleased) {
-                    const onReleased = keyDescriptor.onReleased.bind(loopAutomaton);
+                    const onReleased = keyDescriptor.onReleased;
                     button.register(b => {
                         if (!b.pressed) {
-                            onReleased(this);
+                            onReleased(this, this.keyboard);
                         }
                     });
                 }
@@ -40,7 +40,7 @@ class LoopImpl {
         if (loopDescriptor.input.pointer) {
             const pointer = loopDescriptor.input.pointer;
             if (pointer.onMoved) {
-                const onMoved = pointer.onMoved.bind(loopAutomaton);
+                const onMoved = pointer.onMoved;
                 this.pointer.register(p => onMoved(this, ...p.position));
             }
             if (pointer.defaultDraggingTarget) {

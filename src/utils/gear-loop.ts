@@ -1,5 +1,5 @@
 import { Button, VirtualKey } from './gear-buttons.js'
-import { Keyboard } from './gear-keyboard.js';
+import { Keyboard, KeyboardEventContext } from './gear-keyboard.js';
 import { DraggingTarget, Pointer } from './gear-pointer.js';
 import { FrequencyMeter } from './misc.js';
 
@@ -18,8 +18,8 @@ export interface LoopLogic {
     render(): void    
 }
 
-export type LoopDescriptor<L extends LoopLogic> = {
-    input: InputDescriptor<L>
+export type LoopDescriptor = {
+    input: InputDescriptor
     styling?: {
         pressedButton?: string 
         releasedButton?: string 
@@ -30,32 +30,33 @@ export type LoopDescriptor<L extends LoopLogic> = {
     }
 }
 
-export type InputDescriptor<L extends LoopLogic> = {
-    pointer: PointerDescriptor<L>
-    keys?: KeyDescriptor<L>[]
+export type InputDescriptor = {
+    pointer: PointerDescriptor
+    keys?: KeyDescriptor[]
 }
 
-export type PointerDescriptor<A extends LoopLogic> = {
+export type PointerDescriptor = {
     element: HTMLElement | string
     defaultDraggingTarget?: DraggingTarget
-    onMoved?: InputPointerHandler<A>
+    onMoved?: InputPointerHandler
 }
 
-export type KeyDescriptor<A extends LoopLogic> = {
+export type KeyDescriptor = {
     virtualKey?: string
-    alternatives: [[string]]
-    onPressed?: InputKeyHandler<A>
-    onReleased?: InputKeyHandler<A>
+    alternatives: string[][]
+    onPressed?: InputKeyHandler
+    onReleased?: InputKeyHandler
+    onChange?: InputKeyHandler
 } 
 
-export type InputPointerHandler<L extends LoopLogic> = (this: L, loop: Loop, x: number, y: number) => void
-export type InputKeyHandler<L> = (this: L, loop: Loop) => void
+export type InputPointerHandler = (loop: Loop, x: number, y: number) => void
+export type InputKeyHandler = (loop: Loop, context: KeyboardEventContext) => void
 
-export function newLoop<L extends LoopLogic, D extends LoopDescriptor<L>>(loopLogic: L, inputDescriptor: D): Loop {
+export function newLoop<L extends LoopLogic, D extends LoopDescriptor>(loopLogic: L, inputDescriptor: D): Loop {
     return new LoopImpl(loopLogic, inputDescriptor)
 }
 
-class LoopImpl<L extends LoopLogic, D extends LoopDescriptor<L>> implements Loop {
+class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
 
     private static activeLoop: Loop | null = null
 
@@ -73,18 +74,18 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor<L>> implements Loop
             for (const keyDescriptor of loopDescriptor.input.keys) {
                 const button = this.newButton(keyDescriptor, loopDescriptor.styling)
                 if (keyDescriptor.onPressed) {
-                    const onPressed: (loop: Loop) => void = keyDescriptor.onPressed.bind(loopAutomaton)
+                    const onPressed = keyDescriptor.onPressed
                     button.register(b => {
                         if (b.pressed) {
-                            onPressed(this)
+                            onPressed(this, this.keyboard)
                         }
                     })
                 }
                 if (keyDescriptor.onReleased) {
-                    const onReleased: (loop: Loop) => void = keyDescriptor.onReleased.bind(loopAutomaton)
+                    const onReleased = keyDescriptor.onReleased
                     button.register(b => {
                         if (!b.pressed) {
-                            onReleased(this)
+                            onReleased(this, this.keyboard)
                         }
                     })
                 }
@@ -93,7 +94,7 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor<L>> implements Loop
         if (loopDescriptor.input.pointer) {
             const pointer = loopDescriptor.input.pointer;
             if (pointer.onMoved) {
-                const onMoved: (loop: Loop, x: number, y: number) => void = pointer.onMoved.bind(loopAutomaton)
+                const onMoved = pointer.onMoved
                 this.pointer.register(p => onMoved(this, ...p.position))
             }
             if (pointer.defaultDraggingTarget) {
@@ -144,7 +145,7 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor<L>> implements Loop
         })
     }
 
-    private newButton(keyDescriptor: KeyDescriptor<L>, styling: LoopDescriptor<L>["styling"]) {
+    private newButton(keyDescriptor: KeyDescriptor, styling: LoopDescriptor["styling"]) {
         const pressedClass = styling?.pressedButton ?? ""
         const releasedClass = styling?.releasedButton ?? ""
         const virtualButtons = keyDescriptor.virtualKey !== undefined

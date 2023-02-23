@@ -33,52 +33,52 @@ export function init() {
                     {
                         virtualKey: "#control-r",
                         alternatives: [["KeyR"]],
-                        onPressed: toy.rotationKey
+                        onPressed: toy.rotationKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-p",
                         alternatives: [["KeyP"]],
-                        onPressed: toy.positionKey
+                        onPressed: toy.positionKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-z",
                         alternatives: [["KeyZ"]],
-                        onPressed: toy.zoomKey
+                        onPressed: toy.zoomKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-s",
                         alternatives: [["KeyS"]],
-                        onPressed: toy.radiusScaleKey
+                        onPressed: toy.radiusScaleKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-g",
                         alternatives: [["KeyG"]],
-                        onPressed: toy.gravityKey
+                        onPressed: toy.gravityKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-b",
                         alternatives: [["KeyB"]],
-                        onPressed: toy.pointednessKey
+                        onPressed: toy.pointednessKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-1",
                         alternatives: [["Digit1"]],
-                        onPressed: toy.collapseKey
+                        onPressed: toy.collapseKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-2",
                         alternatives: [["Digit2"]],
-                        onPressed: toy.kaboomKey
+                        onPressed: toy.kaboomKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-3",
                         alternatives: [["Digit3"]],
-                        onPressed: toy.resetKey
+                        onPressed: toy.resetKey.bind(toy)
                     },
                     {
                         virtualKey: "#control-4",
                         alternatives: [["Digit4"]],
-                        onPressed: toy.pauseResumeKey
+                        onPressed: toy.pauseResumeKey.bind(toy)
                     },
                 ],
             },

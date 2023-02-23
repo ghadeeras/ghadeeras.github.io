@@ -54,8 +54,6 @@ struct Cell {
     size: u32,
 }
 
-type Grid = array<Cell, 262144>; // 262144 = 64 * 64 * 64
-
 @group(0) @binding(1)
 var<storage, read> materials: array<vec4<f32>>;
 
@@ -63,7 +61,7 @@ var<storage, read> materials: array<vec4<f32>>;
 var<storage, read> boxes: array<Box>;
 
 @group(0) @binding(3)
-var<storage, read> grid: Grid;
+var<storage, read> grid: array<Cell, 262144>; // 262144 = 64 * 64 * 64;
 
 @group(0) @binding(4)
 var<storage, read_write> importantDirections: array<BoxDirections>;

@@ -2,7 +2,17 @@ import { gear } from "../libs.js"
 import { trap } from "./gear.js"
 import { Key } from './gear-buttons.js'
 
-export class Keyboard {
+export interface KeyboardEventContext {
+
+    readonly repeat: boolean 
+    readonly shift: boolean 
+    readonly ctrl: boolean 
+    readonly alt: boolean 
+    readonly meta: boolean
+
+}
+
+export class Keyboard implements KeyboardEventContext {
 
     private keys = new Map<string, Key>()
 

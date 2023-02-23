@@ -21,6 +21,12 @@ canvas {
     display: block;
 }
 
+a {
+    color: rgb(96, 144, 240);
+    font-weight: bold;
+    text-decoration: none;
+}
+
 .menu {
     position: absolute;
     top: 0px;
@@ -146,12 +152,6 @@ canvas {
     font-weight: bold;
 }
 
-a {
-    color: rgb(96, 144, 240);
-    font-weight: bold;
-    text-decoration: none;
-}
-
 #monitor th {
     text-align: right;
     padding-right: 8px;
@@ -160,6 +160,10 @@ a {
 #monitor td {
     font-family: monospace;
     white-space: pre;
+}
+
+#controls {
+    user-select: none; 
 }
 
 #logo {
