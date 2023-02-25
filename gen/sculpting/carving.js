@@ -1,16 +1,13 @@
 import { aether } from "/gen/libs.js";
 const weights = [0.5, 1, 0.5];
 export class Carving {
-    constructor(currentStone, mvpMat, picker, scalarFieldModule, brushSampler) {
-        this.currentStone = currentStone;
+    constructor(stone, mvpMat, picker, scalarFieldModule, brushSampler) {
         this.mvpMat = mvpMat;
         this.picker = picker;
         this.scalarFieldModule = scalarFieldModule;
         this.brushSampler = brushSampler;
         this.brushes = [];
-        const stone = currentStone();
-        this.prevStone = recycle(scalarFieldModule.newInstance(), stone);
-        this.nextStone = stone;
+        this.spareStone = recycle(scalarFieldModule.newInstance(), stone);
         for (let brushResolution = stone.resolution / 4; brushResolution >= 2; brushResolution /= 2) {
             const brush = this.generateBrush(brushResolution);
             this.brushes.push(brush);
@@ -44,17 +41,14 @@ export class Carving {
         }
         return aether.mutVec4.scale(result, 1 / weightsSum);
     }
-    undo() {
-        const currentStone = this.prevStone;
-        this.prevStone = this.currentStone();
-        return currentStone;
+    undo(stone) {
+        const newStone = ensureSamplingOf(this.spareStone);
+        this.spareStone = ensureSamplingOf(stone);
+        return newStone;
     }
-    currentValue() {
-        const currentStone = this.currentStone();
-        this.nextStone = recycle(this.prevStone, currentStone);
-        return this.prevStone = currentStone;
-    }
-    mapper(stone, from) {
+    begin(stone, from) {
+        const newStone = recycle(this.spareStone, stone);
+        this.spareStone = stone;
         const [mouseX0, mouseY0] = from;
         const originalSample = {
             hit: false,
@@ -83,7 +77,7 @@ export class Carving {
                 const widthLevel = -Math.log2(width);
                 const depthLevel = -Math.log2(depth);
                 const brush = this.brushes[Math.floor(Math.max(widthLevel, depthLevel, 0))];
-                this.nextStone.sampler = (x, y, z) => {
+                newStone.sampler = (x, y, z) => {
                     const stoneSample = stone.get(x, y, z);
                     const brushPosition = aether.mat3.apply(mat, [x - x0, y - y0, z - z0]);
                     const brushSample = brush.get(...brushPosition);
@@ -95,10 +89,10 @@ export class Carving {
                         aether.vec4.sub(stoneSample, distortedBrush);
                 };
             }
-            return this.nextStone;
+            return newStone;
         };
     }
-    finalize(stone) {
+    end(stone) {
         return stone;
     }
 }

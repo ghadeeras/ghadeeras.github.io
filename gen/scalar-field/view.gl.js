@@ -48,17 +48,20 @@ export class GLView {
         this.position.pointTo(this._vertices);
         this.normal.pointTo(this._vertices, 3 * 4);
         this.bind();
-        this._frame = () => {
-            const gl = this.context.gl;
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6);
-            gl.flush();
-            requestAnimationFrame(this._frame);
-        };
-        this._frame();
     }
     picker() {
         return picker(this, () => this._vertices);
+    }
+    resize() {
+        this._aspectRatio = this.context.canvas.width / this.context.canvas.height;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
+        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+    }
+    render() {
+        const gl = this.context.gl;
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.drawArrays(this._primitives, 0, this._vertices.data.length / 6);
+        gl.flush();
     }
     bind() {
         this.program.use();
@@ -75,10 +78,12 @@ export class GLView {
             this._matModelPositions.data :
             aether.mat4.columnMajorArray(aether.mat4.mul(this._matView, modelNormals));
     }
-    resize() {
-        this._aspectRatio = this.context.canvas.width / this.context.canvas.height;
-        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
-        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+    setMesh(primitives, vertices) {
+        this._primitives = primitives;
+        this._vertices.data = vertices;
+    }
+    get canvas() {
+        return this.context.canvas;
     }
     get matPositions() {
         return this._matPositions;
@@ -136,10 +141,6 @@ export class GLView {
     }
     set fogginess(f) {
         this._fogginess.data = [f];
-    }
-    setMesh(primitives, vertices) {
-        this._primitives = primitives;
-        this._vertices.data = vertices;
     }
 }
 export function newView(canvasId) {

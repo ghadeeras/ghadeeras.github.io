@@ -7,7 +7,7 @@ const projection = new aether.PerspectiveProjection(1, null, false, false)
 
 export class GPUView implements v.View {
 
-    private canvas: gpu.Canvas
+    private gpuCanvas: gpu.Canvas
     private depthTexture: gpu.Texture
     private uniforms: gpu.SyncBuffer
     private vertices: gpu.Buffer
@@ -32,8 +32,6 @@ export class GPUView implements v.View {
         fogginess: gpu.f32,
     })
 
-    private frame: () => void
-
     private _matPositions: aether.Mat<4> = aether.mat4.identity()
     private _matNormals: aether.Mat<4> = aether.mat4.identity()
     private _matView: aether.Mat<4> = aether.mat4.identity()
@@ -50,29 +48,72 @@ export class GPUView implements v.View {
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride)
 
-        this.canvas = device.canvas(canvasId, 4)
-        this.depthTexture = this.canvas.depthTexture()
+        this.gpuCanvas = device.canvas(canvasId, 4)
+        this.depthTexture = this.gpuCanvas.depthTexture()
 
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
+            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil : this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
             },
             multisample: {
-                count: this.canvas.sampleCount
+                count: this.gpuCanvas.sampleCount
             },
             layout: "auto"
         })
 
         this.uniformsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+    }
 
-        this.frame = () => {
-            this.draw()
-            requestAnimationFrame(this.frame)
-        }
-        this.frame()
+    async picker(): Promise<v.Picker> {
+        return await picker(this.gpuCanvas, () => this.vertices)  
+    }
+
+    resize() {
+        this._aspectRatio = this.gpuCanvas.element.width / this.gpuCanvas.element.height
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
+        this.gpuCanvas.resize()
+        this.depthTexture.resize(this.gpuCanvas.size)
+    }
+
+    render() {
+        this.device.enqueueCommand("render", encoder => {
+            const passDescriptor: GPURenderPassDescriptor = {
+                colorAttachments: [this.gpuCanvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
+            };
+            encoder.renderPass(passDescriptor, pass => {
+                pass.setPipeline(this.pipeline)
+                pass.setVertexBuffer(0, this.vertices.buffer)
+                pass.setBindGroup(0, this.uniformsGroup)
+                pass.draw(this.vertices.stridesCount)
+            })
+        })
+    }
+
+    setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
+        this._matPositions = modelPositions
+        this._matNormals = modelNormals
+
+        const matPositions = aether.mat4.mul(this.matView, modelPositions)
+        const matNormals = modelPositions === modelNormals ?
+            matPositions :
+            aether.mat4.mul(this.matView, modelNormals)
+
+        this.uniforms.set(this.uniformsStruct.members.mat, {
+            positions: matPositions,
+            normals: matNormals
+        })
+    }
+
+    setMesh(_primitives: GLenum, vertices: Float32Array) {
+        this.vertices.setData(gpu.dataView(vertices))
+    }
+
+    get canvas(): HTMLCanvasElement {
+        return this.gpuCanvas.element
     }
 
     get matPositions(): aether.Mat<4> {
@@ -91,28 +132,6 @@ export class GPUView implements v.View {
         this._matView = m
         this.lightPosition = this._lightPosition
     }    
-
-    setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
-        this._matPositions = modelPositions
-        this._matNormals = modelNormals
-
-        const matPositions = aether.mat4.mul(this.matView, modelPositions)
-        const matNormals = modelPositions === modelNormals ?
-            matPositions :
-            aether.mat4.mul(this.matView, modelNormals)
-
-        this.uniforms.set(this.uniformsStruct.members.mat, {
-            positions: matPositions,
-            normals: matNormals
-        })
-    }
-
-    resize() {
-        this._aspectRatio = this.canvas.element.width / this.canvas.element.height
-        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
-        this.canvas.resize()
-        this.depthTexture.resize(this.canvas.size)
-    }
 
     get focalLength() {
         return this._focalLength
@@ -170,29 +189,6 @@ export class GPUView implements v.View {
 
     set fogginess(f: number) {
         this.uniforms.set(this.uniformsStruct.members.fogginess, f)
-    }
-
-    setMesh(_primitives: GLenum, vertices: Float32Array) {
-        this.vertices.setData(gpu.dataView(vertices))
-    }
-
-    async picker(): Promise<v.Picker> {
-        return await picker(this.canvas, () => this.vertices)  
-    }
-
-    private draw() {
-        this.device.enqueueCommand("render", encoder => {
-            const passDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
-            };
-            encoder.renderPass(passDescriptor, pass => {
-                pass.setPipeline(this.pipeline)
-                pass.setVertexBuffer(0, this.vertices.buffer)
-                pass.setBindGroup(0, this.uniformsGroup)
-                pass.draw(this.vertices.stridesCount)
-            })
-        })
     }
 
 }

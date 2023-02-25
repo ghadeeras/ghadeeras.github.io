@@ -1,25 +1,22 @@
 import { aether, gear } from "/gen/libs.js"
 import { Picker } from "../scalar-field/view.js";
+import * as gearx from "../utils/gear.js"
 
 const weights = [0.5, 1, 0.5]
 
-export class Carving implements gear.DraggingHandler<aether.ScalarFieldInstance> {
+export class Carving implements gearx.Dragger<aether.ScalarFieldInstance> {
 
-    private prevStone: aether.ScalarFieldInstance
-    private nextStone: aether.ScalarFieldInstance
+    private spareStone: aether.ScalarFieldInstance
     private readonly brushes: aether.ScalarFieldInstance[] = []
 
     constructor(
-        private currentStone: () => aether.ScalarFieldInstance,
+        stone: aether.ScalarFieldInstance,
         private mvpMat: () => aether.Mat4,
         private picker: Picker, 
         private scalarFieldModule: aether.ScalarFieldModule,
         private brushSampler: aether.ScalarFieldSampler,
     ) {
-        const stone = currentStone()
-
-        this.prevStone = recycle(scalarFieldModule.newInstance(), stone);
-        this.nextStone = stone;
+        this.spareStone = recycle(scalarFieldModule.newInstance(), stone);
 
         for (let brushResolution = stone.resolution / 4; brushResolution >= 2; brushResolution /= 2) {
             const brush = this.generateBrush(brushResolution);
@@ -59,19 +56,16 @@ export class Carving implements gear.DraggingHandler<aether.ScalarFieldInstance>
         return aether.mutVec4.scale(result, 1 / weightsSum);
     }
 
-    undo(): aether.ScalarFieldInstance {
-        const currentStone = this.prevStone
-        this.prevStone = this.currentStone()
-        return currentStone
+    undo(stone: aether.ScalarFieldInstance): aether.ScalarFieldInstance {
+        const newStone = ensureSamplingOf(this.spareStone)
+        this.spareStone = ensureSamplingOf(stone)
+        return newStone
     }
 
-    currentValue(): aether.ScalarFieldInstance {
-        const currentStone = this.currentStone()
-        this.nextStone = recycle(this.prevStone, currentStone)
-        return this.prevStone = currentStone
-    }
+    begin(stone: aether.ScalarFieldInstance, from: gear.PointerPosition): gearx.DraggingFunction<aether.ScalarFieldInstance> {
+        const newStone = recycle(this.spareStone, stone)
+        this.spareStone = stone
 
-    mapper(stone: aether.ScalarFieldInstance, from: gear.PointerPosition): gear.DraggingPositionMapper<aether.ScalarFieldInstance> {
         const [mouseX0, mouseY0] = from
         const originalSample = {
             hit: false,
@@ -107,7 +101,7 @@ export class Carving implements gear.DraggingHandler<aether.ScalarFieldInstance>
                 const depthLevel = -Math.log2(depth)
                 const brush = this.brushes[Math.floor(Math.max(widthLevel, depthLevel, 0))]
 
-                this.nextStone.sampler = (x, y, z) => {
+                newStone.sampler = (x, y, z) => {
                     const stoneSample = stone.get(x, y, z)
                     const brushPosition = aether.mat3.apply(mat, [x - x0, y - y0, z - z0])
                     const brushSample = brush.get(...brushPosition)
@@ -119,11 +113,11 @@ export class Carving implements gear.DraggingHandler<aether.ScalarFieldInstance>
                         aether.vec4.sub(stoneSample, distortedBrush)
                 }
             }
-            return this.nextStone
+            return newStone
         }
     }
 
-    finalize(stone: aether.ScalarFieldInstance): aether.ScalarFieldInstance {
+    end(stone: aether.ScalarFieldInstance): aether.ScalarFieldInstance {
         return stone
     }
 

@@ -1,6 +1,5 @@
 import { aether, gear } from "/gen/libs.js"
 import { gltf } from "../djee/index.js"
-import { Controller, ControllerEvent } from "../initializer.js"
 import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
@@ -14,11 +13,8 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init(controller: Controller) {
+export async function init() {
     const view = await v.newView("canvas")
-    view.matView = viewMatrix
-    view.focalLength = 4
-
     const picker = await view.picker()
 
     const scalarFieldModule = await aether.loadScalarFieldModule()
@@ -27,143 +23,155 @@ export async function init(controller: Controller) {
     stone.sampler = field
     stone.contourValue = 0.5
 
-    new Toy(stone, scalarFieldModule, view, picker, controller)
+    const toy = new Toy(stone, scalarFieldModule, view, picker)
+    const loop = gearx.newLoop(toy, {
+        fps: {
+            element: "fps-watch"
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+        input: {
+            pointer: {
+                element: view.canvas,
+                defaultDraggingTarget: toy.rotationDragging
+            },
+            keys: [{
+                alternatives: [["KeyC"]],
+                virtualKey: "#control-c",
+                onPressed: loop => loop.draggingTarget = toy.carvingTarget
+            }, {
+                alternatives: [["KeyR"]],
+                virtualKey: "#control-r",
+                onPressed: loop => loop.draggingTarget = toy.rotationDragging
+            }, {
+                alternatives: [["KeyZ"]],
+                virtualKey: "#control-z",
+                onPressed: loop => loop.draggingTarget = toy.focalLengthDragging
+            }, {
+                alternatives: [["KeyH"]],
+                virtualKey: "#control-h",
+                onPressed: loop => loop.draggingTarget = toy.shininessDragging
+            }, {
+                alternatives: [["KeyD"]],
+                virtualKey: "#control-d",
+                onPressed: loop => loop.draggingTarget = toy.lightPositionDragging
+            }, {
+                alternatives: [["KeyL"]],
+                virtualKey: "#control-l",
+                onPressed: loop => loop.draggingTarget = toy.lightRadiusDragging
+            }, {
+                alternatives: [["KeyU"]],
+                virtualKey: "#control-u",
+                onPressed: () => toy.currentStone = toy.carving.undo(toy.currentStone)
+            }, {
+                alternatives: [["KeyX"]],
+                virtualKey: "#control-x",
+                onPressed: () => toy.exportModel()
+            }, {
+                alternatives: [["KeyS"]],
+                virtualKey: "#control-s",
+                onPressed: () => toy.saveModel()
+            }, {
+                alternatives: [["ArrowUp"]],
+                virtualKey: "#control-up",
+                onPressed: () => toy.addToLOD(8)
+
+            }, {
+                alternatives: [["ArrowDown"]],
+                virtualKey: "#control-down",
+                onPressed: () => toy.addToLOD(-8)
+            },]
+        }
+    })
+    loop.run()
 }
 
-class Toy {
+class Toy implements gearx.LoopLogic {
 
-    private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.stone.vertices)
-    private carving: Carving
-    private pressedKey: gear.Value<string>
+    readonly carvingTarget: gearx.DraggingTarget
+    readonly rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gearx.draggingTarget(gearx.property(this, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
-    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, view: v.View, picker: v.Picker, toyController: Controller) {
-        const canvas = gear.elementEvents("canvas")
+    readonly carving: Carving
+
+    private lodElement = gearx.required(document.getElementById("lod")) 
+
+    private lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices)
+
+    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, private view: v.View, picker: v.Picker) {
         const sizeManager = new gearx.CanvasSizeManager(true)
-        sizeManager.observe(canvas.element as HTMLCanvasElement, () => {
+        sizeManager.observe(view.canvas, () => {
             view.resize()
             picker.resize()
         })
 
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
-        const focalLengthDragging = new dragging.RatioDragging(() => view.focalLength)
-
-        this.pressedKey = new gear.Value((c: gear.Consumer<ControllerEvent>) => toyController.handler = e => {
-            c(e)
-            return false
-        }).filter(e => e.down).map(e => e.key)
-
         this.carving = new Carving(
-            () => this.stone,
+            this.stone,
             () => modelViewProjectionMatrixOf(view),
             picker,
             scalarFieldModule, 
             brush
-        )    
+        )
+        this.carvingTarget = gearx.draggingTarget(gearx.property(this, "currentStone"), this.carving)
 
-        const cases = {
-            carving: gear.Value.from<gear.Dragging>(),
-            rotation: gear.Value.from<gear.Dragging>(),
-            focalLength: gear.Value.from<gear.Dragging>(),
-            shininess: gear.Value.from<gear.Dragging>(),
-            lightPosition: gear.Value.from<gear.Dragging>(),
-            lightRadius: gear.Value.from<gear.Dragging>(),
-        }
+        this.dropOn(view.canvas)
 
-        const keyMappings = {
-            "c": cases.carving,
-            "r": cases.rotation,
-            "z": cases.focalLength,
-            "h": cases.shininess,
-            "d": cases.lightPosition,
-            "l": cases.lightRadius,
-        }
-    
-        const controller = this.pressedKey
-            .filter(k => k in keyMappings)
-            .defaultsTo("r")
-            .reduce((previous, current) => {
-                control(previous).removeAttribute("style")
-                control(current).setAttribute("style", "font-weight: bold")
-                return current
-            }, "r")
-    
-        gear.elementEvents(canvas.element.id).dragging.value.switch(controller, keyMappings)
+        view.matView = viewMatrix
+        view.focalLength = 4
+        view.color = [0.5, 0.5, 0.5, 1.0]
+        view.shininess = 1
+        view.fogginess = 0.0
+        view.lightPosition = this.toLightPosition([0.0, 0.0])
+        view.lightRadius = 0.005
 
-        const resolution = this.levelOfDetails()
-
-        const stoneValue = gear.Value.from(
-            cases.carving.then(gear.drag(this.carving)),
-            resolution.map(r => this.stoneWithResolution(r)),
-            this.pressedKey.filter(k => k === 'u').map(() => this.carving.undo()),
-            dropOn(canvas.element)
-                .filter(e => e.dataTransfer != null)
-                .then(asyncEffect(data))
-                .map(buffer => this.deserializeStone(buffer))
-        ).defaultsTo(this.stone)
-
-        v.wire(view, {
-            matModel: cases.rotation
-                .then(gear.drag(rotationDragging))
-                .defaultsTo(rotationDragging.currentValue()),
-
-            matView: gear.Value.from<aether.Mat<4>>()
-                .defaultsTo(view.matView),
-            
-            focalLength: cases.focalLength
-                .then(gear.drag(focalLengthDragging))
-                .defaultsTo(focalLengthDragging.currentValue()),
-
-            color: new gear.Value<aether.Vec4>().defaultsTo([0.5, 0.5, 0.5, 1.0]),
-
-            shininess: cases.shininess
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(view.shininess),
-
-            fogginess: new gear.Value<number>().defaultsTo(0.0),
-            
-            lightPosition: cases.lightPosition
-                .then(gear.drag(dragging.positionDragging))
-                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
-                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
-            
-            lightRadius: cases.lightRadius
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(0.1),
-            
-            vertices: stoneValue.then((s, c) => this.contourSurfaceDataForStone(s, c)),
-        })
-        
-        gear.text("lod").value = stoneValue.map(s => s.resolution).map(lod => lod.toString())
-        
-        this.pressedKey.filter(k => k === 'x').attach(() => this.exportModel())
-        this.pressedKey.filter(k => k === 's').attach(() => this.saveModel())
+        this.modelMatrix = aether.mat4.identity()
+        this.currentStone = stone
     }
 
-    levelOfDetails() {
-        const inc = this.pressedKey.filter(k => k === '+').map(() => +8)
-        const dec = this.pressedKey.filter(k => k === '-').map(() => -8)
-        const flow = gear.Value.from(inc, dec)
-            .map(i => this.clamp(this.stone.resolution + i, 32, 96))
-            .defaultsTo(this.stone.resolution)
-        return flow
+    get projectionViewMatrix() {
+        return aether.mat4.mul(this.view.matProjection, this.view.matView)
     }
 
-    clamp(n: number, min: number, max: number) {
-        return n < min ? min : (n > max ? max : n)
+    get modelMatrix() {
+        return this.view.matPositions
     }
 
-    contourSurfaceDataForStone(stone: aether.ScalarFieldInstance, meshConsumer: gear.Consumer<Float32Array>) {
-        this.stone = stone
-        this.meshComputer.perform().then(meshConsumer)
+    set modelMatrix(m: aether.Mat4) {
+        this.view.setMatModel(m, m)
     }
 
-    stoneWithResolution(resolution: number) {
-        this.stone.resolution = resolution
+    get focalLength() {
+        return this.view.focalLength
+    }
+
+    set focalLength(l: number) {
+        this.view.focalLength = l
+    }
+
+    get currentStone() {
         return this.stone
+    }
+
+    set currentStone(s: aether.ScalarFieldInstance) {
+        this.stone = s
+        this.lazyVertices.perform().then(vertices => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, vertices))
+    }
+
+    animate(loop: gearx.Loop, time: number, deltaT: number): void {
+    }
+    
+    render(): void {
+        this.view.render()
+    }
+
+    addToLOD(delta: number) {
+        this.stone.resolution = clamp(this.stone.resolution + delta, 32, 96)
+        this.lodElement.innerText = this.stone.resolution.toFixed(0)
+        this.currentStone = this.stone
     }
 
     exportModel() {
@@ -176,6 +184,14 @@ class Toy {
     saveModel() {
         const buffer = this.serializeStone()
         gearx.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
+    }
+
+    toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
+        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
+        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP
+        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2)
+        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+        return [...p, 1];
     }
 
     private serializeStone() {
@@ -237,26 +253,24 @@ class Toy {
                 aether.vec4.from(samples, offset) : 
                 aether.vec4.of(0, 0, 0, 0)
         }
-        const newStone = this.carving.undo()
+        const newStone = this.carving.undo(this.currentStone)
         newStone.resolution = stone.resolution
         newStone.sampler = (x, y, z) => stone.get(x, y, z)
         return newStone
     }
 
-}
-
-function control(previous: string) {
-    return gearx.required(document.getElementById(`control-${previous}`))
-}
-
-function dropOn(element: HTMLElement) {
-    element.ondragover = e => {
-        e.preventDefault()
+    dropOn(element: HTMLElement) {
+        element.ondragover = e => {
+            e.preventDefault()
+        }
+        element.ondrop = async e => {
+            this.currentStone = this.deserializeStone(await data(e))
+        }
     }
-    return gear.Source.from((c: gear.Consumer<DragEvent>) => element.ondrop = c).value
+    
 }
 
-function data(e: DragEvent): Promise<ArrayBuffer> {
+async function data(e: DragEvent): Promise<ArrayBuffer> {
     e.preventDefault()
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
@@ -276,10 +290,6 @@ async function asURL(transferItem: DataTransferItem): Promise<string> {
             reject(e)
         }
     })
-}
-
-function asyncEffect<A, B>(mapper: gear.Mapper<A, Promise<B>>): gear.Effect<A, B> {
-    return (v, c) => mapper(v).then(c)
 }
 
 const twoPi = 2 * Math.PI
@@ -325,3 +335,19 @@ function brush(x: number, y: number, z: number): aether.Vec<4> {
         f
     ]
 }
+
+function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+    const pos: [gear.PointerPosition] = [[0, 0]]
+    return {
+        getter: () => pos[0],
+        setter: b => {
+            pos[0] = b
+            property.setter(mapper(b))
+        }
+    }
+}
+
+function clamp(n: number, min: number, max: number) {
+    return n < min ? min : (n > max ? max : n)
+}
+

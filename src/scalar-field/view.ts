@@ -5,7 +5,7 @@ import { required } from "../utils/misc.js"
 
 export interface View {
 
-    setMatModel(modelPositions: aether.Mat<4>, modelNormals?: aether.Mat<4>): void
+    readonly canvas: HTMLCanvasElement
 
     readonly matProjection: aether.Mat<4>
 
@@ -27,11 +27,15 @@ export interface View {
 
     fogginess: number
 
+    setMatModel(modelPositions: aether.Mat<4>, modelNormals?: aether.Mat<4>): void
+
     setMesh(primitives: GLenum, vertices: Float32Array): void
 
     picker(): Promise<Picker>
 
     resize(): void
+
+    render(): void
 
 }
 

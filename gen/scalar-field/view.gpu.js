@@ -34,39 +34,46 @@ export class GPUView {
         this._aspectRatio = 1;
         this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
         this.vertices = device.buffer("vertices", GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST, GPUView.vertex.struct.stride);
-        this.canvas = device.canvas(canvasId, 4);
-        this.depthTexture = this.canvas.depthTexture();
+        this.gpuCanvas = device.canvas(canvasId, 4);
+        this.depthTexture = this.gpuCanvas.depthTexture();
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.canvas]),
+            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
             },
             multisample: {
-                count: this.canvas.sampleCount
+                count: this.gpuCanvas.sampleCount
             },
             layout: "auto"
         });
         this.uniformsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
-        this.frame = () => {
-            this.draw();
-            requestAnimationFrame(this.frame);
-        };
-        this.frame();
     }
-    get matPositions() {
-        return this._matPositions;
+    picker() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield picker(this.gpuCanvas, () => this.vertices);
+        });
     }
-    get matNormals() {
-        return this._matNormals;
+    resize() {
+        this._aspectRatio = this.gpuCanvas.element.width / this.gpuCanvas.element.height;
+        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
+        this.gpuCanvas.resize();
+        this.depthTexture.resize(this.gpuCanvas.size);
     }
-    get matView() {
-        return this._matView;
-    }
-    set matView(m) {
-        this._matView = m;
-        this.lightPosition = this._lightPosition;
+    render() {
+        this.device.enqueueCommand("render", encoder => {
+            const passDescriptor = {
+                colorAttachments: [this.gpuCanvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
+            };
+            encoder.renderPass(passDescriptor, pass => {
+                pass.setPipeline(this.pipeline);
+                pass.setVertexBuffer(0, this.vertices.buffer);
+                pass.setBindGroup(0, this.uniformsGroup);
+                pass.draw(this.vertices.stridesCount);
+            });
+        });
     }
     setMatModel(modelPositions, modelNormals = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
@@ -80,11 +87,24 @@ export class GPUView {
             normals: matNormals
         });
     }
-    resize() {
-        this._aspectRatio = this.canvas.element.width / this.canvas.element.height;
-        this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
-        this.canvas.resize();
-        this.depthTexture.resize(this.canvas.size);
+    setMesh(_primitives, vertices) {
+        this.vertices.setData(gpu.dataView(vertices));
+    }
+    get canvas() {
+        return this.gpuCanvas.element;
+    }
+    get matPositions() {
+        return this._matPositions;
+    }
+    get matNormals() {
+        return this._matNormals;
+    }
+    get matView() {
+        return this._matView;
+    }
+    set matView(m) {
+        this._matView = m;
+        this.lightPosition = this._lightPosition;
     }
     get focalLength() {
         return this._focalLength;
@@ -129,28 +149,6 @@ export class GPUView {
     }
     set fogginess(f) {
         this.uniforms.set(this.uniformsStruct.members.fogginess, f);
-    }
-    setMesh(_primitives, vertices) {
-        this.vertices.setData(gpu.dataView(vertices));
-    }
-    picker() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield picker(this.canvas, () => this.vertices);
-        });
-    }
-    draw() {
-        this.device.enqueueCommand("render", encoder => {
-            const passDescriptor = {
-                colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
-                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
-            };
-            encoder.renderPass(passDescriptor, pass => {
-                pass.setPipeline(this.pipeline);
-                pass.setVertexBuffer(0, this.vertices.buffer);
-                pass.setBindGroup(0, this.uniformsGroup);
-                pass.draw(this.vertices.stridesCount);
-            });
-        });
     }
 }
 GPUView.vertex = gpu.vertex({

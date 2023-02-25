@@ -83,6 +83,11 @@ class Toy {
         });
         gear.text("lod").value = resolution.map(lod => lod.toString());
         gear.elementEvents("save").click.value.attach(() => this.saveModel());
+        const frame = () => {
+            view.render();
+            requestAnimationFrame(frame);
+        };
+        frame();
     }
     levelOfDetails() {
         const inc = gear.elementEvents("lod-inc").click.value.map(() => +8);
