@@ -82,7 +82,10 @@ export function init() {
                         onPressed: () => toy.toggleRecording()
                     }, ...digits.map(digit => ({
                         alternatives: [[`Digit${digit}`]],
-                        onPressed: (_, context) => context.alt ? (toy.minLayersCount = digit) : (toy.samplesPerPixel = digit)
+                        onPressed: () => toy.samplesPerPixel = digit
+                    })), ...digits.map(digit => ({
+                        alternatives: [['AltRight', `Digit${digit}`], ['AltLeft', `Digit${digit}`]],
+                        onPressed: () => toy.minLayersCount = digit
                     })),
                 ]
             }

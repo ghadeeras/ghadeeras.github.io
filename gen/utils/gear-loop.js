@@ -90,7 +90,7 @@ class LoopImpl {
         const virtualButtons = keyDescriptor.virtualKey !== undefined
             ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
             : [];
-        const button = Button.anyOf(...keyDescriptor.alternatives.map(ks => Button.allOf(...ks.map(k => this.keyboard.key(k)))), ...virtualButtons.map(e => new VirtualKey(e)));
+        const button = Button.anyOf(...keyDescriptor.alternatives.map(ks => Button.allOf(...ks.map(k => this.keyboard.key(k))).when(b => b.pressed && this.keyboard.pressedCount == ks.length)), ...virtualButtons.map(e => new VirtualKey(e)));
         if (virtualButtons.length > 0) {
             button.register(b => {
                 if (b.pressed) {

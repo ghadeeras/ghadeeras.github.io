@@ -42,6 +42,10 @@ export class Button {
         return Button.noneOf(this)
     }
 
+    when(predicate: (b: this) => boolean) {
+        return new DerivedButton([this], button => predicate(button))
+    }
+
     static allOf<B extends Button>(...buttons: B[]): Button {
         return buttons.length !== 1 ? new DerivedButton(buttons, (...buttons) => buttons.every(b => b.pressed)) : buttons[0]
     }

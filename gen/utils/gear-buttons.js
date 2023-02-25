@@ -31,6 +31,9 @@ export class Button {
     not() {
         return Button.noneOf(this);
     }
+    when(predicate) {
+        return new DerivedButton([this], button => predicate(button));
+    }
     static allOf(...buttons) {
         return buttons.length !== 1 ? new DerivedButton(buttons, (...buttons) => buttons.every(b => b.pressed)) : buttons[0];
     }

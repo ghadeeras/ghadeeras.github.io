@@ -11,12 +11,10 @@ import { aether, gear } from "/gen/libs.js";
 import { wgl, gltf } from "../djee/index.js";
 const projection = new aether.PerspectiveProjection(1, null, false, true);
 export class GLView {
-    constructor(canvasId, vertexShaderCode, fragmentShaderCode, inputs) {
+    constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this.renderer = null;
         this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this._modelMatrix = aether.mat4.identity();
-        this.statusUpdater = () => { };
-        this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.context = wgl.Context.of(canvasId);
         const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
@@ -36,43 +34,24 @@ export class GLView {
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
         gl.clearColor(1, 1, 1, 1);
-        inputs.lightPosition.attach(p => this.uLightPosition.data = p);
-        inputs.lightRadius.attach(r => this.uLightRadius.data = [r]);
-        inputs.color.attach(c => this.uColor.data = c);
-        inputs.shininess.attach(s => this.uShininess.data = [s]);
-        inputs.fogginess.attach(f => this.uFogginess.data = [f]);
-        inputs.matModel.attach(m => {
-            this._modelMatrix = m;
-            this.updateModelViewMatrix();
-        });
-        inputs.matView.attach(v => {
-            this._viewMatrix = v;
-            this.updateModelViewMatrix();
-        });
-        inputs.matProjection.attach(m => this.projectionMatrix = m);
-        inputs.modelUri.attach((modelUri) => __awaiter(this, void 0, void 0, function* () {
-            this.statusUpdater("Loading model ...");
-            try {
-                this._modelMatrix = aether.mat4.identity();
-                this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-                this.updateModelViewMatrix();
-                this.projectionMatrix = projection.matrix(2, this.aspectRatio);
-                const model = yield gltf.graph.Model.create(modelUri);
-                if (this.renderer) {
-                    this.renderer.destroy();
-                    this.renderer = null;
-                }
-                this.renderer = new wgl.GLRenderer(model, this.context, {
-                    "POSITION": this.position,
-                    "NORMAL": this.normal,
-                }, this.uPositionsMat, this.uNormalsMat);
-                this.statusUpdater("Rendering model ...");
-            }
-            catch (e) {
-                this.statusUpdater(`Error: ${e}`);
-                console.error(e);
-            }
-        }));
+    }
+    get canvas() {
+        return this.context.canvas;
+    }
+    set modelColor(color) {
+        this.uColor.data = color;
+    }
+    set lightPosition(p) {
+        this.uLightPosition.data = p;
+    }
+    set lightRadius(r) {
+        this.uLightRadius.data = [r];
+    }
+    set shininess(s) {
+        this.uShininess.data = [s];
+    }
+    set fogginess(f) {
+        this.uFogginess.data = [f];
     }
     get aspectRatio() {
         return this.context.canvas.width / this.context.canvas.height;
@@ -91,11 +70,36 @@ export class GLView {
     get viewMatrix() {
         return this._viewMatrix;
     }
+    set viewMatrix(m) {
+        this._viewMatrix = m;
+        this.updateModelViewMatrix();
+    }
     get modelMatrix() {
         return this._modelMatrix;
     }
+    set modelMatrix(m) {
+        this._modelMatrix = m;
+        this.updateModelViewMatrix();
+    }
     updateModelViewMatrix() {
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
+    }
+    loadModel(modelUri) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this._modelMatrix = aether.mat4.identity();
+            this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+            this.updateModelViewMatrix();
+            this.projectionMatrix = projection.matrix(2, this.aspectRatio);
+            const model = yield gltf.graph.Model.create(modelUri);
+            if (this.renderer) {
+                this.renderer.destroy();
+                this.renderer = null;
+            }
+            this.renderer = new wgl.GLRenderer(model, this.context, {
+                "POSITION": this.position,
+                "NORMAL": this.normal,
+            }, this.uPositionsMat, this.uNormalsMat);
+        });
     }
     resize() {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
@@ -117,7 +121,7 @@ export function newViewFactory(canvasId) {
             vertexShaderCode: "gltf.vert",
             fragmentShaderCode: "generic.frag"
         }, "/shaders");
-        return inputs => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, inputs);
+        return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
     });
 }
 //# sourceMappingURL=view.gl.js.map

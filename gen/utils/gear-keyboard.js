@@ -8,6 +8,7 @@ export class Keyboard {
         this._ctrl = false;
         this._alt = false;
         this._meta = false;
+        this._pressedCount = 0;
         this.onkeydown = e => this.keyUsed(e, true);
         this.onkeyup = e => this.keyUsed(e, false);
     }
@@ -30,6 +31,9 @@ export class Keyboard {
     get meta() {
         return this._meta;
     }
+    get pressedCount() {
+        return this._pressedCount;
+    }
     keyUsed(e, pressed) {
         this._repeat = e.repeat;
         this._shift = e.shiftKey;
@@ -39,7 +43,13 @@ export class Keyboard {
         const key = this.keys.get(e.code);
         if (key !== undefined) {
             trap(e);
+            this.updatePressedCount(e, pressed);
             key.pressed = pressed;
+        }
+    }
+    updatePressedCount(e, pressed) {
+        if (!e.repeat) {
+            this._pressedCount = Math.max(this._pressedCount + (pressed ? 1 : -1), 0);
         }
     }
     key(code) {

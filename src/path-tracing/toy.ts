@@ -74,7 +74,10 @@ export async function init() {
                 onPressed: () => toy.toggleRecording()
             }, ...digits.map<gearx.KeyDescriptor>(digit => ({
                 alternatives: [[`Digit${digit}`]],
-                onPressed: (_, context) => context.alt ? (toy.minLayersCount = digit) : (toy.samplesPerPixel = digit)
+                onPressed: () => toy.samplesPerPixel = digit
+            })), ...digits.map<gearx.KeyDescriptor>(digit => ({
+                alternatives: [['AltRight', `Digit${digit}`], ['AltLeft', `Digit${digit}`]],
+                onPressed: () => toy.minLayersCount = digit
             })),
         ]}
     })

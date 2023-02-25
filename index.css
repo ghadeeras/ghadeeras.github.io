@@ -118,7 +118,7 @@ a {
     cursor: pointer;
 }
 
-.hud .pressed kbd {
+.hud kbd.pressed {
     color: rgba(0, 0, 0, 1.0);
     background-color: white;
 }

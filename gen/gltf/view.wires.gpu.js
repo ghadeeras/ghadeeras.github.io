@@ -11,32 +11,58 @@ import { gpu } from "../djee/index.js";
 import { NormalsRenderer } from "./normals.gpu.js";
 import { NormalsFilter } from "./filter.gpu.js";
 export class GPUView {
-    constructor(normalsRenderer, normalsFilter, canvas) {
+    constructor(normalsRenderer, normalsFilter, gpuCanvas) {
         this.normalsRenderer = normalsRenderer;
         this.normalsFilter = normalsFilter;
-        this.canvas = canvas;
-        this.status = this.normalsRenderer.status;
+        this.gpuCanvas = gpuCanvas;
+    }
+    loadModel(modelUri) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.normalsRenderer.loadModel(modelUri);
+        });
+    }
+    get canvas() {
+        return this.gpuCanvas.element;
+    }
+    set modelColor(color) {
+    }
+    set lightPosition(p) {
+    }
+    set lightRadius(r) {
+    }
+    set shininess(s) {
+    }
+    set fogginess(f) {
     }
     get projectionMatrix() {
         return this.normalsRenderer.projectionMatrix;
     }
+    set projectionMatrix(m) {
+        this.normalsRenderer.projectionMatrix = m;
+    }
     get viewMatrix() {
         return this.normalsRenderer.viewMatrix;
+    }
+    set viewMatrix(m) {
+        this.normalsRenderer.viewMatrix = m;
     }
     get modelMatrix() {
         return this.normalsRenderer.modelMatrix;
     }
+    set modelMatrix(m) {
+        this.normalsRenderer.modelMatrix = m;
+    }
     resize() {
-        const width = this.canvas.element.width;
-        const height = this.canvas.element.height;
-        this.canvas.resize();
+        const width = this.gpuCanvas.element.width;
+        const height = this.gpuCanvas.element.height;
+        this.gpuCanvas.resize();
         this.normalsRenderer.resize(width, height);
         this.normalsFilter.resize(width, height);
     }
     draw() {
-        this.canvas.device.enqueueCommand("Draw", encoder => {
+        this.gpuCanvas.device.enqueueCommand("Draw", encoder => {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment());
-            this.normalsFilter.render(encoder, this.canvas.attachment({ r: 0, g: 0, b: 0, a: 0 }));
+            this.normalsFilter.render(encoder, this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 0 }));
         });
     }
 }
@@ -46,8 +72,8 @@ export function newViewFactory(canvasId) {
         const canvas = device.canvas(canvasId, 1);
         const normalsShaderModule = yield device.loadShaderModule("gltf-wires-normals.wgsl");
         const filterShaderModule = yield device.loadShaderModule("gltf-wires-filter.wgsl");
-        return inputs => {
-            const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture(), inputs);
+        return () => {
+            const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture());
             const normalsFilter = new NormalsFilter(filterShaderModule, canvas.size, canvas.format, normalsRenderer.uniforms.gpuBuffer);
             return new GPUView(normalsRenderer, normalsFilter, canvas);
         };

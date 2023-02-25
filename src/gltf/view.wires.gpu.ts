@@ -1,4 +1,4 @@
-import { gear } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 import { gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { NormalsRenderer } from "./normals.gpu.js";
@@ -9,37 +9,70 @@ export class GPUView implements View {
     constructor(
         private normalsRenderer: NormalsRenderer,
         private normalsFilter: NormalsFilter,
-        private canvas: gpu.Canvas,
+        private gpuCanvas: gpu.Canvas,
     ) {}
+
+    async loadModel(modelUri: string) {
+        return this.normalsRenderer.loadModel(modelUri)
+    }
+
+    get canvas() {
+        return this.gpuCanvas.element
+    }
+
+    set modelColor(color: [number, number, number, number]) {
+    }
+
+    set lightPosition(p: [number, number, number]) {
+    }
+
+    set lightRadius(r: number) {
+    }
+
+    set shininess(s: number) {
+    }
+
+    set fogginess(f: number) {
+    }
 
     get projectionMatrix() {
         return this.normalsRenderer.projectionMatrix
+    }
+
+    set projectionMatrix(m: aether.Mat4) {
+        this.normalsRenderer.projectionMatrix = m
     }
 
     get viewMatrix() {
         return this.normalsRenderer.viewMatrix
     }
 
+    set viewMatrix(m: aether.Mat4) {
+        this.normalsRenderer.viewMatrix = m
+    }
+
     get modelMatrix() {
         return this.normalsRenderer.modelMatrix
     }
 
+    set modelMatrix(m: aether.Mat4) {
+        this.normalsRenderer.modelMatrix = m
+    }
+
     resize(): void {
-        const width = this.canvas.element.width
-        const height = this.canvas.element.height
-        this.canvas.resize()
+        const width = this.gpuCanvas.element.width
+        const height = this.gpuCanvas.element.height
+        this.gpuCanvas.resize()
         this.normalsRenderer.resize(width, height)
         this.normalsFilter.resize(width, height)
     }
 
     draw() {
-        this.canvas.device.enqueueCommand("Draw", encoder => {
+        this.gpuCanvas.device.enqueueCommand("Draw", encoder => {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment())
-            this.normalsFilter.render(encoder, this.canvas.attachment({r: 0, g: 0, b: 0, a: 0}))    
+            this.normalsFilter.render(encoder, this.gpuCanvas.attachment({r: 0, g: 0, b: 0, a: 0}))    
         })
     }
-
-    readonly status: gear.Value<string> = this.normalsRenderer.status
 
 }
 
@@ -48,8 +81,8 @@ export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const canvas = device.canvas(canvasId, 1)
     const normalsShaderModule = await device.loadShaderModule("gltf-wires-normals.wgsl")
     const filterShaderModule = await device.loadShaderModule("gltf-wires-filter.wgsl")
-    return inputs => {
-        const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture(), inputs)
+    return () => {
+        const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture())
         const normalsFilter = new NormalsFilter(filterShaderModule, canvas.size, canvas.format, normalsRenderer.uniforms.gpuBuffer)
         return new GPUView(normalsRenderer, normalsFilter, canvas)
     }

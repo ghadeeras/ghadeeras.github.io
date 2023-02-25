@@ -154,7 +154,7 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
         const button = Button.anyOf(
             ...keyDescriptor.alternatives.map(ks => Button.allOf(
                 ...ks.map(k => this.keyboard.key(k))
-            )),
+            ).when(b => b.pressed && this.keyboard.pressedCount == ks.length)),
             ...virtualButtons.map(e => new VirtualKey(e as HTMLElement))
         );
         if (virtualButtons.length > 0) {

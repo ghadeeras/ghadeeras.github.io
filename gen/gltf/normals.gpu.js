@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { aether, gear } from "/gen/libs.js";
+import { aether } from "/gen/libs.js";
 import { gltf, gpu } from "../djee/index.js";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
@@ -18,14 +18,12 @@ const uniformsStruct = gpu.struct({
 });
 const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class NormalsRenderer {
-    constructor(shaderModule, depthTexture, inputs) {
+    constructor(shaderModule, depthTexture) {
         this.shaderModule = shaderModule;
         this.depthTexture = depthTexture;
         this.renderer = null;
         this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this._modelMatrix = aether.mat4.identity();
-        this.statusUpdater = () => { };
-        this.status = new gear.Value(consumer => this.statusUpdater = consumer);
         this.device = shaderModule.device;
         this.uniforms = this.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
         const uniformsGroupLayout = this.device.device.createBindGroupLayout({
@@ -50,14 +48,8 @@ export class NormalsRenderer {
         this.pipelineLayout = this.device.device.createPipelineLayout({
             bindGroupLayouts: [uniformsGroupLayout, this.nodeGroupLayout]
         });
-        this.fragmentState = this.shaderModule.fragmentState("f_main", ["rgba32float"]),
-            this.depthState = this.depthTexture.depthState(),
-            gear.Value.from(inputs.matModel.map(m => aether.mat4.mul(this._viewMatrix, this._modelMatrix = m)), inputs.matView.map(m => aether.mat4.mul(this._viewMatrix = m, this._modelMatrix))).map(m => ({
-                positions: m,
-                normals: m,
-            })).attach(this.setter(uniformsStruct.members.mat));
-        inputs.matProjection.attach(this.setter(uniformsStruct.members.projectionMat));
-        inputs.modelUri.attach((modelUri) => this.loadModel(modelUri));
+        this.fragmentState = this.shaderModule.fragmentState("f_main", ["rgba32float"]);
+        this.depthState = this.depthTexture.depthState();
     }
     get aspectRatio() {
         const m = this.projectionMatrix;
@@ -78,31 +70,34 @@ export class NormalsRenderer {
     get viewMatrix() {
         return this._viewMatrix;
     }
+    set viewMatrix(m) {
+        this._viewMatrix = m;
+        this.resetModelViewMatrix();
+    }
     get modelMatrix() {
         return this._modelMatrix;
     }
+    set modelMatrix(m) {
+        this._modelMatrix = m;
+        this.resetModelViewMatrix();
+    }
+    resetModelViewMatrix() {
+        const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
+    }
     loadModel(modelUri) {
         return __awaiter(this, void 0, void 0, function* () {
-            try {
-                this.statusUpdater("Loading model ...");
-                this._modelMatrix = aether.mat4.identity();
-                this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-                const modelView = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
-                this.uniforms.set(uniformsStruct.members.mat, { positions: modelView, normals: modelView });
-                this.projectionMatrix = projection.matrix(2, this.aspectRatio);
-                const model = yield gltf.graph.Model.create(modelUri);
-                this.statusUpdater("Parsing model ...");
-                if (this.renderer !== null) {
-                    this.renderer.destroy();
-                    this.renderer = null;
-                }
-                this.renderer = new gpu.GPURenderer(model, this.device, 1, { POSITION: 0, NORMAL: 1 }, (buffer, offset) => this.nodeBindGroup(buffer, offset), (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
-                this.statusUpdater("Rendering model ...");
+            this._modelMatrix = aether.mat4.identity();
+            this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+            const modelView = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+            this.uniforms.set(uniformsStruct.members.mat, { positions: modelView, normals: modelView });
+            this.projectionMatrix = projection.matrix(2, this.aspectRatio);
+            const model = yield gltf.graph.Model.create(modelUri);
+            if (this.renderer !== null) {
+                this.renderer.destroy();
+                this.renderer = null;
             }
-            catch (e) {
-                this.statusUpdater(`Error: ${e}`);
-                console.error(e);
-            }
+            this.renderer = new gpu.GPURenderer(model, this.device, 1, { POSITION: 0, NORMAL: 1 }, (buffer, offset) => this.nodeBindGroup(buffer, offset), (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         });
     }
     primitivePipeline(vertexLayouts, primitiveState) {
@@ -126,9 +121,6 @@ export class NormalsRenderer {
                     }
                 }]
         });
-    }
-    setter(member) {
-        return (value) => this.uniforms.set(member, value);
     }
     resize(width, height) {
         this.depthTexture.resize({ width, height });

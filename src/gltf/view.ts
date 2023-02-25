@@ -6,43 +6,33 @@ import * as glView from "./view.gl.js"
 
 export interface View {
 
+    loadModel(modelUri: string): Promise<void>
+
     resize(): void
     
     draw(): void
 
-    readonly status: gear.Value<string>
+    projectionMatrix: aether.Mat4
 
-    readonly projectionMatrix: aether.Mat4
+    viewMatrix: aether.Mat4
 
-    readonly viewMatrix: aether.Mat4
+    modelMatrix: aether.Mat4
 
-    readonly modelMatrix: aether.Mat4
+    readonly canvas: HTMLCanvasElement
 
-}
+    set modelColor(color: aether.Vec4)
 
-export type ViewInputs = {
+    set lightPosition(p: aether.Vec<3>)
 
-    matModel: gear.Value<aether.Mat<4>>
+    set lightRadius(r: number)
 
-    matView: gear.Value<aether.Mat<4>>
+    set shininess(s: number)
 
-    matProjection: gear.Value<aether.Mat<4>>
-
-    color: gear.Value<aether.Vec<4>>
-
-    shininess: gear.Value<number>
-
-    lightPosition: gear.Value<aether.Vec<3>>
-
-    lightRadius: gear.Value<number>
-
-    fogginess: gear.Value<number>
-
-    modelUri: gear.Value<string>
+    set fogginess(f: number)
 
 }
 
-export type ViewFactory = (inputs: ViewInputs) => View;
+export type ViewFactory = () => View;
 
 export async function newViewFactory(canvasId: string, wires: boolean = false): Promise<ViewFactory> {
     const apiElement = required(document.getElementById("graphics-api"))
