@@ -14,25 +14,27 @@ export interface View {
     
     saturation: number
 
-    setColor(h: number, s: number): void
-
     intensity: number
 
     xray: boolean
 
     crosshairs: boolean
 
+    setColor(h: number, s: number): void
+
+    render(): void
+
 }
 
-export async function view(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+export async function view(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const apiElement = required(document.getElementById("graphics-api"))
     try {
-        const view = await viewGPU(julia, canvasId, center, scale)
+        const view = await viewGPU(canvasId, center, scale)
         apiElement.innerHTML = "WebGPU"
         return view
     } catch (e) {
         console.warn("Falling back to WebGL because of exception!", e)
         apiElement.innerHTML = "WebGL"
-        return await viewGL(julia, canvasId, center, scale)
+        return await viewGL(canvasId, center, scale)
     }
 }

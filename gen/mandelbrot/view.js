@@ -9,18 +9,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { viewGL } from "./view.gl.js";
 import { required, viewGPU } from "./view.gpu.js";
-export function view(julia, canvasId, center, scale) {
+export function view(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));
         try {
-            const view = yield viewGPU(julia, canvasId, center, scale);
+            const view = yield viewGPU(canvasId, center, scale);
             apiElement.innerHTML = "WebGPU";
             return view;
         }
         catch (e) {
             console.warn("Falling back to WebGL because of exception!", e);
             apiElement.innerHTML = "WebGL";
-            return yield viewGL(julia, canvasId, center, scale);
+            return yield viewGL(canvasId, center, scale);
         }
     });
 }

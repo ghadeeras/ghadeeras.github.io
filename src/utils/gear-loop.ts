@@ -39,15 +39,26 @@ export type PointerDescriptor = {
     element: HTMLElement | string
     defaultDraggingTarget?: DraggingTarget
     onMoved?: InputPointerHandler
+    primaryButton?: PointerButtonDescriptor
+    secondaryButton?: PointerButtonDescriptor
+    auxiliaryButton?: PointerButtonDescriptor
 }
 
 export type KeyDescriptor = {
     virtualKey?: string
-    alternatives: string[][]
+    alternatives: OneOrMore<OneOrMore<string>>
     onPressed?: InputKeyHandler
     onReleased?: InputKeyHandler
     onChange?: InputKeyHandler
-} 
+}
+
+export type PointerButtonDescriptor = {
+    onPressed?: InputPointerHandler;
+    onReleased?: InputPointerHandler;
+    onChange?: InputPointerHandler;
+};
+
+type OneOrMore<T> = [T, ...T[]]
 
 export type InputPointerHandler = (loop: Loop, x: number, y: number) => void
 export type InputKeyHandler = (loop: Loop, context: KeyboardEventContext) => void
@@ -89,6 +100,12 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
                         }
                     })
                 }
+                if (keyDescriptor.onChange) {
+                    const onChange = keyDescriptor.onChange
+                    button.register(b => {
+                        onChange(this, this.keyboard)
+                    })
+                }
             }
         }
         if (loopDescriptor.input.pointer) {
@@ -99,6 +116,31 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
             }
             if (pointer.defaultDraggingTarget) {
                 this.pointer.draggingTarget = pointer.defaultDraggingTarget
+            }
+            if (pointer.primaryButton) {
+                const buttonDescriptor = pointer.primaryButton
+                if (buttonDescriptor.onPressed) {
+                    const onPressed = buttonDescriptor.onPressed
+                    this.pointer.primary.register(b => {
+                        if (b.pressed) {
+                            onPressed(this, ...this.pointer.position)
+                        }
+                    })
+                }
+                if (buttonDescriptor.onReleased) {
+                    const onReleased = buttonDescriptor.onReleased
+                    this.pointer.primary.register(b => {
+                        if (!b.pressed) {
+                            onReleased(this, ...this.pointer.position)
+                        }
+                    })
+                }
+                if (buttonDescriptor.onChange) {
+                    const onChange = buttonDescriptor.onChange
+                    this.pointer.primary.register(b => {
+                        onChange(this, ...this.pointer.position)
+                    })
+                }
             }
         }
     }

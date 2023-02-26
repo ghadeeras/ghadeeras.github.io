@@ -10,8 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as gpu from "../djee/gpu/index.js";
 import { CanvasSizeManager, fetchTextFile } from "../utils/gear.js";
 export class ViewGPU {
-    constructor(julia, device, canvasId, shaderModule, center, scale) {
-        this.julia = julia;
+    constructor(device, canvasId, shaderModule, center, scale) {
         this.device = device;
         this.uniformsStruct = gpu.struct({
             center: gpu.f32.x2,
@@ -45,11 +44,6 @@ export class ViewGPU {
             layout: "auto"
         });
         this.paramsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
-        const frame = () => {
-            this.draw();
-            requestAnimationFrame(frame);
-        };
-        frame();
     }
     get canvas() {
         return this.gpuCanvas.element;
@@ -99,7 +93,7 @@ export class ViewGPU {
     set crosshairs(b) {
         this.uniforms.set(this.uniformsStruct.members.crosshairs, b ? 1 : 0);
     }
-    draw() {
+    render() {
         this.device.enqueueCommand("render", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
@@ -112,12 +106,12 @@ export class ViewGPU {
         });
     }
 }
-export function viewGPU(julia, canvasId, center, scale) {
+export function viewGPU(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();
         const code = yield fetchTextFile("/shaders/mandelbrot.wgsl");
         const shaderModule = yield device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
-        return new ViewGPU(julia, device, canvasId, shaderModule, center, scale);
+        return new ViewGPU(device, canvasId, shaderModule, center, scale);
     });
 }
 export function required(value) {

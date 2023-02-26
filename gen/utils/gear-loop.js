@@ -35,6 +35,12 @@ class LoopImpl {
                         }
                     });
                 }
+                if (keyDescriptor.onChange) {
+                    const onChange = keyDescriptor.onChange;
+                    button.register(b => {
+                        onChange(this, this.keyboard);
+                    });
+                }
             }
         }
         if (loopDescriptor.input.pointer) {
@@ -45,6 +51,31 @@ class LoopImpl {
             }
             if (pointer.defaultDraggingTarget) {
                 this.pointer.draggingTarget = pointer.defaultDraggingTarget;
+            }
+            if (pointer.primaryButton) {
+                const buttonDescriptor = pointer.primaryButton;
+                if (buttonDescriptor.onPressed) {
+                    const onPressed = buttonDescriptor.onPressed;
+                    this.pointer.primary.register(b => {
+                        if (b.pressed) {
+                            onPressed(this, ...this.pointer.position);
+                        }
+                    });
+                }
+                if (buttonDescriptor.onReleased) {
+                    const onReleased = buttonDescriptor.onReleased;
+                    this.pointer.primary.register(b => {
+                        if (!b.pressed) {
+                            onReleased(this, ...this.pointer.position);
+                        }
+                    });
+                }
+                if (buttonDescriptor.onChange) {
+                    const onChange = buttonDescriptor.onChange;
+                    this.pointer.primary.register(b => {
+                        onChange(this, ...this.pointer.position);
+                    });
+                }
             }
         }
     }

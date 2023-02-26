@@ -61,10 +61,12 @@ export class VirtualKey extends Button {
         super();
         element.onpointerdown = e => {
             trap(e);
+            element.setPointerCapture(e.pointerId);
             this.pressed = true;
         };
         element.onpointerup = e => {
             trap(e);
+            element.releasePointerCapture(e.pointerId);
             this.pressed = false;
         };
     }

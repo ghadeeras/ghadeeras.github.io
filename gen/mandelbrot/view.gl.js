@@ -7,18 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { gear } from "/gen/libs.js";
 import * as gearx from "../utils/gear.js";
 import { wgl } from "../djee/index.js";
 export class ViewGL {
-    constructor(julia, _canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
-        this.julia = julia;
-        this.drawCall = new gear.DeferredComputation(() => this.doDraw());
+    constructor(_canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
         this.context = wgl.Context.of(_canvasId);
         const sizeManager = new gearx.CanvasSizeManager(true);
         sizeManager.observe(this.canvas, () => {
             this.context.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-            this.drawCall.perform();
         });
         const program = this.context.link(this.context.vertexShader(_vertexShaderCode), this.context.fragmentShader(_fragmentShaderCode));
         program.use();
@@ -44,14 +40,12 @@ export class ViewGL {
     }
     set center(c) {
         this.uniformCenter.data = c;
-        this.draw();
     }
     get scale() {
         return this.uniformScale.data[0];
     }
     set scale(s) {
         this.uniformScale.data = [s];
-        this.draw();
     }
     get hue() {
         return this.uniformColor.data[0];
@@ -67,43 +61,36 @@ export class ViewGL {
     }
     setColor(h, s) {
         this.uniformColor.data = [h, s];
-        this.draw();
     }
     get intensity() {
         return this.uniformIntensity.data[0];
     }
     set intensity(i) {
         this.uniformIntensity.data = [i];
-        this.draw();
     }
     get xray() {
         return this.uniformXray.data[0] != 0;
     }
     set xray(b) {
         this.uniformXray.data = [b ? 1 : 0];
-        this.draw();
     }
     get crosshairs() {
         return this.uniformCrosshairs.data[0] != 0;
     }
     set crosshairs(b) {
         this.uniformCrosshairs.data = [b ? 1 : 0];
-        this.draw();
     }
-    draw() {
-        this.drawCall.perform();
-    }
-    doDraw() {
+    render() {
         const gl = this.context.gl;
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
     }
 }
-export function viewGL(julia, canvasId, center, scale) {
+export function viewGL(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
         const shader = yield gearx.fetchTextFile("/shaders/mandelbrot.frag");
         const vertexShader = wgl.vertexShaders.fullScreenPass;
         const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
-        return new ViewGL(julia, canvasId, vertexShader, fragmentShader, center, scale);
+        return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale);
     });
 }
 //# sourceMappingURL=view.gl.js.map

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as misc from "../utils/misc.js";
+import * as gearx from "../utils/gear.js";
 import { aether, gear } from "/gen/libs.js";
 import { view } from "./view.js";
 import { positionDragging } from "../utils/dragging.js";
@@ -16,115 +16,121 @@ export const gitHubRepo = "ghadeeras.github.io/tree/master/src/mandelbrot";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init(controller) {
+export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        const canvas = gear.ElementEvents.create("canvas");
-        const mandelbrotView = yield view(false, canvas.element.id, [-0.75, 0], 2);
-        const toComplexNumber = (p) => aether.vec2.add(aether.vec2.scale(aether.vec2.mul(p, [canvas.element.clientWidth / canvas.element.clientHeight, 1]), mandelbrotView.scale), mandelbrotView.center);
-        const transformation = transformationTarget(mandelbrotView);
-        const color = colorTarget(mandelbrotView);
-        const intensity = intensityTarget(mandelbrotView);
-        const pressedKey = new gear.Value((c) => controller.handler = e => { c(e); return false; })
-            .filter(e => e.down)
-            .map(e => e.key)
-            .attach(k => {
-            switch (k) {
-                case "x":
-                    mandelbrotView.xray = !mandelbrotView.xray;
-                    break;
-                case "h":
-                    mandelbrotView.crosshairs = !mandelbrotView.crosshairs;
-                    break;
+        const toy = yield Toy.create();
+        const loop = gearx.newLoop(toy, {
+            fps: {
+                element: "fps-watch"
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+            input: {
+                pointer: {
+                    element: toy.canvas,
+                    defaultDraggingTarget: toy.zoomTarget,
+                    primaryButton: {
+                        onPressed: (_, x, y) => toy.click(x, y)
+                    }
+                },
+                keys: [{
+                        alternatives: [["KeyM"]],
+                        virtualKey: "#control-m",
+                        onPressed: loop => loop.draggingTarget = toy.moveTarget
+                    }, {
+                        alternatives: [["KeyZ"]],
+                        virtualKey: "#control-z",
+                        onPressed: loop => loop.draggingTarget = toy.zoomTarget
+                    }, {
+                        alternatives: [["KeyC"]],
+                        virtualKey: "#control-c",
+                        onPressed: loop => loop.draggingTarget = toy.colorTarget
+                    }, {
+                        alternatives: [["KeyI"]],
+                        virtualKey: "#control-i",
+                        onPressed: loop => loop.draggingTarget = toy.intensityTarget
+                    }, {
+                        alternatives: [["KeyX"]],
+                        virtualKey: "#control-x",
+                        onPressed: () => toy.mandelbrotView.xray = !toy.mandelbrotView.xray
+                    }, {
+                        alternatives: [["KeyH"]],
+                        virtualKey: "#control-h",
+                        onPressed: () => toy.mandelbrotView.crosshairs = !toy.mandelbrotView.crosshairs
+                    }, {
+                        alternatives: [["KeyN"]],
+                        virtualKey: "#control-n",
+                        onPressed: loop => {
+                            toy.loop = loop;
+                            loop.draggingTarget = null;
+                        }
+                    },]
             }
-        })
-            .filter(k => k in keyMappings || k === "n")
-            .defaultsTo("m")
-            .reduce((previous, current) => {
-            control(previous).removeAttribute("style");
-            control(current).setAttribute("style", "font-weight: bold");
-            return current;
-        }, "m");
-        const cases = {
-            move: new gear.Value(),
-            zoom: new gear.Value(),
-            color: new gear.Value(),
-            intensity: new gear.Value(),
-        };
-        const keyMappings = {
-            "m": cases.move,
-            "z": cases.zoom,
-            "c": cases.color,
-            "i": cases.intensity,
-        };
-        canvas.dragging.value.switch(pressedKey, keyMappings);
-        transformation.value = gear.Value.from(cases.move.then(gear.drag(new Move(mandelbrotView))), cases.zoom.then(gear.drag(new Zoom(mandelbrotView)))).defaultsTo(mandelbrotView);
-        color.value = cases.color
-            .then(gear.drag(positionDragging))
-            .map(([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2))
-            .defaultsTo([mandelbrotView.hue, mandelbrotView.saturation]);
-        intensity.value = cases.intensity
-            .then(gear.drag(positionDragging))
-            .map(([_, y]) => (y + 1) / 2)
-            .defaultsTo(mandelbrotView.intensity);
-        const clickPos = canvas.pointerDown.value.map(canvas.positionNormalizer);
-        gear.text("clickPos").value = clickPos
-            .map(pos => toFixedVec(pos, 9))
-            .defaultsTo(toFixedVec([0, 0], 9));
-        clickPos
-            .then(gear.flowSwitch(pressedKey.map(v => v === "n")))
-            .map(toComplexNumber)
-            .attach(play);
+        });
+        loop.run();
     });
 }
-function control(previous) {
-    return misc.required(document.getElementById(`control-${previous}`));
-}
-function intensityTarget(mandelbrotView) {
-    const intensityWatch = text("intensity");
-    const intensity = new gear.Target(intensity => {
-        mandelbrotView.intensity = intensity;
-        intensityWatch(toFixed(intensity));
-    });
-    return intensity;
-}
-function colorTarget(mandelbrotView) {
-    const hueWatch = text("hue");
-    const saturationWatch = text("saturation");
-    const color = new gear.Target(color => {
-        const [hue, saturation] = color;
-        mandelbrotView.setColor(hue, saturation);
-        hueWatch(toFixed(hue));
-        saturationWatch(toFixed(saturation));
-    });
-    return color;
-}
-function transformationTarget(mandelbrotView) {
-    const centerWatch = text("center");
-    const scaleWatch = text("scale");
-    const transformation = new gear.Target(t => {
-        mandelbrotView.scale = t.scale;
-        mandelbrotView.center = t.center;
-        centerWatch(toFixedVec(t.center, 9));
-        scaleWatch(toFixed(t.scale, 9));
-    });
-    return transformation;
-}
-function text(elementId) {
-    const element = document.getElementById(elementId);
-    if (!element) {
-        throw new Error(`Element with id '${elementId}' not found!`);
+class Toy {
+    constructor(mandelbrotView) {
+        this.mandelbrotView = mandelbrotView;
+        this.moveTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Move(this.mandelbrotView));
+        this.zoomTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Zoom(this.mandelbrotView));
+        this.colorTarget = gearx.draggingTarget(mapped(gearx.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
+        this.intensityTarget = gearx.draggingTarget(mapped(gearx.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging);
+        this.intensityWatch = gearx.required(document.getElementById("intensity"));
+        this.hueWatch = gearx.required(document.getElementById("hue"));
+        this.saturationWatch = gearx.required(document.getElementById("saturation"));
+        this.centerWatch = gearx.required(document.getElementById("center"));
+        this.scaleWatch = gearx.required(document.getElementById("scale"));
+        this.posWatch = gearx.required(document.getElementById("clickPos"));
+        this.loop = null;
+        this.watchesUpdate = new gear.DeferredComputation(() => {
+            this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9);
+            this.scaleWatch.innerText = toFixed(this.mandelbrotView.scale, 9);
+            this.hueWatch.innerText = toFixed(this.mandelbrotView.hue);
+            this.saturationWatch.innerText = toFixed(this.mandelbrotView.saturation);
+            this.intensityWatch.innerText = toFixed(this.mandelbrotView.intensity);
+        });
     }
-    const update = [null];
-    return s => {
-        if (update[0] == null) {
-            setTimeout(() => {
-                var _a;
-                element.innerText = (_a = update[0]) !== null && _a !== void 0 ? _a : element.innerText;
-                update[0] = null;
-            }, 100);
+    static create() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const mandelbrotView = yield view("canvas", [-0.75, 0], 2);
+            return new Toy(mandelbrotView);
+        });
+    }
+    animate() {
+    }
+    render() {
+        this.mandelbrotView.render();
+    }
+    click(x, y) {
+        this.posWatch.innerText = toFixedVec([x, y]);
+        if (this.loop !== null && this.loop.draggingTarget === null) {
+            const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight;
+            const c = aether.vec2.add(aether.vec2.scale(aether.vec2.mul([x, y], aspectRatio > 1 ? [aspectRatio, 1] : [1, 1 / aspectRatio]), this.mandelbrotView.scale), this.mandelbrotView.center);
+            play(c);
         }
-        update[0] = s;
-    };
+    }
+    get canvas() {
+        return this.mandelbrotView.canvas;
+    }
+    get transformation() {
+        return this.mandelbrotView;
+    }
+    set transformation(t) {
+        this.mandelbrotView.center = t.center;
+        this.mandelbrotView.scale = t.scale;
+        this.watchesUpdate.perform();
+    }
+    set color([h, s]) {
+        this.mandelbrotView.setColor(h, s);
+        this.watchesUpdate.perform();
+    }
+    set intensity(i) {
+        this.mandelbrotView.intensity = i;
+        this.watchesUpdate.perform();
+    }
 }
 function toFixedVec(v, digits = 3) {
     const coords = v.map(c => toFixed(c, digits));
@@ -175,26 +181,24 @@ class Zoom {
     constructor(view) {
         this.view = view;
     }
-    currentValue() {
-        return {
-            scale: this.view.scale,
-            center: this.view.center
+    begin(value, from) {
+        const initial = {
+            center: value.center,
+            scale: value.scale
         };
-    }
-    mapper(value, from) {
+        const aspect = this.view.canvas.width / this.view.canvas.height;
+        const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
         return to => {
-            const aspect = this.view.canvas.width / this.view.canvas.height;
-            const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
             const delta = aether.vec2.mul(calculateDelta(from, to), bounds);
             const power = -delta[1];
             const factor = Math.pow(16, power);
-            return power == 0 ? value : {
-                scale: value.scale * factor,
-                center: aether.vec2.sub(value.center, aether.vec2.scale(calculateDelta([0, 0], aether.vec2.mul(from, bounds), value.scale), factor - 1))
+            return power == 0 ? initial : {
+                scale: initial.scale * factor,
+                center: aether.vec2.sub(initial.center, aether.vec2.scale(calculateDelta([0, 0], aether.vec2.mul(from, bounds), initial.scale), factor - 1))
             };
         };
     }
-    finalize(value) {
+    end(value) {
         return value;
     }
 }
@@ -202,28 +206,36 @@ class Move {
     constructor(view) {
         this.view = view;
     }
-    currentValue() {
-        return {
-            scale: this.view.scale,
-            center: this.view.center
+    begin(value, from) {
+        const initial = {
+            center: value.center,
+            scale: value.scale
         };
-    }
-    mapper(value, from) {
+        const aspect = this.view.canvas.width / this.view.canvas.height;
+        const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
         return to => {
-            const aspect = this.view.canvas.width / this.view.canvas.height;
-            const bounds = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect];
-            const delta = aether.vec2.mul(calculateDelta(from, to, value.scale), bounds);
+            const delta = aether.vec2.mul(calculateDelta(from, to, initial.scale), bounds);
             return {
-                scale: value.scale,
-                center: aether.vec2.max(aether.vec2.min(aether.vec2.sub(value.center, delta), [+4, +4]), [-4, -4])
+                scale: initial.scale,
+                center: aether.vec2.max(aether.vec2.min(aether.vec2.sub(initial.center, delta), [+4, +4]), [-4, -4])
             };
         };
     }
-    finalize(value) {
+    end(value) {
         return value;
     }
 }
 function calculateDelta(pos1, pos2, scale = 1) {
     return aether.vec2.scale(aether.vec2.sub(pos2, pos1), scale);
+}
+function mapped(property, mapper) {
+    const pos = [[0, 0]];
+    return {
+        getter: () => pos[0],
+        setter: b => {
+            pos[0] = b;
+            property.setter(mapper(b));
+        }
+    };
 }
 //# sourceMappingURL=toy.js.map

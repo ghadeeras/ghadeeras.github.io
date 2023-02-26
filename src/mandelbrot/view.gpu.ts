@@ -20,7 +20,6 @@ export class ViewGPU implements View {
     }) 
 
     constructor(
-        readonly julia: boolean,
         private device: gpu.Device,
         canvasId: string,
         shaderModule: gpu.ShaderModule,
@@ -54,12 +53,6 @@ export class ViewGPU implements View {
         })
 
         this.paramsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms])
-
-        const frame = () => {
-            this.draw()
-            requestAnimationFrame(frame)
-        }
-        frame()
     }
 
     get canvas() {
@@ -126,7 +119,7 @@ export class ViewGPU implements View {
         this.uniforms.set(this.uniformsStruct.members.crosshairs, b ? 1 : 0)
     }
 
-    private draw() {
+    render() {
         this.device.enqueueCommand("render", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
@@ -141,11 +134,11 @@ export class ViewGPU implements View {
 
 }
 
-export async function viewGPU(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
     const code = await fetchTextFile("/shaders/mandelbrot.wgsl")
     const shaderModule = await device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code))
-    return new ViewGPU(julia, device, canvasId, shaderModule, center, scale)
+    return new ViewGPU(device, canvasId, shaderModule, center, scale)
 }
 
 export function required<T>(value: T | null | undefined): T {

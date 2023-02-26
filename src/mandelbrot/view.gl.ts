@@ -1,4 +1,4 @@
-import { aether, gear } from "/gen/libs.js"
+import { aether } from "/gen/libs.js"
 import * as gearx from "../utils/gear.js"
 import { wgl } from "../djee/index.js"
 import { View } from "./view.js"
@@ -13,10 +13,7 @@ export class ViewGL implements View {
     private uniformXray: wgl.Uniform
     private uniformCrosshairs: wgl.Uniform
 
-    private drawCall: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.doDraw())
-
     constructor(
-        private julia: boolean,
         _canvasId: string,
         _vertexShaderCode: string,
         _fragmentShaderCode: string,
@@ -28,7 +25,6 @@ export class ViewGL implements View {
         const sizeManager = new gearx.CanvasSizeManager(true)
         sizeManager.observe(this.canvas, () => {
             this.context.gl.viewport(0, 0, this.canvas.width, this.canvas.height)
-            this.drawCall.perform()
         })
 
         const program = this.context.link(
@@ -63,7 +59,6 @@ export class ViewGL implements View {
 
     set center(c: aether.Vec<2>) {
         this.uniformCenter.data = c
-        this.draw()
     }
 
     get scale() {
@@ -72,7 +67,6 @@ export class ViewGL implements View {
 
     set scale(s: number) {
         this.uniformScale.data = [s]
-        this.draw()
     }
 
     get hue() {
@@ -93,7 +87,6 @@ export class ViewGL implements View {
 
     setColor(h: number, s: number) {
         this.uniformColor.data = [h, s]
-        this.draw()
     }
 
     get intensity() {
@@ -102,7 +95,6 @@ export class ViewGL implements View {
     
     set intensity(i: number) {
         this.uniformIntensity.data = [i]
-        this.draw()
     }
 
     get xray() {
@@ -111,7 +103,6 @@ export class ViewGL implements View {
     
     set xray(b: boolean) {
         this.uniformXray.data = [b ? 1 : 0]
-        this.draw()
     }
 
     get crosshairs() {
@@ -120,23 +111,18 @@ export class ViewGL implements View {
     
     set crosshairs(b: boolean) {
         this.uniformCrosshairs.data = [b ? 1 : 0]
-        this.draw()
     }
 
-    private draw() {
-        this.drawCall.perform();
-    }
-    
-    private doDraw() {
+    render() {
         const gl = this.context.gl
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3)
     }
 
 } 
 
-export async function viewGL(julia: boolean, canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+export async function viewGL(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const shader = await gearx.fetchTextFile("/shaders/mandelbrot.frag")
     const vertexShader = wgl.vertexShaders.fullScreenPass
     const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader)
-    return new ViewGL(julia, canvasId, vertexShader, fragmentShader, center, scale)
+    return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale)
 }
