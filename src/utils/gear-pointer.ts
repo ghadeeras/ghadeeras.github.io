@@ -1,10 +1,24 @@
 import { gear } from '../libs.js'
 import { required } from "./misc.js"
 
-import { PointerButton } from './gear-buttons.js'
+import { ButtonInterface, PointerButton } from './gear-buttons.js'
 import { Property, trap } from './gear.js'
 
-export class Pointer {
+export interface PointerInterface {
+
+    readonly primary: ButtonInterface
+    readonly secondary: ButtonInterface
+    readonly auxiliary: ButtonInterface
+
+    readonly x: number 
+    readonly y: number
+    readonly position: gear.PointerPosition
+
+    draggingTarget: DraggingTarget | null
+
+}
+
+export class Pointer implements PointerInterface {
 
     readonly element: HTMLElement
 

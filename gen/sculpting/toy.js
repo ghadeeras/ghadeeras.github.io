@@ -21,7 +21,7 @@ export const huds = {
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        const view = yield v.newView("canvas");
+        const view = yield v.newView(Toy.descriptor.input.pointers.canvas.element);
         const picker = yield view.picker();
         const scalarFieldModule = yield aether.loadScalarFieldModule();
         const stone = scalarFieldModule.newInstance();
@@ -29,65 +29,7 @@ export function init() {
         stone.sampler = field;
         stone.contourValue = 0.5;
         const toy = new Toy(stone, scalarFieldModule, view, picker);
-        const loop = gearx.newLoop(toy, {
-            fps: {
-                element: "fps-watch"
-            },
-            styling: {
-                pressedButton: "pressed"
-            },
-            input: {
-                pointer: {
-                    element: view.canvas,
-                    defaultDraggingTarget: toy.rotationDragging
-                },
-                keys: [{
-                        alternatives: [["KeyC"]],
-                        virtualKey: "#control-c",
-                        onPressed: loop => loop.draggingTarget = toy.carvingTarget
-                    }, {
-                        alternatives: [["KeyR"]],
-                        virtualKey: "#control-r",
-                        onPressed: loop => loop.draggingTarget = toy.rotationDragging
-                    }, {
-                        alternatives: [["KeyZ"]],
-                        virtualKey: "#control-z",
-                        onPressed: loop => loop.draggingTarget = toy.focalLengthDragging
-                    }, {
-                        alternatives: [["KeyH"]],
-                        virtualKey: "#control-h",
-                        onPressed: loop => loop.draggingTarget = toy.shininessDragging
-                    }, {
-                        alternatives: [["KeyD"]],
-                        virtualKey: "#control-d",
-                        onPressed: loop => loop.draggingTarget = toy.lightPositionDragging
-                    }, {
-                        alternatives: [["KeyL"]],
-                        virtualKey: "#control-l",
-                        onPressed: loop => loop.draggingTarget = toy.lightRadiusDragging
-                    }, {
-                        alternatives: [["KeyU"]],
-                        virtualKey: "#control-u",
-                        onPressed: () => toy.currentStone = toy.carving.undo(toy.currentStone)
-                    }, {
-                        alternatives: [["KeyX"]],
-                        virtualKey: "#control-x",
-                        onPressed: () => toy.exportModel()
-                    }, {
-                        alternatives: [["KeyS"]],
-                        virtualKey: "#control-s",
-                        onPressed: () => toy.saveModel()
-                    }, {
-                        alternatives: [["ArrowUp"]],
-                        virtualKey: "#control-up",
-                        onPressed: () => toy.addToLOD(8)
-                    }, {
-                        alternatives: [["ArrowDown"]],
-                        virtualKey: "#control-down",
-                        onPressed: () => toy.addToLOD(-8)
-                    },]
-            }
-        });
+        const loop = gearx.newLoop(toy, Toy.descriptor);
         loop.run();
     });
 }
@@ -121,6 +63,31 @@ class Toy {
         this.modelMatrix = aether.mat4.identity();
         this.currentStone = stone;
     }
+    wiring(loop) {
+        return {
+            pointers: {
+                canvas: { defaultDraggingTarget: this.rotationDragging },
+            },
+            keys: {
+                carving: { onPressed: () => loop.pointers.canvas.draggingTarget = this.carvingTarget },
+                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.focalLengthDragging },
+                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging },
+                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging },
+                undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) },
+                export: { onPressed: () => this.exportModel() },
+                save: { onPressed: () => this.saveModel() },
+                incLOD: { onPressed: () => this.addToLOD(8) },
+                decLOD: { onPressed: () => this.addToLOD(-8) },
+            }
+        };
+    }
+    animate() {
+    }
+    render() {
+        this.view.render();
+    }
     get projectionViewMatrix() {
         return aether.mat4.mul(this.view.matProjection, this.view.matView);
     }
@@ -141,16 +108,11 @@ class Toy {
     }
     set currentStone(s) {
         this.stone = s;
+        this.lodElement.innerText = s.resolution.toFixed(0);
         this.lazyVertices.perform().then(vertices => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, vertices));
-    }
-    animate(loop, time, deltaT) {
-    }
-    render() {
-        this.view.render();
     }
     addToLOD(delta) {
         this.stone.resolution = clamp(this.stone.resolution + delta, 32, 96);
-        this.lodElement.innerText = this.stone.resolution.toFixed(0);
         this.currentStone = this.stone;
     }
     exportModel() {
@@ -239,6 +201,67 @@ class Toy {
         });
     }
 }
+Toy.descriptor = {
+    fps: {
+        element: "fps-watch"
+    },
+    styling: {
+        pressedButton: "pressed"
+    },
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas",
+            }
+        },
+        keys: {
+            carving: {
+                alternatives: [["KeyC"]],
+                virtualKey: "#control-c",
+            },
+            rotation: {
+                alternatives: [["KeyR"]],
+                virtualKey: "#control-r",
+            },
+            zoom: {
+                alternatives: [["KeyZ"]],
+                virtualKey: "#control-z",
+            },
+            shininess: {
+                alternatives: [["KeyH"]],
+                virtualKey: "#control-h",
+            },
+            lightDirection: {
+                alternatives: [["KeyD"]],
+                virtualKey: "#control-d",
+            },
+            lightRadius: {
+                alternatives: [["KeyL"]],
+                virtualKey: "#control-l",
+            },
+            undo: {
+                alternatives: [["KeyU"]],
+                virtualKey: "#control-u",
+            },
+            export: {
+                alternatives: [["KeyX"]],
+                virtualKey: "#control-x",
+            },
+            save: {
+                alternatives: [["KeyS"]],
+                virtualKey: "#control-s",
+            },
+            incLOD: {
+                alternatives: [["ArrowUp"]],
+                virtualKey: "#control-up",
+            },
+            decLOD: {
+                alternatives: [["ArrowDown"]],
+                virtualKey: "#control-down",
+            },
+        }
+    }
+};
 function data(e) {
     return __awaiter(this, void 0, void 0, function* () {
         e.preventDefault();

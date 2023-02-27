@@ -59,8 +59,15 @@ export class FrequencyMeter {
     }
 
     static create(unitTime: number, elementOrId: HTMLElement | string) {
-        const element = elementOrId instanceof HTMLElement ? elementOrId : required(document.getElementById(elementOrId))
-        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toFixed(3))
+        const element = elementOrId instanceof HTMLElement 
+            ? elementOrId 
+            : elementOrId
+                ? document.getElementById(elementOrId)
+                : null
+        return new FrequencyMeter(unitTime, element !== null 
+            ? (freq => element.innerHTML = freq.toFixed(3)) 
+            : () => {}
+        )
     }
 
 }

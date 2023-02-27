@@ -61,8 +61,14 @@ export class FrequencyMeter {
         requestAnimationFrame(wrappedFrame);
     }
     static create(unitTime, elementOrId) {
-        const element = elementOrId instanceof HTMLElement ? elementOrId : required(document.getElementById(elementOrId));
-        return new FrequencyMeter(unitTime, freq => element.innerHTML = freq.toFixed(3));
+        const element = elementOrId instanceof HTMLElement
+            ? elementOrId
+            : elementOrId
+                ? document.getElementById(elementOrId)
+                : null;
+        return new FrequencyMeter(unitTime, element !== null
+            ? (freq => element.innerHTML = freq.toFixed(3))
+            : () => { });
     }
 }
 export function throttled(freqInHz, logic) {

@@ -22,77 +22,11 @@ export const huds = {
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield GravityToy.create();
-        const loop = gear.newLoop(toy, {
-            input: {
-                pointer: {
-                    element: toy.element,
-                    defaultDraggingTarget: toy.defaultDraggingTarget
-                },
-                keys: [
-                    {
-                        virtualKey: "#control-r",
-                        alternatives: [["KeyR"]],
-                        onPressed: toy.rotationKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-p",
-                        alternatives: [["KeyP"]],
-                        onPressed: toy.positionKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-z",
-                        alternatives: [["KeyZ"]],
-                        onPressed: toy.zoomKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-s",
-                        alternatives: [["KeyS"]],
-                        onPressed: toy.radiusScaleKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-g",
-                        alternatives: [["KeyG"]],
-                        onPressed: toy.gravityKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-b",
-                        alternatives: [["KeyB"]],
-                        onPressed: toy.pointednessKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-1",
-                        alternatives: [["Digit1"]],
-                        onPressed: toy.collapseKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-2",
-                        alternatives: [["Digit2"]],
-                        onPressed: toy.kaboomKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-3",
-                        alternatives: [["Digit3"]],
-                        onPressed: toy.resetKey.bind(toy)
-                    },
-                    {
-                        virtualKey: "#control-4",
-                        alternatives: [["Digit4"]],
-                        onPressed: toy.pauseResumeKey.bind(toy)
-                    },
-                ],
-            },
-            styling: {
-                pressedButton: "pressed"
-            },
-            fps: {
-                element: "freq-watch"
-            }
-        });
+        const loop = yield Toy.loop();
         loop.run();
     });
 }
-class GravityToy {
+class Toy {
     constructor(gpuCanvas, universe, visuals, engine, renderer) {
         this.gpuCanvas = gpuCanvas;
         this.universe = universe;
@@ -106,6 +40,29 @@ class GravityToy {
         this.zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100));
         this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
     }
+    wiring(loop) {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: this.rotationDragging
+                }
+            },
+            keys: {
+                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
+                position: { onPressed: () => loop.pointers.canvas.draggingTarget = this.positionDragging },
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
+                radiusScale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.radiusScaleDragging },
+                gravity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.gravityDragging },
+                pointedness: { onPressed: () => loop.pointers.canvas.draggingTarget = this.pointednessDragging },
+                collapse: { onPressed: () => recreateCollapse(this.universe) },
+                kaboom: { onPressed: () => recreateKaboom(this.universe) },
+                reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
+                pauseResume: { onPressed: () => loop.animationPaused = !loop.animationPaused },
+            },
+        };
+    }
+    animate() { this.engine.move(this.universe); }
+    render() { this.renderer.render(this.universe); }
     get defaultDraggingTarget() {
         return this.rotationDragging;
     }
@@ -124,25 +81,13 @@ class GravityToy {
     set zoom(z) { this.visuals.zoom = z; }
     get modelMatrix() { return this.visuals.modelMatrix; }
     set modelMatrix(m) { this.visuals.modelMatrix = m; }
-    gravityKey(loop) { loop.draggingTarget = this.gravityDragging; }
-    pointednessKey(loop) { loop.draggingTarget = this.pointednessDragging; }
-    radiusScaleKey(loop) { loop.draggingTarget = this.radiusScaleDragging; }
-    positionKey(loop) { loop.draggingTarget = this.positionDragging; }
-    zoomKey(loop) { loop.draggingTarget = this.zoomDragging; }
-    rotationKey(loop) { loop.draggingTarget = this.rotationDragging; }
-    collapseKey() { recreateCollapse(this.universe); }
-    kaboomKey() { recreateKaboom(this.universe); }
-    resetKey() { resetRendering(this.visuals, this.renderer); }
-    pauseResumeKey(loop) { loop.animationPaused = !loop.animationPaused; }
-    animate() { this.engine.move(this.universe); }
-    render() { this.renderer.render(this.universe); }
     draggingTarget(key, dragger) {
         return gear.draggingTarget(gear.property(this, key), dragger);
     }
-    static create() {
+    static loop() {
         return __awaiter(this, void 0, void 0, function* () {
             const device = yield gpuDevice();
-            const canvas = device.canvas("canvas", 4);
+            const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4);
             const universeLayout = new UniverseLayout(device);
             const universe = universeLayout.instance(...createUniverse(16384));
             const visualsLayout = new VisualsLayout(device);
@@ -150,10 +95,67 @@ class GravityToy {
             const engineLayout = new EngineLayout(universeLayout);
             const engine = yield newEngine(engineLayout);
             const renderer = yield newRenderer(device, canvas, visuals);
-            return new GravityToy(canvas, universe, visuals, engine, renderer);
+            return gear.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor);
         });
     }
 }
+Toy.descriptor = {
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas",
+            }
+        },
+        keys: {
+            rotation: {
+                virtualKey: "#control-r",
+                alternatives: [["KeyR"]],
+            },
+            position: {
+                virtualKey: "#control-p",
+                alternatives: [["KeyP"]],
+            },
+            zoom: {
+                virtualKey: "#control-z",
+                alternatives: [["KeyZ"]],
+            },
+            radiusScale: {
+                virtualKey: "#control-s",
+                alternatives: [["KeyS"]],
+            },
+            gravity: {
+                virtualKey: "#control-g",
+                alternatives: [["KeyG"]],
+            },
+            pointedness: {
+                virtualKey: "#control-b",
+                alternatives: [["KeyB"]],
+            },
+            collapse: {
+                virtualKey: "#control-1",
+                alternatives: [["Digit1"]],
+            },
+            kaboom: {
+                virtualKey: "#control-2",
+                alternatives: [["Digit2"]],
+            },
+            reset: {
+                virtualKey: "#control-3",
+                alternatives: [["Digit3"]],
+            },
+            pauseResume: {
+                virtualKey: "#control-4",
+                alternatives: [["Digit4"]],
+            },
+        },
+    },
+    styling: {
+        pressedButton: "pressed"
+    },
+    fps: {
+        element: "freq-watch"
+    }
+};
 function resetRendering(visuals, renderer) {
     visuals.modelMatrix = aether.mat4.identity();
     visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24]);

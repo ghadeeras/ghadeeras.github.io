@@ -6,76 +6,111 @@ export function newLoop(loopLogic, inputDescriptor) {
     return new LoopImpl(loopLogic, inputDescriptor);
 }
 class LoopImpl {
-    constructor(loopAutomaton, loopDescriptor) {
+    constructor(loopLogic, loopDescriptor) {
         var _a;
-        this.loopAutomaton = loopAutomaton;
+        this.loopLogic = loopLogic;
         this.loopDescriptor = loopDescriptor;
-        this.pointer = new Pointer(this.loopDescriptor.input.pointer.element);
         this.keyboard = new Keyboard();
         this.frequencyMeter = this.loopDescriptor.fps
             ? FrequencyMeter.create((_a = this.loopDescriptor.fps.periodInMilliseconds) !== null && _a !== void 0 ? _a : 1000, this.loopDescriptor.fps.element)
             : new FrequencyMeter(1000, () => { });
         this._paused = false;
+        const postConstructionOps = [];
+        this.keys = this.createKeys(loopDescriptor, postConstructionOps);
+        this.pointers = this.createPointers(loopDescriptor, postConstructionOps);
+        postConstructionOps.forEach(op => op(loopLogic.wiring(this)));
+    }
+    createKeys(loopDescriptor, postConstructionOps) {
+        const keys = {};
         if (loopDescriptor.input.keys) {
-            for (const keyDescriptor of loopDescriptor.input.keys) {
+            for (const keyDescriptorKey of keysOf(loopDescriptor.input.keys)) {
+                const keyDescriptor = loopDescriptor.input.keys[keyDescriptorKey];
                 const button = this.newButton(keyDescriptor, loopDescriptor.styling);
-                if (keyDescriptor.onPressed) {
-                    const onPressed = keyDescriptor.onPressed;
-                    button.register(b => {
-                        if (b.pressed) {
-                            onPressed(this, this.keyboard);
-                        }
-                    });
-                }
-                if (keyDescriptor.onReleased) {
-                    const onReleased = keyDescriptor.onReleased;
-                    button.register(b => {
-                        if (!b.pressed) {
-                            onReleased(this, this.keyboard);
-                        }
-                    });
-                }
-                if (keyDescriptor.onChange) {
-                    const onChange = keyDescriptor.onChange;
-                    button.register(b => {
-                        onChange(this, this.keyboard);
-                    });
-                }
+                keys[keyDescriptorKey] = button;
+                postConstructionOps.push(loopWiring => {
+                    this.wireButton(keyDescriptorKey, button, loopWiring);
+                });
             }
         }
-        if (loopDescriptor.input.pointer) {
-            const pointer = loopDescriptor.input.pointer;
-            if (pointer.onMoved) {
-                const onMoved = pointer.onMoved;
-                this.pointer.register(p => onMoved(this, ...p.position));
+        return keys;
+    }
+    wireButton(keyDescriptorKey, button, loopWiring) {
+        const wiring = loopWiring.keys ? loopWiring.keys[keyDescriptorKey] : null;
+        if (!wiring) {
+            return;
+        }
+        if (wiring.onPressed) {
+            const onPressed = wiring.onPressed;
+            button.register(b => {
+                if (b.pressed) {
+                    onPressed();
+                }
+            });
+        }
+        if (wiring.onReleased) {
+            const onReleased = wiring.onReleased;
+            button.register(b => {
+                if (!b.pressed) {
+                    onReleased();
+                }
+            });
+        }
+        if (wiring.onChange) {
+            const onChange = wiring.onChange;
+            button.register(b => {
+                onChange();
+            });
+        }
+    }
+    createPointers(loopDescriptor, postConstructionOps) {
+        const pointers = {};
+        if (loopDescriptor.input.pointers) {
+            for (const pointerDescriptorKey of keysOf(loopDescriptor.input.pointers)) {
+                const pointerDescriptor = loopDescriptor.input.pointers[pointerDescriptorKey];
+                const pointer = new Pointer(pointerDescriptor.element);
+                pointers[pointerDescriptorKey] = pointer;
+                postConstructionOps.push(loopWiring => {
+                    this.wirePointer(pointerDescriptorKey, pointer, loopWiring);
+                });
             }
-            if (pointer.defaultDraggingTarget) {
-                this.pointer.draggingTarget = pointer.defaultDraggingTarget;
+        }
+        return pointers;
+    }
+    wirePointer(pointerDescriptorKey, pointer, loopWiring) {
+        const wiring = loopWiring.pointers[pointerDescriptorKey];
+        if (!wiring) {
+            return;
+        }
+        if (wiring.defaultDraggingTarget) {
+            pointer.draggingTarget = wiring.defaultDraggingTarget;
+        }
+        if (wiring.onMoved) {
+            const onMoved = wiring.onMoved;
+            pointer.register(p => onMoved());
+        }
+        if (wiring.primaryButton) {
+            const buttonWiring = wiring.primaryButton;
+            if (buttonWiring.onPressed) {
+                const onPressed = buttonWiring.onPressed;
+                pointer.primary.register(b => {
+                    if (b.pressed) {
+                        onPressed();
+                    }
+                });
             }
-            if (pointer.primaryButton) {
-                const buttonDescriptor = pointer.primaryButton;
-                if (buttonDescriptor.onPressed) {
-                    const onPressed = buttonDescriptor.onPressed;
-                    this.pointer.primary.register(b => {
-                        if (b.pressed) {
-                            onPressed(this, ...this.pointer.position);
-                        }
-                    });
-                }
-                if (buttonDescriptor.onReleased) {
-                    const onReleased = buttonDescriptor.onReleased;
-                    this.pointer.primary.register(b => {
-                        if (!b.pressed) {
-                            onReleased(this, ...this.pointer.position);
-                        }
-                    });
-                }
-                if (buttonDescriptor.onChange) {
-                    const onChange = buttonDescriptor.onChange;
-                    this.pointer.primary.register(b => {
-                        onChange(this, ...this.pointer.position);
-                    });
-                }
+            if (buttonWiring.onReleased) {
+                const onReleased = buttonWiring.onReleased;
+                pointer.primary.register(b => {
+                    if (!b.pressed) {
+                        onReleased();
+                    }
+                });
+            }
+            if (buttonWiring.onChange) {
+                const onChange = buttonWiring.onChange;
+                pointer.primary.register(b => {
+                    onChange();
+                });
             }
         }
     }
@@ -85,19 +120,13 @@ class LoopImpl {
     set animationPaused(p) {
         this._paused = p;
     }
-    get draggingTarget() {
-        return this.pointer.draggingTarget;
-    }
-    set draggingTarget(draggingTarget) {
-        this.pointer.draggingTarget = draggingTarget;
-    }
-    removeDraggingTarget() {
-        this.pointer.removeDraggingTarget();
-    }
     run() {
         if (LoopImpl.activeLoop !== this) {
             LoopImpl.activeLoop = this;
-            this.pointer.use();
+            for (const key of keysOf(this.pointers)) {
+                const pointer = this.pointers[key];
+                pointer.use();
+            }
             this.keyboard.use();
             this.nextFrame();
         }
@@ -106,9 +135,9 @@ class LoopImpl {
         requestAnimationFrame(time => {
             const elapsed = this.frequencyMeter.tick(time);
             if (!this.animationPaused) {
-                this.loopAutomaton.animate(this, time, elapsed);
+                this.loopLogic.animate(this, time, elapsed);
             }
-            this.loopAutomaton.render();
+            this.loopLogic.render();
             if (this === LoopImpl.activeLoop) {
                 this.nextFrame();
             }
@@ -140,4 +169,7 @@ class LoopImpl {
     }
 }
 LoopImpl.activeLoop = null;
+function keysOf(object) {
+    return Object.keys(object);
+}
 //# sourceMappingURL=gear-loop.js.map

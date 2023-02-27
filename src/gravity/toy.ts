@@ -13,67 +13,64 @@ export const huds = {
     "monitor": "monitor-button"
 }
 
-export async function init() {
-    const toy = await GravityToy.create()
+type ToyDescriptor = typeof Toy.descriptor
 
-    const loop = gear.newLoop(toy, {
+export async function init() {
+    const loop = await Toy.loop()
+    loop.run()
+}
+
+class Toy implements gear.LoopLogic<ToyDescriptor> {
+
+    static readonly descriptor = {
         input: {
-            pointer: {
-                element: toy.element,
-                defaultDraggingTarget: toy.defaultDraggingTarget
+            pointers: {
+                canvas: {
+                    element: "canvas",
+                }
             },
-            keys: [
-                { 
+            keys: {
+                rotation: {
                     virtualKey: "#control-r",
                     alternatives: [["KeyR"]],
-                    onPressed: toy.rotationKey.bind(toy)
                 },
-                { 
+                position: {
                     virtualKey: "#control-p",
                     alternatives: [["KeyP"]],
-                    onPressed: toy.positionKey.bind(toy)
                 },
-                { 
+                zoom: {
                     virtualKey: "#control-z",
                     alternatives: [["KeyZ"]],
-                    onPressed: toy.zoomKey.bind(toy) 
                 },
-                { 
+                radiusScale: {
                     virtualKey: "#control-s",
-                    alternatives: [["KeyS"]] ,
-                    onPressed: toy.radiusScaleKey.bind(toy)
+                    alternatives: [["KeyS"]],
                 },
-                { 
+                gravity: {
                     virtualKey: "#control-g",
                     alternatives: [["KeyG"]],
-                    onPressed: toy.gravityKey.bind(toy)
                 },
-                { 
+                pointedness: {
                     virtualKey: "#control-b",
                     alternatives: [["KeyB"]],
-                    onPressed: toy.pointednessKey.bind(toy)
                 },
-                { 
+                collapse: {
                     virtualKey: "#control-1",
                     alternatives: [["Digit1"]],
-                    onPressed: toy.collapseKey.bind(toy)
                 },
-                { 
+                kaboom: {
                     virtualKey: "#control-2",
                     alternatives: [["Digit2"]],
-                    onPressed: toy.kaboomKey.bind(toy)
                 },
-                { 
+                reset: {
                     virtualKey: "#control-3",
                     alternatives: [["Digit3"]],
-                    onPressed: toy.resetKey.bind(toy)
                 },
-                { 
+                pauseResume: {
                     virtualKey: "#control-4",
                     alternatives: [["Digit4"]],
-                    onPressed: toy.pauseResumeKey.bind(toy)
                 },
-            ],
+            },
         },
         styling: {
             pressedButton: "pressed"
@@ -81,13 +78,8 @@ export async function init() {
         fps: {
             element: "freq-watch"
         }
-    })
-    loop.run()
-
-}
-
-class GravityToy implements gear.LoopLogic {
-
+    } satisfies gear.LoopDescriptor
+    
     private gravityDragging = this.draggingTarget("gravity", dragging.RatioDragging.dragger(1, 10000))
     private pointednessDragging = this.draggingTarget("pointedness", dragging.RatioDragging.dragger(0.001, 1000))
     private radiusScaleDragging = this.draggingTarget("radiusScale", dragging.RatioDragging.dragger(0.001, 1))
@@ -97,6 +89,32 @@ class GravityToy implements gear.LoopLogic {
 
     private constructor(private gpuCanvas: gpu.Canvas, private universe: Universe, private visuals: Visuals, private engine: Engine, private renderer: Renderer) {    
     }
+
+    wiring(loop: gear.Loop<ToyDescriptor>): gear.LoopWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: this.rotationDragging
+                }
+            },
+            keys: {
+                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
+                position: { onPressed: () => loop.pointers.canvas.draggingTarget = this.positionDragging },
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
+                radiusScale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.radiusScaleDragging },
+                gravity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.gravityDragging },
+                pointedness: { onPressed: () => loop.pointers.canvas.draggingTarget = this.pointednessDragging },
+                collapse: { onPressed: () => recreateCollapse(this.universe) },
+                kaboom: { onPressed: () => recreateKaboom(this.universe) },
+                reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
+                pauseResume: { onPressed: () => loop.animationPaused = !loop.animationPaused },
+            },
+        }
+    }
+
+    animate() { this.engine.move(this.universe) }
+
+    render() { this.renderer.render(this.universe) }
 
     get defaultDraggingTarget() {
         return this.rotationDragging
@@ -124,27 +142,13 @@ class GravityToy implements gear.LoopLogic {
     get modelMatrix() { return this.visuals.modelMatrix }
     set modelMatrix(m: aether.Mat4) { this.visuals.modelMatrix = m }
 
-    gravityKey(loop: gear.Loop) { loop.draggingTarget = this.gravityDragging }
-    pointednessKey(loop: gear.Loop) { loop.draggingTarget = this.pointednessDragging }
-    radiusScaleKey(loop: gear.Loop) { loop.draggingTarget = this.radiusScaleDragging }
-    positionKey(loop: gear.Loop) { loop.draggingTarget = this.positionDragging }
-    zoomKey(loop: gear.Loop) { loop.draggingTarget = this.zoomDragging }
-    rotationKey(loop: gear.Loop) { loop.draggingTarget = this.rotationDragging }
-    collapseKey() { recreateCollapse(this.universe) }
-    kaboomKey() { recreateKaboom(this.universe) }
-    resetKey() { resetRendering(this.visuals, this.renderer) }
-    pauseResumeKey(loop: gear.Loop) { loop.animationPaused = !loop.animationPaused }
-
-    animate() { this.engine.move(this.universe) }
-    render() { this.renderer.render(this.universe) }
-
     private draggingTarget<K extends keyof this>(key: K, dragger: gear.Dragger<this[K]>): gear.DraggingTarget {
         return gear.draggingTarget(gear.property(this, key), dragger)
     }
     
-    static async create(): Promise<GravityToy> {
+    static async loop(): Promise<gear.Loop<ToyDescriptor>> {
         const device = await gpuDevice()
-        const canvas = device.canvas("canvas", 4)
+        const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4)
         const universeLayout = new UniverseLayout(device)
         const universe = universeLayout.instance(...createUniverse(16384))
         const visualsLayout = new VisualsLayout(device)
@@ -152,7 +156,7 @@ class GravityToy implements gear.LoopLogic {
         const engineLayout = new EngineLayout(universeLayout)
         const engine = await newEngine(engineLayout)
         const renderer = await newRenderer(device, canvas, visuals)
-        return new GravityToy(canvas, universe, visuals, engine, renderer)
+        return gear.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor)
     }
 
 }

@@ -11,8 +11,15 @@ export const huds = {
 }
 
 export async function init() {
-    const toy = await Toy.create()
-    const loop = gearx.newLoop(toy, {
+    const loop = await Toy.loop()
+    loop.run()
+}
+
+type ToyDescriptor = typeof Toy.descriptor
+
+class Toy implements gearx.LoopLogic<ToyDescriptor> {
+
+    static readonly descriptor = {
         fps: {
             element: "fps-watch"
         },
@@ -20,52 +27,44 @@ export async function init() {
             pressedButton: "pressed"
         },
         input: {
-            pointer: {
-                element: toy.canvas,
-                defaultDraggingTarget: toy.zoomTarget,
-                primaryButton: {
-                    onPressed: (_, x, y) => toy.click(x, y)
+            pointers: {
+                canvas: {
+                    element: "canvas",
                 }
             },
-            keys: [{
-                alternatives: [["KeyM"]],
-                virtualKey: "#control-m",
-                onPressed: loop => loop.draggingTarget = toy.moveTarget
-            }, {
-                alternatives: [["KeyZ"]],
-                virtualKey: "#control-z",
-                onPressed: loop => loop.draggingTarget = toy.zoomTarget
-            }, {
-                alternatives: [["KeyC"]],
-                virtualKey: "#control-c",
-                onPressed: loop => loop.draggingTarget = toy.colorTarget
-            }, {
-                alternatives: [["KeyI"]],
-                virtualKey: "#control-i",
-                onPressed: loop => loop.draggingTarget = toy.intensityTarget
-            }, {
-                alternatives: [["KeyX"]],
-                virtualKey: "#control-x",
-                onPressed: () => toy.mandelbrotView.xray = !toy.mandelbrotView.xray
-            }, {
-                alternatives: [["KeyH"]],
-                virtualKey: "#control-h",
-                onPressed: () => toy.mandelbrotView.crosshairs = !toy.mandelbrotView.crosshairs
-            }, {
-                alternatives: [["KeyN"]],
-                virtualKey: "#control-n",
-                onPressed: loop => {
-                    toy.loop = loop
-                    loop.draggingTarget = null
-                }
-            }, ]
+            keys: {
+                move: {
+                    alternatives: [["KeyM"]],
+                    virtualKey: "#control-m",
+                }, 
+                zoom: {
+                    alternatives: [["KeyZ"]],
+                    virtualKey: "#control-z",
+                }, 
+                color: {
+                    alternatives: [["KeyC"]],
+                    virtualKey: "#control-c",
+                }, 
+                intensity: {
+                    alternatives: [["KeyI"]],
+                    virtualKey: "#control-i",
+                }, 
+                xray: {
+                    alternatives: [["KeyX"]],
+                    virtualKey: "#control-x",
+                }, 
+                crosshairs: {
+                    alternatives: [["KeyH"]],
+                    virtualKey: "#control-h",
+                }, 
+                sound: {
+                    alternatives: [["KeyN"]],
+                    virtualKey: "#control-n",
+                },
+            }
         }
-    })
-    loop.run()
-}
-
-class Toy implements gearx.LoopLogic {
-
+    } satisfies gearx.LoopDescriptor
+    
     readonly moveTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Move(this.mandelbrotView))
     readonly zoomTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Zoom(this.mandelbrotView))
     readonly colorTarget = gearx.draggingTarget(mapped(gearx.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
@@ -78,8 +77,6 @@ class Toy implements gearx.LoopLogic {
     readonly scaleWatch = gearx.required(document.getElementById("scale"))
     readonly posWatch = gearx.required(document.getElementById("clickPos"))
 
-    loop: gearx.Loop | null = null 
-
     private watchesUpdate = new gear.DeferredComputation(() => {
         this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9)
         this.scaleWatch.innerText = toFixed(this.mandelbrotView.scale, 9)
@@ -90,9 +87,29 @@ class Toy implements gearx.LoopLogic {
 
     constructor(readonly mandelbrotView: View) {}
 
-    static async create(): Promise<Toy> {
-        const mandelbrotView = await view("canvas", [-0.75, 0], 2)
-        return new Toy(mandelbrotView)
+    static async loop(): Promise<gearx.Loop<ToyDescriptor>> {
+        const mandelbrotView = await view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2)
+        return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor)
+    }
+
+    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: this.zoomTarget,
+                    primaryButton: { onPressed: () => this.click(...loop.pointers.canvas.position, loop.pointers.canvas.draggingTarget == null) }
+                }
+            },
+            keys: {
+                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.moveTarget }, 
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomTarget }, 
+                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorTarget }, 
+                intensity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.intensityTarget }, 
+                xray: { onPressed: () => this.mandelbrotView.xray = !this.mandelbrotView.xray }, 
+                crosshairs: { onPressed: () => this.mandelbrotView.crosshairs = !this.mandelbrotView.crosshairs }, 
+                sound: { onPressed: () => loop.pointers.canvas.draggingTarget = null },
+            }
+        }
     }
 
     animate(): void {
@@ -102,9 +119,9 @@ class Toy implements gearx.LoopLogic {
         this.mandelbrotView.render()
     }
 
-    click(x: number, y: number) {
+    click(x: number, y: number, soundOn: boolean) {
         this.posWatch.innerText = toFixedVec([x, y])
-        if (this.loop !== null && this.loop.draggingTarget === null) {
+        if (soundOn) {
             const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight
             const c = aether.vec2.add(
                 aether.vec2.scale(

@@ -1,7 +1,13 @@
 import { gear } from '../libs.js'
 import { Property, trap } from './gear.js'
 
-export class Button {
+export interface ButtonInterface {
+
+    get pressed(): boolean
+
+}
+
+export class Button implements ButtonInterface {
 
     private _pressed = false
 

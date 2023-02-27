@@ -30,8 +30,15 @@ export function wires(): Toy {
 }
 
 export async function init(_: Controller, wires: boolean = false) {
-    const toy = await GLTFToy.create(wires)
-    const loop = gearx.newLoop(toy, {
+    const loop = await GLTFToy.loop(wires)
+    loop.run()
+}
+
+type ToyDescriptor = typeof GLTFToy.descriptor
+
+class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
+
+    static readonly descriptor = {
         fps: {
             element: "fps-watch"
         },
@@ -39,62 +46,60 @@ export async function init(_: Controller, wires: boolean = false) {
             pressedButton: "pressed"
         },
         input: {
-            pointer: {
-                element: "canvas",
-                defaultDraggingTarget: toy.rotationDragging
+            pointers: {
+                canvas: {
+                    element: "canvas"
+                }
             },
-            keys: [{
-                alternatives: [["KeyM"]],
-                virtualKey: "#control-m",
-                onPressed: loop => loop.draggingTarget = toy.translationDragging
-            }, {
-                alternatives: [["KeyR"]],
-                virtualKey: "#control-r",
-                onPressed: loop => loop.draggingTarget = toy.rotationDragging
-            }, {
-                alternatives: [["KeyS"]],
-                virtualKey: "#control-s",
-                onPressed: loop => loop.draggingTarget = toy.scaleDragging
-            }, {
-                alternatives: [["KeyZ"]],
-                virtualKey: "#control-z",
-                onPressed: loop => loop.draggingTarget = toy.zoomDragging
-            }, {
-                alternatives: [["KeyC"]],
-                virtualKey: "#control-c",
-                onPressed: loop => loop.draggingTarget = toy.colorDragging
-            }, {
-                alternatives: [["KeyH"]],
-                virtualKey: "#control-h",
-                onPressed: loop => loop.draggingTarget = toy.shininessDragging
-            }, {
-                alternatives: [["KeyD"]],
-                virtualKey: "#control-d",
-                onPressed: loop => loop.draggingTarget = toy.lightPositionDragging
-            }, {
-                alternatives: [["KeyL"]],
-                virtualKey: "#control-l",
-                onPressed: loop => loop.draggingTarget = toy.lightRadiusDragging
-            }, {
-                alternatives: [["KeyF"]],
-                virtualKey: "#control-f",
-                onPressed: loop => loop.draggingTarget = toy.fogginessDragging
-            }, {
-                alternatives: [["ArrowLeft"]],
-                virtualKey: "#control-left",
-                onPressed: () => toy.modelIndex--
-            }, {
-                alternatives: [["ArrowRight"]],
-                virtualKey: "#control-right",
-                onPressed: () => toy.modelIndex++
-            },]
+            keys: {
+                move: {
+                    alternatives: [["KeyM"]],
+                    virtualKey: "#control-m",
+                },
+                rotate: {
+                    alternatives: [["KeyR"]],
+                    virtualKey: "#control-r",
+                },
+                scale: {
+                    alternatives: [["KeyS"]],
+                    virtualKey: "#control-s",
+                },
+                zoom: {
+                    alternatives: [["KeyZ"]],
+                    virtualKey: "#control-z",
+                },
+                color: {
+                    alternatives: [["KeyC"]],
+                    virtualKey: "#control-c",
+                },
+                shininess: {
+                    alternatives: [["KeyH"]],
+                    virtualKey: "#control-h",
+                },
+                lightDirection: {
+                    alternatives: [["KeyD"]],
+                    virtualKey: "#control-d",
+                },
+                lightRadius: {
+                    alternatives: [["KeyL"]],
+                    virtualKey: "#control-l",
+                },
+                fogginess: {
+                    alternatives: [["KeyF"]],
+                    virtualKey: "#control-f",
+                },
+                nextModel: {
+                    alternatives: [["ArrowLeft"]],
+                    virtualKey: "#control-left",
+                },
+                previousModel: {
+                    alternatives: [["ArrowRight"]],
+                    virtualKey: "#control-right",
+                },
+            }
         }
-    })
-    loop.run()
-}
-
-class GLTFToy implements gearx.LoopLogic {
-
+    } satisfies gearx.LoopDescriptor
+    
     private readonly modelNameElement = gearx.required(document.getElementById("model-name"))
     private readonly statusElement = gearx.required(document.getElementById("status"))
 
@@ -121,7 +126,7 @@ class GLTFToy implements gearx.LoopLogic {
         this.view.lightRadius = 0.005
     }
 
-    static async create(wires: boolean): Promise<GLTFToy> {
+    static async loop(wires: boolean): Promise<gearx.Loop<ToyDescriptor>> {
         const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
         const models: [string, string][] = (await modelIndexResponse.json() as ModelIndexEntry[])
             .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`])
@@ -135,7 +140,35 @@ class GLTFToy implements gearx.LoopLogic {
         const viewFactory = await newViewFactory("canvas", wires)
         const view = viewFactory()
     
-        return new GLTFToy(models, view)
+        return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor)
+    }
+
+    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: { defaultDraggingTarget: this.rotationDragging }
+            },
+            keys: {
+                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.translationDragging }, 
+                rotate: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging }, 
+                scale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.scaleDragging }, 
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging }, 
+                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorDragging }, 
+                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging }, 
+                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
+                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
+                fogginess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.fogginessDragging }, 
+                nextModel: { onPressed: () => this.modelIndex-- }, 
+                previousModel: { onPressed: () => this.modelIndex++ },
+            }
+        }
+    }
+
+    animate(): void {
+    }
+
+    render(): void {
+        this.view.draw()
     }
 
     toLightPosition(pos: gear.PointerPosition) {
@@ -176,13 +209,6 @@ class GLTFToy implements gearx.LoopLogic {
             })
     }
     
-    animate(): void {
-    }
-
-    render(): void {
-        this.view.draw()
-    }
-
 }
 
 function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {

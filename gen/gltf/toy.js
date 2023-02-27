@@ -25,66 +25,7 @@ export function wires() {
 }
 export function init(_, wires = false) {
     return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield GLTFToy.create(wires);
-        const loop = gearx.newLoop(toy, {
-            fps: {
-                element: "fps-watch"
-            },
-            styling: {
-                pressedButton: "pressed"
-            },
-            input: {
-                pointer: {
-                    element: "canvas",
-                    defaultDraggingTarget: toy.rotationDragging
-                },
-                keys: [{
-                        alternatives: [["KeyM"]],
-                        virtualKey: "#control-m",
-                        onPressed: loop => loop.draggingTarget = toy.translationDragging
-                    }, {
-                        alternatives: [["KeyR"]],
-                        virtualKey: "#control-r",
-                        onPressed: loop => loop.draggingTarget = toy.rotationDragging
-                    }, {
-                        alternatives: [["KeyS"]],
-                        virtualKey: "#control-s",
-                        onPressed: loop => loop.draggingTarget = toy.scaleDragging
-                    }, {
-                        alternatives: [["KeyZ"]],
-                        virtualKey: "#control-z",
-                        onPressed: loop => loop.draggingTarget = toy.zoomDragging
-                    }, {
-                        alternatives: [["KeyC"]],
-                        virtualKey: "#control-c",
-                        onPressed: loop => loop.draggingTarget = toy.colorDragging
-                    }, {
-                        alternatives: [["KeyH"]],
-                        virtualKey: "#control-h",
-                        onPressed: loop => loop.draggingTarget = toy.shininessDragging
-                    }, {
-                        alternatives: [["KeyD"]],
-                        virtualKey: "#control-d",
-                        onPressed: loop => loop.draggingTarget = toy.lightPositionDragging
-                    }, {
-                        alternatives: [["KeyL"]],
-                        virtualKey: "#control-l",
-                        onPressed: loop => loop.draggingTarget = toy.lightRadiusDragging
-                    }, {
-                        alternatives: [["KeyF"]],
-                        virtualKey: "#control-f",
-                        onPressed: loop => loop.draggingTarget = toy.fogginessDragging
-                    }, {
-                        alternatives: [["ArrowLeft"]],
-                        virtualKey: "#control-left",
-                        onPressed: () => toy.modelIndex--
-                    }, {
-                        alternatives: [["ArrowRight"]],
-                        virtualKey: "#control-right",
-                        onPressed: () => toy.modelIndex++
-                    },]
-            }
-        });
+        const loop = yield GLTFToy.loop(wires);
         loop.run();
     });
 }
@@ -113,7 +54,7 @@ class GLTFToy {
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5]);
         this.view.lightRadius = 0.005;
     }
-    static create(wires) {
+    static loop(wires) {
         return __awaiter(this, void 0, void 0, function* () {
             const modelIndexResponse = yield fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json");
             const models = (yield modelIndexResponse.json())
@@ -121,8 +62,33 @@ class GLTFToy {
             models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
             const viewFactory = yield newViewFactory("canvas", wires);
             const view = viewFactory();
-            return new GLTFToy(models, view);
+            return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor);
         });
+    }
+    wiring(loop) {
+        return {
+            pointers: {
+                canvas: { defaultDraggingTarget: this.rotationDragging }
+            },
+            keys: {
+                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.translationDragging },
+                rotate: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
+                scale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.scaleDragging },
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
+                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorDragging },
+                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging },
+                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging },
+                fogginess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.fogginessDragging },
+                nextModel: { onPressed: () => this.modelIndex-- },
+                previousModel: { onPressed: () => this.modelIndex++ },
+            }
+        };
+    }
+    animate() {
+    }
+    render() {
+        this.view.draw();
     }
     toLightPosition(pos) {
         const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
@@ -156,12 +122,68 @@ class GLTFToy {
             return this.statusElement.innerText = "Failed to load model!";
         });
     }
-    animate() {
-    }
-    render() {
-        this.view.draw();
-    }
 }
+GLTFToy.descriptor = {
+    fps: {
+        element: "fps-watch"
+    },
+    styling: {
+        pressedButton: "pressed"
+    },
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas"
+            }
+        },
+        keys: {
+            move: {
+                alternatives: [["KeyM"]],
+                virtualKey: "#control-m",
+            },
+            rotate: {
+                alternatives: [["KeyR"]],
+                virtualKey: "#control-r",
+            },
+            scale: {
+                alternatives: [["KeyS"]],
+                virtualKey: "#control-s",
+            },
+            zoom: {
+                alternatives: [["KeyZ"]],
+                virtualKey: "#control-z",
+            },
+            color: {
+                alternatives: [["KeyC"]],
+                virtualKey: "#control-c",
+            },
+            shininess: {
+                alternatives: [["KeyH"]],
+                virtualKey: "#control-h",
+            },
+            lightDirection: {
+                alternatives: [["KeyD"]],
+                virtualKey: "#control-d",
+            },
+            lightRadius: {
+                alternatives: [["KeyL"]],
+                virtualKey: "#control-l",
+            },
+            fogginess: {
+                alternatives: [["KeyF"]],
+                virtualKey: "#control-f",
+            },
+            nextModel: {
+                alternatives: [["ArrowLeft"]],
+                virtualKey: "#control-left",
+            },
+            previousModel: {
+                alternatives: [["ArrowRight"]],
+                virtualKey: "#control-right",
+            },
+        }
+    }
+};
 function mapped(property, mapper) {
     const pos = [[0, 0]];
     return {

@@ -14,7 +14,7 @@ export const huds = {
 }
 
 export async function init() {
-    const view = await v.newView("canvas")
+    const view = await v.newView(Toy.descriptor.input.pointers.canvas.element)
     const picker = await view.picker()
 
     const scalarFieldModule = await aether.loadScalarFieldModule()
@@ -24,7 +24,15 @@ export async function init() {
     stone.contourValue = 0.5
 
     const toy = new Toy(stone, scalarFieldModule, view, picker)
-    const loop = gearx.newLoop(toy, {
+    const loop = gearx.newLoop(toy, Toy.descriptor)
+    loop.run()
+}
+
+type ToyDescriptor = typeof Toy.descriptor
+
+class Toy implements gearx.LoopLogic<ToyDescriptor> {
+
+    static readonly descriptor = {
         fps: {
             element: "fps-watch"
         },
@@ -32,62 +40,59 @@ export async function init() {
             pressedButton: "pressed"
         },
         input: {
-            pointer: {
-                element: view.canvas,
-                defaultDraggingTarget: toy.rotationDragging
+            pointers: {
+                canvas: {
+                    element: "canvas",
+                }
             },
-            keys: [{
-                alternatives: [["KeyC"]],
-                virtualKey: "#control-c",
-                onPressed: loop => loop.draggingTarget = toy.carvingTarget
-            }, {
-                alternatives: [["KeyR"]],
-                virtualKey: "#control-r",
-                onPressed: loop => loop.draggingTarget = toy.rotationDragging
-            }, {
-                alternatives: [["KeyZ"]],
-                virtualKey: "#control-z",
-                onPressed: loop => loop.draggingTarget = toy.focalLengthDragging
-            }, {
-                alternatives: [["KeyH"]],
-                virtualKey: "#control-h",
-                onPressed: loop => loop.draggingTarget = toy.shininessDragging
-            }, {
-                alternatives: [["KeyD"]],
-                virtualKey: "#control-d",
-                onPressed: loop => loop.draggingTarget = toy.lightPositionDragging
-            }, {
-                alternatives: [["KeyL"]],
-                virtualKey: "#control-l",
-                onPressed: loop => loop.draggingTarget = toy.lightRadiusDragging
-            }, {
-                alternatives: [["KeyU"]],
-                virtualKey: "#control-u",
-                onPressed: () => toy.currentStone = toy.carving.undo(toy.currentStone)
-            }, {
-                alternatives: [["KeyX"]],
-                virtualKey: "#control-x",
-                onPressed: () => toy.exportModel()
-            }, {
-                alternatives: [["KeyS"]],
-                virtualKey: "#control-s",
-                onPressed: () => toy.saveModel()
-            }, {
-                alternatives: [["ArrowUp"]],
-                virtualKey: "#control-up",
-                onPressed: () => toy.addToLOD(8)
-
-            }, {
-                alternatives: [["ArrowDown"]],
-                virtualKey: "#control-down",
-                onPressed: () => toy.addToLOD(-8)
-            },]
+            keys: {
+                carving: {
+                    alternatives: [["KeyC"]],
+                    virtualKey: "#control-c",
+                }, 
+                rotation: {
+                    alternatives: [["KeyR"]],
+                    virtualKey: "#control-r",
+                }, 
+                zoom: {
+                    alternatives: [["KeyZ"]],
+                    virtualKey: "#control-z",
+                }, 
+                shininess: {
+                    alternatives: [["KeyH"]],
+                    virtualKey: "#control-h",
+                }, 
+                lightDirection: {
+                    alternatives: [["KeyD"]],
+                    virtualKey: "#control-d",
+                }, 
+                lightRadius: {
+                    alternatives: [["KeyL"]],
+                    virtualKey: "#control-l",
+                }, 
+                undo: {
+                    alternatives: [["KeyU"]],
+                    virtualKey: "#control-u",
+                }, 
+                export: {
+                    alternatives: [["KeyX"]],
+                    virtualKey: "#control-x",
+                }, 
+                save: {
+                    alternatives: [["KeyS"]],
+                    virtualKey: "#control-s",
+                }, 
+                incLOD: {
+                    alternatives: [["ArrowUp"]],
+                    virtualKey: "#control-up",
+                }, 
+                decLOD: {
+                    alternatives: [["ArrowDown"]],
+                    virtualKey: "#control-down",
+                },
+            }
         }
-    })
-    loop.run()
-}
-
-class Toy implements gearx.LoopLogic {
+    } satisfies gearx.LoopDescriptor
 
     readonly carvingTarget: gearx.DraggingTarget
     readonly rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
@@ -132,6 +137,34 @@ class Toy implements gearx.LoopLogic {
         this.currentStone = stone
     }
 
+    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: { defaultDraggingTarget: this.rotationDragging },
+            },
+            keys: {
+                carving: { onPressed: () => loop.pointers.canvas.draggingTarget = this.carvingTarget }, 
+                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging }, 
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.focalLengthDragging }, 
+                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging }, 
+                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
+                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
+                undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) }, 
+                export: { onPressed: () => this.exportModel() }, 
+                save: { onPressed: () => this.saveModel() }, 
+                incLOD: { onPressed: () => this.addToLOD(8) }, 
+                decLOD: { onPressed: () => this.addToLOD(-8) },
+            }
+        }
+    }
+
+    animate(): void {
+    }
+    
+    render(): void {
+        this.view.render()
+    }
+
     get projectionViewMatrix() {
         return aether.mat4.mul(this.view.matProjection, this.view.matView)
     }
@@ -158,19 +191,12 @@ class Toy implements gearx.LoopLogic {
 
     set currentStone(s: aether.ScalarFieldInstance) {
         this.stone = s
+        this.lodElement.innerText = s.resolution.toFixed(0)
         this.lazyVertices.perform().then(vertices => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, vertices))
-    }
-
-    animate(loop: gearx.Loop, time: number, deltaT: number): void {
-    }
-    
-    render(): void {
-        this.view.render()
     }
 
     addToLOD(delta: number) {
         this.stone.resolution = clamp(this.stone.resolution + delta, 32, 96)
-        this.lodElement.innerText = this.stone.resolution.toFixed(0)
         this.currentStone = this.stone
     }
 

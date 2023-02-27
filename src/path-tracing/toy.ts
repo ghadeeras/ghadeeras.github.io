@@ -15,9 +15,15 @@ export const huds = {
 }
 
 export async function init() {
-    const toy = await PathTracingToy.create();
-    const digits = [1, 2, 3, 4, 5, 6, 7, 8]
-    const loop = gearx.newLoop(toy, {
+    const loop = await Toy.loop();
+    loop.run()
+}
+
+type ToyDescriptor = typeof Toy.descriptor
+
+class Toy implements gearx.LoopLogic<ToyDescriptor> {
+
+    static readonly descriptor = {
         fps: {
             element: "freq-watch",
             periodInMilliseconds: 1000
@@ -26,66 +32,67 @@ export async function init() {
             pressedButton: "pressed"
         },
         input: {
-            pointer: {
-                element: toy.canvas.element,
-                defaultDraggingTarget: gearx.draggingTarget(gearx.property(toy, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+            pointers: {
+                canvas: {
+                    element: "canvas",
+                }
             },
-            keys: [{
-                alternatives: [["KeyW"], ["ArrowUp"]],
-                virtualKey: "#control-forward",
-                onPressed: () => toy.setSpeed(2, -0.2),
-                onReleased: () => toy.setSpeed(2, 0),
-            }, {
-                alternatives: [["KeyS"], ["ArrowDown"]],
-                virtualKey: "#control-backward",
-                onPressed: () => toy.setSpeed(2, 0.2),
-                onReleased: () => toy.setSpeed(2, 0),
-            }, {
-                alternatives: [["KeyD"], ["ArrowRight"]],
-                virtualKey: "#control-right",
-                onPressed: () => toy.setSpeed(0, 0.2),
-                onReleased: () => toy.setSpeed(0, 0),
-            }, {
-                alternatives: [["KeyA"], ["ArrowLeft"]],
-                virtualKey: "#control-left",
-                onPressed: () => toy.setSpeed(0, -0.2),
-                onReleased: () => toy.setSpeed(0, 0),
-            }, {
-                alternatives: [["KeyE"], ["PageUp"]],
-                virtualKey: "#control-up",
-                onPressed: () => toy.setSpeed(1, 0.2),
-                onReleased: () => toy.setSpeed(1, 0),
-            }, {
-                alternatives: [["KeyC"], ["PageDown"]],
-                virtualKey: "#control-down",
-                onPressed: () => toy.setSpeed(1, -0.2),
-                onReleased: () => toy.setSpeed(1, 0),
-            }, {
-                alternatives: [["KeyL"]],
-                virtualKey: "#control-layering",
-                onPressed: () => toy.minLayersOnly = !toy.minLayersOnly 
-            }, {
-                alternatives: [["KeyN"]],
-                virtualKey: "#control-denoising",
-                onPressed: () => toy.denoising = !toy.denoising
-            }, {
-                alternatives: [["KeyR"]],
-                virtualKey: "#control-recording",
-                onPressed: () => toy.toggleRecording()
-            }, ...digits.map<gearx.KeyDescriptor>(digit => ({
-                alternatives: [[`Digit${digit}`]],
-                onPressed: () => toy.samplesPerPixel = digit
-            })), ...digits.map<gearx.KeyDescriptor>(digit => ({
-                alternatives: [['AltRight', `Digit${digit}`], ['AltLeft', `Digit${digit}`]],
-                onPressed: () => toy.minLayersCount = digit
-            })),
-        ]}
-    })
-    
-    loop.run()
-}
-
-class PathTracingToy implements gearx.LoopLogic {
+            keys: {
+                forward: {
+                    alternatives: [["KeyW"], ["ArrowUp"]],
+                    virtualKey: "#control-forward",
+                }, 
+                backward: {
+                    alternatives: [["KeyS"], ["ArrowDown"]],
+                    virtualKey: "#control-backward",
+                }, 
+                right: {
+                    alternatives: [["KeyD"], ["ArrowRight"]],
+                    virtualKey: "#control-right",
+                }, 
+                left: {
+                    alternatives: [["KeyA"], ["ArrowLeft"]],
+                    virtualKey: "#control-left",
+                }, 
+                up: {
+                    alternatives: [["KeyE"], ["PageUp"]],
+                    virtualKey: "#control-up",
+                }, 
+                down: {
+                    alternatives: [["KeyC"], ["PageDown"]],
+                    virtualKey: "#control-down",
+                }, 
+                layering: {
+                    alternatives: [["KeyL"]],
+                    virtualKey: "#control-layering",
+                }, 
+                denoising: {
+                    alternatives: [["KeyN"]],
+                    virtualKey: "#control-denoising",
+                }, 
+                recording: {
+                    alternatives: [["KeyR"]],
+                    virtualKey: "#control-recording",
+                }, 
+                incSPP: {
+                    alternatives: [["BracketRight"]],
+                    virtualKey: "#control-inc-spp",
+                }, 
+                decSPP: {
+                    alternatives: [["BracketLeft"]],
+                    virtualKey: "#control-dec-spp",
+                }, 
+                incLayers: {
+                    alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
+                    virtualKey: "#control-inc-layers",
+                }, 
+                decLayers: {
+                    alternatives: [["AltRight", "BracketLeft"], ["AltLeft", "BracketLeft"]],
+                    virtualKey: "#control-dec-layers",
+                },
+            }
+        }
+    } satisfies gearx.LoopDescriptor
 
     private _minLayersOnly = false
     private _denoising = true  
@@ -109,7 +116,7 @@ class PathTracingToy implements gearx.LoopLogic {
         tracer.position = [36, 36, 36]
     }
 
-    static async create(): Promise<PathTracingToy> {
+    static async loop(): Promise<gearx.Loop<ToyDescriptor>> {
         const scene = buildScene()
         const device = await gpuDevice()
         const canvas = device.canvas("canvas")
@@ -117,7 +124,64 @@ class PathTracingToy implements gearx.LoopLogic {
         const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
         const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
         const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format)
-        return new PathTracingToy(canvas, tracer, denoiser, stacker, recorder, scene)
+        return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor)
+    }
+
+    wiring(): gearx.LoopWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: gearx.draggingTarget(gearx.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                }
+            },
+            keys: {
+                forward: {
+                    onPressed: () => this.setSpeed(2, -0.2),
+                    onReleased: () => this.setSpeed(2, 0),
+                }, 
+                backward: {
+                    onPressed: () => this.setSpeed(2, 0.2),
+                    onReleased: () => this.setSpeed(2, 0),
+                }, 
+                right: {
+                    onPressed: () => this.setSpeed(0, 0.2),
+                    onReleased: () => this.setSpeed(0, 0),
+                }, 
+                left: {
+                    onPressed: () => this.setSpeed(0, -0.2),
+                    onReleased: () => this.setSpeed(0, 0),
+                }, 
+                up: {
+                    onPressed: () => this.setSpeed(1, 0.2),
+                    onReleased: () => this.setSpeed(1, 0),
+                }, 
+                down: {
+                    onPressed: () => this.setSpeed(1, -0.2),
+                    onReleased: () => this.setSpeed(1, 0),
+                }, 
+                layering: {
+                    onPressed: () => this.minLayersOnly = !this.minLayersOnly 
+                }, 
+                denoising: {
+                    onPressed: () => this.denoising = !this.denoising
+                }, 
+                recording: {
+                    onPressed: () => this.toggleRecording()
+                }, 
+                incSPP: {
+                    onPressed: () => this.samplesPerPixel++
+                },
+                decSPP: {
+                    onPressed: () => this.samplesPerPixel--
+                }, 
+                incLayers: {
+                    onPressed: () => this.minLayersCount++
+                },
+                decLayers: {
+                    onPressed: () => this.minLayersCount--
+                },
+            }
+        }
     }
 
     animate(): void {
@@ -166,10 +230,14 @@ class PathTracingToy implements gearx.LoopLogic {
             ...aether.vec3.swizzle(m[1], 0, 1, 2),
             ...aether.vec3.swizzle(m[2], 0, 1, 2),
         ])
-    } 
+    }
+
+    get samplesPerPixel() {
+        return this.tracer.samplesPerPixel
+    }
     
     set samplesPerPixel(spp: number) {
-        this.tracer.samplesPerPixel = spp
+        this.tracer.samplesPerPixel = Math.min(Math.max(1, spp), 8)
         this.samplesPerPixelElement.innerText = this.tracer.samplesPerPixel.toString()
     }
 
@@ -187,8 +255,12 @@ class PathTracingToy implements gearx.LoopLogic {
         this.maxLayersCountElement.innerText = b ? this._minLayersCount.toString() : "256"
     }
 
+    get minLayersCount() {
+        return this._minLayersCount
+    }
+
     set minLayersCount(c: number) {
-        this._minLayersCount = c
+        this._minLayersCount = Math.min(Math.max(1, c), 8)
         this.minLayersOnly = this.minLayersOnly
     }
 

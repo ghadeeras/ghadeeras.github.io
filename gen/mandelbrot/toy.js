@@ -18,56 +18,7 @@ export const huds = {
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield Toy.create();
-        const loop = gearx.newLoop(toy, {
-            fps: {
-                element: "fps-watch"
-            },
-            styling: {
-                pressedButton: "pressed"
-            },
-            input: {
-                pointer: {
-                    element: toy.canvas,
-                    defaultDraggingTarget: toy.zoomTarget,
-                    primaryButton: {
-                        onPressed: (_, x, y) => toy.click(x, y)
-                    }
-                },
-                keys: [{
-                        alternatives: [["KeyM"]],
-                        virtualKey: "#control-m",
-                        onPressed: loop => loop.draggingTarget = toy.moveTarget
-                    }, {
-                        alternatives: [["KeyZ"]],
-                        virtualKey: "#control-z",
-                        onPressed: loop => loop.draggingTarget = toy.zoomTarget
-                    }, {
-                        alternatives: [["KeyC"]],
-                        virtualKey: "#control-c",
-                        onPressed: loop => loop.draggingTarget = toy.colorTarget
-                    }, {
-                        alternatives: [["KeyI"]],
-                        virtualKey: "#control-i",
-                        onPressed: loop => loop.draggingTarget = toy.intensityTarget
-                    }, {
-                        alternatives: [["KeyX"]],
-                        virtualKey: "#control-x",
-                        onPressed: () => toy.mandelbrotView.xray = !toy.mandelbrotView.xray
-                    }, {
-                        alternatives: [["KeyH"]],
-                        virtualKey: "#control-h",
-                        onPressed: () => toy.mandelbrotView.crosshairs = !toy.mandelbrotView.crosshairs
-                    }, {
-                        alternatives: [["KeyN"]],
-                        virtualKey: "#control-n",
-                        onPressed: loop => {
-                            toy.loop = loop;
-                            loop.draggingTarget = null;
-                        }
-                    },]
-            }
-        });
+        const loop = yield Toy.loop();
         loop.run();
     });
 }
@@ -84,7 +35,6 @@ class Toy {
         this.centerWatch = gearx.required(document.getElementById("center"));
         this.scaleWatch = gearx.required(document.getElementById("scale"));
         this.posWatch = gearx.required(document.getElementById("clickPos"));
-        this.loop = null;
         this.watchesUpdate = new gear.DeferredComputation(() => {
             this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9);
             this.scaleWatch.innerText = toFixed(this.mandelbrotView.scale, 9);
@@ -93,20 +43,39 @@ class Toy {
             this.intensityWatch.innerText = toFixed(this.mandelbrotView.intensity);
         });
     }
-    static create() {
+    static loop() {
         return __awaiter(this, void 0, void 0, function* () {
-            const mandelbrotView = yield view("canvas", [-0.75, 0], 2);
-            return new Toy(mandelbrotView);
+            const mandelbrotView = yield view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2);
+            return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor);
         });
+    }
+    wiring(loop) {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: this.zoomTarget,
+                    primaryButton: { onPressed: () => this.click(...loop.pointers.canvas.position, loop.pointers.canvas.draggingTarget == null) }
+                }
+            },
+            keys: {
+                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.moveTarget },
+                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomTarget },
+                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorTarget },
+                intensity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.intensityTarget },
+                xray: { onPressed: () => this.mandelbrotView.xray = !this.mandelbrotView.xray },
+                crosshairs: { onPressed: () => this.mandelbrotView.crosshairs = !this.mandelbrotView.crosshairs },
+                sound: { onPressed: () => loop.pointers.canvas.draggingTarget = null },
+            }
+        };
     }
     animate() {
     }
     render() {
         this.mandelbrotView.render();
     }
-    click(x, y) {
+    click(x, y, soundOn) {
         this.posWatch.innerText = toFixedVec([x, y]);
-        if (this.loop !== null && this.loop.draggingTarget === null) {
+        if (soundOn) {
             const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight;
             const c = aether.vec2.add(aether.vec2.scale(aether.vec2.mul([x, y], aspectRatio > 1 ? [aspectRatio, 1] : [1, 1 / aspectRatio]), this.mandelbrotView.scale), this.mandelbrotView.center);
             play(c);
@@ -132,6 +101,51 @@ class Toy {
         this.watchesUpdate.perform();
     }
 }
+Toy.descriptor = {
+    fps: {
+        element: "fps-watch"
+    },
+    styling: {
+        pressedButton: "pressed"
+    },
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas",
+            }
+        },
+        keys: {
+            move: {
+                alternatives: [["KeyM"]],
+                virtualKey: "#control-m",
+            },
+            zoom: {
+                alternatives: [["KeyZ"]],
+                virtualKey: "#control-z",
+            },
+            color: {
+                alternatives: [["KeyC"]],
+                virtualKey: "#control-c",
+            },
+            intensity: {
+                alternatives: [["KeyI"]],
+                virtualKey: "#control-i",
+            },
+            xray: {
+                alternatives: [["KeyX"]],
+                virtualKey: "#control-x",
+            },
+            crosshairs: {
+                alternatives: [["KeyH"]],
+                virtualKey: "#control-h",
+            },
+            sound: {
+                alternatives: [["KeyN"]],
+                virtualKey: "#control-n",
+            },
+        }
+    }
+};
 function toFixedVec(v, digits = 3) {
     const coords = v.map(c => toFixed(c, digits));
     const commaSeparatedCoords = coords[0].concat(...coords.slice(1).map(s => `, ${s}`));

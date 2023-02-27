@@ -23,77 +23,11 @@ export const huds = {
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield PathTracingToy.create();
-        const digits = [1, 2, 3, 4, 5, 6, 7, 8];
-        const loop = gearx.newLoop(toy, {
-            fps: {
-                element: "freq-watch",
-                periodInMilliseconds: 1000
-            },
-            styling: {
-                pressedButton: "pressed"
-            },
-            input: {
-                pointer: {
-                    element: toy.canvas.element,
-                    defaultDraggingTarget: gearx.draggingTarget(gearx.property(toy, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
-                },
-                keys: [{
-                        alternatives: [["KeyW"], ["ArrowUp"]],
-                        virtualKey: "#control-forward",
-                        onPressed: () => toy.setSpeed(2, -0.2),
-                        onReleased: () => toy.setSpeed(2, 0),
-                    }, {
-                        alternatives: [["KeyS"], ["ArrowDown"]],
-                        virtualKey: "#control-backward",
-                        onPressed: () => toy.setSpeed(2, 0.2),
-                        onReleased: () => toy.setSpeed(2, 0),
-                    }, {
-                        alternatives: [["KeyD"], ["ArrowRight"]],
-                        virtualKey: "#control-right",
-                        onPressed: () => toy.setSpeed(0, 0.2),
-                        onReleased: () => toy.setSpeed(0, 0),
-                    }, {
-                        alternatives: [["KeyA"], ["ArrowLeft"]],
-                        virtualKey: "#control-left",
-                        onPressed: () => toy.setSpeed(0, -0.2),
-                        onReleased: () => toy.setSpeed(0, 0),
-                    }, {
-                        alternatives: [["KeyE"], ["PageUp"]],
-                        virtualKey: "#control-up",
-                        onPressed: () => toy.setSpeed(1, 0.2),
-                        onReleased: () => toy.setSpeed(1, 0),
-                    }, {
-                        alternatives: [["KeyC"], ["PageDown"]],
-                        virtualKey: "#control-down",
-                        onPressed: () => toy.setSpeed(1, -0.2),
-                        onReleased: () => toy.setSpeed(1, 0),
-                    }, {
-                        alternatives: [["KeyL"]],
-                        virtualKey: "#control-layering",
-                        onPressed: () => toy.minLayersOnly = !toy.minLayersOnly
-                    }, {
-                        alternatives: [["KeyN"]],
-                        virtualKey: "#control-denoising",
-                        onPressed: () => toy.denoising = !toy.denoising
-                    }, {
-                        alternatives: [["KeyR"]],
-                        virtualKey: "#control-recording",
-                        onPressed: () => toy.toggleRecording()
-                    }, ...digits.map(digit => ({
-                        alternatives: [[`Digit${digit}`]],
-                        onPressed: () => toy.samplesPerPixel = digit
-                    })), ...digits.map(digit => ({
-                        alternatives: [['AltRight', `Digit${digit}`], ['AltLeft', `Digit${digit}`]],
-                        onPressed: () => toy.minLayersCount = digit
-                    })),
-                ]
-            }
-        });
+        const loop = yield Toy.loop();
         loop.run();
     });
 }
-class PathTracingToy {
+class Toy {
     constructor(canvas, tracer, denoiser, stacker, recorder, scene) {
         this.canvas = canvas;
         this.tracer = tracer;
@@ -118,7 +52,7 @@ class PathTracingToy {
         this.denoising = gearx.required(this.denoisingElement.textContent).toLowerCase() == "on";
         tracer.position = [36, 36, 36];
     }
-    static create() {
+    static loop() {
         return __awaiter(this, void 0, void 0, function* () {
             const scene = buildScene();
             const device = yield gpuDevice();
@@ -127,8 +61,64 @@ class PathTracingToy {
             const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
             const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
             const stacker = yield Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
-            return new PathTracingToy(canvas, tracer, denoiser, stacker, recorder, scene);
+            return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor);
         });
+    }
+    wiring() {
+        return {
+            pointers: {
+                canvas: {
+                    defaultDraggingTarget: gearx.draggingTarget(gearx.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                }
+            },
+            keys: {
+                forward: {
+                    onPressed: () => this.setSpeed(2, -0.2),
+                    onReleased: () => this.setSpeed(2, 0),
+                },
+                backward: {
+                    onPressed: () => this.setSpeed(2, 0.2),
+                    onReleased: () => this.setSpeed(2, 0),
+                },
+                right: {
+                    onPressed: () => this.setSpeed(0, 0.2),
+                    onReleased: () => this.setSpeed(0, 0),
+                },
+                left: {
+                    onPressed: () => this.setSpeed(0, -0.2),
+                    onReleased: () => this.setSpeed(0, 0),
+                },
+                up: {
+                    onPressed: () => this.setSpeed(1, 0.2),
+                    onReleased: () => this.setSpeed(1, 0),
+                },
+                down: {
+                    onPressed: () => this.setSpeed(1, -0.2),
+                    onReleased: () => this.setSpeed(1, 0),
+                },
+                layering: {
+                    onPressed: () => this.minLayersOnly = !this.minLayersOnly
+                },
+                denoising: {
+                    onPressed: () => this.denoising = !this.denoising
+                },
+                recording: {
+                    onPressed: () => this.toggleRecording()
+                },
+                incSPP: {
+                    onPressed: () => this.samplesPerPixel++
+                },
+                decSPP: {
+                    onPressed: () => this.samplesPerPixel--
+                },
+                incLayers: {
+                    onPressed: () => this.minLayersCount++
+                },
+                decLayers: {
+                    onPressed: () => this.minLayersCount--
+                },
+            }
+        };
     }
     animate() {
         const velocity = aether.vec3.prod(this.speed, this.tracer.matrix);
@@ -175,8 +165,11 @@ class PathTracingToy {
             ...aether.vec3.swizzle(m[2], 0, 1, 2),
         ]);
     }
+    get samplesPerPixel() {
+        return this.tracer.samplesPerPixel;
+    }
     set samplesPerPixel(spp) {
-        this.tracer.samplesPerPixel = spp;
+        this.tracer.samplesPerPixel = Math.min(Math.max(1, spp), 8);
         this.samplesPerPixelElement.innerText = this.tracer.samplesPerPixel.toString();
     }
     set layersCount(c) {
@@ -190,8 +183,11 @@ class PathTracingToy {
         this._minLayersOnly = b;
         this.maxLayersCountElement.innerText = b ? this._minLayersCount.toString() : "256";
     }
+    get minLayersCount() {
+        return this._minLayersCount;
+    }
     set minLayersCount(c) {
-        this._minLayersCount = c;
+        this._minLayersCount = Math.min(Math.max(1, c), 8);
         this.minLayersOnly = this.minLayersOnly;
     }
     get denoising() {
@@ -208,6 +204,76 @@ class PathTracingToy {
         this.recorder.startStop();
     }
 }
+Toy.descriptor = {
+    fps: {
+        element: "freq-watch",
+        periodInMilliseconds: 1000
+    },
+    styling: {
+        pressedButton: "pressed"
+    },
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas",
+            }
+        },
+        keys: {
+            forward: {
+                alternatives: [["KeyW"], ["ArrowUp"]],
+                virtualKey: "#control-forward",
+            },
+            backward: {
+                alternatives: [["KeyS"], ["ArrowDown"]],
+                virtualKey: "#control-backward",
+            },
+            right: {
+                alternatives: [["KeyD"], ["ArrowRight"]],
+                virtualKey: "#control-right",
+            },
+            left: {
+                alternatives: [["KeyA"], ["ArrowLeft"]],
+                virtualKey: "#control-left",
+            },
+            up: {
+                alternatives: [["KeyE"], ["PageUp"]],
+                virtualKey: "#control-up",
+            },
+            down: {
+                alternatives: [["KeyC"], ["PageDown"]],
+                virtualKey: "#control-down",
+            },
+            layering: {
+                alternatives: [["KeyL"]],
+                virtualKey: "#control-layering",
+            },
+            denoising: {
+                alternatives: [["KeyN"]],
+                virtualKey: "#control-denoising",
+            },
+            recording: {
+                alternatives: [["KeyR"]],
+                virtualKey: "#control-recording",
+            },
+            incSPP: {
+                alternatives: [["BracketRight"]],
+                virtualKey: "#control-inc-spp",
+            },
+            decSPP: {
+                alternatives: [["BracketLeft"]],
+                virtualKey: "#control-dec-spp",
+            },
+            incLayers: {
+                alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
+                virtualKey: "#control-inc-layers",
+            },
+            decLayers: {
+                alternatives: [["AltRight", "BracketLeft"], ["AltLeft", "BracketLeft"]],
+                virtualKey: "#control-dec-layers",
+            },
+        }
+    }
+};
 function move(position, velocity, scene) {
     let safeV = safeVelocity(position, velocity, scene);
     let power = aether.vec3.lengthSquared(safeV);

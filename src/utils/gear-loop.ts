@@ -1,20 +1,23 @@
-import { Button, VirtualKey } from './gear-buttons.js'
+import { Button, ButtonInterface, VirtualKey } from './gear-buttons.js'
 import { Keyboard, KeyboardEventContext } from './gear-keyboard.js';
-import { DraggingTarget, Pointer } from './gear-pointer.js';
+import { DraggingTarget, Pointer, PointerInterface } from './gear-pointer.js';
 import { FrequencyMeter } from './misc.js';
 
-export interface Loop {
+export interface Loop<D extends LoopDescriptor> {
 
     animationPaused: boolean
 
-    draggingTarget: DraggingTarget | null
+    readonly keys: Record<InputKeyName<D>, ButtonInterface>
+    readonly pointers: Record<InputPointerName<D>, PointerInterface>
+    readonly keyboard: KeyboardEventContext
 
     run(): void
 
 }
 
-export interface LoopLogic {
-    animate(loop: Loop, time: number, deltaT: number): void
+export interface LoopLogic<D extends LoopDescriptor> {
+    wiring(loop: Loop<D>): LoopWiring<D>
+    animate(loop: Loop<D>, time: number, deltaT: number): void
     render(): void    
 }
 
@@ -31,116 +34,171 @@ export type LoopDescriptor = {
 }
 
 export type InputDescriptor = {
-    pointer: PointerDescriptor
-    keys?: KeyDescriptor[]
+    pointers?: Record<string, PointerDescriptor>
+    keys?: Record<string, KeyDescriptor>
 }
 
 export type PointerDescriptor = {
     element: HTMLElement | string
-    defaultDraggingTarget?: DraggingTarget
-    onMoved?: InputPointerHandler
-    primaryButton?: PointerButtonDescriptor
-    secondaryButton?: PointerButtonDescriptor
-    auxiliaryButton?: PointerButtonDescriptor
 }
 
 export type KeyDescriptor = {
     virtualKey?: string
     alternatives: OneOrMore<OneOrMore<string>>
-    onPressed?: InputKeyHandler
-    onReleased?: InputKeyHandler
-    onChange?: InputKeyHandler
 }
 
-export type PointerButtonDescriptor = {
-    onPressed?: InputPointerHandler;
-    onReleased?: InputPointerHandler;
-    onChange?: InputPointerHandler;
+export type InputKeyName<D extends LoopDescriptor> = keyof D["input"]["keys"];
+
+export type InputPointerName<D extends LoopDescriptor> = keyof D["input"]["pointers"];
+
+export type LoopWiring<D extends LoopDescriptor>  = {
+    pointers: Record<InputPointerName<D>, PointerWiring<D>>
+    keys: Record<InputKeyName<D>, KeyWiring<D>>
+}
+
+export type PointerWiring<D extends LoopDescriptor> = {
+    defaultDraggingTarget?: DraggingTarget
+    onMoved?: InputHandler
+    primaryButton?: PointerButtonWiring<D>
+    secondaryButton?: PointerButtonWiring<D>
+    auxiliaryButton?: PointerButtonWiring<D>
+}
+
+export type KeyWiring<D extends LoopDescriptor> = {
+    onPressed?: InputHandler
+    onReleased?: InputHandler
+    onChange?: InputHandler
+}
+
+export type PointerButtonWiring<D extends LoopDescriptor> = {
+    onPressed?: InputHandler;
+    onReleased?: InputHandler;
+    onChange?: InputHandler;
 };
 
 type OneOrMore<T> = [T, ...T[]]
 
-export type InputPointerHandler = (loop: Loop, x: number, y: number) => void
-export type InputKeyHandler = (loop: Loop, context: KeyboardEventContext) => void
+export type InputHandler = () => void
 
-export function newLoop<L extends LoopLogic, D extends LoopDescriptor>(loopLogic: L, inputDescriptor: D): Loop {
+export function newLoop<D extends LoopDescriptor, L extends LoopLogic<D>>(loopLogic: L, inputDescriptor: D): Loop<D> {
     return new LoopImpl(loopLogic, inputDescriptor)
 }
 
-class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
+class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop<D> {
 
-    private static activeLoop: Loop | null = null
+    private static activeLoop: Loop<any> | null = null
 
-    private pointer = new Pointer(this.loopDescriptor.input.pointer.element)
-    private keyboard = new Keyboard()
+    readonly keys: Record<InputKeyName<D>, Button>
+    readonly pointers: Record<InputPointerName<D>, Pointer>
+    readonly keyboard = new Keyboard()
 
-    private frequencyMeter = this.loopDescriptor.fps 
+    private readonly frequencyMeter = this.loopDescriptor.fps 
         ? FrequencyMeter.create(this.loopDescriptor.fps.periodInMilliseconds ?? 1000, this.loopDescriptor.fps.element)
         : new FrequencyMeter(1000, () => {})
 
     private _paused = false
     
-    constructor(private loopAutomaton: L, private loopDescriptor: D) {
+    constructor(private loopLogic: L, private loopDescriptor: D) {
+        const postConstructionOps: ((loopWiring: LoopWiring<D>) => void)[] = []
+        this.keys = this.createKeys(loopDescriptor, postConstructionOps)
+        this.pointers = this.createPointers(loopDescriptor, postConstructionOps)
+        postConstructionOps.forEach(op => op(loopLogic.wiring(this)))
+    }
+
+    private createKeys(loopDescriptor: D, postConstructionOps: ((loopWiring: LoopWiring<D>) => void)[]) {
+        const keys: Partial<Record<InputKeyName<D>, Button>> = {};
         if (loopDescriptor.input.keys) {
-            for (const keyDescriptor of loopDescriptor.input.keys) {
-                const button = this.newButton(keyDescriptor, loopDescriptor.styling)
-                if (keyDescriptor.onPressed) {
-                    const onPressed = keyDescriptor.onPressed
-                    button.register(b => {
-                        if (b.pressed) {
-                            onPressed(this, this.keyboard)
-                        }
-                    })
-                }
-                if (keyDescriptor.onReleased) {
-                    const onReleased = keyDescriptor.onReleased
-                    button.register(b => {
-                        if (!b.pressed) {
-                            onReleased(this, this.keyboard)
-                        }
-                    })
-                }
-                if (keyDescriptor.onChange) {
-                    const onChange = keyDescriptor.onChange
-                    button.register(b => {
-                        onChange(this, this.keyboard)
-                    })
-                }
+            for (const keyDescriptorKey of keysOf(loopDescriptor.input.keys)) {
+                const keyDescriptor = loopDescriptor.input.keys[keyDescriptorKey];
+                const button = this.newButton(keyDescriptor, loopDescriptor.styling);
+                keys[keyDescriptorKey as InputKeyName<D>] = button;
+                postConstructionOps.push(loopWiring => {
+                    this.wireButton(keyDescriptorKey as InputKeyName<D>, button, loopWiring)
+                })
             }
         }
-        if (loopDescriptor.input.pointer) {
-            const pointer = loopDescriptor.input.pointer;
-            if (pointer.onMoved) {
-                const onMoved = pointer.onMoved
-                this.pointer.register(p => onMoved(this, ...p.position))
+        return keys as Record<InputKeyName<D>, Button>;
+    }
+
+    private wireButton(keyDescriptorKey: InputKeyName<D>, button: Button, loopWiring: LoopWiring<D>){
+        const wiring = loopWiring.keys ? loopWiring.keys[keyDescriptorKey] : null;
+        if (!wiring) {
+            return;
+        }
+        if (wiring.onPressed) {
+            const onPressed = wiring.onPressed;
+            button.register(b => {
+                if (b.pressed) {
+                    onPressed();
+                }
+            });
+        }
+        if (wiring.onReleased) {
+            const onReleased = wiring.onReleased;
+            button.register(b => {
+                if (!b.pressed) {
+                    onReleased();
+                }
+            });
+        }
+        if (wiring.onChange) {
+            const onChange = wiring.onChange;
+            button.register(b => {
+                onChange();
+            });
+        }
+    }
+
+    private createPointers(loopDescriptor: D, postConstructionOps: ((loopWiring: LoopWiring<D>) => void)[]) {
+        const pointers: Partial<Record<InputPointerName<D>, Pointer>> = {};
+        if (loopDescriptor.input.pointers) {
+            for (const pointerDescriptorKey of keysOf(loopDescriptor.input.pointers)) {
+                const pointerDescriptor = loopDescriptor.input.pointers[pointerDescriptorKey];
+                const pointer = new Pointer(pointerDescriptor.element);
+                pointers[pointerDescriptorKey as InputPointerName<D>] = pointer;
+                postConstructionOps.push(loopWiring => {
+                    this.wirePointer(pointerDescriptorKey as InputPointerName<D>, pointer, loopWiring)
+                })
             }
-            if (pointer.defaultDraggingTarget) {
-                this.pointer.draggingTarget = pointer.defaultDraggingTarget
+        }
+        return pointers as Record<InputPointerName<D>, Pointer>;
+    }
+
+    private wirePointer(pointerDescriptorKey: InputPointerName<D>, pointer: Pointer, loopWiring: LoopWiring<D>) {
+        const wiring = loopWiring.pointers[pointerDescriptorKey];
+        if (!wiring) {
+            return;
+        }
+        if (wiring.defaultDraggingTarget) {
+            pointer.draggingTarget = wiring.defaultDraggingTarget;
+        }
+        if (wiring.onMoved) {
+            const onMoved = wiring.onMoved;
+            pointer.register(p => onMoved());
+        }
+        if (wiring.primaryButton) {
+            const buttonWiring = wiring.primaryButton;
+            if (buttonWiring.onPressed) {
+                const onPressed = buttonWiring.onPressed;
+                pointer.primary.register(b => {
+                    if (b.pressed) {
+                        onPressed();
+                    }
+                });
             }
-            if (pointer.primaryButton) {
-                const buttonDescriptor = pointer.primaryButton
-                if (buttonDescriptor.onPressed) {
-                    const onPressed = buttonDescriptor.onPressed
-                    this.pointer.primary.register(b => {
-                        if (b.pressed) {
-                            onPressed(this, ...this.pointer.position)
-                        }
-                    })
-                }
-                if (buttonDescriptor.onReleased) {
-                    const onReleased = buttonDescriptor.onReleased
-                    this.pointer.primary.register(b => {
-                        if (!b.pressed) {
-                            onReleased(this, ...this.pointer.position)
-                        }
-                    })
-                }
-                if (buttonDescriptor.onChange) {
-                    const onChange = buttonDescriptor.onChange
-                    this.pointer.primary.register(b => {
-                        onChange(this, ...this.pointer.position)
-                    })
-                }
+            if (buttonWiring.onReleased) {
+                const onReleased = buttonWiring.onReleased;
+                pointer.primary.register(b => {
+                    if (!b.pressed) {
+                        onReleased();
+                    }
+                });
+            }
+            if (buttonWiring.onChange) {
+                const onChange = buttonWiring.onChange;
+                pointer.primary.register(b => {
+                    onChange();
+                });
             }
         }
     }
@@ -153,22 +211,13 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
         this._paused = p
     }
 
-    get draggingTarget() {
-        return this.pointer.draggingTarget
-    }
-
-    set draggingTarget(draggingTarget: DraggingTarget | null) {
-        this.pointer.draggingTarget = draggingTarget
-    }
-
-    removeDraggingTarget(): void {
-        this.pointer.removeDraggingTarget()
-    }
-
     run() {
         if (LoopImpl.activeLoop !== this) {
             LoopImpl.activeLoop = this
-            this.pointer.use()
+            for (const key of keysOf(this.pointers)) {
+                const pointer = this.pointers[key]
+                pointer.use()
+            }
             this.keyboard.use()
             this.nextFrame()
         }
@@ -178,9 +227,9 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
         requestAnimationFrame(time => {
             const elapsed = this.frequencyMeter.tick(time)
             if (!this.animationPaused) {
-                this.loopAutomaton.animate(this, time, elapsed)
+                this.loopLogic.animate(this, time, elapsed)
             }
-            this.loopAutomaton.render()
+            this.loopLogic.render()
             if (this === LoopImpl.activeLoop) {
                 this.nextFrame()
             }
@@ -216,3 +265,7 @@ class LoopImpl<L extends LoopLogic, D extends LoopDescriptor> implements Loop {
     }
 
 }
+
+function keysOf<O extends (object | {})>(object: O): (keyof O)[] {
+    return Object.keys(object) as (keyof O)[]
+} 
