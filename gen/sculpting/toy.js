@@ -38,6 +38,7 @@ class Toy {
         this.stone = stone;
         this.scalarFieldModule = scalarFieldModule;
         this.view = view;
+        this.picker = picker;
         this.rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
         this.focalLengthDragging = gearx.draggingTarget(gearx.property(this, "focalLength"), dragging.RatioDragging.dragger());
         this.lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
@@ -45,11 +46,6 @@ class Toy {
         this.shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.lodElement = gearx.required(document.getElementById("lod"));
         this.lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices);
-        const sizeManager = new gearx.CanvasSizeManager(true);
-        sizeManager.observe(view.canvas, () => {
-            view.resize();
-            picker.resize();
-        });
         this.carving = new Carving(this.stone, () => modelViewProjectionMatrixOf(view), picker, scalarFieldModule, brush);
         this.carvingTarget = gearx.draggingTarget(gearx.property(this, "currentStone"), this.carving);
         this.dropOn(view.canvas);
@@ -63,18 +59,18 @@ class Toy {
         this.modelMatrix = aether.mat4.identity();
         this.currentStone = stone;
     }
-    wiring(loop) {
+    inputWiring(inputs) {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging },
             },
             keys: {
-                carving: { onPressed: () => loop.pointers.canvas.draggingTarget = this.carvingTarget },
-                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.focalLengthDragging },
-                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging },
-                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging },
-                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging },
+                carving: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.carvingTarget },
+                rotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.focalLengthDragging },
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging },
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging },
                 undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) },
                 export: { onPressed: () => this.exportModel() },
                 save: { onPressed: () => this.saveModel() },
@@ -83,10 +79,19 @@ class Toy {
             }
         };
     }
-    animate() {
+    outputWiring() {
+        return {
+            onRender: () => this.view.render(),
+            canvases: {
+                scene: { onResize: () => this.resize() }
+            },
+        };
     }
-    render() {
-        this.view.render();
+    resize() {
+        this.view.resize();
+        this.picker.resize();
+    }
+    animate() {
     }
     get projectionViewMatrix() {
         return aether.mat4.mul(this.view.matProjection, this.view.matView);
@@ -202,12 +207,6 @@ class Toy {
     }
 }
 Toy.descriptor = {
-    fps: {
-        element: "fps-watch"
-    },
-    styling: {
-        pressedButton: "pressed"
-    },
     input: {
         pointers: {
             canvas: {
@@ -260,7 +259,20 @@ Toy.descriptor = {
                 virtualKey: "#control-down",
             },
         }
-    }
+    },
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        fps: {
+            element: "fps-watch"
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+    },
 };
 function data(e) {
     return __awaiter(this, void 0, void 0, function* () {

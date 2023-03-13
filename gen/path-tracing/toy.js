@@ -41,7 +41,7 @@ class Toy {
         this.wasAnimating = false;
         this.animating = false;
         this.changingView = false;
-        this.speed = aether.vec3.of(0, 0, 0);
+        this.speeds = [[0, 0], [0, 0], [0, 0]];
         this.samplesPerPixelElement = gearx.required(document.getElementById("spp"));
         this.layersCountElement = gearx.required(document.getElementById("layers"));
         this.maxLayersCountElement = gearx.required(document.getElementById("max-layers"));
@@ -64,7 +64,7 @@ class Toy {
             return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor);
         });
     }
-    wiring() {
+    inputWiring() {
         return {
             pointers: {
                 canvas: {
@@ -73,28 +73,28 @@ class Toy {
             },
             keys: {
                 forward: {
-                    onPressed: () => this.setSpeed(2, -0.2),
-                    onReleased: () => this.setSpeed(2, 0),
+                    onPressed: () => this.speeds[2][0] = 0.2,
+                    onReleased: () => this.speeds[2][0] = 0.0,
                 },
                 backward: {
-                    onPressed: () => this.setSpeed(2, 0.2),
-                    onReleased: () => this.setSpeed(2, 0),
+                    onPressed: () => this.speeds[2][1] = 0.2,
+                    onReleased: () => this.speeds[2][1] = 0.0,
                 },
                 right: {
-                    onPressed: () => this.setSpeed(0, 0.2),
-                    onReleased: () => this.setSpeed(0, 0),
+                    onPressed: () => this.speeds[0][0] = 0.2,
+                    onReleased: () => this.speeds[0][0] = 0.0,
                 },
                 left: {
-                    onPressed: () => this.setSpeed(0, -0.2),
-                    onReleased: () => this.setSpeed(0, 0),
+                    onPressed: () => this.speeds[0][1] = 0.2,
+                    onReleased: () => this.speeds[0][1] = 0.0,
                 },
                 up: {
-                    onPressed: () => this.setSpeed(1, 0.2),
-                    onReleased: () => this.setSpeed(1, 0),
+                    onPressed: () => this.speeds[1][0] = 0.2,
+                    onReleased: () => this.speeds[1][0] = 0.0,
                 },
                 down: {
-                    onPressed: () => this.setSpeed(1, -0.2),
-                    onReleased: () => this.setSpeed(1, 0),
+                    onPressed: () => this.speeds[1][1] = 0.2,
+                    onReleased: () => this.speeds[1][1] = 0.0,
                 },
                 layering: {
                     onPressed: () => this.minLayersOnly = !this.minLayersOnly
@@ -120,8 +120,18 @@ class Toy {
             }
         };
     }
+    outputWiring() {
+        return {
+            onRender: () => this.render(),
+        };
+    }
     animate() {
-        const velocity = aether.vec3.prod(this.speed, this.tracer.matrix);
+        let v = [
+            this.speeds[0][0] - this.speeds[0][1],
+            this.speeds[1][0] - this.speeds[1][1],
+            this.speeds[2][1] - this.speeds[2][0],
+        ];
+        const velocity = aether.vec3.prod(v, this.tracer.matrix);
         const speed = aether.vec3.length(velocity);
         this.wasAnimating = this.animating;
         this.animating = this.minLayersOnly || this.changingView || speed !== 0;
@@ -197,21 +207,11 @@ class Toy {
         this._denoising = b;
         this.denoisingElement.innerText = b ? "on" : "off";
     }
-    setSpeed(axis, speed) {
-        this.speed[axis] = speed;
-    }
     toggleRecording() {
         this.recorder.startStop();
     }
 }
 Toy.descriptor = {
-    fps: {
-        element: "freq-watch",
-        periodInMilliseconds: 1000
-    },
-    styling: {
-        pressedButton: "pressed"
-    },
     input: {
         pointers: {
             canvas: {
@@ -258,10 +258,12 @@ Toy.descriptor = {
             incSPP: {
                 alternatives: [["BracketRight"]],
                 virtualKey: "#control-inc-spp",
+                exclusive: true,
             },
             decSPP: {
                 alternatives: [["BracketLeft"]],
                 virtualKey: "#control-dec-spp",
+                exclusive: true,
             },
             incLayers: {
                 alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
@@ -272,7 +274,21 @@ Toy.descriptor = {
                 virtualKey: "#control-dec-layers",
             },
         }
-    }
+    },
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        fps: {
+            element: "freq-watch",
+            periodInMilliseconds: 1000
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+    },
 };
 function move(position, velocity, scene) {
     let safeV = safeVelocity(position, velocity, scene);

@@ -1,7 +1,6 @@
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
 import { Universe, UniverseLayout } from './universe.js'
-import { CanvasSizeManager } from '../utils/gear-canvas.js'
 import { Visuals } from './visuals.js'
 
 export class Renderer {
@@ -22,8 +21,6 @@ export class Renderer {
         this.mesh = new geo.ShaderMesh(device, geo.sphere(18, 9))
 
         this.depthTexture = canvas.depthTexture()
-        const sizeManager = new CanvasSizeManager(true)
-        sizeManager.observe(canvas.element, () => this.resize())
         visuals.aspectRatio = canvas.element.width / canvas.element.height
     
         /* Pipeline */

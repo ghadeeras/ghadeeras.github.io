@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
 import { UniverseLayout } from './universe.js';
-import { CanvasSizeManager } from '../utils/gear-canvas.js';
 export class Renderer {
     constructor(device, canvas, visuals, renderShader) {
         this.device = device;
@@ -22,8 +21,6 @@ export class Renderer {
         this.bodyPosition = UniverseLayout.bodyState.asVertex(['position']);
         this.mesh = new geo.ShaderMesh(device, geo.sphere(18, 9));
         this.depthTexture = canvas.depthTexture();
-        const sizeManager = new CanvasSizeManager(true);
-        sizeManager.observe(canvas.element, () => this.resize());
         visuals.aspectRatio = canvas.element.width / canvas.element.height;
         /* Pipeline */
         this.pipeline = this.createPipeline(renderShader);

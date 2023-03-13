@@ -40,7 +40,7 @@ class Toy {
         this.zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100));
         this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
     }
-    wiring(loop) {
+    inputWiring(inputs, controller) {
         return {
             pointers: {
                 canvas: {
@@ -48,21 +48,28 @@ class Toy {
                 }
             },
             keys: {
-                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
-                position: { onPressed: () => loop.pointers.canvas.draggingTarget = this.positionDragging },
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
-                radiusScale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.radiusScaleDragging },
-                gravity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.gravityDragging },
-                pointedness: { onPressed: () => loop.pointers.canvas.draggingTarget = this.pointednessDragging },
+                rotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                position: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.positionDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging },
+                radiusScale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.radiusScaleDragging },
+                gravity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.gravityDragging },
+                pointedness: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.pointednessDragging },
                 collapse: { onPressed: () => recreateCollapse(this.universe) },
                 kaboom: { onPressed: () => recreateKaboom(this.universe) },
                 reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
-                pauseResume: { onPressed: () => loop.animationPaused = !loop.animationPaused },
+                pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+            },
+        };
+    }
+    outputWiring() {
+        return {
+            onRender: () => this.renderer.render(this.universe),
+            canvases: {
+                scene: { onResize: () => this.renderer.resize() }
             },
         };
     }
     animate() { this.engine.move(this.universe); }
-    render() { this.renderer.render(this.universe); }
     get defaultDraggingTarget() {
         return this.rotationDragging;
     }
@@ -149,12 +156,19 @@ Toy.descriptor = {
             },
         },
     },
-    styling: {
-        pressedButton: "pressed"
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+        fps: {
+            element: "freq-watch"
+        }
     },
-    fps: {
-        element: "freq-watch"
-    }
 };
 function resetRendering(visuals, renderer) {
     visuals.modelMatrix = aether.mat4.identity();

@@ -24,6 +24,8 @@ export interface View {
 
     render(): void
 
+    resize(): void
+
 }
 
 export async function view(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {

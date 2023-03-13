@@ -45,8 +45,6 @@ class GLTFToy {
         this.shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.fogginessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._modelIndex = 0;
-        const sizeManager = new gearx.CanvasSizeManager(true);
-        sizeManager.observe(view.canvas, () => view.resize());
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];
         this.view.shininess = 1;
@@ -65,30 +63,35 @@ class GLTFToy {
             return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor);
         });
     }
-    wiring(loop) {
+    inputWiring(inputs) {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging }
             },
             keys: {
-                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.translationDragging },
-                rotate: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
-                scale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.scaleDragging },
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
-                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorDragging },
-                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging },
-                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging },
-                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging },
-                fogginess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.fogginessDragging },
+                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.translationDragging },
+                rotate: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                scale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.scaleDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging },
+                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging },
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging },
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging },
+                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
                 nextModel: { onPressed: () => this.modelIndex-- },
                 previousModel: { onPressed: () => this.modelIndex++ },
             }
         };
     }
-    animate() {
+    outputWiring() {
+        return {
+            onRender: () => this.view.draw(),
+            canvases: {
+                scene: { onResize: () => this.view.resize() }
+            }
+        };
     }
-    render() {
-        this.view.draw();
+    animate() {
     }
     toLightPosition(pos) {
         const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
@@ -124,12 +127,6 @@ class GLTFToy {
     }
 }
 GLTFToy.descriptor = {
-    fps: {
-        element: "fps-watch"
-    },
-    styling: {
-        pressedButton: "pressed"
-    },
     input: {
         pointers: {
             canvas: {
@@ -182,7 +179,20 @@ GLTFToy.descriptor = {
                 virtualKey: "#control-right",
             },
         }
-    }
+    },
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        fps: {
+            element: "fps-watch"
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+    },
 };
 function mapped(property, mapper) {
     const pos = [[0, 0]];

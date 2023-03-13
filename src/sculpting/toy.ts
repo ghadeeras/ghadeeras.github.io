@@ -33,12 +33,6 @@ type ToyDescriptor = typeof Toy.descriptor
 class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
-        fps: {
-            element: "fps-watch"
-        },
-        styling: {
-            pressedButton: "pressed"
-        },
         input: {
             pointers: {
                 canvas: {
@@ -91,7 +85,20 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                     virtualKey: "#control-down",
                 },
             }
-        }
+        },
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            fps: {
+                element: "fps-watch"
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+        },
     } satisfies gearx.LoopDescriptor
 
     readonly carvingTarget: gearx.DraggingTarget
@@ -107,13 +114,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     private lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices)
 
-    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, private view: v.View, picker: v.Picker) {
-        const sizeManager = new gearx.CanvasSizeManager(true)
-        sizeManager.observe(view.canvas, () => {
-            view.resize()
-            picker.resize()
-        })
-
+    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, private view: v.View, private picker: v.Picker) {
         this.carving = new Carving(
             this.stone,
             () => modelViewProjectionMatrixOf(view),
@@ -137,18 +138,18 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         this.currentStone = stone
     }
 
-    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging },
             },
             keys: {
-                carving: { onPressed: () => loop.pointers.canvas.draggingTarget = this.carvingTarget }, 
-                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging }, 
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.focalLengthDragging }, 
-                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging }, 
-                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
-                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
+                carving: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.carvingTarget }, 
+                rotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging }, 
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.focalLengthDragging }, 
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging }, 
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
+                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
                 undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) }, 
                 export: { onPressed: () => this.exportModel() }, 
                 save: { onPressed: () => this.saveModel() }, 
@@ -158,13 +159,23 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
+    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.view.render(),
+            canvases: {
+                scene: { onResize: () => this.resize() }
+            },
+        }
+    }
+
+    private resize() {
+        this.view.resize()
+        this.picker.resize()
+    }
+
     animate(): void {
     }
     
-    render(): void {
-        this.view.render()
-    }
-
     get projectionViewMatrix() {
         return aether.mat4.mul(this.view.matProjection, this.view.matView)
     }

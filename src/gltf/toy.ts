@@ -39,12 +39,6 @@ type ToyDescriptor = typeof GLTFToy.descriptor
 class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
-        fps: {
-            element: "fps-watch"
-        },
-        styling: {
-            pressedButton: "pressed"
-        },
         input: {
             pointers: {
                 canvas: {
@@ -97,7 +91,20 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
                     virtualKey: "#control-right",
                 },
             }
-        }
+        },
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            fps: {
+                element: "fps-watch"
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+        },
     } satisfies gearx.LoopDescriptor
     
     private readonly modelNameElement = gearx.required(document.getElementById("model-name"))
@@ -116,8 +123,6 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
     private _modelIndex = 0
 
     private constructor(private models: [string, string][], private view: View) {
-        const sizeManager = new gearx.CanvasSizeManager(true)
-        sizeManager.observe(view.canvas, () => view.resize())
         this.modelIndex = 1
         this.view.modelColor = [0.8, 0.8, 0.8, 1]
         this.view.shininess = 1
@@ -126,7 +131,7 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
         this.view.lightRadius = 0.005
     }
 
-    static async loop(wires: boolean): Promise<gearx.Loop<ToyDescriptor>> {
+    static async loop(wires: boolean): Promise<gearx.Loop> {
         const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
         const models: [string, string][] = (await modelIndexResponse.json() as ModelIndexEntry[])
             .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`])
@@ -143,32 +148,38 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
         return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor)
     }
 
-    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging }
             },
             keys: {
-                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.translationDragging }, 
-                rotate: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging }, 
-                scale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.scaleDragging }, 
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging }, 
-                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorDragging }, 
-                shininess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.shininessDragging }, 
-                lightDirection: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
-                lightRadius: { onPressed: () => loop.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
-                fogginess: { onPressed: () => loop.pointers.canvas.draggingTarget = this.fogginessDragging }, 
+                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.translationDragging }, 
+                rotate: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging }, 
+                scale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.scaleDragging }, 
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging }, 
+                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging }, 
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging }, 
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
+                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
+                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging }, 
                 nextModel: { onPressed: () => this.modelIndex-- }, 
                 previousModel: { onPressed: () => this.modelIndex++ },
             }
         }
     }
 
-    animate(): void {
+    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.view.draw(),
+            canvases: {
+                scene: { onResize: () => this.view.resize()}
+            }
+        }
+        
     }
 
-    render(): void {
-        this.view.draw()
+    animate(): void {
     }
 
     toLightPosition(pos: gear.PointerPosition) {

@@ -49,29 +49,34 @@ class Toy {
             return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor);
         });
     }
-    wiring(loop) {
+    inputWiring(inputs) {
         return {
             pointers: {
                 canvas: {
                     defaultDraggingTarget: this.zoomTarget,
-                    primaryButton: { onPressed: () => this.click(...loop.pointers.canvas.position, loop.pointers.canvas.draggingTarget == null) }
+                    primaryButton: { onPressed: () => this.click(...inputs.pointers.canvas.position, inputs.pointers.canvas.draggingTarget == null) }
                 }
             },
             keys: {
-                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.moveTarget },
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomTarget },
-                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorTarget },
-                intensity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.intensityTarget },
+                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.moveTarget },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomTarget },
+                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorTarget },
+                intensity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.intensityTarget },
                 xray: { onPressed: () => this.mandelbrotView.xray = !this.mandelbrotView.xray },
                 crosshairs: { onPressed: () => this.mandelbrotView.crosshairs = !this.mandelbrotView.crosshairs },
-                sound: { onPressed: () => loop.pointers.canvas.draggingTarget = null },
+                sound: { onPressed: () => inputs.pointers.canvas.draggingTarget = null },
             }
         };
     }
-    animate() {
+    outputWiring() {
+        return {
+            onRender: () => this.mandelbrotView.render(),
+            canvases: {
+                scene: { onResize: () => this.mandelbrotView.resize() }
+            },
+        };
     }
-    render() {
-        this.mandelbrotView.render();
+    animate() {
     }
     click(x, y, soundOn) {
         this.posWatch.innerText = toFixedVec([x, y]);
@@ -102,12 +107,6 @@ class Toy {
     }
 }
 Toy.descriptor = {
-    fps: {
-        element: "fps-watch"
-    },
-    styling: {
-        pressedButton: "pressed"
-    },
     input: {
         pointers: {
             canvas: {
@@ -144,7 +143,20 @@ Toy.descriptor = {
                 virtualKey: "#control-n",
             },
         }
-    }
+    },
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        fps: {
+            element: "fps-watch"
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+    },
 };
 function toFixedVec(v, digits = 3) {
     const coords = v.map(c => toFixed(c, digits));

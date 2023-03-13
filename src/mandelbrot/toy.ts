@@ -20,12 +20,6 @@ type ToyDescriptor = typeof Toy.descriptor
 class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
-        fps: {
-            element: "fps-watch"
-        },
-        styling: {
-            pressedButton: "pressed"
-        },
         input: {
             pointers: {
                 canvas: {
@@ -62,7 +56,20 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                     virtualKey: "#control-n",
                 },
             }
-        }
+        },
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            fps: {
+                element: "fps-watch"
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+        },
     } satisfies gearx.LoopDescriptor
     
     readonly moveTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Move(this.mandelbrotView))
@@ -87,36 +94,41 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     constructor(readonly mandelbrotView: View) {}
 
-    static async loop(): Promise<gearx.Loop<ToyDescriptor>> {
+    static async loop(): Promise<gearx.Loop> {
         const mandelbrotView = await view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2)
         return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor)
     }
 
-    wiring(loop: gearx.Loop<ToyDescriptor>): gearx.LoopWiring<ToyDescriptor> {
+    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
                     defaultDraggingTarget: this.zoomTarget,
-                    primaryButton: { onPressed: () => this.click(...loop.pointers.canvas.position, loop.pointers.canvas.draggingTarget == null) }
+                    primaryButton: { onPressed: () => this.click(...inputs.pointers.canvas.position, inputs.pointers.canvas.draggingTarget == null) }
                 }
             },
             keys: {
-                move: { onPressed: () => loop.pointers.canvas.draggingTarget = this.moveTarget }, 
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomTarget }, 
-                color: { onPressed: () => loop.pointers.canvas.draggingTarget = this.colorTarget }, 
-                intensity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.intensityTarget }, 
+                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.moveTarget }, 
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomTarget }, 
+                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorTarget }, 
+                intensity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.intensityTarget }, 
                 xray: { onPressed: () => this.mandelbrotView.xray = !this.mandelbrotView.xray }, 
                 crosshairs: { onPressed: () => this.mandelbrotView.crosshairs = !this.mandelbrotView.crosshairs }, 
-                sound: { onPressed: () => loop.pointers.canvas.draggingTarget = null },
+                sound: { onPressed: () => inputs.pointers.canvas.draggingTarget = null },
             }
         }
     }
 
-    animate(): void {
+    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.mandelbrotView.render(),
+            canvases: {
+                scene: { onResize: () => this.mandelbrotView.resize() }
+            },
+        }
     }
 
-    render(): void {
-        this.mandelbrotView.render()
+    animate(): void {
     }
 
     click(x: number, y: number, soundOn: boolean) {

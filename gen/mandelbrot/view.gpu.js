@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import { CanvasSizeManager, fetchTextFile } from "../utils/gear.js";
+import { fetchTextFile } from "../utils/gear.js";
 export class ViewGPU {
     constructor(device, canvasId, shaderModule, center, scale) {
         this.device = device;
@@ -29,8 +29,6 @@ export class ViewGPU {
                 crosshairs: 1,
             }]));
         this.gpuCanvas = device.canvas(canvasId, 4);
-        const sizeManager = new CanvasSizeManager(true);
-        sizeManager.observe(this.canvas, () => this.gpuCanvas.resize());
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
@@ -92,6 +90,9 @@ export class ViewGPU {
     }
     set crosshairs(b) {
         this.uniforms.set(this.uniformsStruct.members.crosshairs, b ? 1 : 0);
+    }
+    resize() {
+        return this.gpuCanvas.resize();
     }
     render() {
         this.device.enqueueCommand("render", encoder => {

@@ -22,11 +22,6 @@ export class ViewGL implements View {
     ) {
         this.context = wgl.Context.of(_canvasId)
 
-        const sizeManager = new gearx.CanvasSizeManager(true)
-        sizeManager.observe(this.canvas, () => {
-            this.context.gl.viewport(0, 0, this.canvas.width, this.canvas.height)
-        })
-
         const program = this.context.link(
             this.context.vertexShader(_vertexShaderCode),
             this.context.fragmentShader(_fragmentShaderCode)
@@ -111,6 +106,10 @@ export class ViewGL implements View {
     
     set crosshairs(b: boolean) {
         this.uniformCrosshairs.data = [b ? 1 : 0]
+    }
+
+    resize() {
+        this.context.gl.viewport(0, 0, this.canvas.width, this.canvas.height)
     }
 
     render() {

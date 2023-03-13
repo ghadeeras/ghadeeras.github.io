@@ -24,13 +24,6 @@ type ToyDescriptor = typeof Toy.descriptor
 class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
-        fps: {
-            element: "freq-watch",
-            periodInMilliseconds: 1000
-        },
-        styling: {
-            pressedButton: "pressed"
-        },
         input: {
             pointers: {
                 canvas: {
@@ -77,10 +70,12 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 incSPP: {
                     alternatives: [["BracketRight"]],
                     virtualKey: "#control-inc-spp",
+                    exclusive: true,
                 }, 
                 decSPP: {
                     alternatives: [["BracketLeft"]],
                     virtualKey: "#control-dec-spp",
+                    exclusive: true,
                 }, 
                 incLayers: {
                     alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
@@ -91,7 +86,21 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                     virtualKey: "#control-dec-layers",
                 },
             }
-        }
+        },
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            fps: {
+                element: "freq-watch",
+                periodInMilliseconds: 1000
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+        },
     } satisfies gearx.LoopDescriptor
 
     private _minLayersOnly = false
@@ -101,7 +110,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     private wasAnimating = false
     private animating = false
     private changingView = false
-    private speed = aether.vec3.of(0, 0, 0)
+    private speeds = [[0, 0], [0, 0], [0, 0]]
 
     private readonly samplesPerPixelElement = gearx.required(document.getElementById("spp"))
     private readonly layersCountElement = gearx.required(document.getElementById("layers"))
@@ -116,7 +125,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         tracer.position = [36, 36, 36]
     }
 
-    static async loop(): Promise<gearx.Loop<ToyDescriptor>> {
+    static async loop(): Promise<gearx.Loop> {
         const scene = buildScene()
         const device = await gpuDevice()
         const canvas = device.canvas("canvas")
@@ -127,7 +136,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor)
     }
 
-    wiring(): gearx.LoopWiring<ToyDescriptor> {
+    inputWiring(): gearx.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -136,28 +145,28 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             },
             keys: {
                 forward: {
-                    onPressed: () => this.setSpeed(2, -0.2),
-                    onReleased: () => this.setSpeed(2, 0),
+                    onPressed: () => this.speeds[2][0] = 0.2,
+                    onReleased: () => this.speeds[2][0] = 0.0,
                 }, 
                 backward: {
-                    onPressed: () => this.setSpeed(2, 0.2),
-                    onReleased: () => this.setSpeed(2, 0),
+                    onPressed: () => this.speeds[2][1] = 0.2,
+                    onReleased: () => this.speeds[2][1] = 0.0,
                 }, 
                 right: {
-                    onPressed: () => this.setSpeed(0, 0.2),
-                    onReleased: () => this.setSpeed(0, 0),
+                    onPressed: () => this.speeds[0][0] = 0.2,
+                    onReleased: () => this.speeds[0][0] = 0.0,
                 }, 
                 left: {
-                    onPressed: () => this.setSpeed(0, -0.2),
-                    onReleased: () => this.setSpeed(0, 0),
+                    onPressed: () => this.speeds[0][1] = 0.2,
+                    onReleased: () => this.speeds[0][1] = 0.0,
                 }, 
                 up: {
-                    onPressed: () => this.setSpeed(1, 0.2),
-                    onReleased: () => this.setSpeed(1, 0),
+                    onPressed: () => this.speeds[1][0] = 0.2,
+                    onReleased: () => this.speeds[1][0] = 0.0,
                 }, 
                 down: {
-                    onPressed: () => this.setSpeed(1, -0.2),
-                    onReleased: () => this.setSpeed(1, 0),
+                    onPressed: () => this.speeds[1][1] = 0.2,
+                    onReleased: () => this.speeds[1][1] = 0.0,
                 }, 
                 layering: {
                     onPressed: () => this.minLayersOnly = !this.minLayersOnly 
@@ -184,8 +193,19 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
+    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.render(),
+        }
+    }
+
     animate(): void {
-        const velocity = aether.vec3.prod(this.speed, this.tracer.matrix)
+        let v: aether.Vec3 = [
+            this.speeds[0][0] - this.speeds[0][1],
+            this.speeds[1][0] - this.speeds[1][1],
+            this.speeds[2][1] - this.speeds[2][0],
+        ]
+        const velocity = aether.vec3.prod(v, this.tracer.matrix)
         const speed = aether.vec3.length(velocity)
         this.wasAnimating = this.animating
         this.animating = this.minLayersOnly || this.changingView || speed !== 0
@@ -271,10 +291,6 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     set denoising(b: boolean) {
         this._denoising = b
         this.denoisingElement.innerText = b ? "on" : "off"
-    }
-
-    setSpeed(axis: number, speed: number) {
-        this.speed[axis] = speed
     }
 
     toggleRecording() {

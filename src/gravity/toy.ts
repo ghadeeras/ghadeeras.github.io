@@ -72,12 +72,19 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
                 },
             },
         },
-        styling: {
-            pressedButton: "pressed"
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+            fps: {
+                element: "freq-watch"
+            }
         },
-        fps: {
-            element: "freq-watch"
-        }
     } satisfies gear.LoopDescriptor
     
     private gravityDragging = this.draggingTarget("gravity", dragging.RatioDragging.dragger(1, 10000))
@@ -90,7 +97,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
     private constructor(private gpuCanvas: gpu.Canvas, private universe: Universe, private visuals: Visuals, private engine: Engine, private renderer: Renderer) {    
     }
 
-    wiring(loop: gear.Loop<ToyDescriptor>): gear.LoopWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.LoopInputs<ToyDescriptor>, controller: gear.LoopController): gear.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -98,23 +105,30 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
                 }
             },
             keys: {
-                rotation: { onPressed: () => loop.pointers.canvas.draggingTarget = this.rotationDragging },
-                position: { onPressed: () => loop.pointers.canvas.draggingTarget = this.positionDragging },
-                zoom: { onPressed: () => loop.pointers.canvas.draggingTarget = this.zoomDragging },
-                radiusScale: { onPressed: () => loop.pointers.canvas.draggingTarget = this.radiusScaleDragging },
-                gravity: { onPressed: () => loop.pointers.canvas.draggingTarget = this.gravityDragging },
-                pointedness: { onPressed: () => loop.pointers.canvas.draggingTarget = this.pointednessDragging },
+                rotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                position: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.positionDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging },
+                radiusScale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.radiusScaleDragging },
+                gravity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.gravityDragging },
+                pointedness: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.pointednessDragging },
                 collapse: { onPressed: () => recreateCollapse(this.universe) },
                 kaboom: { onPressed: () => recreateKaboom(this.universe) },
                 reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
-                pauseResume: { onPressed: () => loop.animationPaused = !loop.animationPaused },
+                pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+            },
+        }
+    }
+
+    outputWiring(): gear.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.renderer.render(this.universe),
+            canvases: {
+                scene: { onResize: () => this.renderer.resize() }
             },
         }
     }
 
     animate() { this.engine.move(this.universe) }
-
-    render() { this.renderer.render(this.universe) }
 
     get defaultDraggingTarget() {
         return this.rotationDragging
@@ -146,7 +160,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
         return gear.draggingTarget(gear.property(this, key), dragger)
     }
     
-    static async loop(): Promise<gear.Loop<ToyDescriptor>> {
+    static async loop(): Promise<gear.Loop> {
         const device = await gpuDevice()
         const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4)
         const universeLayout = new UniverseLayout(device)

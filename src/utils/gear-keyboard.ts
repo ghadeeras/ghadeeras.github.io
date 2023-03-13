@@ -72,14 +72,15 @@ export class Keyboard implements KeyboardEventContext {
         const key = this.keys.get(e.code)
         if (key !== undefined) {
             trap(e)
-            this.updatePressedCount(e, pressed)
+            this.updatePressedCount(e, pressed, key.pressed)
             key.pressed = pressed
         }
     }
 
-    private updatePressedCount(e: KeyboardEvent, pressed: boolean) {
-        if (!e.repeat) {
+    private updatePressedCount(e: KeyboardEvent, pressed: boolean, wasPressed: boolean) {
+        if (pressed !== wasPressed) {
             this._pressedCount = Math.max(this._pressedCount + (pressed ? 1 : -1), 0)
+            console.log(this._pressedCount)
         }
     }
 

@@ -1,7 +1,8 @@
 import { Button, VirtualKey } from './gear-buttons.js';
 import { Keyboard } from './gear-keyboard.js';
 import { Pointer } from './gear-pointer.js';
-import { FrequencyMeter } from './misc.js';
+import { CanvasSizeManager } from './gear-canvas.js';
+import { FrequencyMeter, required } from './misc.js';
 export function newLoop(loopLogic, inputDescriptor) {
     return new LoopImpl(loopLogic, inputDescriptor);
 }
@@ -11,24 +12,56 @@ class LoopImpl {
         this.loopLogic = loopLogic;
         this.loopDescriptor = loopDescriptor;
         this.keyboard = new Keyboard();
-        this.frequencyMeter = this.loopDescriptor.fps
-            ? FrequencyMeter.create((_a = this.loopDescriptor.fps.periodInMilliseconds) !== null && _a !== void 0 ? _a : 1000, this.loopDescriptor.fps.element)
+        this.canvasSizeManager = new CanvasSizeManager(true);
+        this.render = () => { };
+        this.frequencyMeter = this.loopDescriptor.output.fps
+            ? FrequencyMeter.create((_a = this.loopDescriptor.output.fps.periodInMilliseconds) !== null && _a !== void 0 ? _a : 1000, this.loopDescriptor.output.fps.element)
             : new FrequencyMeter(1000, () => { });
         this._paused = false;
-        const postConstructionOps = [];
-        this.keys = this.createKeys(loopDescriptor, postConstructionOps);
-        this.pointers = this.createPointers(loopDescriptor, postConstructionOps);
-        postConstructionOps.forEach(op => op(loopLogic.wiring(this)));
+        const deferredInputOps = [];
+        const deferredOutputOps = [];
+        this.keys = this.createKeys(loopDescriptor, deferredInputOps);
+        this.pointers = this.createPointers(loopDescriptor, deferredInputOps);
+        this.canvases = this.getCanvases(loopDescriptor, deferredOutputOps);
+        const inputWiring = loopLogic.inputWiring(this, this);
+        const outputWiring = loopLogic.outputWiring(this);
+        this.render = outputWiring.onRender;
+        deferredInputOps.forEach(op => op(inputWiring));
+        deferredOutputOps.forEach(op => op(outputWiring));
     }
-    createKeys(loopDescriptor, postConstructionOps) {
+    getCanvases(loopDescriptor, deferredOps) {
+        const canvases = {};
+        if (loopDescriptor.output.canvases) {
+            for (const canvasName of keysOf(loopDescriptor.output.canvases)) {
+                const canvasDescriptor = loopDescriptor.output.canvases[canvasName];
+                const canvas = this.getCanvasElement(canvasDescriptor);
+                canvases[canvasName] = canvas;
+                deferredOps.push(loopWiring => this.wireCanvas(canvasName, canvas, loopWiring));
+            }
+        }
+        return canvases;
+    }
+    getCanvasElement(canvasDescriptor) {
+        return required(document.getElementById(canvasDescriptor.element));
+    }
+    wireCanvas(canvasName, canvas, loopWiring) {
+        if (!loopWiring.canvases) {
+            return;
+        }
+        const canvasWiring = loopWiring.canvases[canvasName];
+        if (canvasWiring && canvasWiring.onResize) {
+            this.canvasSizeManager.observe(canvas, canvasWiring.onResize);
+        }
+    }
+    createKeys(loopDescriptor, deferredOps) {
         const keys = {};
         if (loopDescriptor.input.keys) {
-            for (const keyDescriptorKey of keysOf(loopDescriptor.input.keys)) {
-                const keyDescriptor = loopDescriptor.input.keys[keyDescriptorKey];
-                const button = this.newButton(keyDescriptor, loopDescriptor.styling);
-                keys[keyDescriptorKey] = button;
-                postConstructionOps.push(loopWiring => {
-                    this.wireButton(keyDescriptorKey, button, loopWiring);
+            for (const keyName of keysOf(loopDescriptor.input.keys)) {
+                const keyDescriptor = loopDescriptor.input.keys[keyName];
+                const button = this.newButton(keyDescriptor, loopDescriptor.output.styling);
+                keys[keyName] = button;
+                deferredOps.push(loopWiring => {
+                    this.wireButton(keyName, button, loopWiring);
                 });
             }
         }
@@ -62,14 +95,14 @@ class LoopImpl {
             });
         }
     }
-    createPointers(loopDescriptor, postConstructionOps) {
+    createPointers(loopDescriptor, deferredOps) {
         const pointers = {};
         if (loopDescriptor.input.pointers) {
             for (const pointerDescriptorKey of keysOf(loopDescriptor.input.pointers)) {
                 const pointerDescriptor = loopDescriptor.input.pointers[pointerDescriptorKey];
                 const pointer = new Pointer(pointerDescriptor.element);
                 pointers[pointerDescriptorKey] = pointer;
-                postConstructionOps.push(loopWiring => {
+                deferredOps.push(loopWiring => {
                     this.wirePointer(pointerDescriptorKey, pointer, loopWiring);
                 });
             }
@@ -108,7 +141,7 @@ class LoopImpl {
             }
             if (buttonWiring.onChange) {
                 const onChange = buttonWiring.onChange;
-                pointer.primary.register(b => {
+                pointer.primary.register(() => {
                     onChange();
                 });
             }
@@ -135,9 +168,9 @@ class LoopImpl {
         requestAnimationFrame(time => {
             const elapsed = this.frequencyMeter.tick(time);
             if (!this.animationPaused) {
-                this.loopLogic.animate(this, time, elapsed);
+                this.loopLogic.animate(time, elapsed, this);
             }
-            this.loopLogic.render();
+            this.render();
             if (this === LoopImpl.activeLoop) {
                 this.nextFrame();
             }
@@ -150,7 +183,9 @@ class LoopImpl {
         const virtualButtons = keyDescriptor.virtualKey !== undefined
             ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
             : [];
-        const button = Button.anyOf(...keyDescriptor.alternatives.map(ks => Button.allOf(...ks.map(k => this.keyboard.key(k))).when(b => b.pressed && this.keyboard.pressedCount == ks.length)), ...virtualButtons.map(e => new VirtualKey(e)));
+        const button = Button.anyOf(...keyDescriptor.alternatives.map(ks => Button.allOf(...ks.map(k => this.keyboard.key(k))).when(keyDescriptor.exclusive
+            ? b => b.pressed && this.keyboard.pressedCount == ks.length
+            : b => b.pressed)), ...virtualButtons.map(e => new VirtualKey(e)));
         if (virtualButtons.length > 0) {
             button.register(b => {
                 if (b.pressed) {
