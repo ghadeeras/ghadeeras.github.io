@@ -1,4 +1,4 @@
-import { required } from "../utils.js"
+import { required, timeOut } from "../utils.js"
 import { BindGroupLayout, BindGroupLayoutEntries } from "./group.js"
 import { Buffer, SyncBuffer } from "./buffer.js"
 import { Canvas } from "./canvas.js"
@@ -102,8 +102,8 @@ export class Device {
 
     static async instance(): Promise<Device> {
         const gpu = required(navigator.gpu)
-        const adapter = required(await gpu.requestAdapter())
-        const device = required(await adapter.requestDevice())
+        const adapter = required(await timeOut(gpu.requestAdapter(), 5000, "GPU Adapter"))
+        const device = required(await timeOut(adapter.requestDevice(), 5000, "GPU Device"))
         return new Device(device, adapter)
     }
 

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { required } from "../utils.js";
+import { required, timeOut } from "../utils.js";
 import { BindGroupLayout } from "./group.js";
 import { Buffer, SyncBuffer } from "./buffer.js";
 import { Canvas } from "./canvas.js";
@@ -99,8 +99,8 @@ export class Device {
     static instance() {
         return __awaiter(this, void 0, void 0, function* () {
             const gpu = required(navigator.gpu);
-            const adapter = required(yield gpu.requestAdapter());
-            const device = required(yield adapter.requestDevice());
+            const adapter = required(yield timeOut(gpu.requestAdapter(), 5000, "GPU Adapter"));
+            const device = required(yield timeOut(adapter.requestDevice(), 5000, "GPU Device"));
             return new Device(device, adapter);
         });
     }

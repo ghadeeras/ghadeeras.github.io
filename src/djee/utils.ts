@@ -31,3 +31,26 @@ export function values<K extends string | number | symbol, V>(record: Record<K, 
     }
     return result
 }
+
+export function timeOut<T>(promise: Promise<T>, timeInMilliseconds: number, tag: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+        const id: [number | null] = [setTimeout(() => {
+            id[0] = null
+            reject(new Error(`[${tag}] Timed out after ${timeInMilliseconds} milliseconds!`))
+        }, timeInMilliseconds)]
+
+        promise
+            .then(value => {
+                if (id[0] !== null) {
+                    clearTimeout(id[0])
+                    resolve(value)
+                }
+            })
+            .catch(reason => {
+                if (id[0] !== null) {
+                    clearTimeout(id[0])
+                    reject(reason)
+                }
+            })
+    })
+}
