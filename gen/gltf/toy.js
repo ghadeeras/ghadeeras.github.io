@@ -20,10 +20,10 @@ export function wires() {
         gitHubRepo,
         huds,
         video: null,
-        init: controller => init(controller, true)
+        init: () => init(true)
     };
 }
-export function init(_, wires = false) {
+export function init(wires = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const loop = yield GLTFToy.loop(wires);
         loop.run();

@@ -80,7 +80,6 @@ export class Keyboard implements KeyboardEventContext {
     private updatePressedCount(e: KeyboardEvent, pressed: boolean, wasPressed: boolean) {
         if (pressed !== wasPressed) {
             this._pressedCount = Math.max(this._pressedCount + (pressed ? 1 : -1), 0)
-            console.log(this._pressedCount)
         }
     }
 

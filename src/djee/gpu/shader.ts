@@ -78,7 +78,7 @@ export class ShaderModule {
 
 export const renderingShaders = {
     
-    fullScreenPass: (shader: string) => `
+    fullScreenPass: (shader: string) => /*wgsl*/`
         struct Varyings {
             @builtin(position) position: vec4<f32>,
             @location(0) clipPosition: vec2<f32>,

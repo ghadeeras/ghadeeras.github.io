@@ -1,71 +1,5 @@
 import { required } from "./utils/misc.js";
 let currentHudId = null;
-export class Controller {
-    constructor() {
-        this.ctrl = false;
-        this.alt = false;
-        this.shift = false;
-        this._handler = e => false;
-    }
-    set handler(h) {
-        this._handler = h;
-        this.init();
-    }
-    init() {
-        window.onkeydown = e => this.handleKeyboardEvent(e, true);
-        window.onkeyup = e => this.handleKeyboardEvent(e, false);
-        const elements = document.getElementsByTagName("kbd");
-        for (const element of elements) {
-            element.onmousedown = e => this.handleVirtualEvent(e, true);
-            element.onmouseup = e => this.handleVirtualEvent(e, false);
-        }
-    }
-    handleVirtualEvent(e, down) {
-        const target = e.currentTarget;
-        const key = target.innerText.trim().toLocaleLowerCase();
-        if (key.length == 1) {
-            const handled = this._handler({
-                key: key,
-                down: down,
-                ctrl: this.ctrl,
-                alt: this.alt,
-                shift: this.shift
-            });
-            if (handled) {
-                e.preventDefault();
-            }
-            if (down) {
-                target.classList.add("pressed");
-            }
-            else {
-                target.classList.remove("pressed");
-            }
-        }
-        else if (!down) {
-            this.ctrl = this.ctrl !== (key === "ctrl");
-            this.alt = this.alt !== (key === "alt");
-            this.shift = this.shift !== (key === "shift");
-            if (target.classList.contains("pressed")) {
-                target.classList.remove("pressed");
-            }
-            else {
-                target.classList.add("pressed");
-            }
-        }
-    }
-    handleKeyboardEvent(e, down) {
-        const handled = this._handler({
-            key: e.key,
-            down: down,
-            ctrl: e.ctrlKey,
-            alt: e.altKey,
-            shift: e.shiftKey
-        });
-        if (handled) {
-            e.preventDefault();
-        }
-    }
-}
 export default function init(toy) {
     window.onload = () => {
         var _a, _b, _c;
@@ -83,7 +17,7 @@ export default function init(toy) {
         for (const hudId of Object.keys(huds)) {
             setupHud(hudId, huds[hudId]);
         }
-        toy.init(new Controller());
+        toy.init();
     };
 }
 function link(elementId, url, inNewWindow = false) {

@@ -14,6 +14,7 @@ import { Canvas } from "./canvas.js";
 import { CommandEncoder } from "./encoder.js";
 import { ShaderModule } from "./shader.js";
 import { Texture, Sampler } from "./texture.js";
+import { PipelineLayout } from "./pipeline.js";
 export class Device {
     constructor(device, adapter) {
         this.device = device;
@@ -74,6 +75,9 @@ export class Device {
     }
     groupLayout(label, entries) {
         return new BindGroupLayout(label, this, entries);
+    }
+    pipelineLayout(label, entries) {
+        return new PipelineLayout(label, this, entries);
     }
     bindGroup(bindGroupLayout, resources) {
         const discriminator = "asBindingResource";

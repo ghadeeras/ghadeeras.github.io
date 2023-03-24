@@ -2,7 +2,7 @@ import { aether, gear } from "/gen/libs.js";
 import * as gearx from "../utils/gear.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
-import { Controller, Toy } from "../initializer.js";
+import { Toy } from "../initializer.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -25,11 +25,11 @@ export function wires(): Toy {
         gitHubRepo,
         huds,
         video: null,
-        init: controller => init(controller, true)
+        init: () => init(true)
     }
 }
 
-export async function init(_: Controller, wires: boolean = false) {
+export async function init(wires: boolean = false) {
     const loop = await GLTFToy.loop(wires)
     loop.run()
 }

@@ -6,6 +6,7 @@ import { CommandEncoder } from "./encoder.js"
 import { ShaderModule } from "./shader.js"
 import { Texture, Sampler } from "./texture.js"
 import { Resource } from "./utils.js"
+import { PipelineLayout, PipelineLayoutEntries } from "./pipeline.js"
 
 export class Device {
 
@@ -75,8 +76,12 @@ export class Device {
             SyncBuffer.create(label, this, usage, dataOrSize) 
     }
 
-    groupLayout<L extends BindGroupLayoutEntries>(label: string, entries: L) {
+    groupLayout<L extends BindGroupLayoutEntries>(label: string, entries: L): BindGroupLayout<L> {
         return new BindGroupLayout(label, this, entries)
+    }
+
+    pipelineLayout<L extends PipelineLayoutEntries>(label: string, entries: L): PipelineLayout<L> {
+        return new PipelineLayout(label, this, entries)
     }
 
     bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Resource | GPUBindingResource)[]) {

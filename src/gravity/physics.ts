@@ -9,7 +9,7 @@ export class EngineLayout {
     readonly pipelineLayout: PipelineLayout<EnginePipelineLayout>
     
     constructor(universeLayout: UniverseLayout) {
-        this.pipelineLayout = new PipelineLayout("engineLayout", universeLayout.device, engineLayout(universeLayout))
+        this.pipelineLayout = universeLayout.device.pipelineLayout("engineLayout", engineLayout(universeLayout))
     }
 
     instance(computeShader: gpu.ShaderModule, workgroupSize: number) {

@@ -3,144 +3,214 @@ import { gltf } from "../djee/index.js"
 import * as gearx from "../utils/gear.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
+import { LoopLogic } from "../utils/gear.js"
 
-const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-
-export function init() {
-    window.onload = () => doInit()
+export const huds = {
+    "monitor": "monitor-button"
 }
 
-async function doInit() {
-    const scalarFieldModule = await aether.loadScalarFieldModule()
-    const scalarFieldInstance = scalarFieldModule.newInstance()
-    const view = await v.newView("canvas-gl")
-    view.matView = viewMatrix
-    view.focalLength = Math.pow(2, 1.5)
-    new Toy(view, scalarFieldInstance)
+export async function init() {
+    const toy = await Toy.create()
+    const loop = gearx.newLoop(toy, Toy.descriptor)
+    loop.run()
 }
 
-class Toy {
+type ToyDescriptor = typeof Toy.descriptor
 
-    private meshComputer: gear.DeferredComputation<Float32Array> = new gear.DeferredComputation(() => this.scalarFieldInstance.vertices)
+class Toy implements LoopLogic<ToyDescriptor> {
 
-    constructor(view: v.View, private scalarFieldInstance: aether.ScalarFieldInstance) {
-        const canvas = gear.elementEvents("canvas-gl")
-        const sizeManager = new gearx.CanvasSizeManager(true)
-        sizeManager.observe(canvas.element as HTMLCanvasElement, () => view.resize())
+    static readonly descriptor = {
+        input: {
+            pointers: {
+                canvas: {
+                    element: "canvas",
+                }
+            },
+            keys: {
+                contour: {
+                    alternatives: [["KeyC"]],
+                    virtualKey: "#control-c",
+                }, 
+                rotation: {
+                    alternatives: [["KeyR"]],
+                    virtualKey: "#control-r",
+                }, 
+                zoom: {
+                    alternatives: [["KeyZ"]],
+                    virtualKey: "#control-z",
+                }, 
+                shininess: {
+                    alternatives: [["KeyH"]],
+                    virtualKey: "#control-h",
+                }, 
+                fogginess: {
+                    alternatives: [["KeyF"]],
+                    virtualKey: "#control-f",
+                }, 
+                lightDirection: {
+                    alternatives: [["KeyD"]],
+                    virtualKey: "#control-d",
+                }, 
+                lightRadius: {
+                    alternatives: [["KeyL"]],
+                    virtualKey: "#control-l",
+                }, 
+                export: {
+                    alternatives: [["KeyX"]],
+                    virtualKey: "#control-x",
+                }, 
+                incLOD: {
+                    alternatives: [["ArrowUp"]],
+                    virtualKey: "#control-up",
+                }, 
+                decLOD: {
+                    alternatives: [["ArrowDown"]],
+                    virtualKey: "#control-down",
+                },
+                prevField: {
+                    alternatives: [["ArrowLeft"]],
+                    virtualKey: "#control-left",
+                }, 
+                nextField: {
+                    alternatives: [["ArrowRight"]],
+                    virtualKey: "#control-right",
+                },
+            }
+        },
+        output: {
+            canvases: {
+                scene: {
+                    element: "canvas"
+                }
+            },
+            fps: {
+                element: "fps-watch"
+            },
+            styling: {
+                pressedButton: "pressed"
+            },
+        },
+    } satisfies gearx.LoopDescriptor
 
-        const rotationDragging = new dragging.RotationDragging(() => view.matPositions, () => aether.mat4.mul(view.matProjection, view.matView), 4)
-        const focalRatioDragging = new dragging.RatioDragging(() => view.matProjection[0][0])
+    readonly contourTarget = gearx.draggingTarget(mapped(gearx.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gearx.draggingTarget(gearx.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly fogginessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
-        const cases = {
-            contourValue: gear.Value.from<gear.Dragging>(),
-            rotation: gear.Value.from<gear.Dragging>(),
-            focalLength: gear.Value.from<gear.Dragging>(),
-            shininess: gear.Value.from<gear.Dragging>(),
-            fogginess: gear.Value.from<gear.Dragging>(),
-            lightPosition: gear.Value.from<gear.Dragging>(),
-            lightRadius: gear.Value.from<gear.Dragging>(),
-        }
-        
-        canvas.dragging.value.switch(gear.readableValue("mouse-binding").defaultsTo("rotation"), cases) 
+    private lodElement = gearx.required(document.getElementById("lod")) 
+    private meshComputer: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, this.scalarFieldInstance.vertices))
 
-        const contourValue = cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => y)
-            .defaultsTo(0.01)
-        const resolution = this.levelOfDetails()
+    private _field = 0
 
-        v.wire(view, {
-            matModel: cases.rotation
-                .then(gear.drag(rotationDragging))
-                .defaultsTo(rotationDragging.currentValue()),
-
-            matView: gear.Value.from<aether.Mat<4>>()
-                .defaultsTo(view.matView),
-            
-            focalLength: cases.focalLength
-                .then(gear.drag(focalRatioDragging))
-                .defaultsTo(focalRatioDragging.currentValue()),
-
-            color: contourValue
-                .map(v => this.fieldColor(v)),
-
-            shininess: cases.shininess
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(view.shininess),
-
-            fogginess: cases.fogginess
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(view.fogginess),
-            
-            lightPosition: cases.lightPosition
-                .then(gear.drag(dragging.positionDragging))
-                .map(p => aether.vec2.length(p) > 1 ? aether.vec2.unit(p) : p)
-                .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-                .map(([x, y]) => aether.vec4.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y), 1))
-                .defaultsTo(aether.vec4.of(0, 0, 2, 1)),
-            
-            lightRadius: cases.lightRadius
-                .then(gear.drag(dragging.positionDragging))
-                .map(([_, y]) => (y + 1) / 2)
-                .defaultsTo(0.1),
-            
-            vertices: gear.Value.from(
-                resolution.then((r, c) => this.contourSurfaceDataForResolution(r, c)),
-                contourValue.then((v, c) => this.contourSurfaceDataForValue(v, c)),
-                gear.readableValue("function").defaultsTo("xyz").then((f, c) => this.contourSurfaceDataForFunction(f, c))
-            )
-        })
-        
-        gear.text("lod").value = resolution.map(lod => lod.toString())
-        gear.elementEvents("save").click.value.attach(() => this.saveModel())
-        
-        const frame = () => {
-            view.render()
-            requestAnimationFrame(frame)
-        }
-        frame()
+    constructor(private view: v.View, private scalarFieldInstance: aether.ScalarFieldInstance) {
+        view.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+        view.focalLength = Math.pow(2, 1.5)
+        this.modelMatrix = aether.mat4.identity()
+        this.contourValue = 0.01
+        this.resolution = 64
+        this.field = 0
     }
 
-    levelOfDetails() {
-        const inc = gear.elementEvents("lod-inc").click.value.map(() => +8)
-        const dec = gear.elementEvents("lod-dec").click.value.map(() => -8)
-        const flow = gear.Value.from(inc, dec).reduce((i, lod) => this.clamp(lod + i, 32, 96), 64)
-        return flow
+    static async create() {
+        const scalarFieldModule = await aether.loadScalarFieldModule()
+        const scalarFieldInstance = scalarFieldModule.newInstance()
+        const view = await v.newView(Toy.descriptor.output.canvases.scene.element)
+        return new Toy(view, scalarFieldInstance)
     }
 
-    clamp(n: number, min: number, max: number) {
-        return n < min ? min : (n > max ? max : n)
+    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+        return {
+            pointers: {
+                canvas: {
+                     defaultDraggingTarget: this.rotationDragging
+                }
+            },
+            keys: {
+                contour: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.contourTarget },
+                rotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.focalLengthDragging },
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging },
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging },
+                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
+                decLOD: { onPressed: () => this.resolution -= 8 },
+                incLOD: { onPressed: () => this.resolution += 8 },
+                prevField: { onPressed: () => this.field -= 1 },
+                nextField: { onPressed: () => this.field += 1 },
+                export: { onPressed: () => this.saveModel() },
+            }
+        }
+    }
+
+    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+        return {
+            onRender: () => this.view.render(),
+            canvases: {
+                scene: {
+                    onResize: () => this.view.resize()
+                }
+            }
+        }
+    }
+
+    animate(): void {
+    }
+
+    get projectionViewMatrix() {
+        return aether.mat4.mul(this.view.matProjection, this.view.matView)
+    }
+
+    get modelMatrix() {
+        return this.view.matPositions
+    }
+
+    set modelMatrix(m: aether.Mat4) {
+        this.view.setMatModel(m, m)
+    }
+
+    get contourValue() {
+        return this.scalarFieldInstance.contourValue
+    }
+
+    set contourValue(v: number) {
+        this.scalarFieldInstance.contourValue = v
+        this.view.color = this.fieldColor(v)
+        this.meshComputer.perform()
+    }
+
+    get resolution() {
+        return this.scalarFieldInstance.resolution
+    }
+
+    set resolution(r: number) {
+        if (r > 96 || r < 32) {
+            return
+        }
+        this.scalarFieldInstance.resolution = r
+        this.lodElement.innerText = r.toString()
+        this.meshComputer.perform()
+    }
+
+    get field() {
+        return this._field
+    }
+
+    set field(f: number) {
+        if (f < 0 || f >= fields.length) {
+            return
+        }
+        this._field = f
+        this.scalarFieldInstance.sampler = fields[f]
+        this.meshComputer.perform()
     }
 
     fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): aether.Vec<4> {
         return contourValue > 0 ?
             [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
             [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
-    }
-
-    getFieldFunction(functionName: string) {
-        switch (functionName) {
-            case "xyz": return xyz
-            case "envelopedCosine": return envelopedCosine
-            default: return xyz
-        }
-    }
-
-    contourSurfaceDataForValue(value: number, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.contourValue = value
-        this.meshComputer.perform().then(meshConsumer)
-    }
-
-    contourSurfaceDataForResolution(resolution: number, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.resolution = resolution
-        this.meshComputer.perform().then(meshConsumer)
-    }
-
-    contourSurfaceDataForFunction(functionName: string, meshConsumer: gear.Consumer<Float32Array>) {
-        this.scalarFieldInstance.sampler = this.getFieldFunction(functionName)
-        this.meshComputer.perform().then(meshConsumer)
     }
 
     saveModel() {
@@ -152,9 +222,19 @@ class Toy {
         gearx.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
     }
 
+    toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
+        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
+        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP
+        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2)
+        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+        return [...p, 1];
+    }
+
 }
 
 const twoPi = 2 * Math.PI
+
+const fields = [xyz, envelopedCosine]
 
 function xyz(x: number, y: number, z: number): aether.Vec<4> {
     return [
@@ -196,5 +276,16 @@ function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
         ]
     } else {
         return [0, 0, 0, 0]
+    }
+}
+
+function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+    const pos: [gear.PointerPosition] = [[0, 0]]
+    return {
+        getter: () => pos[0],
+        setter: b => {
+            pos[0] = b
+            property.setter(mapper(b))
+        }
     }
 }

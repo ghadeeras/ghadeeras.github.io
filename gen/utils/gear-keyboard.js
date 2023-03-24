@@ -50,7 +50,6 @@ export class Keyboard {
     updatePressedCount(e, pressed, wasPressed) {
         if (pressed !== wasPressed) {
             this._pressedCount = Math.max(this._pressedCount + (pressed ? 1 : -1), 0);
-            console.log(this._pressedCount);
         }
     }
     key(code) {
