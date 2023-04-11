@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="origin-trial" content="Auwt1FjvRkrcGtJ6Xpi6LFG0DUTlmYfvKSdpY2gOxmno3EABq8AGysZpMm2dXbQXD1eeHMq19d8xsuU36i9RYg4AAABTeyJvcmlnaW4iOiJodHRwczovL2doYWRlZXJhcy5naXRodWIuaW86NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY5MTcxMTk5OX0=">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Scalar Field Ray Casting</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+      </style>
+        <script type="module">
+            import * as toy from "../gen/scalar-field-tracing/toy.js"
+            import init from "../gen/initializer.js"
+            init(toy);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
+            </div>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
+            </div>
+        </div>
+        <div class="tiles">
+            <div style="width: 96.875%; height: 96.875%;">
+                <canvas id="canvas" style="cursor: all-scroll; width: 100%; height: 100%;">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><th>FPS</th><td><span id="freq-watch">0</span></td></tr>
+                            <tr><th>WebGPU Status</th><td><span id="gpu-status">&#x1F630; ...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="about" class="hud">
+            <div>
+                <h1>Scalar Field Ray Casting</h1>
+                <p>
+                </p>
+            </div>
+        </div>
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <table>
+                    <tr><td></td><td><kbd id="control-r">R</kbd></td><td>Binds mouse dragging to model rotation</td></tr>
+                    <tr><td></td><td><kbd id="control-c">C</kbd></td><td>Binds mouse dragging to contour value</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

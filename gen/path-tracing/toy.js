@@ -170,9 +170,9 @@ class Toy {
     set viewMatrix(m) {
         this.changingView = true;
         this.tracer.matrix = aether.mat3.from([
-            ...aether.vec3.swizzle(m[0], 0, 1, 2),
-            ...aether.vec3.swizzle(m[1], 0, 1, 2),
-            ...aether.vec3.swizzle(m[2], 0, 1, 2),
+            ...aether.vec3.from(m[0]),
+            ...aether.vec3.from(m[1]),
+            ...aether.vec3.from(m[2]),
         ]);
     }
     get samplesPerPixel() {

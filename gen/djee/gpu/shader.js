@@ -101,12 +101,12 @@ export const renderingShaders = {
             let pixelSizeX =  dpdx(varyings.clipPosition.x); 
             let pixelSizeY = -dpdy(varyings.clipPosition.y); 
             let aspect = pixelSizeY / pixelSizeX;
-            let position = select(
-                vec2(varyings.clipPosition.x, varyings.clipPosition.y / aspect),
-                vec2(varyings.clipPosition.x * aspect, varyings.clipPosition.y),
+            let positionAndSize = select(
+                vec3(varyings.clipPosition.x, varyings.clipPosition.y / aspect, pixelSizeX),
+                vec3(varyings.clipPosition.x * aspect, varyings.clipPosition.y, pixelSizeY),
                 aspect >= 1.0
             );
-            return colorAt(position, aspect, select(pixelSizeX, pixelSizeY, aspect >= 1.0));
+            return colorAt(positionAndSize.xy, aspect, positionAndSize.z);
         }  
     `
 };

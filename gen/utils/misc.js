@@ -28,21 +28,24 @@ export class FrequencyMeter {
     constructor(unitTime, measurementConsumer) {
         this.unitTime = unitTime;
         this.measurementConsumer = measurementConsumer;
-        this.lastTime = 0;
+        this.lastReadingTime = 0;
+        this.previousTime = 0;
         this.counter = 0;
     }
     tick(time = performance.now()) {
         if (this.counter === 0) {
-            this.lastTime = time;
+            this.lastReadingTime = time;
         }
-        const elapsedTime = time - this.lastTime;
+        const elapsedTime = time - this.lastReadingTime;
         if (elapsedTime >= this.unitTime) {
             this.measurementConsumer(this.counter * this.unitTime / elapsedTime);
             this.counter = 0;
-            this.lastTime = time;
+            this.lastReadingTime = time;
         }
         this.counter++;
-        return elapsedTime;
+        const delta = time - this.previousTime;
+        this.previousTime = time;
+        return delta;
     }
     animateForever(frame) {
         this.animate(t => {

@@ -297,9 +297,9 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
 
     private nextFrame() {
         requestAnimationFrame(time => {
-            const elapsed = this.frequencyMeter.tick(time)
+            const delta = this.frequencyMeter.tick(time)
             if (!this.animationPaused) {
-                this.loopLogic.animate(time, elapsed, this)
+                this.loopLogic.animate(time, delta, this)
             }
             this.render()
             if (this === LoopImpl.activeLoop) {

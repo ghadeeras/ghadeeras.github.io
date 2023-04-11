@@ -20,7 +20,8 @@ export function save(url: string, contentType: string, fileName: string) {
 
 export class FrequencyMeter {
 
-    private lastTime = 0
+    private lastReadingTime = 0
+    private previousTime = 0
     private counter = 0
     
     constructor(private unitTime: number, private measurementConsumer: (measuredFrequency: number) => void) {
@@ -28,16 +29,18 @@ export class FrequencyMeter {
 
     tick(time: number = performance.now()) {
         if (this.counter === 0) {
-            this.lastTime = time
+            this.lastReadingTime = time
         }
-        const elapsedTime = time - this.lastTime
+        const elapsedTime = time - this.lastReadingTime
         if (elapsedTime >= this.unitTime) {
             this.measurementConsumer(this.counter * this.unitTime / elapsedTime)
             this.counter = 0
-            this.lastTime = time
+            this.lastReadingTime = time
         }
         this.counter++
-        return elapsedTime
+        const delta = time - this.previousTime
+        this.previousTime = time;
+        return delta
     }
 
     animateForever(frame: (t: number) => void) {
