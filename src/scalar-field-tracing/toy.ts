@@ -26,11 +26,11 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             keys: {
                 contour: {
                     alternatives: [["KeyC"]],
-                    virtualKey: "control-c"
+                    virtualKey: "#control-c"
                 },
                 rotation: {
                     alternatives: [["KeyR"]],
-                    virtualKey: "control-r"
+                    virtualKey: "#control-r"
                 },
             },
             pointers: {
