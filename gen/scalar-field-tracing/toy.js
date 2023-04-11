@@ -83,11 +83,11 @@ Toy.descriptor = {
         keys: {
             contour: {
                 alternatives: [["KeyC"]],
-                virtualKey: "control-c"
+                virtualKey: "#control-c"
             },
             rotation: {
                 alternatives: [["KeyR"]],
-                virtualKey: "control-r"
+                virtualKey: "#control-r"
             },
         },
         pointers: {
