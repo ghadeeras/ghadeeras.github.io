@@ -14,9 +14,8 @@ export class FieldRenderer {
     constructor(shader, field, targetFormat) {
         this.shader = shader;
         this.field = field;
-        this.targetFormat = targetFormat;
         const device = shader.device;
-        const bindGroupLayout = device.device.createBindGroupLayout({
+        this.bindGroupLayout = device.device.createBindGroupLayout({
             label: "renderer-group-layout",
             entries: [{
                     binding: 0,
@@ -41,7 +40,7 @@ export class FieldRenderer {
         });
         const pipelineLayout = device.device.createPipelineLayout({
             label: "renderer-pipeline-layout",
-            bindGroupLayouts: [bindGroupLayout]
+            bindGroupLayouts: [this.bindGroupLayout]
         });
         this.pipeline = device.device.createRenderPipeline({
             label: "renderer-pipeline",
@@ -61,9 +60,8 @@ export class FieldRenderer {
                 contourValue: 0.05,
                 focalLength: Math.sqrt(5),
                 step: 1 / 16,
-                samplesPerPixel: 4,
             }]));
-        const sampler = device.sampler({
+        this.sampler = device.sampler({
             label: "renderer-sampler",
             addressModeU: "clamp-to-edge",
             addressModeV: "clamp-to-edge",
@@ -71,9 +69,29 @@ export class FieldRenderer {
             magFilter: "linear",
             minFilter: "linear",
         });
-        this.bindGroup = device.bindGroup(bindGroupLayout, [this.uniforms, field.createView({
+        this.bindGroup = this.newBindGroup();
+    }
+    newBindGroup() {
+        return this.device.bindGroup(this.bindGroupLayout, [this.uniforms, this.field.createView({
                 dimension: "3d",
-            }), sampler]);
+            }), this.sampler]);
+    }
+    get device() {
+        return this.shader.device;
+    }
+    get scalarField() {
+        return this.field;
+    }
+    set scalarField(f) {
+        this.field.destroy();
+        this.field = f;
+        this.bindGroup = this.newBindGroup();
+    }
+    get step() {
+        return this.uniforms.get(FieldRenderer.uniformsStruct.members.step);
+    }
+    set step(v) {
+        this.uniforms.set(FieldRenderer.uniformsStruct.members.step, v);
     }
     get contourValue() {
         return this.uniforms.get(FieldRenderer.uniformsStruct.members.contourValue);
@@ -164,6 +182,5 @@ FieldRenderer.uniformsStruct = gpu.struct({
     contourValue: gpu.f32,
     focalLength: gpu.f32,
     step: gpu.f32,
-    samplesPerPixel: gpu.u32,
 });
 //# sourceMappingURL=renderer.js.map

@@ -12,7 +12,6 @@ struct Uniforms {
     contourValue: f32,
     focalLength: f32,
     step: f32,
-    samplesPerPixel: u32,
 };
 
 struct Ray {

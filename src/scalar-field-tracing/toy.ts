@@ -32,6 +32,22 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                     alternatives: [["KeyR"]],
                     virtualKey: "#control-r"
                 },
+                scale: {
+                    alternatives: [["KeyS"]],
+                    virtualKey: "#control-s"
+                },
+                matrix: {
+                    alternatives: [["KeyM"]],
+                    virtualKey: "#control-m"
+                },
+                incDepth: {
+                    alternatives: [["ArrowUp"]],
+                    virtualKey: "#control-up"
+                },
+                decDepth: {
+                    alternatives: [["ArrowDown"]],
+                    virtualKey: "#control-down"
+                },
             },
             pointers: {
                 primary: {
@@ -56,10 +72,16 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     readonly contourTarget = gearx.draggingTarget(mapped(gearx.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging)
     readonly rotationDragging = gearx.draggingTarget(gearx.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4))
+    readonly matrixDragging = gearx.draggingTarget(gearx.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
+    readonly scaleDragging = gearx.draggingTarget(gearx.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5))
 
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
-    constructor(private canvas: gpu.Canvas, private fieldRenderer: FieldRenderer) {
+    private resampling = new gear.DeferredComputation(() => this.fieldRenderer.scalarField = this.fieldSampler.sample())
+    private lodElement = gearx.required(document.getElementById("lod"))
+
+    constructor(private canvas: gpu.Canvas, private fieldRenderer: FieldRenderer, private fieldSampler: FieldSampler) {
+        this.changeDepth(0)
     }
 
     static async create(): Promise<Toy> {
@@ -67,7 +89,36 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
         const sampler = await FieldSampler.create(device);
         const renderer = await FieldRenderer.create(sampler.sample(), canvas);
-        return new Toy(canvas, renderer)
+        return new Toy(canvas, renderer, sampler)
+    }
+
+    get scale() {
+        return this.fieldSampler.scale
+    }
+
+    set scale(v: number) {
+        this.fieldSampler.scale = v
+        this.resampling.perform()
+    }
+
+    get matrix() {
+        return aether.mat4.cast(this.fieldSampler.matrix)
+    }
+
+    set matrix(m: aether.Mat4) {
+        this.fieldSampler.matrix = [
+            aether.vec3.from(m[0]),
+            aether.vec3.from(m[1]),
+            aether.vec3.from(m[2]),
+        ];
+        this.resampling.perform()
+    }
+
+    changeDepth(delta: number) {
+        this.fieldSampler.depth += delta
+        this.fieldRenderer.step = Math.pow(0.5, 0.25 * this.fieldSampler.depth + 3.5);
+        this.resampling.perform()
+        this.lodElement.innerText = this.fieldSampler.depth.toFixed(0)
     }
 
     inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
@@ -76,6 +127,10 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             keys: {
                 contour: { onPressed: () => inputs.pointers.primary.draggingTarget =  this.contourTarget },
                 rotation: { onPressed: () => inputs.pointers.primary.draggingTarget =  this.rotationDragging },
+                matrix: { onPressed: () => inputs.pointers.primary.draggingTarget =  this.matrixDragging },
+                scale: { onPressed: () => inputs.pointers.primary.draggingTarget =  this.scaleDragging },
+                incDepth: { onPressed: () => this.changeDepth(+1) },
+                decDepth: { onPressed: () => this.changeDepth(-1) },
             },
             pointers: {
                 primary: {

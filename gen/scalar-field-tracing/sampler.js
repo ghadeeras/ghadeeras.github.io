@@ -7,6 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import * as gpu from "../djee/gpu/index.js";
+import { aether } from "../libs.js";
 export class FieldSampler {
     constructor(shader) {
         this.shader = shader;
@@ -14,7 +16,35 @@ export class FieldSampler {
         this.pipeline = shader.computePipeline("c_main");
         const fieldComputeBidGroupLayout = this.pipeline.getBindGroupLayout(0);
         this.fieldBuffer = device.buffer("field-buffer", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, (Math.pow(FieldSampler.SIZE, 3)) * (4 * 2));
-        this.bindGroup = device.bindGroup(fieldComputeBidGroupLayout, [this.fieldBuffer]);
+        this.uniformsBuffer = device.syncBuffer("uniforms-buffer", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, FieldSampler.uniformsStruct.view([{
+                matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
+                displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
+                scale: Math.SQRT1_2,
+                depth: 5
+            }]));
+        this.bindGroup = device.bindGroup(fieldComputeBidGroupLayout, [this.fieldBuffer, this.uniformsBuffer]);
+    }
+    get matrix() {
+        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.matrix);
+    }
+    set matrix(m) {
+        this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.matrix, m);
+    }
+    get depth() {
+        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.depth);
+    }
+    set depth(d) {
+        if (d >= 0 && d <= 9) {
+            this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.depth, d);
+        }
+    }
+    get scale() {
+        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.scale);
+    }
+    set scale(s) {
+        if (s >= Math.SQRT1_2 && s <= Math.SQRT2) {
+            this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.scale, s);
+        }
     }
     sample() {
         const device = this.shader.device;
@@ -50,5 +80,11 @@ export class FieldSampler {
         });
     }
 }
+FieldSampler.uniformsStruct = gpu.struct({
+    matrix: gpu.mat3x3,
+    displacement: gpu.f32.x3,
+    scale: gpu.f32,
+    depth: gpu.u32,
+});
 FieldSampler.SIZE = 128;
 //# sourceMappingURL=sampler.js.map

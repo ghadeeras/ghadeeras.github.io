@@ -13,17 +13,20 @@ export class FieldRenderer {
         contourValue: gpu.f32,
         focalLength: gpu.f32,
         step: gpu.f32,
-        samplesPerPixel: gpu.u32,
     }) 
+
+    private bindGroupLayout: GPUBindGroupLayout
 
     private pipeline: GPURenderPipeline
     private bindGroup: GPUBindGroup
+    private sampler: gpu.Sampler
 
     private uniforms: gpu.SyncBuffer;
 
-    constructor(private shader: gpu.ShaderModule, private field: gpu.Texture, private targetFormat: gpu.TextureFormatSource) {
+    constructor(private shader: gpu.ShaderModule, private field: gpu.Texture, targetFormat: gpu.TextureFormatSource) {
         const device = shader.device
-        const bindGroupLayout = device.device.createBindGroupLayout({
+        
+        this.bindGroupLayout = device.device.createBindGroupLayout({
             label: "renderer-group-layout",
             entries: [{
                 binding: 0,
@@ -48,7 +51,7 @@ export class FieldRenderer {
         })
         const pipelineLayout = device.device.createPipelineLayout({
             label: "renderer-pipeline-layout",
-            bindGroupLayouts: [bindGroupLayout]
+            bindGroupLayouts: [this.bindGroupLayout]
         })
         this.pipeline = device.device.createRenderPipeline({
             label: "renderer-pipeline",
@@ -68,9 +71,8 @@ export class FieldRenderer {
             contourValue: 0.05,
             focalLength: Math.sqrt(5),
             step: 1 / 16, 
-            samplesPerPixel: 4,
         }]))
-        const sampler = device.sampler({
+        this.sampler = device.sampler({
             label: "renderer-sampler",
             addressModeU: "clamp-to-edge",
             addressModeV: "clamp-to-edge",
@@ -78,9 +80,35 @@ export class FieldRenderer {
             magFilter: "linear",
             minFilter: "linear",
         })
-        this.bindGroup = device.bindGroup(bindGroupLayout, [this.uniforms, field.createView({
+        this.bindGroup = this.newBindGroup()
+    }
+
+    private newBindGroup() {
+        return this.device.bindGroup(this.bindGroupLayout, [this.uniforms, this.field.createView({
             dimension: "3d",
-        }), sampler])
+        }), this.sampler]);
+    }
+
+    get device() {
+        return this.shader.device
+    }
+
+    get scalarField() {
+        return this.field
+    }
+
+    set scalarField(f: gpu.Texture) {
+        this.field.destroy();
+        this.field = f
+        this.bindGroup = this.newBindGroup();
+    }
+
+    get step(): number {
+        return this.uniforms.get(FieldRenderer.uniformsStruct.members.step);
+    }
+
+    set step(v: number) {
+        this.uniforms.set(FieldRenderer.uniformsStruct.members.step, v);
     }
 
     get contourValue(): number {

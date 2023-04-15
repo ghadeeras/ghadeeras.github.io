@@ -36,6 +36,7 @@
                 <div id="monitor" class="hud top-right">
                     <div>
                         <table>
+                            <tr><th>LOD</th><td><span id="lod">5</span></td></tr>
                             <tr><th>FPS</th><td><span id="freq-watch">0</span></td></tr>
                             <tr><th>WebGPU Status</th><td><span id="gpu-status">&#x1F630; ...</span></td></tr>
                         </table>
@@ -47,6 +48,9 @@
             <div>
                 <h1>Scalar Field Ray Casting</h1>
                 <p>
+                    This is a hybrid of ray casting/marching (with scalar field gradients instead of a signed distance field) and marching cubes (minus the polygonization). Maybe there is a proper name for it in the graphics circles?
+                </p><p>
+                    I am using a compute shader to create a 3D texture with scalar field values and gradients, and sampling it in the fragment shader (the thing that shoots it with ray &#x1F642;)
                 </p>
             </div>
         </div>
@@ -56,6 +60,10 @@
                 <table>
                     <tr><td></td><td><kbd id="control-r">R</kbd></td><td>Binds mouse dragging to model rotation</td></tr>
                     <tr><td></td><td><kbd id="control-c">C</kbd></td><td>Binds mouse dragging to contour value</td></tr>
+                    <tr><td></td><td><kbd id="control-m">M</kbd></td><td>Binds mouse dragging to noise matrix</td></tr>
+                    <tr><td></td><td><kbd id="control-s">S</kbd></td><td>Binds mouse dragging to noise scaling factor</td></tr>
+                    <tr><td></td><td><kbd id="control-up">&#x2B06;</kbd></td><td>Increase level of detail</td></tr>
+                    <tr><td></td><td><kbd id="control-down">&#x2B07;</kbd></td><td>Decrease level of detail</td></tr>
                 </table>
             </div>
         </div>
