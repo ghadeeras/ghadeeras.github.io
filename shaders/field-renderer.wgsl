@@ -140,6 +140,9 @@ fn escapingRayColor() -> vec4<f32> {
 }
 
 fn hitColor() -> vec4<f32> {
+    if (abs(sample.derivative) < EPSILON) {
+        extendRay(EPSILON);
+    }
     let normal = normalize(firstFieldSign * uniforms.modelMatrix * sample.gradient);
     let reflection = reflect(ray.direction, normal);
     let specular = max(pow(dot(normal, uniforms.lightDirection), uniforms.lightNarrowness), 0.0);
