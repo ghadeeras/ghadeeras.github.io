@@ -68,7 +68,7 @@ class Toy {
     }
     changeDepth(delta) {
         this.fieldSampler.depth += delta;
-        this.fieldRenderer.step = Math.pow(0.5, 0.25 * this.fieldSampler.depth + 3.5);
+        this.fieldRenderer.step = Math.pow(0.5, this.fieldSampler.depth / 3.0 + 3.0);
         this.resampling.perform();
         this.lodElement.innerText = this.fieldSampler.depth.toFixed(0);
     }
