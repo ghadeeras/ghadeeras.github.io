@@ -32,13 +32,12 @@ export class Texture {
         this._texture = this.device.device.createTexture(this.descriptor)
     }
 
-    depthState(state: Partial<GPUDepthStencilState> = {
-        depthCompare: "less",
-        depthWriteEnabled: true,
-    }): GPUDepthStencilState {
+    depthState(state: Partial<GPUDepthStencilState> = {}): GPUDepthStencilState {
         return {
             ...state,
-            format: formatOf(this.descriptor.format)
+            format: state.format ?? formatOf(this.descriptor.format),
+            depthCompare: state.depthCompare ?? "less",
+            depthWriteEnabled: state.depthWriteEnabled ?? true
         }
     }
 

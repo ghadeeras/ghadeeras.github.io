@@ -19,11 +19,11 @@ export class ShaderModule {
     }
     hasCompilationErrors() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.shaderModule.compilationInfo) {
+            if (!this.shaderModule.getCompilationInfo) {
                 // TODO remove check when compilationInfo becomes supported in all browsers. 
                 return false;
             }
-            const info = yield this.shaderModule.compilationInfo();
+            const info = yield this.shaderModule.getCompilationInfo();
             for (const message of info.messages) {
                 switch (message.type) {
                     case "info":

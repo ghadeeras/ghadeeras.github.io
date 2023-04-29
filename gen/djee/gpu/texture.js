@@ -25,11 +25,9 @@ export class Texture {
         this._texture.destroy();
         this._texture = this.device.device.createTexture(this.descriptor);
     }
-    depthState(state = {
-        depthCompare: "less",
-        depthWriteEnabled: true,
-    }) {
-        return Object.assign(Object.assign({}, state), { format: formatOf(this.descriptor.format) });
+    depthState(state = {}) {
+        var _a, _b, _c;
+        return Object.assign(Object.assign({}, state), { format: (_a = state.format) !== null && _a !== void 0 ? _a : formatOf(this.descriptor.format), depthCompare: (_b = state.depthCompare) !== null && _b !== void 0 ? _b : "less", depthWriteEnabled: (_c = state.depthWriteEnabled) !== null && _c !== void 0 ? _c : true });
     }
     createView(descriptor = undefined) {
         return new TextureView(this, descriptor);

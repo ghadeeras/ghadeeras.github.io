@@ -1,6 +1,7 @@
 import { Context } from "./context.js"
 import { failure } from "../utils.js"
 import { Resource } from "../index.js"
+import { PrimitiveType } from "./introspection.js"
 
 export type NumberArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array
 
@@ -106,14 +107,14 @@ export class AttributesBuffer extends Buffer {
 
 export class IndicesBuffer extends Buffer {
 
-    private type = WebGL2RenderingContext.UNSIGNED_SHORT
+    private type: PrimitiveType = WebGL2RenderingContext.UNSIGNED_SHORT
 
     constructor(context: Context, isDynamic: boolean = false) {
         super(WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER, context, 0, isDynamic)
         this.data = new Uint16Array([])
     }
 
-    private glTypeOf(data: NumberArray) {
+    private glTypeOf(data: NumberArray): PrimitiveType {
         if (data instanceof Uint32Array) {
             return WebGL2RenderingContext.UNSIGNED_INT 
         } else if (data instanceof Uint16Array) {
@@ -121,7 +122,7 @@ export class IndicesBuffer extends Buffer {
         } else if (data instanceof Uint8Array) {
             return WebGL2RenderingContext.UNSIGNED_BYTE 
         } else {
-            return failure<number>("Unsupported array type for indices buffer!")
+            return failure<PrimitiveType>("Unsupported array type for indices buffer!")
         }
     }
 

@@ -55,7 +55,7 @@ export class GPUAdapter implements renderer.APIAdapter<Buffer, Buffer, Buffer, G
         return pass => pass.setBindGroup(this.bindGroupIndex, bindGroup)
     }
 
-    primitiveBinder(count: number, mode: number, attributes: renderer.VertexAttribute<Buffer>[], index: renderer.Index<Buffer> | null = null): renderer.Binder<GPURenderPassEncoder> {
+    primitiveBinder(count: number, mode: gltf.PrimitiveMode, attributes: renderer.VertexAttribute<Buffer>[], index: renderer.Index<Buffer> | null = null): renderer.Binder<GPURenderPassEncoder> {
         const topology = toGpuTopology(mode)
         const indexFormat: GPUIndexFormat = index !== null ? toGpuIndexFormat(index.componentType) : "uint32"
         const vertexBufferSlots = asVertexBufferSlots(attributes, this.attributeLocations);

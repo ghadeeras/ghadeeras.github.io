@@ -1,10 +1,11 @@
 import { failure } from "../utils.js";
-export class TextureTarget {
+class TextureTarget {
     constructor(id) {
         this.id = id;
     }
 }
 TextureTarget.texture2D = new TextureTarget(WebGL2RenderingContext.TEXTURE_2D);
+export { TextureTarget };
 export class Texture2D {
     constructor(context, unit = 0) {
         var _a;

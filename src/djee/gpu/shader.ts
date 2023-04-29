@@ -15,11 +15,11 @@ export class ShaderModule {
     }
 
     async hasCompilationErrors() {
-        if (!this.shaderModule.compilationInfo) {
+        if (!this.shaderModule.getCompilationInfo) {
             // TODO remove check when compilationInfo becomes supported in all browsers. 
             return false
         }
-        const info = await this.shaderModule.compilationInfo()
+        const info = await this.shaderModule.getCompilationInfo()
         for (const message of info.messages) {
             switch (message.type) {
                 case "info": console.log(message); break

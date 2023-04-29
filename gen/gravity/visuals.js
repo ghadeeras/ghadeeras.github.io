@@ -1,7 +1,7 @@
 import { aether } from '/gen/libs.js';
 import * as gpu from '../djee/gpu/index.js';
 const projection = new aether.PerspectiveProjection(1, null, false, false);
-export class VisualsLayout {
+class VisualsLayout {
     constructor(device) {
         this.device = device;
         this.bindGroupLayout = device.groupLayout("visualsBindGroupLayout", VisualsLayout.bindGroupLayoutEntries);
@@ -24,6 +24,7 @@ VisualsLayout.uniformsStruct = gpu.struct({
     mMatrix: gpu.f32.x4.x4,
     radiusScale: gpu.f32,
 });
+export { VisualsLayout };
 export class Visuals {
     constructor(layout) {
         this.layout = layout;

@@ -1,5 +1,5 @@
 import * as gpu from '../djee/gpu/index.js';
-export class UniverseLayout {
+class UniverseLayout {
     constructor(device) {
         this.device = device;
         this.bindGroupLayout = this.device.groupLayout("universeGroupLayout", UniverseLayout.bindGroupLayoutEntries);
@@ -51,6 +51,7 @@ UniverseLayout.bodyState = gpu.struct({
     position: gpu.f32.x3,
     velocity: gpu.f32.x3,
 });
+export { UniverseLayout };
 export class Universe {
     constructor(layout, bodyDescriptions, initialState, bodiesCount) {
         this.bodiesCount = bodiesCount;

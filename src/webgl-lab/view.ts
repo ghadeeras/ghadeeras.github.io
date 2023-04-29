@@ -40,7 +40,7 @@ export class View {
     private defaultSample: ProgramSample;
     
     private lod = 50;
-    private mode = WebGL2RenderingContext.TRIANGLE_STRIP;
+    private mode: typeof WebGL2RenderingContext.LINE_STRIP | typeof WebGL2RenderingContext.TRIANGLE_STRIP = WebGL2RenderingContext.TRIANGLE_STRIP;
     private cullingEnabled = false;
     private programScalars: Scalar[] = [];
     private xScalar: Scalar | null = null;

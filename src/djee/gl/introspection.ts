@@ -2,7 +2,12 @@ import { failure } from "../utils.js"
 
 export type PrimitiveType = 
     typeof WebGL2RenderingContext.BOOL | 
+    typeof WebGL2RenderingContext.BYTE | 
+    typeof WebGL2RenderingContext.UNSIGNED_BYTE | 
+    typeof WebGL2RenderingContext.SHORT | 
+    typeof WebGL2RenderingContext.UNSIGNED_SHORT | 
     typeof WebGL2RenderingContext.INT | 
+    typeof WebGL2RenderingContext.UNSIGNED_INT | 
     typeof WebGL2RenderingContext.SAMPLER_2D | 
     typeof WebGL2RenderingContext.SAMPLER_CUBE | 
     typeof WebGL2RenderingContext.FLOAT
@@ -27,7 +32,7 @@ export type VariableInfo = {
 
 export type VariableInfos = Record<string, VariableInfo>
 
-export function asVariableInfo(info: WebGLActiveInfo, specificPrimitiveType: GLenum | null = null): VariableInfo {
+export function asVariableInfo(info: WebGLActiveInfo, specificPrimitiveType: PrimitiveType | null = null): VariableInfo {
     const result: VariableInfo = {
         name: info.name,
         itemType: info.type,
