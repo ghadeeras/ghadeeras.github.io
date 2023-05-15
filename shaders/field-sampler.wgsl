@@ -13,7 +13,7 @@ struct Uniforms {
 
 @group(0)
 @binding(0)
-var<storage, read_write> texture: array<array<array<vec2<u32>, SIZE>, SIZE>, SIZE>;
+var texture: texture_storage_3d<rgba16float, write>;
 
 @group(0)
 @binding(1)
@@ -21,10 +21,6 @@ var<uniform> uniforms: Uniforms;
 
 fn to_vec3_f32(v: vec3<u32>) -> vec3<f32> {
     return STEP * vec3<f32>(v) - 1.0;
-}
-
-fn pack(v: vec4<f32>) -> vec2<u32> {
-    return vec2(pack2x16float(v.xy), pack2x16float(v.zw));
 }
 
 fn scalar_field(v: vec3<f32>) -> vec4<f32> {
@@ -92,5 +88,5 @@ fn enveloped_field(v: vec3<f32>) -> vec4<f32> {
 @workgroup_size(4, 4, 4)
 fn c_main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
     var v = to_vec3_f32(global_invocation_id);
-    texture[global_invocation_id.z][global_invocation_id.y][global_invocation_id.x] = pack(enveloped_field(v));
+    textureStore(texture, global_invocation_id, enveloped_field(v));
 }

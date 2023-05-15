@@ -93,16 +93,6 @@ export class FieldRenderer {
         return this.shader.device
     }
 
-    get scalarField() {
-        return this.field
-    }
-
-    set scalarField(f: gpu.Texture) {
-        this.field.destroy();
-        this.field = f
-        this.bindGroup = this.newBindGroup();
-    }
-
     get step(): number {
         return this.uniforms.get(FieldRenderer.uniformsStruct.members.step);
     }

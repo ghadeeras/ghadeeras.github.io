@@ -11,7 +11,6 @@ export const huds = {
 }
 
 export async function init() {
-    console.log("Initializing")
     const toy = await Toy.create()
     const loop = gearx.newLoop(toy, Toy.descriptor)
     loop.run()
@@ -77,7 +76,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
-    private resampling = new gear.DeferredComputation(() => this.fieldRenderer.scalarField = this.fieldSampler.sample())
+    private resampling = new gear.DeferredComputation(() => this.fieldSampler.sample())
     private lodElement = gearx.required(document.getElementById("lod"))
 
     constructor(private canvas: gpu.Canvas, private fieldRenderer: FieldRenderer, private fieldSampler: FieldSampler) {
@@ -88,7 +87,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         const device = await gpuDevice()
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
         const sampler = await FieldSampler.create(device);
-        const renderer = await FieldRenderer.create(sampler.sample(), canvas);
+        const renderer = await FieldRenderer.create(sampler.fieldTexture, canvas);
         return new Toy(canvas, renderer, sampler)
     }
 

@@ -19,7 +19,6 @@ export const huds = {
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log("Initializing");
         const toy = yield Toy.create();
         const loop = gearx.newLoop(toy, Toy.descriptor);
         loop.run();
@@ -35,7 +34,7 @@ class Toy {
         this.matrixDragging = gearx.draggingTarget(gearx.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
         this.scaleDragging = gearx.draggingTarget(gearx.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
         this.speeds = [[0, 0], [0, 0], [0, 0]];
-        this.resampling = new gear.DeferredComputation(() => this.fieldRenderer.scalarField = this.fieldSampler.sample());
+        this.resampling = new gear.DeferredComputation(() => this.fieldSampler.sample());
         this.lodElement = gearx.required(document.getElementById("lod"));
         this.changeDepth(0);
     }
@@ -44,7 +43,7 @@ class Toy {
             const device = yield gpuDevice();
             const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
             const sampler = yield FieldSampler.create(device);
-            const renderer = yield FieldRenderer.create(sampler.sample(), canvas);
+            const renderer = yield FieldRenderer.create(sampler.fieldTexture, canvas);
             return new Toy(canvas, renderer, sampler);
         });
     }

@@ -15,14 +15,24 @@ class FieldSampler {
         const device = shader.device;
         this.pipeline = shader.computePipeline("c_main");
         const fieldComputeBidGroupLayout = this.pipeline.getBindGroupLayout(0);
-        this.fieldBuffer = device.buffer("field-buffer", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, (Math.pow(FieldSampler.SIZE, 3)) * (4 * 2));
+        this.fieldTexture = device.texture({
+            label: "scalar-field",
+            format: "rgba16float",
+            dimension: "3d",
+            size: {
+                width: FieldSampler.SIZE,
+                height: FieldSampler.SIZE,
+                depthOrArrayLayers: FieldSampler.SIZE
+            },
+            usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+        });
         this.uniformsBuffer = device.syncBuffer("uniforms-buffer", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, FieldSampler.uniformsStruct.view([{
                 matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
                 displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
                 scale: Math.SQRT1_2,
                 depth: 5
             }]));
-        this.bindGroup = device.bindGroup(fieldComputeBidGroupLayout, [this.fieldBuffer, this.uniformsBuffer]);
+        this.bindGroup = device.bindGroup(fieldComputeBidGroupLayout, [this.fieldTexture.createView(), this.uniformsBuffer]);
     }
     get matrix() {
         return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.matrix);
@@ -48,30 +58,13 @@ class FieldSampler {
     }
     sample() {
         const device = this.shader.device;
-        const texture = device.texture({
-            label: "scalar-field",
-            format: "rgba16float",
-            dimension: "3d",
-            size: {
-                width: FieldSampler.SIZE,
-                height: FieldSampler.SIZE,
-                depthOrArrayLayers: FieldSampler.SIZE
-            },
-            usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING
-        });
         device.enqueueCommand("field-sampler-command", encoder => {
             encoder.computePass(pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.bindGroup);
                 pass.dispatchWorkgroups(FieldSampler.SIZE / 4, FieldSampler.SIZE / 4, FieldSampler.SIZE / 4);
             });
-            encoder.encoder.copyBufferToTexture({
-                buffer: this.fieldBuffer.buffer,
-                bytesPerRow: FieldSampler.SIZE * 4 * 2,
-                rowsPerImage: FieldSampler.SIZE
-            }, { texture: texture.texture }, texture.size);
         });
-        return texture;
     }
     static create(device) {
         return __awaiter(this, void 0, void 0, function* () {
