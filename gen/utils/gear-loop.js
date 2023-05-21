@@ -1,7 +1,7 @@
 import { Button, VirtualKey } from './gear-buttons.js';
 import { Keyboard } from './gear-keyboard.js';
 import { Pointer } from './gear-pointer.js';
-import { CanvasSizeManager } from './gear-canvas.js';
+import { CanvasRecorder, CanvasSizeManager } from './gear-canvas.js';
 import { FrequencyMeter, required } from './misc.js';
 export function newLoop(loopLogic, inputDescriptor) {
     return new LoopImpl(loopLogic, inputDescriptor);
@@ -23,7 +23,7 @@ class LoopImpl {
         this.keys = this.createKeys(loopDescriptor, deferredInputOps);
         this.pointers = this.createPointers(loopDescriptor, deferredInputOps);
         this.canvases = this.getCanvases(loopDescriptor, deferredOutputOps);
-        const inputWiring = loopLogic.inputWiring(this, this);
+        const inputWiring = loopLogic.inputWiring(this, this, this);
         const outputWiring = loopLogic.outputWiring(this);
         this.render = outputWiring.onRender;
         deferredInputOps.forEach(op => op(inputWiring));
@@ -35,7 +35,10 @@ class LoopImpl {
             for (const canvasName of keysOf(loopDescriptor.output.canvases)) {
                 const canvasDescriptor = loopDescriptor.output.canvases[canvasName];
                 const canvas = this.getCanvasElement(canvasDescriptor);
-                canvases[canvasName] = canvas;
+                canvases[canvasName] = {
+                    element: canvas,
+                    recorder: new CanvasRecorder(canvas)
+                };
                 deferredOps.push(loopWiring => this.wireCanvas(canvasName, canvas, loopWiring));
             }
         }
@@ -58,7 +61,7 @@ class LoopImpl {
         if (loopDescriptor.input.keys) {
             for (const keyName of keysOf(loopDescriptor.input.keys)) {
                 const keyDescriptor = loopDescriptor.input.keys[keyName];
-                const button = this.newButton(keyDescriptor, loopDescriptor.output.styling);
+                const button = this.newButton(keyDescriptor, loopDescriptor.output.styling, loopDescriptor.input.keys);
                 keys[keyName] = button;
                 deferredOps.push(loopWiring => {
                     this.wireButton(keyName, button, loopWiring);
@@ -171,21 +174,33 @@ class LoopImpl {
                 this.loopLogic.animate(time, delta, this);
             }
             this.render();
+            for (const key of Object.keys(this.canvases)) {
+                const canvas = this.canvases[key];
+                canvas.recorder.requestFrame();
+            }
             if (this === LoopImpl.activeLoop) {
                 this.nextFrame();
             }
         });
     }
-    newButton(keyDescriptor, styling) {
+    newButton(keyDescriptor, styling, keyDescriptors) {
         var _a, _b;
         const pressedClass = (_a = styling === null || styling === void 0 ? void 0 : styling.pressedButton) !== null && _a !== void 0 ? _a : "";
         const releasedClass = (_b = styling === null || styling === void 0 ? void 0 : styling.releasedButton) !== null && _b !== void 0 ? _b : "";
         const virtualButtons = keyDescriptor.virtualKey !== undefined
             ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
             : [];
-        const button = Button.anyOf(...keyDescriptor.alternatives.map(ks => Button.allOf(...ks.map(k => this.keyboard.key(k))).when(keyDescriptor.exclusive
-            ? b => b.pressed && this.keyboard.pressedCount == ks.length
-            : b => b.pressed)), ...virtualButtons.map(e => new VirtualKey(e)));
+        const allShortcuts = [];
+        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].alternatives));
+        const button = Button.anyOf(...keyDescriptor.alternatives.map(shortcut => {
+            const complements = allShortcuts
+                .map(otherShortcut => {
+                const complement = otherShortcut.filter(k => shortcut.indexOf(k) < 0);
+                return (complement.length + shortcut.length) == otherShortcut.length ? complement : [];
+            })
+                .filter(set => set.length > 0);
+            return Button.allOf(...shortcut.map(k => this.keyboard.key(k)), ...complements.map(c => Button.allOf(...c.map(k => this.keyboard.key(k))).not()));
+        }), ...virtualButtons.map(e => new VirtualKey(e)));
         if (virtualButtons.length > 0) {
             button.register(b => {
                 if (b.pressed) {

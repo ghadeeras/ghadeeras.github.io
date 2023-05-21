@@ -97,7 +97,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
     private constructor(private gpuCanvas: gpu.Canvas, private universe: Universe, private visuals: Visuals, private engine: Engine, private renderer: Renderer) {    
     }
 
-    inputWiring(inputs: gear.LoopInputs<ToyDescriptor>, controller: gear.LoopController): gear.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.LoopInputs<ToyDescriptor>, _: gear.LoopOutputs<ToyDescriptor>, controller: gear.LoopController): gear.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {

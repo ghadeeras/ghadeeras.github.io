@@ -74,6 +74,7 @@ export class VirtualKey extends Button {
 class DerivedButton extends Button {
     constructor(buttons, formula) {
         super();
+        this.pressed = formula(...buttons);
         buttons.forEach(b => b.register(() => this.pressed = formula(...buttons)));
     }
 }

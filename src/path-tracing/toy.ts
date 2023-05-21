@@ -70,12 +70,10 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 incSPP: {
                     alternatives: [["BracketRight"]],
                     virtualKey: "#control-inc-spp",
-                    exclusive: true,
                 }, 
                 decSPP: {
                     alternatives: [["BracketLeft"]],
                     virtualKey: "#control-dec-spp",
-                    exclusive: true,
                 }, 
                 incLayers: {
                     alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
@@ -117,7 +115,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     private readonly maxLayersCountElement = gearx.required(document.getElementById("max-layers"))
     private readonly denoisingElement = gearx.required(document.getElementById("denoising"))
 
-    constructor(readonly canvas: gpu.Canvas, private tracer: Tracer, private denoiser: Denoiser, private stacker: Stacker, private recorder: gearx.CanvasRecorder, private scene: Scene) {
+    constructor(readonly canvas: gpu.Canvas, private tracer: Tracer, private denoiser: Denoiser, private stacker: Stacker, private scene: Scene) {
         this.samplesPerPixel = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent))
         this.layersCount = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent))
         this.minLayersOnly = gearx.required(this.maxLayersCountElement.textContent) != "256"
@@ -128,15 +126,14 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     static async loop(): Promise<gearx.Loop> {
         const scene = buildScene()
         const device = await gpuDevice()
-        const canvas = device.canvas("canvas")
-        const recorder = new gearx.CanvasRecorder(canvas.element)
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
         const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
         const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
         const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format)
-        return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor)
+        return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor)
     }
 
-    inputWiring(): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(_: gearx.LoopInputs<ToyDescriptor>, outputs: gearx.LoopOutputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -175,7 +172,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                     onPressed: () => this.denoising = !this.denoising
                 }, 
                 recording: {
-                    onPressed: () => this.toggleRecording()
+                    onPressed: () => outputs.canvases.scene.recorder.startStop()
                 }, 
                 incSPP: {
                     onPressed: () => this.samplesPerPixel++
@@ -236,7 +233,6 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 this.stacker.render(encoder, this.canvas.attachment(clearColor))
             }
         })
-        this.recorder.requestFrame()
     }
     
     get viewMatrix() {
@@ -293,10 +289,6 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         this.denoisingElement.innerText = b ? "on" : "off"
     }
 
-    toggleRecording() {
-        this.recorder.startStop()
-    }
-    
 }
 
 function move(position: aether.Vec3, velocity: aether.Vec3, scene: Scene) {

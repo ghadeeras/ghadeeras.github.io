@@ -11,7 +11,7 @@ export class Button implements ButtonInterface {
 
     private _pressed = false
 
-    private observers: gear.Consumer<this>[] = []
+    private observers: gear.Consumer<Button>[] = []
 
     get pressed() {
         return this._pressed
@@ -24,11 +24,11 @@ export class Button implements ButtonInterface {
         }
     }
 
-    register(observer: gear.Consumer<this>) {
+    register(observer: gear.Consumer<Button>) {
         this.observers.push(observer)
     }
 
-    bindTo<V>(property: Property<V>, formula: (button: this, value: V) => V) {
+    bindTo<V>(property: Property<V>, formula: (button: Button, value: V) => V) {
         this.register(b => property.setter(formula(b, property.getter())))
     }
 
@@ -106,7 +106,8 @@ class DerivedButton<B extends Button[]> extends Button {
 
     constructor(buttons: B, formula: (...buttons: B) => boolean) {
         super()
+        this.pressed = formula(...buttons)
         buttons.forEach(b => b.register(() => this.pressed = formula(...buttons)))
     }
     
-} 
+}

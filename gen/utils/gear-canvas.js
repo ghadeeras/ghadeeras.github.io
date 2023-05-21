@@ -74,17 +74,14 @@ export class CanvasSizeManager {
     }
 }
 export class CanvasRecorder {
-    constructor(canvas, fps = 0) {
+    constructor(canvas) {
         this.canvas = canvas;
-        this.fps = fps;
         this.chunks = [];
         this.fileName = "video.webm";
         const bps = Math.pow(2, Math.floor(Math.log2(canvas.width * canvas.height * 24))); // just a heuristic
         this.videoStream = canvas.captureStream(0);
         this.videoRecorder = new MediaRecorder(this.videoStream, { audioBitsPerSecond: 0, videoBitsPerSecond: bps, mimeType: "video/webm" });
-        this.videoRecorder.ondataavailable = e => {
-            this.chunks.push(e.data);
-        };
+        this.videoRecorder.ondataavailable = e => this.chunks.push(e.data);
         console.log(`Recorder mime type: ${this.videoRecorder.mimeType}`);
         console.log(`Recorder video bps: ${this.videoRecorder.videoBitsPerSecond}`);
         this.videoRecorder.onstop = () => {
@@ -113,9 +110,11 @@ export class CanvasRecorder {
         this.videoRecorder.stop();
     }
     requestFrame() {
-        const track = this.videoStream.getVideoTracks()[0];
-        if (track instanceof CanvasCaptureMediaStreamTrack) {
-            track.requestFrame();
+        if (this.videoRecorder.state === "recording") {
+            const track = this.videoStream.getVideoTracks()[0];
+            if (track instanceof CanvasCaptureMediaStreamTrack) {
+                track.requestFrame();
+            }
         }
     }
 }

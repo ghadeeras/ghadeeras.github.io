@@ -28,12 +28,11 @@ export function init() {
     });
 }
 class Toy {
-    constructor(canvas, tracer, denoiser, stacker, recorder, scene) {
+    constructor(canvas, tracer, denoiser, stacker, scene) {
         this.canvas = canvas;
         this.tracer = tracer;
         this.denoiser = denoiser;
         this.stacker = stacker;
-        this.recorder = recorder;
         this.scene = scene;
         this._minLayersOnly = false;
         this._denoising = true;
@@ -56,15 +55,14 @@ class Toy {
         return __awaiter(this, void 0, void 0, function* () {
             const scene = buildScene();
             const device = yield gpuDevice();
-            const canvas = device.canvas("canvas");
-            const recorder = new gearx.CanvasRecorder(canvas.element);
+            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
             const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
             const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
             const stacker = yield Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
-            return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, recorder, scene), Toy.descriptor);
+            return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
         });
     }
-    inputWiring() {
+    inputWiring(_, outputs) {
         return {
             pointers: {
                 canvas: {
@@ -103,7 +101,7 @@ class Toy {
                     onPressed: () => this.denoising = !this.denoising
                 },
                 recording: {
-                    onPressed: () => this.toggleRecording()
+                    onPressed: () => outputs.canvases.scene.recorder.startStop()
                 },
                 incSPP: {
                     onPressed: () => this.samplesPerPixel++
@@ -162,7 +160,6 @@ class Toy {
                 this.stacker.render(encoder, this.canvas.attachment(clearColor));
             }
         });
-        this.recorder.requestFrame();
     }
     get viewMatrix() {
         return aether.mat4.cast(this.tracer.matrix);
@@ -206,9 +203,6 @@ class Toy {
     set denoising(b) {
         this._denoising = b;
         this.denoisingElement.innerText = b ? "on" : "off";
-    }
-    toggleRecording() {
-        this.recorder.startStop();
     }
 }
 Toy.descriptor = {
@@ -258,12 +252,10 @@ Toy.descriptor = {
             incSPP: {
                 alternatives: [["BracketRight"]],
                 virtualKey: "#control-inc-spp",
-                exclusive: true,
             },
             decSPP: {
                 alternatives: [["BracketLeft"]],
                 virtualKey: "#control-dec-spp",
-                exclusive: true,
             },
             incLayers: {
                 alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],

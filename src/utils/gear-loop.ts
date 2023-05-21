@@ -1,40 +1,37 @@
 import { Button, ButtonInterface, VirtualKey } from './gear-buttons.js'
 import { Keyboard, KeyboardEventContext } from './gear-keyboard.js';
 import { DraggingTarget, Pointer, PointerInterface } from './gear-pointer.js';
-import { CanvasSizeManager } from './gear-canvas.js';
+import { CanvasRecorder, CanvasSizeManager } from './gear-canvas.js';
 import { FrequencyMeter, required } from './misc.js';
 
 export interface Loop {
-
     run(): void
-
 }
 
 export interface LoopController {
-
     animationPaused: boolean
-
-}
-
-export interface LoopInputs<D extends LoopDescriptor> {
-
-    readonly keyboard: KeyboardEventContext
-    readonly keys: Record<InputKeyName<D>, ButtonInterface>
-    readonly pointers: Record<InputPointerName<D>, PointerInterface>
-
-}
-
-export interface LoopOutputs<D extends LoopDescriptor> {
-
-    readonly canvases: Record<CanvasName<D>, HTMLCanvasElement>
-
 }
 
 export interface LoopLogic<D extends LoopDescriptor> {
-    inputWiring(inputs: LoopInputs<D>, controller: LoopController): LoopInputWiring<D>
+    inputWiring(inputs: LoopInputs<D>, outputs: LoopOutputs<D>, controller: LoopController): LoopInputWiring<D>
     outputWiring(outputs: LoopOutputs<D>): LoopOutputWiring<D>
     animate(time: number, deltaT: number, controller: LoopController): void
 }
+
+export interface LoopInputs<D extends LoopDescriptor> {
+    readonly keyboard: KeyboardEventContext
+    readonly keys: Record<InputKeyName<D>, ButtonInterface>
+    readonly pointers: Record<InputPointerName<D>, PointerInterface>
+}
+
+export interface LoopOutputs<D extends LoopDescriptor> {
+    readonly canvases: Record<CanvasName<D>, OutputCanvas>
+}
+
+export type OutputCanvas = {
+    element: HTMLCanvasElement
+    recorder: CanvasRecorder
+} 
 
 export type LoopDescriptor = {
     input: InputDescriptor
@@ -53,7 +50,6 @@ export type PointerDescriptor = {
 export type KeyDescriptor = {
     virtualKey?: string
     alternatives: OneOrMore<OneOrMore<string>>
-    exclusive?: boolean
 }
 
 export type OutputDescriptor = {
@@ -112,7 +108,7 @@ export type CanvasWiring = {
 
 export type Handler = () => void
 
-type OneOrMore<T> = [T, ...T[]]
+export type OneOrMore<T> = [T, ...T[]]
 
 export function newLoop<D extends LoopDescriptor, L extends LoopLogic<D>>(loopLogic: L, inputDescriptor: D): Loop {
     return new LoopImpl(loopLogic, inputDescriptor)
@@ -126,7 +122,7 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
     readonly pointers: Record<InputPointerName<D>, Pointer>
     readonly keyboard = new Keyboard()
 
-    readonly canvases: Record<CanvasName<D>, HTMLCanvasElement>
+    readonly canvases: Record<CanvasName<D>, OutputCanvas>
 
     private readonly canvasSizeManager = new CanvasSizeManager(true);
     private render: () => void = () => {}
@@ -143,7 +139,7 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
         this.keys = this.createKeys(loopDescriptor, deferredInputOps)
         this.pointers = this.createPointers(loopDescriptor, deferredInputOps)
         this.canvases = this.getCanvases(loopDescriptor, deferredOutputOps)
-        const inputWiring = loopLogic.inputWiring(this, this)
+        const inputWiring = loopLogic.inputWiring(this, this, this)
         const outputWiring = loopLogic.outputWiring(this)
         this.render = outputWiring.onRender
         deferredInputOps.forEach(op => op(inputWiring))
@@ -151,16 +147,19 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
     }
 
     private getCanvases(loopDescriptor: D, deferredOps: ((loopWiring: LoopOutputWiring<D>) => void)[]) {
-        const canvases: Partial<Record<CanvasName<D>, HTMLCanvasElement>> = {};
+        const canvases: Partial<Record<CanvasName<D>, OutputCanvas>> = {};
         if (loopDescriptor.output.canvases) {
             for (const canvasName of keysOf(loopDescriptor.output.canvases)) {
                 const canvasDescriptor = loopDescriptor.output.canvases[canvasName];
                 const canvas = this.getCanvasElement(canvasDescriptor)
-                canvases[canvasName as CanvasName<D>] = canvas;
+                canvases[canvasName as CanvasName<D>] = {
+                    element: canvas,
+                    recorder: new CanvasRecorder(canvas)
+                };
                 deferredOps.push(loopWiring => this.wireCanvas(canvasName as CanvasName<D>, canvas, loopWiring))
             }
         }
-        return canvases as Record<CanvasName<D>, HTMLCanvasElement>;
+        return canvases as Record<CanvasName<D>, OutputCanvas>;
     }
 
     private getCanvasElement(canvasDescriptor: CanvasDescriptor) {
@@ -182,7 +181,7 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
         if (loopDescriptor.input.keys) {
             for (const keyName of keysOf(loopDescriptor.input.keys)) {
                 const keyDescriptor = loopDescriptor.input.keys[keyName];
-                const button = this.newButton(keyDescriptor, loopDescriptor.output.styling);
+                const button = this.newButton(keyDescriptor, loopDescriptor.output.styling, loopDescriptor.input.keys);
                 keys[keyName as InputKeyName<D>] = button;
                 deferredOps.push(loopWiring => {
                     this.wireButton(keyName as InputKeyName<D>, button, loopWiring)
@@ -302,25 +301,37 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
                 this.loopLogic.animate(time, delta, this)
             }
             this.render()
+            for (const key of Object.keys(this.canvases)) {
+                const canvas = this.canvases[key]
+                canvas.recorder.requestFrame() 
+            }
             if (this === LoopImpl.activeLoop) {
                 this.nextFrame()
             }
         })
     }
 
-    private newButton(keyDescriptor: KeyDescriptor, styling: LoopDescriptor["output"]["styling"]) {
+    private newButton(keyDescriptor: KeyDescriptor, styling: LoopDescriptor["output"]["styling"], keyDescriptors: Record<string, KeyDescriptor>) {
         const pressedClass = styling?.pressedButton ?? ""
         const releasedClass = styling?.releasedButton ?? ""
         const virtualButtons = keyDescriptor.virtualKey !== undefined
             ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
             : [];
+        const allShortcuts: string[][] = []
+        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].alternatives))
         const button = Button.anyOf(
-            ...keyDescriptor.alternatives.map(ks => Button.allOf(
-                ...ks.map(k => this.keyboard.key(k))
-            ).when(keyDescriptor.exclusive
-                ? b => b.pressed && this.keyboard.pressedCount == ks.length
-                : b => b.pressed
-            )),
+            ...keyDescriptor.alternatives.map(shortcut => {
+                const complements = allShortcuts
+                    .map(otherShortcut => { 
+                        const complement = otherShortcut.filter(k => shortcut.indexOf(k) < 0)
+                        return (complement.length + shortcut.length) == otherShortcut.length ? complement : []
+                    })
+                    .filter(set => set.length > 0)
+                return Button.allOf(
+                    ...shortcut.map(k => this.keyboard.key(k)),
+                    ...complements.map(c => Button.allOf(...c.map(k => this.keyboard.key(k))).not())
+                )
+            }),
             ...virtualButtons.map(e => new VirtualKey(e as HTMLElement))
         );
         if (virtualButtons.length > 0) {

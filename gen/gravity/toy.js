@@ -40,7 +40,7 @@ class Toy {
         this.zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100));
         this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
     }
-    inputWiring(inputs, controller) {
+    inputWiring(inputs, _, controller) {
         return {
             pointers: {
                 canvas: {
