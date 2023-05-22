@@ -41,26 +41,26 @@ export class Button implements ButtonInterface {
     }
 
     xor(that: Button): Button {
-        return new DerivedButton<[this, Button]>([this, that], (a, b) => a.pressed !== b.pressed)
+        return new DerivedButton([this, that], (a, b) => a.pressed !== b.pressed)
     }
 
     not(): Button {
         return Button.noneOf(this)
     }
 
-    when(predicate: (b: this) => boolean) {
+    when(predicate: (b: Button) => boolean) {
         return new DerivedButton([this], button => predicate(button))
     }
 
-    static allOf<B extends Button>(...buttons: B[]): Button {
+    static allOf(...buttons: Button[]): Button {
         return buttons.length !== 1 ? new DerivedButton(buttons, (...buttons) => buttons.every(b => b.pressed)) : buttons[0]
     }
 
-    static anyOf<B extends Button>(...buttons: B[]): Button {
+    static anyOf(...buttons: Button[]): Button {
         return buttons.length !== 1 ? new DerivedButton(buttons, (...buttons) => buttons.some(b => b.pressed)) : buttons[0]
     }
 
-    static noneOf<B extends Button>(...buttons: B[]): Button {
+    static noneOf(...buttons: Button[]): Button {
         return new DerivedButton(buttons, (...buttons) => buttons.every(b => !b.pressed))
     }
 
@@ -102,9 +102,9 @@ export class VirtualKey extends Button {
 
 }
 
-class DerivedButton<B extends Button[]> extends Button {
+class DerivedButton extends Button {
 
-    constructor(buttons: B, formula: (...buttons: B) => boolean) {
+    constructor(buttons: Button[], formula: (...buttons: Button[]) => boolean) {
         super()
         this.pressed = formula(...buttons)
         buttons.forEach(b => b.register(() => this.pressed = formula(...buttons)))

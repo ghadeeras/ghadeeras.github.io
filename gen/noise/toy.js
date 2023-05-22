@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import * as misc from "../utils/misc.js";
+import * as misc from "../utils/gear-misc.js";
 export function init() {
     window.onload = doInit;
 }

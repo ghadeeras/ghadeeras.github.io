@@ -102,4 +102,4 @@ export function trap(e) {
     e.stopImmediatePropagation();
     e.stopPropagation();
 }
-//# sourceMappingURL=misc.js.map
+//# sourceMappingURL=gear-misc.js.map

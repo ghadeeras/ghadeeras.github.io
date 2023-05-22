@@ -47,48 +47,48 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
             },
             keys: {
                 move: {
-                    alternatives: [["KeyM"]],
-                    virtualKey: "#control-m",
+                    physicalKeys: [["KeyM"]],
+                    virtualKeys: "#control-m",
                 },
                 rotate: {
-                    alternatives: [["KeyR"]],
-                    virtualKey: "#control-r",
+                    physicalKeys: [["KeyR"]],
+                    virtualKeys: "#control-r",
                 },
                 scale: {
-                    alternatives: [["KeyS"]],
-                    virtualKey: "#control-s",
+                    physicalKeys: [["KeyS"]],
+                    virtualKeys: "#control-s",
                 },
                 zoom: {
-                    alternatives: [["KeyZ"]],
-                    virtualKey: "#control-z",
+                    physicalKeys: [["KeyZ"]],
+                    virtualKeys: "#control-z",
                 },
                 color: {
-                    alternatives: [["KeyC"]],
-                    virtualKey: "#control-c",
+                    physicalKeys: [["KeyC"]],
+                    virtualKeys: "#control-c",
                 },
                 shininess: {
-                    alternatives: [["KeyH"]],
-                    virtualKey: "#control-h",
+                    physicalKeys: [["KeyH"]],
+                    virtualKeys: "#control-h",
                 },
                 lightDirection: {
-                    alternatives: [["KeyD"]],
-                    virtualKey: "#control-d",
+                    physicalKeys: [["KeyD"]],
+                    virtualKeys: "#control-d",
                 },
                 lightRadius: {
-                    alternatives: [["KeyL"]],
-                    virtualKey: "#control-l",
+                    physicalKeys: [["KeyL"]],
+                    virtualKeys: "#control-l",
                 },
                 fogginess: {
-                    alternatives: [["KeyF"]],
-                    virtualKey: "#control-f",
+                    physicalKeys: [["KeyF"]],
+                    virtualKeys: "#control-f",
                 },
                 nextModel: {
-                    alternatives: [["ArrowLeft"]],
-                    virtualKey: "#control-left",
+                    physicalKeys: [["ArrowLeft"]],
+                    virtualKeys: "#control-left",
                 },
                 previousModel: {
-                    alternatives: [["ArrowRight"]],
-                    virtualKey: "#control-right",
+                    physicalKeys: [["ArrowRight"]],
+                    virtualKeys: "#control-right",
                 },
             }
         },

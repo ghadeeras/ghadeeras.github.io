@@ -2,7 +2,7 @@ import { Button, ButtonInterface, VirtualKey } from './gear-buttons.js'
 import { Keyboard, KeyboardEventContext } from './gear-keyboard.js';
 import { DraggingTarget, Pointer, PointerInterface } from './gear-pointer.js';
 import { CanvasRecorder, CanvasSizeManager } from './gear-canvas.js';
-import { FrequencyMeter, required } from './misc.js';
+import { FrequencyMeter, required } from './gear-misc.js';
 
 export interface Loop {
     run(): void
@@ -48,8 +48,8 @@ export type PointerDescriptor = {
 }
 
 export type KeyDescriptor = {
-    virtualKey?: string
-    alternatives: OneOrMore<OneOrMore<string>>
+    virtualKeys?: string
+    physicalKeys: OneOrMore<OneOrMore<string>>
 }
 
 export type OutputDescriptor = {
@@ -314,13 +314,13 @@ class LoopImpl<D extends LoopDescriptor, L extends LoopLogic<D>> implements Loop
     private newButton(keyDescriptor: KeyDescriptor, styling: LoopDescriptor["output"]["styling"], keyDescriptors: Record<string, KeyDescriptor>) {
         const pressedClass = styling?.pressedButton ?? ""
         const releasedClass = styling?.releasedButton ?? ""
-        const virtualButtons = keyDescriptor.virtualKey !== undefined
-            ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
+        const virtualButtons = keyDescriptor.virtualKeys !== undefined
+            ? [...document.querySelectorAll(keyDescriptor.virtualKeys)].filter(e => e instanceof HTMLElement)
             : [];
         const allShortcuts: string[][] = []
-        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].alternatives))
+        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].physicalKeys))
         const button = Button.anyOf(
-            ...keyDescriptor.alternatives.map(shortcut => {
+            ...keyDescriptor.physicalKeys.map(shortcut => {
                 const complements = allShortcuts
                     .map(otherShortcut => { 
                         const complement = otherShortcut.filter(k => shortcut.indexOf(k) < 0)

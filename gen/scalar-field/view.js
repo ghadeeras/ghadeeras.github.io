@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as glView from './view.gl.js';
 import * as gpuView from './view.gpu.js';
-import { required } from "../utils/misc.js";
+import { required } from "../utils/gear-misc.js";
 export function wire(view, inputs, primitives = WebGL2RenderingContext.TRIANGLES) {
     inputs.matModel.attach(mat => view.setMatModel(mat, mat));
     inputs.matView.attach(mat => view.matView = mat);

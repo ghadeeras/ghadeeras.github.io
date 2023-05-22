@@ -2,7 +2,7 @@ import { Button, VirtualKey } from './gear-buttons.js';
 import { Keyboard } from './gear-keyboard.js';
 import { Pointer } from './gear-pointer.js';
 import { CanvasRecorder, CanvasSizeManager } from './gear-canvas.js';
-import { FrequencyMeter, required } from './misc.js';
+import { FrequencyMeter, required } from './gear-misc.js';
 export function newLoop(loopLogic, inputDescriptor) {
     return new LoopImpl(loopLogic, inputDescriptor);
 }
@@ -187,12 +187,12 @@ class LoopImpl {
         var _a, _b;
         const pressedClass = (_a = styling === null || styling === void 0 ? void 0 : styling.pressedButton) !== null && _a !== void 0 ? _a : "";
         const releasedClass = (_b = styling === null || styling === void 0 ? void 0 : styling.releasedButton) !== null && _b !== void 0 ? _b : "";
-        const virtualButtons = keyDescriptor.virtualKey !== undefined
-            ? [...document.querySelectorAll(keyDescriptor.virtualKey)].filter(e => e instanceof HTMLElement)
+        const virtualButtons = keyDescriptor.virtualKeys !== undefined
+            ? [...document.querySelectorAll(keyDescriptor.virtualKeys)].filter(e => e instanceof HTMLElement)
             : [];
         const allShortcuts = [];
-        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].alternatives));
-        const button = Button.anyOf(...keyDescriptor.alternatives.map(shortcut => {
+        Object.keys(keyDescriptors).forEach(k => allShortcuts.push(...keyDescriptors[k].physicalKeys));
+        const button = Button.anyOf(...keyDescriptor.physicalKeys.map(shortcut => {
             const complements = allShortcuts
                 .map(otherShortcut => {
                 const complement = otherShortcut.filter(k => shortcut.indexOf(k) < 0);

@@ -1,4 +1,4 @@
-import { required } from "./misc.js";
+import { required } from "./gear-misc.js";
 import { PointerButton } from './gear-buttons.js';
 import { trap } from './gear.js';
 export class Pointer {

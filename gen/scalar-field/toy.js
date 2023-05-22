@@ -154,52 +154,52 @@ Toy.descriptor = {
         },
         keys: {
             contour: {
-                alternatives: [["KeyC"]],
-                virtualKey: "#control-c",
+                physicalKeys: [["KeyC"]],
+                virtualKeys: "#control-c",
             },
             rotation: {
-                alternatives: [["KeyR"]],
-                virtualKey: "#control-r",
+                physicalKeys: [["KeyR"]],
+                virtualKeys: "#control-r",
             },
             zoom: {
-                alternatives: [["KeyZ"]],
-                virtualKey: "#control-z",
+                physicalKeys: [["KeyZ"]],
+                virtualKeys: "#control-z",
             },
             shininess: {
-                alternatives: [["KeyH"]],
-                virtualKey: "#control-h",
+                physicalKeys: [["KeyH"]],
+                virtualKeys: "#control-h",
             },
             fogginess: {
-                alternatives: [["KeyF"]],
-                virtualKey: "#control-f",
+                physicalKeys: [["KeyF"]],
+                virtualKeys: "#control-f",
             },
             lightDirection: {
-                alternatives: [["KeyD"]],
-                virtualKey: "#control-d",
+                physicalKeys: [["KeyD"]],
+                virtualKeys: "#control-d",
             },
             lightRadius: {
-                alternatives: [["KeyL"]],
-                virtualKey: "#control-l",
+                physicalKeys: [["KeyL"]],
+                virtualKeys: "#control-l",
             },
             export: {
-                alternatives: [["KeyX"]],
-                virtualKey: "#control-x",
+                physicalKeys: [["KeyX"]],
+                virtualKeys: "#control-x",
             },
             incLOD: {
-                alternatives: [["ArrowUp"]],
-                virtualKey: "#control-up",
+                physicalKeys: [["ArrowUp"]],
+                virtualKeys: "#control-up",
             },
             decLOD: {
-                alternatives: [["ArrowDown"]],
-                virtualKey: "#control-down",
+                physicalKeys: [["ArrowDown"]],
+                virtualKeys: "#control-down",
             },
             prevField: {
-                alternatives: [["ArrowLeft"]],
-                virtualKey: "#control-left",
+                physicalKeys: [["ArrowLeft"]],
+                virtualKeys: "#control-left",
             },
             nextField: {
-                alternatives: [["ArrowRight"]],
-                virtualKey: "#control-right",
+                physicalKeys: [["ArrowRight"]],
+                virtualKeys: "#control-right",
             },
         }
     },

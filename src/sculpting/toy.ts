@@ -41,48 +41,48 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             },
             keys: {
                 carving: {
-                    alternatives: [["KeyC"]],
-                    virtualKey: "#control-c",
+                    physicalKeys: [["KeyC"]],
+                    virtualKeys: "#control-c",
                 }, 
                 rotation: {
-                    alternatives: [["KeyR"]],
-                    virtualKey: "#control-r",
+                    physicalKeys: [["KeyR"]],
+                    virtualKeys: "#control-r",
                 }, 
                 zoom: {
-                    alternatives: [["KeyZ"]],
-                    virtualKey: "#control-z",
+                    physicalKeys: [["KeyZ"]],
+                    virtualKeys: "#control-z",
                 }, 
                 shininess: {
-                    alternatives: [["KeyH"]],
-                    virtualKey: "#control-h",
+                    physicalKeys: [["KeyH"]],
+                    virtualKeys: "#control-h",
                 }, 
                 lightDirection: {
-                    alternatives: [["KeyD"]],
-                    virtualKey: "#control-d",
+                    physicalKeys: [["KeyD"]],
+                    virtualKeys: "#control-d",
                 }, 
                 lightRadius: {
-                    alternatives: [["KeyL"]],
-                    virtualKey: "#control-l",
+                    physicalKeys: [["KeyL"]],
+                    virtualKeys: "#control-l",
                 }, 
                 undo: {
-                    alternatives: [["KeyU"]],
-                    virtualKey: "#control-u",
+                    physicalKeys: [["KeyU"]],
+                    virtualKeys: "#control-u",
                 }, 
                 export: {
-                    alternatives: [["KeyX"]],
-                    virtualKey: "#control-x",
+                    physicalKeys: [["KeyX"]],
+                    virtualKeys: "#control-x",
                 }, 
                 save: {
-                    alternatives: [["KeyS"]],
-                    virtualKey: "#control-s",
+                    physicalKeys: [["KeyS"]],
+                    virtualKeys: "#control-s",
                 }, 
                 incLOD: {
-                    alternatives: [["ArrowUp"]],
-                    virtualKey: "#control-up",
+                    physicalKeys: [["ArrowUp"]],
+                    virtualKeys: "#control-up",
                 }, 
                 decLOD: {
-                    alternatives: [["ArrowDown"]],
-                    virtualKey: "#control-down",
+                    physicalKeys: [["ArrowDown"]],
+                    virtualKeys: "#control-down",
                 },
             }
         },

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { required } from "../utils/misc.js";
+import { required } from "../utils/gear-misc.js";
 import * as gpuView from "./view.gpu.js";
 import * as gpuWiresView from "./view.wires.gpu.js";
 import * as glView from "./view.gl.js";

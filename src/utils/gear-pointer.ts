@@ -1,5 +1,5 @@
 import { gear } from '../libs.js'
-import { required } from "./misc.js"
+import { required } from "./gear-misc.js"
 
 import { ButtonInterface, PointerButton } from './gear-buttons.js'
 import { Property, trap } from './gear.js'

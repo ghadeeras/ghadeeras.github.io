@@ -214,56 +214,56 @@ Toy.descriptor = {
         },
         keys: {
             forward: {
-                alternatives: [["KeyW"], ["ArrowUp"]],
-                virtualKey: "#control-forward",
+                physicalKeys: [["KeyW"], ["ArrowUp"]],
+                virtualKeys: "#control-forward",
             },
             backward: {
-                alternatives: [["KeyS"], ["ArrowDown"]],
-                virtualKey: "#control-backward",
+                physicalKeys: [["KeyS"], ["ArrowDown"]],
+                virtualKeys: "#control-backward",
             },
             right: {
-                alternatives: [["KeyD"], ["ArrowRight"]],
-                virtualKey: "#control-right",
+                physicalKeys: [["KeyD"], ["ArrowRight"]],
+                virtualKeys: "#control-right",
             },
             left: {
-                alternatives: [["KeyA"], ["ArrowLeft"]],
-                virtualKey: "#control-left",
+                physicalKeys: [["KeyA"], ["ArrowLeft"]],
+                virtualKeys: "#control-left",
             },
             up: {
-                alternatives: [["KeyE"], ["PageUp"]],
-                virtualKey: "#control-up",
+                physicalKeys: [["KeyE"], ["PageUp"]],
+                virtualKeys: "#control-up",
             },
             down: {
-                alternatives: [["KeyC"], ["PageDown"]],
-                virtualKey: "#control-down",
+                physicalKeys: [["KeyC"], ["PageDown"]],
+                virtualKeys: "#control-down",
             },
             layering: {
-                alternatives: [["KeyL"]],
-                virtualKey: "#control-layering",
+                physicalKeys: [["KeyL"]],
+                virtualKeys: "#control-layering",
             },
             denoising: {
-                alternatives: [["KeyN"]],
-                virtualKey: "#control-denoising",
+                physicalKeys: [["KeyN"]],
+                virtualKeys: "#control-denoising",
             },
             recording: {
-                alternatives: [["KeyR"]],
-                virtualKey: "#control-recording",
+                physicalKeys: [["KeyR"]],
+                virtualKeys: "#control-recording",
             },
             incSPP: {
-                alternatives: [["BracketRight"]],
-                virtualKey: "#control-inc-spp",
+                physicalKeys: [["BracketRight"]],
+                virtualKeys: "#control-inc-spp",
             },
             decSPP: {
-                alternatives: [["BracketLeft"]],
-                virtualKey: "#control-dec-spp",
+                physicalKeys: [["BracketLeft"]],
+                virtualKeys: "#control-dec-spp",
             },
             incLayers: {
-                alternatives: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
-                virtualKey: "#control-inc-layers",
+                physicalKeys: [["AltRight", "BracketRight"], ["AltLeft", "BracketRight"]],
+                virtualKeys: "#control-inc-layers",
             },
             decLayers: {
-                alternatives: [["AltRight", "BracketLeft"], ["AltLeft", "BracketLeft"]],
-                virtualKey: "#control-dec-layers",
+                physicalKeys: [["AltRight", "BracketLeft"], ["AltLeft", "BracketLeft"]],
+                virtualKeys: "#control-dec-layers",
             },
         }
     },

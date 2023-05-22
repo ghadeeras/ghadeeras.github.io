@@ -1,4 +1,4 @@
-import { save } from "./misc.js";
+import { save } from "./gear-misc.js";
 import { DeferredComputation } from "/gear/latest/index.js";
 export class CanvasSizeManager {
     constructor(devicePixels = false) {
@@ -77,7 +77,7 @@ export class CanvasRecorder {
     constructor(canvas) {
         this.canvas = canvas;
         this.chunks = [];
-        this.fileName = "video.webm";
+        this.fileName = "video.mp4";
         const bps = Math.pow(2, Math.floor(Math.log2(canvas.width * canvas.height * 24))); // just a heuristic
         this.videoStream = canvas.captureStream(0);
         this.videoRecorder = new MediaRecorder(this.videoStream, { audioBitsPerSecond: 0, videoBitsPerSecond: bps, mimeType: "video/webm" });
@@ -94,12 +94,12 @@ export class CanvasRecorder {
     get state() {
         return this.videoRecorder.state;
     }
-    startStop() {
+    startStop(fileName = "video.mp4") {
         if (this.videoRecorder.state === "recording") {
-            this.videoRecorder.stop();
+            this.stop(fileName);
         }
         else {
-            this.videoRecorder.start();
+            this.start();
         }
     }
     start() {

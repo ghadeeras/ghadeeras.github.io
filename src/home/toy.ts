@@ -1,5 +1,5 @@
 import { wgl } from "../djee/index.js"
-import { required } from "../utils/misc.js"
+import { required } from "../utils/gear-misc.js"
 import { fetchTextFile } from "../utils/gear.js"
 
 const mySketch = new Image()

@@ -28,32 +28,32 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             },
             keys: {
                 move: {
-                    alternatives: [["KeyM"]],
-                    virtualKey: "#control-m",
+                    physicalKeys: [["KeyM"]],
+                    virtualKeys: "#control-m",
                 }, 
                 zoom: {
-                    alternatives: [["KeyZ"]],
-                    virtualKey: "#control-z",
+                    physicalKeys: [["KeyZ"]],
+                    virtualKeys: "#control-z",
                 }, 
                 color: {
-                    alternatives: [["KeyC"]],
-                    virtualKey: "#control-c",
+                    physicalKeys: [["KeyC"]],
+                    virtualKeys: "#control-c",
                 }, 
                 intensity: {
-                    alternatives: [["KeyI"]],
-                    virtualKey: "#control-i",
+                    physicalKeys: [["KeyI"]],
+                    virtualKeys: "#control-i",
                 }, 
                 xray: {
-                    alternatives: [["KeyX"]],
-                    virtualKey: "#control-x",
+                    physicalKeys: [["KeyX"]],
+                    virtualKeys: "#control-x",
                 }, 
                 crosshairs: {
-                    alternatives: [["KeyH"]],
-                    virtualKey: "#control-h",
+                    physicalKeys: [["KeyH"]],
+                    virtualKeys: "#control-h",
                 }, 
                 sound: {
-                    alternatives: [["KeyN"]],
-                    virtualKey: "#control-n",
+                    physicalKeys: [["KeyN"]],
+                    virtualKeys: "#control-n",
                 },
             }
         },

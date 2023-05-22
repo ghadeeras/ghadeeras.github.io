@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { wgl } from "../djee/index.js";
-import { required } from "../utils/misc.js";
+import { required } from "../utils/gear-misc.js";
 import { fetchTextFile } from "../utils/gear.js";
 const mySketch = new Image();
 export function init() {

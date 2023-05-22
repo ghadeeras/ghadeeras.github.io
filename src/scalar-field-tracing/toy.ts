@@ -24,28 +24,28 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         input: {
             keys: {
                 contour: {
-                    alternatives: [["KeyC"]],
-                    virtualKey: "#control-c"
+                    physicalKeys: [["KeyC"]],
+                    virtualKeys: "#control-c"
                 },
                 rotation: {
-                    alternatives: [["KeyR"]],
-                    virtualKey: "#control-r"
+                    physicalKeys: [["KeyR"]],
+                    virtualKeys: "#control-r"
                 },
                 scale: {
-                    alternatives: [["KeyS"]],
-                    virtualKey: "#control-s"
+                    physicalKeys: [["KeyS"]],
+                    virtualKeys: "#control-s"
                 },
                 matrix: {
-                    alternatives: [["KeyM"]],
-                    virtualKey: "#control-m"
+                    physicalKeys: [["KeyM"]],
+                    virtualKeys: "#control-m"
                 },
                 incDepth: {
-                    alternatives: [["ArrowUp"]],
-                    virtualKey: "#control-up"
+                    physicalKeys: [["ArrowUp"]],
+                    virtualKeys: "#control-up"
                 },
                 decDepth: {
-                    alternatives: [["ArrowDown"]],
-                    virtualKey: "#control-down"
+                    physicalKeys: [["ArrowDown"]],
+                    virtualKeys: "#control-down"
                 },
             },
             pointers: {

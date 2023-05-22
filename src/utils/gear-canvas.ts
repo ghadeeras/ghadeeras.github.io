@@ -1,13 +1,13 @@
-import { save } from "./misc.js";
+import { save } from "./gear-misc.js";
 import { DeferredComputation } from "/gear/latest/index.js";
 
 export class CanvasSizeManager {
 
-    private observer: ResizeObserver = new ResizeObserver(entries => this.onResize(entries))
-    private resizing: DeferredComputation<void> = new DeferredComputation(() => this.resizeAll())
+    private readonly observer: ResizeObserver = new ResizeObserver(entries => this.onResize(entries))
+    private readonly resizing: DeferredComputation<void> = new DeferredComputation(() => this.resizeAll())
 
-    private observed: Map<HTMLCanvasElement, ResizeHandler> = new Map()
-    private dirtyCanvas: Map<HTMLCanvasElement, [number, number]> = new Map()
+    private readonly observed: Map<HTMLCanvasElement, ResizeHandler> = new Map()
+    private readonly dirtyCanvas: Map<HTMLCanvasElement, [number, number]> = new Map()
 
     constructor(readonly devicePixels: boolean = false) {
     }
@@ -85,7 +85,7 @@ export class CanvasRecorder {
     readonly videoRecorder: MediaRecorder
 
     private chunks: Blob[] = []
-    private fileName: string = "video.webm"
+    private fileName: string = "video.mp4"
     
     constructor(readonly canvas: HTMLCanvasElement) {
         const bps = 2 ** Math.floor(Math.log2(canvas.width * canvas.height * 24)) // just a heuristic
@@ -106,11 +106,11 @@ export class CanvasRecorder {
         return this.videoRecorder.state
     }
 
-    startStop() {
+    startStop(fileName: string = "video.mp4") {
         if (this.videoRecorder.state === "recording") {
-            this.videoRecorder.stop()
+            this.stop(fileName)
         } else {
-            this.videoRecorder.start()
+            this.start()
         }
     }
 
