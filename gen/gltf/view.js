@@ -7,10 +7,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { required } from "../utils/gear-misc.js";
 import * as gpuView from "./view.gpu.js";
 import * as gpuWiresView from "./view.wires.gpu.js";
 import * as glView from "./view.gl.js";
+import { required } from "/gear/latest/loops/misc.js";
 export function newViewFactory(canvasId, wires = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const apiElement = required(document.getElementById("graphics-api"));

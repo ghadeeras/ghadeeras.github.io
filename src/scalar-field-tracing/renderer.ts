@@ -1,6 +1,6 @@
 import * as gpu from "../djee/gpu/index.js"
-import * as gear from "../utils/gear.js";
 import * as aether from "/aether/latest/index.js";
+import { fetchTextFile } from "/gear/latest/loops/misc.js";
 
 export class FieldRenderer {
 
@@ -189,7 +189,7 @@ export class FieldRenderer {
     }
 
     static async create(field: gpu.Texture, targetFormat: gpu.TextureFormatSource): Promise<FieldRenderer> {
-        const shaderCode = await gear.fetchTextFile("/shaders/field-renderer.wgsl")
+        const shaderCode = await fetchTextFile("/shaders/field-renderer.wgsl")
         const shader = await field.device.shaderModule("field-renderer", gpu.renderingShaders.fullScreenPass(shaderCode))
         return new FieldRenderer(shader, field, targetFormat)
     }

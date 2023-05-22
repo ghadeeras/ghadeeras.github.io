@@ -8,8 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import * as aether from "/aether/latest/index.js";
-import * as gearx from "../utils/gear.js";
+import { aether, gear } from "../libs.js";
 import { RotationDragging } from "../utils/dragging.js";
 import { Stacker } from "./stacker.js";
 import { Tracer } from "./tracer.js";
@@ -41,14 +40,14 @@ class Toy {
         this.animating = false;
         this.changingView = false;
         this.speeds = [[0, 0], [0, 0], [0, 0]];
-        this.samplesPerPixelElement = gearx.required(document.getElementById("spp"));
-        this.layersCountElement = gearx.required(document.getElementById("layers"));
-        this.maxLayersCountElement = gearx.required(document.getElementById("max-layers"));
-        this.denoisingElement = gearx.required(document.getElementById("denoising"));
-        this.samplesPerPixel = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent));
-        this.layersCount = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent));
-        this.minLayersOnly = gearx.required(this.maxLayersCountElement.textContent) != "256";
-        this.denoising = gearx.required(this.denoisingElement.textContent).toLowerCase() == "on";
+        this.samplesPerPixelElement = gear.loops.required(document.getElementById("spp"));
+        this.layersCountElement = gear.loops.required(document.getElementById("layers"));
+        this.maxLayersCountElement = gear.loops.required(document.getElementById("max-layers"));
+        this.denoisingElement = gear.loops.required(document.getElementById("denoising"));
+        this.samplesPerPixel = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent));
+        this.layersCount = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent));
+        this.minLayersOnly = gear.loops.required(this.maxLayersCountElement.textContent) != "256";
+        this.denoising = gear.loops.required(this.denoisingElement.textContent).toLowerCase() == "on";
         tracer.position = [36, 36, 36];
     }
     static loop() {
@@ -59,14 +58,14 @@ class Toy {
             const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
             const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
             const stacker = yield Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
-            return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
+            return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
         });
     }
     inputWiring(_, outputs) {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gearx.draggingTarget(gearx.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.loops.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
                 }
             },
             keys: {
@@ -328,7 +327,7 @@ function timeDistance(v1, v2, velocity) {
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gearx.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

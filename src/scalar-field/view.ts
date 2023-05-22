@@ -1,7 +1,7 @@
 import { aether, gear } from "/gen/libs.js"
 import * as glView from './view.gl.js' 
 import * as gpuView from './view.gpu.js' 
-import { required } from "../utils/gear-misc.js"
+import { required } from "/gear/latest/loops/misc.js"
 
 export interface View {
 

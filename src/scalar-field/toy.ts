@@ -1,9 +1,7 @@
 import { aether, gear } from "/gen/libs.js"
 import { gltf } from "../djee/index.js"
-import * as gearx from "../utils/gear.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
-import { LoopLogic } from "../utils/gear.js"
 
 export const huds = {
     "monitor": "monitor-button"
@@ -11,13 +9,13 @@ export const huds = {
 
 export async function init() {
     const toy = await Toy.create()
-    const loop = gearx.newLoop(toy, Toy.descriptor)
+    const loop = gear.loops.newLoop(toy, Toy.descriptor)
     loop.run()
 }
 
 type ToyDescriptor = typeof Toy.descriptor
 
-class Toy implements LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -90,17 +88,17 @@ class Toy implements LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
 
-    readonly contourTarget = gearx.draggingTarget(mapped(gearx.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
-    readonly rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly focalLengthDragging = gearx.draggingTarget(gearx.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
-    readonly lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
-    private lodElement = gearx.required(document.getElementById("lod")) 
+    private lodElement = gear.loops.required(document.getElementById("lod")) 
     private meshComputer: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, this.scalarFieldInstance.vertices))
 
     private _field = 0
@@ -121,7 +119,7 @@ class Toy implements LoopLogic<ToyDescriptor> {
         return new Toy(view, scalarFieldInstance)
     }
 
-    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -145,7 +143,7 @@ class Toy implements LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.view.render(),
             canvases: {
@@ -217,9 +215,9 @@ class Toy implements LoopLogic<ToyDescriptor> {
         const model = gltf.createModel("ScalarField", this.scalarFieldInstance.vertices)
         const canvas = document.getElementById("canvas-gl") as HTMLCanvasElement
 
-        gearx.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf')
-        gearx.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin')
-        gearx.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
+        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf')
+        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin')
+        gear.loops.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
     }
 
     toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
@@ -279,7 +277,7 @@ function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
     }
 }
 
-function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

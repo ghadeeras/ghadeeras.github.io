@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as gearx from "../utils/gear.js";
+import { gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 export class ViewGL {
     constructor(_canvasId, _vertexShaderCode, _fragmentShaderCode, _center = [-0.75, 0], _scale = 2.0) {
@@ -86,7 +86,7 @@ export class ViewGL {
 }
 export function viewGL(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shader = yield gearx.fetchTextFile("/shaders/mandelbrot.frag");
+        const shader = yield gear.loops.fetchTextFile("/shaders/mandelbrot.frag");
         const vertexShader = wgl.vertexShaders.fullScreenPass;
         const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
         return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale);

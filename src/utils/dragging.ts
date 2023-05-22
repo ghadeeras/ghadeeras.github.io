@@ -1,13 +1,12 @@
 import { aether, gear } from "/gen/libs.js";
 import * as aetherx from "./aether.js"
-import { Dragger, DraggingFunction } from "./gear-pointer.js";
 
-export abstract class ModelMatrixDragging implements gear.DraggingHandler<aether.Mat<4>>, Dragger<aether.Mat<4>> {
+export abstract class ModelMatrixDragging implements gear.DraggingHandler<aether.Mat<4>>, gear.loops.Dragger<aether.Mat<4>> {
 
     constructor(private matrix: gear.Supplier<aether.Mat<4>>, private projViewMatrix: gear.Supplier<aether.Mat<4>>, private speed: number = 1) {
     }
 
-    begin(matrix: aether.Mat<4>, position: gear.PointerPosition): DraggingFunction<aether.Mat<4>> {
+    begin(matrix: aether.Mat<4>, position: gear.PointerPosition): gear.loops.DraggingFunction<aether.Mat<4>> {
         return this.mapper(matrix, position)
     }
 
@@ -101,12 +100,12 @@ export class ScaleDragging extends ModelMatrixDragging {
 
 }
 
-export class RatioDragging implements gear.DraggingHandler<number>, Dragger<number> {
+export class RatioDragging implements gear.DraggingHandler<number>, gear.loops.Dragger<number> {
 
     constructor(private ratio: gear.Supplier<number>, private min: number = Math.pow(2, -128), private max: number = Math.pow(2, 128), private speed: number = 1) {
     }
 
-    begin(ratio: number, position: gear.PointerPosition): DraggingFunction<number> {
+    begin(ratio: number, position: gear.PointerPosition): gear.loops.DraggingFunction<number> {
         return this.mapper(ratio, position)
     }
 
@@ -132,12 +131,12 @@ export class RatioDragging implements gear.DraggingHandler<number>, Dragger<numb
 
 }
 
-export class LinearDragging implements gear.DraggingHandler<number>, Dragger<number> {
+export class LinearDragging implements gear.DraggingHandler<number>, gear.loops.Dragger<number> {
 
     constructor(private value: gear.Supplier<number>, private min: number = -1, private max: number = 1, private speed: number = 1) {
     }
 
-    begin(value: number, position: gear.PointerPosition): DraggingFunction<number> {
+    begin(value: number, position: gear.PointerPosition): gear.loops.DraggingFunction<number> {
         return this.mapper(value, position)
     }
 
@@ -163,13 +162,13 @@ export class LinearDragging implements gear.DraggingHandler<number>, Dragger<num
 
 }
 
-class PositionDragging extends gear.SimpleDraggingHandler<gear.PointerPosition> implements Dragger<gear.PointerPosition> {
+class PositionDragging extends gear.SimpleDraggingHandler<gear.PointerPosition> implements gear.loops.Dragger<gear.PointerPosition> {
 
     constructor() {
         super(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)])
     }
 
-    begin(pos: gear.PointerPosition, position: gear.PointerPosition): DraggingFunction<gear.PointerPosition> {
+    begin(pos: gear.PointerPosition, position: gear.PointerPosition): gear.loops.DraggingFunction<gear.PointerPosition> {
         return this.mapper(pos, position, false, false, false)
     }
 
@@ -185,12 +184,12 @@ function clamp(n: number, min: number, max: number) {
     return Math.min(Math.max(n, min), max)
 }
 
-export class ZoomDragging implements gear.DraggingHandler<[aether.Mat<4>, aether.Mat<4>]>, Dragger<[aether.Mat<4>, aether.Mat<4>]> {
+export class ZoomDragging implements gear.DraggingHandler<[aether.Mat<4>, aether.Mat<4>]>, gear.loops.Dragger<[aether.Mat<4>, aether.Mat<4>]> {
 
     constructor(private projectViewMatrices: gear.Supplier<[aether.Mat<4>, aether.Mat<4>]>, private speed: number = 1) {
     }
 
-    begin(projectViewMatrices: [aether.Mat<4>, aether.Mat<4>], position: gear.PointerPosition): DraggingFunction<[aether.Mat<4>, aether.Mat<4>]> {
+    begin(projectViewMatrices: [aether.Mat<4>, aether.Mat<4>], position: gear.PointerPosition): gear.loops.DraggingFunction<[aether.Mat<4>, aether.Mat<4>]> {
         return this.mapper(projectViewMatrices, position)
     }
 

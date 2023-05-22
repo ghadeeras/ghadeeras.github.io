@@ -7,7 +7,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as gearx from "../utils/gear.js";
 import { aether, gear } from "/gen/libs.js";
 import { view } from "./view.js";
 import { positionDragging } from "../utils/dragging.js";
@@ -25,16 +24,16 @@ export function init() {
 class Toy {
     constructor(mandelbrotView) {
         this.mandelbrotView = mandelbrotView;
-        this.moveTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Move(this.mandelbrotView));
-        this.zoomTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Zoom(this.mandelbrotView));
-        this.colorTarget = gearx.draggingTarget(mapped(gearx.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
-        this.intensityTarget = gearx.draggingTarget(mapped(gearx.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging);
-        this.intensityWatch = gearx.required(document.getElementById("intensity"));
-        this.hueWatch = gearx.required(document.getElementById("hue"));
-        this.saturationWatch = gearx.required(document.getElementById("saturation"));
-        this.centerWatch = gearx.required(document.getElementById("center"));
-        this.scaleWatch = gearx.required(document.getElementById("scale"));
-        this.posWatch = gearx.required(document.getElementById("clickPos"));
+        this.moveTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Move(this.mandelbrotView));
+        this.zoomTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Zoom(this.mandelbrotView));
+        this.colorTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
+        this.intensityTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging);
+        this.intensityWatch = gear.loops.required(document.getElementById("intensity"));
+        this.hueWatch = gear.loops.required(document.getElementById("hue"));
+        this.saturationWatch = gear.loops.required(document.getElementById("saturation"));
+        this.centerWatch = gear.loops.required(document.getElementById("center"));
+        this.scaleWatch = gear.loops.required(document.getElementById("scale"));
+        this.posWatch = gear.loops.required(document.getElementById("clickPos"));
         this.watchesUpdate = new gear.DeferredComputation(() => {
             this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9);
             this.scaleWatch.innerText = toFixed(this.mandelbrotView.scale, 9);
@@ -46,7 +45,7 @@ class Toy {
     static loop() {
         return __awaiter(this, void 0, void 0, function* () {
             const mandelbrotView = yield view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2);
-            return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor);
+            return gear.loops.newLoop(new Toy(mandelbrotView), Toy.descriptor);
         });
     }
     inputWiring(inputs) {

@@ -1,5 +1,4 @@
-import { aether } from '/gen/libs.js'
-import * as gear from '../utils/gear.js'
+import { aether, gear } from '/gen/libs.js'
 import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
 import { BodyDescriptionStruct, BodyStateStruct, Universe, UniverseLayout } from './universe.js'
@@ -20,7 +19,7 @@ export async function init() {
     loop.run()
 }
 
-class Toy implements gear.LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -85,7 +84,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
                 element: "freq-watch"
             }
         },
-    } satisfies gear.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
     
     private gravityDragging = this.draggingTarget("gravity", dragging.RatioDragging.dragger(1, 10000))
     private pointednessDragging = this.draggingTarget("pointedness", dragging.RatioDragging.dragger(0.001, 1000))
@@ -97,7 +96,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
     private constructor(private gpuCanvas: gpu.Canvas, private universe: Universe, private visuals: Visuals, private engine: Engine, private renderer: Renderer) {    
     }
 
-    inputWiring(inputs: gear.LoopInputs<ToyDescriptor>, _: gear.LoopOutputs<ToyDescriptor>, controller: gear.LoopController): gear.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, _: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -119,7 +118,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gear.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.renderer.render(this.universe),
             canvases: {
@@ -156,11 +155,11 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
     get modelMatrix() { return this.visuals.modelMatrix }
     set modelMatrix(m: aether.Mat4) { this.visuals.modelMatrix = m }
 
-    private draggingTarget<K extends keyof this>(key: K, dragger: gear.Dragger<this[K]>): gear.DraggingTarget {
-        return gear.draggingTarget(gear.property(this, key), dragger)
+    private draggingTarget<K extends keyof this>(key: K, dragger: gear.loops.Dragger<this[K]>): gear.loops.DraggingTarget {
+        return gear.loops.draggingTarget(gear.loops.property(this, key), dragger)
     }
     
-    static async loop(): Promise<gear.Loop> {
+    static async loop(): Promise<gear.loops.Loop> {
         const device = await gpuDevice()
         const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4)
         const universeLayout = new UniverseLayout(device)
@@ -170,7 +169,7 @@ class Toy implements gear.LoopLogic<ToyDescriptor> {
         const engineLayout = new EngineLayout(universeLayout)
         const engine = await newEngine(engineLayout)
         const renderer = await newRenderer(device, canvas, visuals)
-        return gear.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor)
+        return gear.loops.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor)
     }
 
 }
@@ -238,7 +237,7 @@ function skewDown(x: number, s: number): number {
 }
 
 async function gpuDevice() {
-    const gpuStatus = gear.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

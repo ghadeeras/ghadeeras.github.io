@@ -7,8 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { aether } from '/gen/libs.js';
-import * as gear from '../utils/gear.js';
+import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
 import { UniverseLayout } from './universe.js';
@@ -89,7 +88,7 @@ class Toy {
     get modelMatrix() { return this.visuals.modelMatrix; }
     set modelMatrix(m) { this.visuals.modelMatrix = m; }
     draggingTarget(key, dragger) {
-        return gear.draggingTarget(gear.property(this, key), dragger);
+        return gear.loops.draggingTarget(gear.loops.property(this, key), dragger);
     }
     static loop() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -102,7 +101,7 @@ class Toy {
             const engineLayout = new EngineLayout(universeLayout);
             const engine = yield newEngine(engineLayout);
             const renderer = yield newRenderer(device, canvas, visuals);
-            return gear.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor);
+            return gear.loops.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor);
         });
     }
 }
@@ -224,7 +223,7 @@ function skewDown(x, s) {
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

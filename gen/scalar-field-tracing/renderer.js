@@ -8,8 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import * as gear from "../utils/gear.js";
 import * as aether from "/aether/latest/index.js";
+import { fetchTextFile } from "/gear/latest/loops/misc.js";
 class FieldRenderer {
     constructor(shader, field, targetFormat) {
         this.shader = shader;
@@ -159,7 +159,7 @@ class FieldRenderer {
     }
     static create(field, targetFormat) {
         return __awaiter(this, void 0, void 0, function* () {
-            const shaderCode = yield gear.fetchTextFile("/shaders/field-renderer.wgsl");
+            const shaderCode = yield fetchTextFile("/shaders/field-renderer.wgsl");
             const shader = yield field.device.shaderModule("field-renderer", gpu.renderingShaders.fullScreenPass(shaderCode));
             return new FieldRenderer(shader, field, targetFormat);
         });

@@ -1,10 +1,8 @@
 import * as gpu from "../djee/gpu/index.js"
-import * as gear from "/gear/latest/index.js";
-import * as gearx from "../utils/gear.js";
 import * as dragging from "../utils/dragging.js"
 import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";
-import { aether } from "../libs.js";
+import { aether, gear } from "../libs.js";
 
 export const huds = {
     "monitor": "monitor-button"
@@ -12,13 +10,13 @@ export const huds = {
 
 export async function init() {
     const toy = await Toy.create()
-    const loop = gearx.newLoop(toy, Toy.descriptor)
+    const loop = gear.loops.newLoop(toy, Toy.descriptor)
     loop.run()
 }
 
 type ToyDescriptor = typeof Toy.descriptor
 
-class Toy implements gearx.LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -67,17 +65,17 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
 
-    readonly contourTarget = gearx.draggingTarget(mapped(gearx.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging)
-    readonly rotationDragging = gearx.draggingTarget(gearx.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4))
-    readonly matrixDragging = gearx.draggingTarget(gearx.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
-    readonly scaleDragging = gearx.draggingTarget(gearx.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5))
+    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4))
+    readonly matrixDragging = gear.loops.draggingTarget(gear.loops.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
+    readonly scaleDragging = gear.loops.draggingTarget(gear.loops.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5))
 
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
     private resampling = new gear.DeferredComputation(() => this.fieldSampler.sample())
-    private lodElement = gearx.required(document.getElementById("lod"))
+    private lodElement = gear.loops.required(document.getElementById("lod"))
 
     constructor(private canvas: gpu.Canvas, private fieldRenderer: FieldRenderer, private fieldSampler: FieldSampler) {
         this.changeDepth(0)
@@ -120,7 +118,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         this.lodElement.innerText = this.fieldSampler.depth.toFixed(0)
     }
 
-    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         const v = 0.01
         return {
             keys: {
@@ -139,7 +137,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             canvases: {
                 scene: {
@@ -167,7 +165,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 }
 
 async function gpuDevice() {
-    const gpuStatus = gearx.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"
@@ -178,7 +176,7 @@ async function gpuDevice() {
     }
 }
 
-function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

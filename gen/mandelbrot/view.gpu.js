@@ -7,8 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { gear } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
-import { fetchTextFile } from "../utils/gear.js";
 export class ViewGPU {
     constructor(device, canvasId, shaderModule, center, scale) {
         this.device = device;
@@ -110,7 +110,7 @@ export class ViewGPU {
 export function viewGPU(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();
-        const code = yield fetchTextFile("/shaders/mandelbrot.wgsl");
+        const code = yield gear.loops.fetchTextFile("/shaders/mandelbrot.wgsl");
         const shaderModule = yield device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
         return new ViewGPU(device, canvasId, shaderModule, center, scale);
     });

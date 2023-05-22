@@ -12,7 +12,6 @@ import { gltf } from "../djee/index.js";
 import { Carving } from "./carving.js";
 import * as v from "../scalar-field/view.js";
 import * as dragging from "../utils/dragging.js";
-import * as gearx from "../utils/gear.js";
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting";
 export const video = "https://youtu.be/eeZ6qSAXo2o";
@@ -29,7 +28,7 @@ export function init() {
         stone.sampler = field;
         stone.contourValue = 0.5;
         const toy = new Toy(stone, scalarFieldModule, view, picker);
-        const loop = gearx.newLoop(toy, Toy.descriptor);
+        const loop = gear.loops.newLoop(toy, Toy.descriptor);
         loop.run();
     });
 }
@@ -39,15 +38,15 @@ class Toy {
         this.scalarFieldModule = scalarFieldModule;
         this.view = view;
         this.picker = picker;
-        this.rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.focalLengthDragging = gearx.draggingTarget(gearx.property(this, "focalLength"), dragging.RatioDragging.dragger());
-        this.lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
-        this.lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.lodElement = gearx.required(document.getElementById("lod"));
+        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this, "focalLength"), dragging.RatioDragging.dragger());
+        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
+        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.lodElement = gear.loops.required(document.getElementById("lod"));
         this.lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices);
         this.carving = new Carving(this.stone, () => modelViewProjectionMatrixOf(view), picker, scalarFieldModule, brush);
-        this.carvingTarget = gearx.draggingTarget(gearx.property(this, "currentStone"), this.carving);
+        this.carvingTarget = gear.loops.draggingTarget(gear.loops.property(this, "currentStone"), this.carving);
         this.dropOn(view.canvas);
         view.matView = viewMatrix;
         view.focalLength = 4;
@@ -122,12 +121,12 @@ class Toy {
     }
     exportModel() {
         const model = gltf.createModel("Model", this.stone.vertices);
-        gearx.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`);
-        gearx.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`);
+        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`);
+        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`);
     }
     saveModel() {
         const buffer = this.serializeStone();
-        gearx.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`);
+        gear.loops.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`);
     }
     toLightPosition(pos) {
         const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);
@@ -280,7 +279,7 @@ function data(e) {
         if (e.dataTransfer) {
             const item = e.dataTransfer.items[0];
             return item.kind == 'file' ?
-                gearx.required(item.getAsFile()).arrayBuffer() :
+                gear.loops.required(item.getAsFile()).arrayBuffer() :
                 asURL(item).then(fetch).then(response => response.arrayBuffer());
         }
         else {

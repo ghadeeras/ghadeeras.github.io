@@ -1,6 +1,5 @@
 import * as gpu from "../djee/gpu/index.js"
-import * as aether from "/aether/latest/index.js"
-import * as gearx from "../utils/gear.js"
+import { aether, gear } from "../libs.js"
 import { RotationDragging } from "../utils/dragging.js"
 import { Stacker } from "./stacker.js"
 import { Tracer, VolumeStruct } from "./tracer.js"
@@ -21,7 +20,7 @@ export async function init() {
 
 type ToyDescriptor = typeof Toy.descriptor
 
-class Toy implements gearx.LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -99,7 +98,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
 
     private _minLayersOnly = false
     private _denoising = true  
@@ -110,34 +109,34 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     private changingView = false
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
-    private readonly samplesPerPixelElement = gearx.required(document.getElementById("spp"))
-    private readonly layersCountElement = gearx.required(document.getElementById("layers"))
-    private readonly maxLayersCountElement = gearx.required(document.getElementById("max-layers"))
-    private readonly denoisingElement = gearx.required(document.getElementById("denoising"))
+    private readonly samplesPerPixelElement = gear.loops.required(document.getElementById("spp"))
+    private readonly layersCountElement = gear.loops.required(document.getElementById("layers"))
+    private readonly maxLayersCountElement = gear.loops.required(document.getElementById("max-layers"))
+    private readonly denoisingElement = gear.loops.required(document.getElementById("denoising"))
 
     constructor(readonly canvas: gpu.Canvas, private tracer: Tracer, private denoiser: Denoiser, private stacker: Stacker, private scene: Scene) {
-        this.samplesPerPixel = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent))
-        this.layersCount = Number.parseInt(gearx.required(this.samplesPerPixelElement.textContent))
-        this.minLayersOnly = gearx.required(this.maxLayersCountElement.textContent) != "256"
-        this.denoising = gearx.required(this.denoisingElement.textContent).toLowerCase() == "on"
+        this.samplesPerPixel = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent))
+        this.layersCount = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent))
+        this.minLayersOnly = gear.loops.required(this.maxLayersCountElement.textContent) != "256"
+        this.denoising = gear.loops.required(this.denoisingElement.textContent).toLowerCase() == "on"
         tracer.position = [36, 36, 36]
     }
 
-    static async loop(): Promise<gearx.Loop> {
+    static async loop(): Promise<gear.loops.Loop> {
         const scene = buildScene()
         const device = await gpuDevice()
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
         const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float")
         const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format)
         const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format)
-        return gearx.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor)
+        return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor)
     }
 
-    inputWiring(_: gearx.LoopInputs<ToyDescriptor>, outputs: gearx.LoopOutputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(_: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gearx.draggingTarget(gearx.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.loops.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
                 }
             },
             keys: {
@@ -190,7 +189,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.render(),
         }
@@ -347,7 +346,7 @@ function timeDistance(v1: VolumeStruct, v2: VolumeStruct, velocity: aether.Vec3)
 }
 
 async function gpuDevice() {
-    const gpuStatus = gearx.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

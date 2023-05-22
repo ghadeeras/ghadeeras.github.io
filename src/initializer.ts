@@ -1,4 +1,4 @@
-import { required } from "./utils/gear-misc.js"
+import { required } from "/gear/latest/loops/misc.js"
 
 export type Toy = {
     gitHubRepo: string | null

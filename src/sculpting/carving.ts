@@ -1,10 +1,9 @@
 import { aether, gear } from "/gen/libs.js"
 import { Picker } from "../scalar-field/view.js";
-import * as gearx from "../utils/gear.js"
 
 const weights = [0.5, 1, 0.5]
 
-export class Carving implements gearx.Dragger<aether.ScalarFieldInstance> {
+export class Carving implements gear.loops.Dragger<aether.ScalarFieldInstance> {
 
     private spareStone: aether.ScalarFieldInstance
     private readonly brushes: aether.ScalarFieldInstance[] = []
@@ -62,7 +61,7 @@ export class Carving implements gearx.Dragger<aether.ScalarFieldInstance> {
         return newStone
     }
 
-    begin(stone: aether.ScalarFieldInstance, from: gear.PointerPosition): gearx.DraggingFunction<aether.ScalarFieldInstance> {
+    begin(stone: aether.ScalarFieldInstance, from: gear.PointerPosition): gear.loops.DraggingFunction<aether.ScalarFieldInstance> {
         const newStone = recycle(this.spareStone, stone)
         this.spareStone = stone
 

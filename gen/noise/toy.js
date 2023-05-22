@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import * as misc from "../utils/gear-misc.js";
+import { FrequencyMeter, required } from "/gear/latest/loops/misc.js";
 export function init() {
     window.onload = doInit;
 }
@@ -35,7 +35,7 @@ function doInit() {
         const uniformsBuffer = createUniformsBuffer(device);
         const clockBuffer = createClockBuffer(device);
         const bindGroup = device.bindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer, clockBuffer]);
-        const samplesPerPixelElement = misc.required(document.getElementById("spp"));
+        const samplesPerPixelElement = required(document.getElementById("spp"));
         window.onkeyup = e => {
             const key = e.key.toLowerCase();
             if ('0' <= key && key <= '9') {
@@ -54,8 +54,8 @@ function doInit() {
                 });
             });
         };
-        const freqWatch = misc.required(document.getElementById("freq-watch"));
-        const freqMeter = new misc.FrequencyMeter(1000, freq => freqWatch.innerText = freq.toPrecision(4));
+        const freqWatch = required(document.getElementById("freq-watch"));
+        const freqMeter = new FrequencyMeter(1000, freq => freqWatch.innerText = freq.toPrecision(4));
         const frame = (t) => {
             draw();
             requestAnimationFrame(frame);
@@ -66,7 +66,7 @@ function doInit() {
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = misc.required(document.getElementById("gpu-status"));
+        const gpuStatus = required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

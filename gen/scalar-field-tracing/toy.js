@@ -8,19 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import * as gpu from "../djee/gpu/index.js";
-import * as gear from "/gear/latest/index.js";
-import * as gearx from "../utils/gear.js";
 import * as dragging from "../utils/dragging.js";
 import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";
-import { aether } from "../libs.js";
+import { aether, gear } from "../libs.js";
 export const huds = {
     "monitor": "monitor-button"
 };
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
         const toy = yield Toy.create();
-        const loop = gearx.newLoop(toy, Toy.descriptor);
+        const loop = gear.loops.newLoop(toy, Toy.descriptor);
         loop.run();
     });
 }
@@ -29,13 +27,13 @@ class Toy {
         this.canvas = canvas;
         this.fieldRenderer = fieldRenderer;
         this.fieldSampler = fieldSampler;
-        this.contourTarget = gearx.draggingTarget(mapped(gearx.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging);
-        this.rotationDragging = gearx.draggingTarget(gearx.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4));
-        this.matrixDragging = gearx.draggingTarget(gearx.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
-        this.scaleDragging = gearx.draggingTarget(gearx.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
+        this.contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging);
+        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4));
+        this.matrixDragging = gear.loops.draggingTarget(gear.loops.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
+        this.scaleDragging = gear.loops.draggingTarget(gear.loops.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
         this.speeds = [[0, 0], [0, 0], [0, 0]];
         this.resampling = new gear.DeferredComputation(() => this.fieldSampler.sample());
-        this.lodElement = gearx.required(document.getElementById("lod"));
+        this.lodElement = gear.loops.required(document.getElementById("lod"));
         this.changeDepth(0);
     }
     static create() {
@@ -162,7 +160,7 @@ Toy.descriptor = {
 };
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gearx.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

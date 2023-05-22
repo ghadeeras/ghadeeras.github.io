@@ -1,5 +1,4 @@
 import { aether, gear } from "/gen/libs.js";
-import * as gearx from "../utils/gear.js"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";
@@ -36,7 +35,7 @@ export async function init(wires: boolean = false) {
 
 type ToyDescriptor = typeof GLTFToy.descriptor
 
-class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
+class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -105,20 +104,20 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
     
-    private readonly modelNameElement = gearx.required(document.getElementById("model-name"))
-    private readonly statusElement = gearx.required(document.getElementById("status"))
+    private readonly modelNameElement = gear.loops.required(document.getElementById("model-name"))
+    private readonly statusElement = gear.loops.required(document.getElementById("status"))
 
-    readonly rotationDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly translationDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly scaleDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
-    readonly zoomDragging = gearx.draggingTarget(gearx.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
-    readonly colorDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
-    readonly lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly translationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly scaleDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
+    readonly zoomDragging = gear.loops.draggingTarget(gear.loops.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
+    readonly colorDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     private _modelIndex = 0
 
@@ -131,7 +130,7 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
         this.view.lightRadius = 0.005
     }
 
-    static async loop(wires: boolean): Promise<gearx.Loop> {
+    static async loop(wires: boolean): Promise<gear.loops.Loop> {
         const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json")
         const models: [string, string][] = (await modelIndexResponse.json() as ModelIndexEntry[])
             .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`])
@@ -145,10 +144,10 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
         const viewFactory = await newViewFactory("canvas", wires)
         const view = viewFactory()
     
-        return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor)
+        return gear.loops.newLoop(new GLTFToy(models, view), GLTFToy.descriptor)
     }
 
-    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging }
@@ -169,7 +168,7 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.view.draw(),
             canvases: {
@@ -222,7 +221,7 @@ class GLTFToy implements gearx.LoopLogic<ToyDescriptor> {
     
 }
 
-function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

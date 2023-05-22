@@ -3,7 +3,6 @@ import { gltf } from "../djee/index.js"
 import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
-import * as gearx from "../utils/gear.js"
 
 const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 
@@ -24,13 +23,13 @@ export async function init() {
     stone.contourValue = 0.5
 
     const toy = new Toy(stone, scalarFieldModule, view, picker)
-    const loop = gearx.newLoop(toy, Toy.descriptor)
+    const loop = gear.loops.newLoop(toy, Toy.descriptor)
     loop.run()
 }
 
 type ToyDescriptor = typeof Toy.descriptor
 
-class Toy implements gearx.LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -99,18 +98,18 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
 
-    readonly carvingTarget: gearx.DraggingTarget
-    readonly rotationDragging = gearx.draggingTarget(gearx.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly focalLengthDragging = gearx.draggingTarget(gearx.property(this, "focalLength"), dragging.RatioDragging.dragger())
-    readonly lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly carvingTarget: gear.loops.DraggingTarget
+    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     readonly carving: Carving
 
-    private lodElement = gearx.required(document.getElementById("lod")) 
+    private lodElement = gear.loops.required(document.getElementById("lod")) 
 
     private lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices)
 
@@ -122,7 +121,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
             scalarFieldModule, 
             brush
         )
-        this.carvingTarget = gearx.draggingTarget(gearx.property(this, "currentStone"), this.carving)
+        this.carvingTarget = gear.loops.draggingTarget(gear.loops.property(this, "currentStone"), this.carving)
 
         this.dropOn(view.canvas)
 
@@ -138,7 +137,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         this.currentStone = stone
     }
 
-    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging },
@@ -159,7 +158,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.view.render(),
             canvases: {
@@ -214,13 +213,13 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
     exportModel() {
         const model = gltf.createModel("Model", this.stone.vertices)
 
-        gearx.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
-        gearx.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
+        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
+        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
     }
 
     saveModel() {
         const buffer = this.serializeStone()
-        gearx.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
+        gear.loops.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
     }
 
     toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
@@ -312,7 +311,7 @@ async function data(e: DragEvent): Promise<ArrayBuffer> {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
         return item.kind == 'file' ?
-            gearx.required(item.getAsFile()).arrayBuffer() :
+            gear.loops.required(item.getAsFile()).arrayBuffer() :
             asURL(item).then(fetch).then(response => response.arrayBuffer())
     } else {
         return Promise.reject("Not a data transfer!")
@@ -373,7 +372,7 @@ function brush(x: number, y: number, z: number): aether.Vec<4> {
     ]
 }
 
-function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

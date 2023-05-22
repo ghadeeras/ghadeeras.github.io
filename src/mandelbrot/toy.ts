@@ -1,4 +1,3 @@
-import * as gearx from "../utils/gear.js"
 import { aether, gear } from "/gen/libs.js"
 import { view, View } from "./view.js"
 import { positionDragging } from "../utils/dragging.js"
@@ -17,7 +16,7 @@ export async function init() {
 
 type ToyDescriptor = typeof Toy.descriptor
 
-class Toy implements gearx.LoopLogic<ToyDescriptor> {
+class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
         input: {
@@ -70,19 +69,19 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
                 pressedButton: "pressed"
             },
         },
-    } satisfies gearx.LoopDescriptor
+    } satisfies gear.loops.LoopDescriptor
     
-    readonly moveTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Move(this.mandelbrotView))
-    readonly zoomTarget = gearx.draggingTarget(gearx.property(this, "transformation"), new Zoom(this.mandelbrotView))
-    readonly colorTarget = gearx.draggingTarget(mapped(gearx.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
-    readonly intensityTarget = gearx.draggingTarget(mapped(gearx.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging)
+    readonly moveTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Move(this.mandelbrotView))
+    readonly zoomTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Zoom(this.mandelbrotView))
+    readonly colorTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
+    readonly intensityTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging)
 
-    readonly intensityWatch = gearx.required(document.getElementById("intensity"))
-    readonly hueWatch = gearx.required(document.getElementById("hue"))
-    readonly saturationWatch = gearx.required(document.getElementById("saturation"))
-    readonly centerWatch = gearx.required(document.getElementById("center"))
-    readonly scaleWatch = gearx.required(document.getElementById("scale"))
-    readonly posWatch = gearx.required(document.getElementById("clickPos"))
+    readonly intensityWatch = gear.loops.required(document.getElementById("intensity"))
+    readonly hueWatch = gear.loops.required(document.getElementById("hue"))
+    readonly saturationWatch = gear.loops.required(document.getElementById("saturation"))
+    readonly centerWatch = gear.loops.required(document.getElementById("center"))
+    readonly scaleWatch = gear.loops.required(document.getElementById("scale"))
+    readonly posWatch = gear.loops.required(document.getElementById("clickPos"))
 
     private watchesUpdate = new gear.DeferredComputation(() => {
         this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9)
@@ -94,12 +93,12 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
 
     constructor(readonly mandelbrotView: View) {}
 
-    static async loop(): Promise<gearx.Loop> {
+    static async loop(): Promise<gear.loops.Loop> {
         const mandelbrotView = await view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2)
-        return gearx.newLoop(new Toy(mandelbrotView), Toy.descriptor)
+        return gear.loops.newLoop(new Toy(mandelbrotView), Toy.descriptor)
     }
 
-    inputWiring(inputs: gearx.LoopInputs<ToyDescriptor>): gearx.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -119,7 +118,7 @@ class Toy implements gearx.LoopLogic<ToyDescriptor> {
         }
     }
 
-    outputWiring(): gearx.LoopOutputWiring<ToyDescriptor> {
+    outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.mandelbrotView.render(),
             canvases: {
@@ -227,7 +226,7 @@ type Transformation = {
     center: aether.Vec<2>
 }
 
-class Zoom implements gearx.Dragger<Transformation> {
+class Zoom implements gear.loops.Dragger<Transformation> {
 
     constructor(private view: View) {
     }
@@ -262,7 +261,7 @@ class Zoom implements gearx.Dragger<Transformation> {
 
 }
 
-class Move implements gearx.Dragger<Transformation> {
+class Move implements gear.loops.Dragger<Transformation> {
 
     constructor(private view: View) {
     }
@@ -302,7 +301,7 @@ function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, 
     )
 }
 
-function mapped<A>(property: gearx.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gearx.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

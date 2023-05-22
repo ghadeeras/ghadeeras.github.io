@@ -7,8 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { aether } from "/gen/libs.js";
-import * as gearx from "../utils/gear.js";
+import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
@@ -33,17 +32,17 @@ class GLTFToy {
     constructor(models, view) {
         this.models = models;
         this.view = view;
-        this.modelNameElement = gearx.required(document.getElementById("model-name"));
-        this.statusElement = gearx.required(document.getElementById("status"));
-        this.rotationDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.translationDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.scaleDragging = gearx.draggingTarget(gearx.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
-        this.zoomDragging = gearx.draggingTarget(gearx.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
-        this.colorDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
-        this.lightPositionDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
-        this.lightRadiusDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.shininessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.fogginessDragging = gearx.draggingTarget(mapped(gearx.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.modelNameElement = gear.loops.required(document.getElementById("model-name"));
+        this.statusElement = gear.loops.required(document.getElementById("status"));
+        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.translationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.scaleDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
+        this.zoomDragging = gear.loops.draggingTarget(gear.loops.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
+        this.colorDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
+        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
+        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._modelIndex = 0;
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];
@@ -60,7 +59,7 @@ class GLTFToy {
             models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
             const viewFactory = yield newViewFactory("canvas", wires);
             const view = viewFactory();
-            return gearx.newLoop(new GLTFToy(models, view), GLTFToy.descriptor);
+            return gear.loops.newLoop(new GLTFToy(models, view), GLTFToy.descriptor);
         });
     }
     inputWiring(inputs) {
