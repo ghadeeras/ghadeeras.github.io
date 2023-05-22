@@ -8,12 +8,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { wgl } from "../djee/index.js";
-import { fetchTextFile, required } from "/gear/latest/loops/misc.js";
+import { gear } from "../libs.js";
 const mySketch = new Image();
 export function init() {
     return __awaiter(this, void 0, void 0, function* () {
         const vertexShaderCode = wgl.vertexShaders.fullScreenPass;
-        const fragmentShaderCode = yield fetchTextFile("/shaders/home.frag");
+        const fragmentShaderCode = yield gear.fetchTextFile("/shaders/home.frag");
         const context = wgl.Context.of("canvas");
         const vertexShader = context.shader(wgl.ShaderType.VertexShader, vertexShaderCode);
         const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, wgl.fragmentShaders.fullScreenPass(fragmentShaderCode));
@@ -100,7 +100,7 @@ function loadImage(e, effect) {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0];
         if (item.kind == 'file') {
-            const url = URL.createObjectURL(required(item.getAsFile()));
+            const url = URL.createObjectURL(gear.required(item.getAsFile()));
             mySketch.src = url;
         }
         else {

@@ -40,14 +40,14 @@ class Toy {
         this.animating = false;
         this.changingView = false;
         this.speeds = [[0, 0], [0, 0], [0, 0]];
-        this.samplesPerPixelElement = gear.loops.required(document.getElementById("spp"));
-        this.layersCountElement = gear.loops.required(document.getElementById("layers"));
-        this.maxLayersCountElement = gear.loops.required(document.getElementById("max-layers"));
-        this.denoisingElement = gear.loops.required(document.getElementById("denoising"));
-        this.samplesPerPixel = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent));
-        this.layersCount = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent));
-        this.minLayersOnly = gear.loops.required(this.maxLayersCountElement.textContent) != "256";
-        this.denoising = gear.loops.required(this.denoisingElement.textContent).toLowerCase() == "on";
+        this.samplesPerPixelElement = gear.required(document.getElementById("spp"));
+        this.layersCountElement = gear.required(document.getElementById("layers"));
+        this.maxLayersCountElement = gear.required(document.getElementById("max-layers"));
+        this.denoisingElement = gear.required(document.getElementById("denoising"));
+        this.samplesPerPixel = Number.parseInt(gear.required(this.samplesPerPixelElement.textContent));
+        this.layersCount = Number.parseInt(gear.required(this.samplesPerPixelElement.textContent));
+        this.minLayersOnly = gear.required(this.maxLayersCountElement.textContent) != "256";
+        this.denoising = gear.required(this.denoisingElement.textContent).toLowerCase() == "on";
         tracer.position = [36, 36, 36];
     }
     static loop() {
@@ -65,7 +65,7 @@ class Toy {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.loops.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
                 }
             },
             keys: {
@@ -327,7 +327,7 @@ function timeDistance(v1, v2, velocity) {
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

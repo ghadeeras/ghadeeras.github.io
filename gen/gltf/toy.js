@@ -32,17 +32,17 @@ class GLTFToy {
     constructor(models, view) {
         this.models = models;
         this.view = view;
-        this.modelNameElement = gear.loops.required(document.getElementById("model-name"));
-        this.statusElement = gear.loops.required(document.getElementById("status"));
-        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.translationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.scaleDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
-        this.zoomDragging = gear.loops.draggingTarget(gear.loops.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
-        this.colorDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
-        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
-        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.modelNameElement = gear.required(document.getElementById("model-name"));
+        this.statusElement = gear.required(document.getElementById("status"));
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
+        this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
+        this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
+        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
+        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._modelIndex = 0;
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];

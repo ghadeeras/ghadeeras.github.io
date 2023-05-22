@@ -86,7 +86,7 @@ export class ViewGL {
 }
 export function viewGL(canvasId, center, scale) {
     return __awaiter(this, void 0, void 0, function* () {
-        const shader = yield gear.loops.fetchTextFile("/shaders/mandelbrot.frag");
+        const shader = yield gear.fetchTextFile("/shaders/mandelbrot.frag");
         const vertexShader = wgl.vertexShaders.fullScreenPass;
         const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
         return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale);

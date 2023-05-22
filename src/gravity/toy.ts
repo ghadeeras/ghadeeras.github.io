@@ -156,7 +156,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     set modelMatrix(m: aether.Mat4) { this.visuals.modelMatrix = m }
 
     private draggingTarget<K extends keyof this>(key: K, dragger: gear.loops.Dragger<this[K]>): gear.loops.DraggingTarget {
-        return gear.loops.draggingTarget(gear.loops.property(this, key), dragger)
+        return gear.loops.draggingTarget(gear.property(this, key), dragger)
     }
     
     static async loop(): Promise<gear.loops.Loop> {
@@ -237,7 +237,7 @@ function skewDown(x: number, s: number): number {
 }
 
 async function gpuDevice() {
-    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

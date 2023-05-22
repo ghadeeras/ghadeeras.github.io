@@ -1,4 +1,4 @@
-import { required } from "/gear/latest/loops/misc.js";
+import { required } from "/gear/latest/index.js";
 let currentHudId = null;
 export default function init(toy) {
     window.onload = () => {

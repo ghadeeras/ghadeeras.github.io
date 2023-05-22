@@ -24,16 +24,16 @@ export function init() {
 class Toy {
     constructor(mandelbrotView) {
         this.mandelbrotView = mandelbrotView;
-        this.moveTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Move(this.mandelbrotView));
-        this.zoomTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Zoom(this.mandelbrotView));
-        this.colorTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
-        this.intensityTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging);
-        this.intensityWatch = gear.loops.required(document.getElementById("intensity"));
-        this.hueWatch = gear.loops.required(document.getElementById("hue"));
-        this.saturationWatch = gear.loops.required(document.getElementById("saturation"));
-        this.centerWatch = gear.loops.required(document.getElementById("center"));
-        this.scaleWatch = gear.loops.required(document.getElementById("scale"));
-        this.posWatch = gear.loops.required(document.getElementById("clickPos"));
+        this.moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(this.mandelbrotView));
+        this.zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(this.mandelbrotView));
+        this.colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
+        this.intensityTarget = gear.loops.draggingTarget(mapped(gear.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging);
+        this.intensityWatch = gear.required(document.getElementById("intensity"));
+        this.hueWatch = gear.required(document.getElementById("hue"));
+        this.saturationWatch = gear.required(document.getElementById("saturation"));
+        this.centerWatch = gear.required(document.getElementById("center"));
+        this.scaleWatch = gear.required(document.getElementById("scale"));
+        this.posWatch = gear.required(document.getElementById("clickPos"));
         this.watchesUpdate = new gear.DeferredComputation(() => {
             this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9);
             this.scaleWatch.innerText = toFixed(this.mandelbrotView.scale, 9);

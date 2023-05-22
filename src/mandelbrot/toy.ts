@@ -71,17 +71,17 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
     
-    readonly moveTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Move(this.mandelbrotView))
-    readonly zoomTarget = gear.loops.draggingTarget(gear.loops.property(this, "transformation"), new Zoom(this.mandelbrotView))
-    readonly colorTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
-    readonly intensityTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging)
+    readonly moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(this.mandelbrotView))
+    readonly zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(this.mandelbrotView))
+    readonly colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
+    readonly intensityTarget = gear.loops.draggingTarget(mapped(gear.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging)
 
-    readonly intensityWatch = gear.loops.required(document.getElementById("intensity"))
-    readonly hueWatch = gear.loops.required(document.getElementById("hue"))
-    readonly saturationWatch = gear.loops.required(document.getElementById("saturation"))
-    readonly centerWatch = gear.loops.required(document.getElementById("center"))
-    readonly scaleWatch = gear.loops.required(document.getElementById("scale"))
-    readonly posWatch = gear.loops.required(document.getElementById("clickPos"))
+    readonly intensityWatch = gear.required(document.getElementById("intensity"))
+    readonly hueWatch = gear.required(document.getElementById("hue"))
+    readonly saturationWatch = gear.required(document.getElementById("saturation"))
+    readonly centerWatch = gear.required(document.getElementById("center"))
+    readonly scaleWatch = gear.required(document.getElementById("scale"))
+    readonly posWatch = gear.required(document.getElementById("clickPos"))
 
     private watchesUpdate = new gear.DeferredComputation(() => {
         this.centerWatch.innerText = toFixedVec(this.mandelbrotView.center, 9)
@@ -301,7 +301,7 @@ function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, 
     )
 }
 
-function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

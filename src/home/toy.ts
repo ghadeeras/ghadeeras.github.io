@@ -1,11 +1,11 @@
 import { wgl } from "../djee/index.js"
-import { fetchTextFile, required } from "/gear/latest/loops/misc.js"
+import { gear } from "../libs.js"
 
 const mySketch = new Image()
 
 export async function init() {
     const vertexShaderCode = wgl.vertexShaders.fullScreenPass
-    const fragmentShaderCode = await fetchTextFile("/shaders/home.frag")
+    const fragmentShaderCode = await gear.fetchTextFile("/shaders/home.frag")
 
     const context = wgl.Context.of("canvas")
 
@@ -104,7 +104,7 @@ function loadImage(e: DragEvent, effect: wgl.Uniform) {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
         if (item.kind == 'file') {
-            const url = URL.createObjectURL(required(item.getAsFile()))
+            const url = URL.createObjectURL(gear.required(item.getAsFile()))
             mySketch.src = url
         } else {
             item.getAsString(url => {

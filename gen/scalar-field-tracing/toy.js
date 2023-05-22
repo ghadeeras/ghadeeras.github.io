@@ -27,13 +27,13 @@ class Toy {
         this.canvas = canvas;
         this.fieldRenderer = fieldRenderer;
         this.fieldSampler = fieldSampler;
-        this.contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging);
-        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4));
-        this.matrixDragging = gear.loops.draggingTarget(gear.loops.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
-        this.scaleDragging = gear.loops.draggingTarget(gear.loops.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
+        this.contourTarget = gear.loops.draggingTarget(mapped(gear.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging);
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4));
+        this.matrixDragging = gear.loops.draggingTarget(gear.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
+        this.scaleDragging = gear.loops.draggingTarget(gear.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
         this.speeds = [[0, 0], [0, 0], [0, 0]];
         this.resampling = new gear.DeferredComputation(() => this.fieldSampler.sample());
-        this.lodElement = gear.loops.required(document.getElementById("lod"));
+        this.lodElement = gear.required(document.getElementById("lod"));
         this.changeDepth(0);
     }
     static create() {
@@ -160,7 +160,7 @@ Toy.descriptor = {
 };
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

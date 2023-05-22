@@ -106,18 +106,18 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
     
-    private readonly modelNameElement = gear.loops.required(document.getElementById("model-name"))
-    private readonly statusElement = gear.loops.required(document.getElementById("status"))
+    private readonly modelNameElement = gear.required(document.getElementById("model-name"))
+    private readonly statusElement = gear.required(document.getElementById("status"))
 
-    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly translationDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly scaleDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
-    readonly zoomDragging = gear.loops.draggingTarget(gear.loops.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
-    readonly colorDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
-    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
+    readonly zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
+    readonly colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     private _modelIndex = 0
 
@@ -221,7 +221,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     
 }
 
-function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

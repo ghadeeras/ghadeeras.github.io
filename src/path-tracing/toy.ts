@@ -109,16 +109,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private changingView = false
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
-    private readonly samplesPerPixelElement = gear.loops.required(document.getElementById("spp"))
-    private readonly layersCountElement = gear.loops.required(document.getElementById("layers"))
-    private readonly maxLayersCountElement = gear.loops.required(document.getElementById("max-layers"))
-    private readonly denoisingElement = gear.loops.required(document.getElementById("denoising"))
+    private readonly samplesPerPixelElement = gear.required(document.getElementById("spp"))
+    private readonly layersCountElement = gear.required(document.getElementById("layers"))
+    private readonly maxLayersCountElement = gear.required(document.getElementById("max-layers"))
+    private readonly denoisingElement = gear.required(document.getElementById("denoising"))
 
     constructor(readonly canvas: gpu.Canvas, private tracer: Tracer, private denoiser: Denoiser, private stacker: Stacker, private scene: Scene) {
-        this.samplesPerPixel = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent))
-        this.layersCount = Number.parseInt(gear.loops.required(this.samplesPerPixelElement.textContent))
-        this.minLayersOnly = gear.loops.required(this.maxLayersCountElement.textContent) != "256"
-        this.denoising = gear.loops.required(this.denoisingElement.textContent).toLowerCase() == "on"
+        this.samplesPerPixel = Number.parseInt(gear.required(this.samplesPerPixelElement.textContent))
+        this.layersCount = Number.parseInt(gear.required(this.samplesPerPixelElement.textContent))
+        this.minLayersOnly = gear.required(this.maxLayersCountElement.textContent) != "256"
+        this.denoising = gear.required(this.denoisingElement.textContent).toLowerCase() == "on"
         tracer.position = [36, 36, 36]
     }
 
@@ -136,7 +136,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.loops.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2)))
                 }
             },
             keys: {
@@ -346,7 +346,7 @@ function timeDistance(v1: VolumeStruct, v2: VolumeStruct, velocity: aether.Vec3)
 }
 
 async function gpuDevice() {
-    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"

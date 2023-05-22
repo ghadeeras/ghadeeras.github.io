@@ -119,7 +119,7 @@ export class ViewGL implements View {
 } 
 
 export async function viewGL(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
-    const shader = await gear.loops.fetchTextFile("/shaders/mandelbrot.frag")
+    const shader = await gear.fetchTextFile("/shaders/mandelbrot.frag")
     const vertexShader = wgl.vertexShaders.fullScreenPass
     const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader)
     return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale)

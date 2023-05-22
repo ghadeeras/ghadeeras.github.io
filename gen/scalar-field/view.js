@@ -7,9 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { gear } from "/gen/libs.js";
 import * as glView from './view.gl.js';
 import * as gpuView from './view.gpu.js';
-import { required } from "/gear/latest/loops/misc.js";
 export function wire(view, inputs, primitives = WebGL2RenderingContext.TRIANGLES) {
     inputs.matModel.attach(mat => view.setMatModel(mat, mat));
     inputs.matView.attach(mat => view.matView = mat);
@@ -23,7 +23,7 @@ export function wire(view, inputs, primitives = WebGL2RenderingContext.TRIANGLES
 }
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
-        const apiElement = required(document.getElementById("graphics-api"));
+        const apiElement = gear.required(document.getElementById("graphics-api"));
         try {
             const view = yield gpuView.newView(canvasId);
             apiElement.innerHTML = "WebGPU";

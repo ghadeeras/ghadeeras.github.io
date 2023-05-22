@@ -101,15 +101,15 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     } satisfies gear.loops.LoopDescriptor
 
     readonly carvingTarget: gear.loops.DraggingTarget
-    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this, "focalLength"), dragging.RatioDragging.dragger())
-    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gear.loops.draggingTarget(gear.property(this, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     readonly carving: Carving
 
-    private lodElement = gear.loops.required(document.getElementById("lod")) 
+    private lodElement = gear.required(document.getElementById("lod")) 
 
     private lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices)
 
@@ -121,7 +121,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             scalarFieldModule, 
             brush
         )
-        this.carvingTarget = gear.loops.draggingTarget(gear.loops.property(this, "currentStone"), this.carving)
+        this.carvingTarget = gear.loops.draggingTarget(gear.property(this, "currentStone"), this.carving)
 
         this.dropOn(view.canvas)
 
@@ -213,13 +213,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     exportModel() {
         const model = gltf.createModel("Model", this.stone.vertices)
 
-        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
-        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', `Model.gltf`)
+        gear.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', `Model.bin`)
     }
 
     saveModel() {
         const buffer = this.serializeStone()
-        gear.loops.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
+        gear.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
     }
 
     toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
@@ -311,7 +311,7 @@ async function data(e: DragEvent): Promise<ArrayBuffer> {
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0]
         return item.kind == 'file' ?
-            gear.loops.required(item.getAsFile()).arrayBuffer() :
+            gear.required(item.getAsFile()).arrayBuffer() :
             asURL(item).then(fetch).then(response => response.arrayBuffer())
     } else {
         return Promise.reject("Not a data transfer!")
@@ -372,7 +372,7 @@ function brush(x: number, y: number, z: number): aether.Vec<4> {
     ]
 }
 
-function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

@@ -2,7 +2,6 @@ import { aether, gear } from "../libs.js";
 import * as gpuView from "./view.gpu.js"
 import * as gpuWiresView from "./view.wires.gpu.js"
 import * as glView from "./view.gl.js"
-import { required } from "/gear/latest/loops/misc.js";
 
 export interface View {
 
@@ -35,7 +34,7 @@ export interface View {
 export type ViewFactory = () => View;
 
 export async function newViewFactory(canvasId: string, wires: boolean = false): Promise<ViewFactory> {
-    const apiElement = required(document.getElementById("graphics-api"))
+    const apiElement = gear.required(document.getElementById("graphics-api"))
     try {
         const view = wires ? await gpuWiresView.newViewFactory(canvasId) : await gpuView.newViewFactory(canvasId)
         apiElement.innerHTML = "WebGPU"

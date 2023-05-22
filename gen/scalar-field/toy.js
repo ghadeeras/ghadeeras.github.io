@@ -25,14 +25,14 @@ class Toy {
     constructor(view, scalarFieldInstance) {
         this.view = view;
         this.scalarFieldInstance = scalarFieldInstance;
-        this.contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging);
-        this.rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
-        this.focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "focalLength"), dragging.RatioDragging.dragger());
-        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
-        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.lodElement = gear.loops.required(document.getElementById("lod"));
+        this.contourTarget = gear.loops.draggingTarget(mapped(gear.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging);
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.focalLengthDragging = gear.loops.draggingTarget(gear.property(this.view, "focalLength"), dragging.RatioDragging.dragger());
+        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
+        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.lodElement = gear.required(document.getElementById("lod"));
         this.meshComputer = new gear.DeferredComputation(() => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, this.scalarFieldInstance.vertices));
         this._field = 0;
         view.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
@@ -132,9 +132,9 @@ class Toy {
     saveModel() {
         const model = gltf.createModel("ScalarField", this.scalarFieldInstance.vertices);
         const canvas = document.getElementById("canvas-gl");
-        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf');
-        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin');
-        gear.loops.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png');
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf');
+        gear.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin');
+        gear.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png');
     }
     toLightPosition(pos) {
         const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);

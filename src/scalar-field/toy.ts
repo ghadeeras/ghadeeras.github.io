@@ -90,15 +90,15 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
 
-    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
-    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
-    readonly focalLengthDragging = gear.loops.draggingTarget(gear.loops.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
-    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.loops.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly focalLengthDragging = gear.loops.draggingTarget(gear.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
+    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
-    private lodElement = gear.loops.required(document.getElementById("lod")) 
+    private lodElement = gear.required(document.getElementById("lod")) 
     private meshComputer: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, this.scalarFieldInstance.vertices))
 
     private _field = 0
@@ -215,9 +215,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const model = gltf.createModel("ScalarField", this.scalarFieldInstance.vertices)
         const canvas = document.getElementById("canvas-gl") as HTMLCanvasElement
 
-        gear.loops.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf')
-        gear.loops.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin')
-        gear.loops.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(model.model)])), 'text/json', 'ScalarField.gltf')
+        gear.save(URL.createObjectURL(new Blob([model.binary])), 'application/gltf-buffer', 'ScalarField.bin')
+        gear.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
     }
 
     toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
@@ -277,7 +277,7 @@ function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
     }
 }
 
-function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],

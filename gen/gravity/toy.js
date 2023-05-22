@@ -88,7 +88,7 @@ class Toy {
     get modelMatrix() { return this.visuals.modelMatrix; }
     set modelMatrix(m) { this.visuals.modelMatrix = m; }
     draggingTarget(key, dragger) {
-        return gear.loops.draggingTarget(gear.loops.property(this, key), dragger);
+        return gear.loops.draggingTarget(gear.property(this, key), dragger);
     }
     static loop() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -223,7 +223,7 @@ function skewDown(x, s) {
 }
 function gpuDevice() {
     return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.loops.required(document.getElementById("gpu-status"));
+        const gpuStatus = gear.required(document.getElementById("gpu-status"));
         try {
             const device = yield gpu.Device.instance();
             gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";

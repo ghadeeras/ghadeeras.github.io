@@ -67,15 +67,15 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
 
-    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.loops.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging)
-    readonly rotationDragging = gear.loops.draggingTarget(gear.loops.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4))
-    readonly matrixDragging = gear.loops.draggingTarget(gear.loops.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
-    readonly scaleDragging = gear.loops.draggingTarget(gear.loops.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5))
+    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4))
+    readonly matrixDragging = gear.loops.draggingTarget(gear.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
+    readonly scaleDragging = gear.loops.draggingTarget(gear.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5))
 
     private speeds = [[0, 0], [0, 0], [0, 0]]
 
     private resampling = new gear.DeferredComputation(() => this.fieldSampler.sample())
-    private lodElement = gear.loops.required(document.getElementById("lod"))
+    private lodElement = gear.required(document.getElementById("lod"))
 
     constructor(private canvas: gpu.Canvas, private fieldRenderer: FieldRenderer, private fieldSampler: FieldSampler) {
         this.changeDepth(0)
@@ -165,7 +165,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 }
 
 async function gpuDevice() {
-    const gpuStatus = gear.loops.required(document.getElementById("gpu-status"))
+    const gpuStatus = gear.required(document.getElementById("gpu-status"))
     try {
         const device = await gpu.Device.instance()
         gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}"
@@ -176,7 +176,7 @@ async function gpuDevice() {
     }
 }
 
-function mapped<A>(property: gear.loops.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.loops.Property<gear.PointerPosition> {
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
     const pos: [gear.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
