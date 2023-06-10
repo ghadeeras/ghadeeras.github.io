@@ -1,5 +1,5 @@
-import { Device } from "./device"
-import { BindGroup, BindGroupLayout } from "./group"
+import { Device } from "./device.js"
+import { BindGroup, BindGroupLayout } from "./group.js"
 import { ShaderModule } from "./shader.js"
 
 export type PipelineLayoutEntry<L extends BindGroupLayout<any>> = {
@@ -49,8 +49,12 @@ export class ComputePipeline<L extends PipelineLayoutEntries> {
         this.wrapped = layout.device.device.createComputePipeline(this.descriptor)
     }
 
-    addTo(pass: GPUComputePassEncoder, groups: Partial<PipelineEntries<L>>) {
+    addTo(pass: GPUComputePassEncoder, groups: Partial<PipelineEntries<L>> = {}) {
         pass.setPipeline(this.wrapped)
+        this.addGroupsTo(pass, groups)
+    }
+
+    addGroupsTo(pass: GPUComputePassEncoder, groups: Partial<PipelineEntries<L>>) {
         for (const k of Object.keys(groups)) {
             const group = groups[k]
             if (group) {

@@ -39,11 +39,9 @@ export class Engine {
         });
     }
 }
-export function newEngine(engineLayout) {
+export function newEngine(engineLayout, workgroupSize) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = engineLayout.pipelineLayout.device;
-        const limits = device.device.limits;
-        const workgroupSize = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
         console.warn(`Workgroup Size: ${workgroupSize}`);
         const shaderModule = yield device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`));
         return engineLayout.instance(shaderModule, workgroupSize);

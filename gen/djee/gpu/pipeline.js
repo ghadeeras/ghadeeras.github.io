@@ -30,8 +30,11 @@ export class ComputePipeline {
         };
         this.wrapped = layout.device.device.createComputePipeline(this.descriptor);
     }
-    addTo(pass, groups) {
+    addTo(pass, groups = {}) {
         pass.setPipeline(this.wrapped);
+        this.addGroupsTo(pass, groups);
+    }
+    addGroupsTo(pass, groups) {
         for (const k of Object.keys(groups)) {
             const group = groups[k];
             if (group) {

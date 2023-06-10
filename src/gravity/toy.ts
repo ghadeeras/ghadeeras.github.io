@@ -2,9 +2,11 @@ import { aether, gear } from '/gen/libs.js'
 import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
 import { BodyDescriptionStruct, BodyStateStruct, Universe, UniverseLayout } from './universe.js'
-import { newRenderer, Renderer } from './renderer.js'
+import * as meshRenderer from './renderer.mesh.js'
+import * as pointsRenderer from './renderer.points.js'
 import { Engine, EngineLayout, newEngine } from './physics.js'
 import { Visuals, VisualsLayout } from './visuals.js'
+import { Renderer } from './renderer.js'
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
 export const video = "https://youtu.be/BrZm6LlOQlI"
@@ -69,6 +71,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     virtualKeys: "#control-4",
                     physicalKeys: [["Digit4"]],
                 },
+                nextRenderer: {
+                    virtualKeys: "#control-next-renderer",
+                    physicalKeys: [["ArrowRight"]]
+                },
+                prevRenderer: {
+                    virtualKeys: "#control-prev-renderer",
+                    physicalKeys: [["ArrowLeft"]]
+                },
             },
         },
         output: {
@@ -93,7 +103,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100))
     private rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix))
 
-    private constructor(private gpuCanvas: gpu.Canvas, private universe: Universe, private visuals: Visuals, private engine: Engine, private renderer: Renderer) {    
+    private currentRenderer = 0;
+
+    private constructor(private universe: Universe, private visuals: Visuals, private engine: Engine, private renderers: Renderer[]) {    
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, _: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -110,19 +122,21 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 radiusScale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.radiusScaleDragging },
                 gravity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.gravityDragging },
                 pointedness: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.pointednessDragging },
-                collapse: { onPressed: () => recreateCollapse(this.universe) },
-                kaboom: { onPressed: () => recreateKaboom(this.universe) },
-                reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
+                collapse: { onPressed: () => this.recreateCollapse() },
+                kaboom: { onPressed: () => this.recreateKaboom() },
+                reset: { onPressed: () => this.resetRendering() },
                 pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+                nextRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer + 1) % this.renderers.length },
+                prevRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer - 1) % this.renderers.length }
             },
         }
     }
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
-            onRender: () => this.renderer.render(this.universe),
+            onRender: () => this.renderers[this.currentRenderer].render(this.universe),
             canvases: {
-                scene: { onResize: () => this.renderer.resize() }
+                scene: { onResize: () => this.resize() }
             },
         }
     }
@@ -131,10 +145,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     get defaultDraggingTarget() {
         return this.rotationDragging
-    }
-
-    get element() {
-        return this.gpuCanvas.element
     }
 
     get gravity() { return this.universe.gravityConstant }
@@ -159,45 +169,56 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return gear.loops.draggingTarget(gear.property(this, key), dragger)
     }
     
+    private resize() {
+        this.renderers.forEach(r => r.resize())
+    }
+
+    private resetRendering() {
+        this.visuals.modelMatrix = aether.mat4.identity()
+        this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24])
+        this.visuals.radiusScale = 0.06
+        this.visuals.zoom = 1
+        this.resize()
+    }
+    
+    private recreateKaboom() {
+        this.universe.bodyPointedness = 5
+        this.universe.gravityConstant = 25
+        this.recreate(1)
+    }
+    
+    private recreateCollapse() {
+        this.universe.bodyPointedness = 0.1
+        this.universe.gravityConstant = 1000
+        this.recreate()
+    }
+    
+    private recreate(universeRadius = 12) {
+        const [bodyDescriptions, initialState] = createUniverse(this.universe.bodiesCount, universeRadius)
+        this.universe.bodyDescriptions = bodyDescriptions
+        this.universe.state = initialState
+    }
+    
     static async loop(): Promise<gear.loops.Loop> {
         const device = await gpuDevice()
-        const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4)
+        const limits = device.device.limits
+        const workgroupSize = Math.max(
+            limits.maxComputeWorkgroupSizeX,
+            limits.maxComputeWorkgroupSizeY,
+            limits.maxComputeWorkgroupSizeZ
+        )
+        const canvas = Toy.descriptor.input.pointers.canvas.element
         const universeLayout = new UniverseLayout(device)
-        const universe = universeLayout.instance(...createUniverse(16384))
+        const universe = universeLayout.instance(...createUniverse(64 * workgroupSize))
         const visualsLayout = new VisualsLayout(device)
         const visuals = visualsLayout.instance()
         const engineLayout = new EngineLayout(universeLayout)
-        const engine = await newEngine(engineLayout)
-        const renderer = await newRenderer(device, canvas, visuals)
-        return gear.loops.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor)
+        const engine = await newEngine(engineLayout, workgroupSize)
+        const renderer1 = await meshRenderer.newRenderer(device, canvas, visuals)
+        const renderer2 = await pointsRenderer.newRenderer(device, canvas, visuals)
+        return gear.loops.newLoop(new Toy(universe, visuals, engine, [renderer1, renderer2]), Toy.descriptor)
     }
 
-}
-
-function resetRendering(visuals: Visuals, renderer: Renderer) {
-    visuals.modelMatrix = aether.mat4.identity()
-    visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24])
-    visuals.radiusScale = 0.06
-    visuals.zoom = 1
-    renderer.resize()
-}
-
-function recreateKaboom(universe: Universe) {
-    universe.bodyPointedness = 5
-    universe.gravityConstant = 25
-    recreate(universe, 1)
-}
-
-function recreateCollapse(universe: Universe) {
-    universe.bodyPointedness = 0.1
-    universe.gravityConstant = 1000
-    recreate(universe)
-}
-
-function recreate(universe: Universe, universeRadius = 12) {
-    const [bodyDescriptions, initialState] = createUniverse(universe.bodiesCount, universeRadius)
-    universe.bodyDescriptions = bodyDescriptions
-    universe.state = initialState
 }
 
 function createUniverse(bodiesCount: number, universeRadius = 12): [BodyDescriptionStruct[], BodyStateStruct[]] {

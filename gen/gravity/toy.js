@@ -11,7 +11,8 @@ import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
 import { UniverseLayout } from './universe.js';
-import { newRenderer } from './renderer.js';
+import * as meshRenderer from './renderer.mesh.js';
+import * as pointsRenderer from './renderer.points.js';
 import { EngineLayout, newEngine } from './physics.js';
 import { VisualsLayout } from './visuals.js';
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
@@ -26,18 +27,18 @@ export function init() {
     });
 }
 class Toy {
-    constructor(gpuCanvas, universe, visuals, engine, renderer) {
-        this.gpuCanvas = gpuCanvas;
+    constructor(universe, visuals, engine, renderers) {
         this.universe = universe;
         this.visuals = visuals;
         this.engine = engine;
-        this.renderer = renderer;
+        this.renderers = renderers;
         this.gravityDragging = this.draggingTarget("gravity", dragging.RatioDragging.dragger(1, 10000));
         this.pointednessDragging = this.draggingTarget("pointedness", dragging.RatioDragging.dragger(0.001, 1000));
         this.radiusScaleDragging = this.draggingTarget("radiusScale", dragging.RatioDragging.dragger(0.001, 1));
         this.positionDragging = this.draggingTarget("position", dragging.LinearDragging.dragger(-64, -1, 16));
         this.zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100));
         this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
+        this.currentRenderer = 0;
     }
     inputWiring(inputs, _, controller) {
         return {
@@ -53,27 +54,26 @@ class Toy {
                 radiusScale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.radiusScaleDragging },
                 gravity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.gravityDragging },
                 pointedness: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.pointednessDragging },
-                collapse: { onPressed: () => recreateCollapse(this.universe) },
-                kaboom: { onPressed: () => recreateKaboom(this.universe) },
-                reset: { onPressed: () => resetRendering(this.visuals, this.renderer) },
+                collapse: { onPressed: () => this.recreateCollapse() },
+                kaboom: { onPressed: () => this.recreateKaboom() },
+                reset: { onPressed: () => this.resetRendering() },
                 pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+                nextRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer + 1) % this.renderers.length },
+                prevRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer - 1) % this.renderers.length }
             },
         };
     }
     outputWiring() {
         return {
-            onRender: () => this.renderer.render(this.universe),
+            onRender: () => this.renderers[this.currentRenderer].render(this.universe),
             canvases: {
-                scene: { onResize: () => this.renderer.resize() }
+                scene: { onResize: () => this.resize() }
             },
         };
     }
     animate() { this.engine.move(this.universe); }
     get defaultDraggingTarget() {
         return this.rotationDragging;
-    }
-    get element() {
-        return this.gpuCanvas.element;
     }
     get gravity() { return this.universe.gravityConstant; }
     set gravity(g) { this.universe.gravityConstant = g; }
@@ -90,18 +90,46 @@ class Toy {
     draggingTarget(key, dragger) {
         return gear.loops.draggingTarget(gear.property(this, key), dragger);
     }
+    resize() {
+        this.renderers.forEach(r => r.resize());
+    }
+    resetRendering() {
+        this.visuals.modelMatrix = aether.mat4.identity();
+        this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
+        this.visuals.radiusScale = 0.06;
+        this.visuals.zoom = 1;
+        this.resize();
+    }
+    recreateKaboom() {
+        this.universe.bodyPointedness = 5;
+        this.universe.gravityConstant = 25;
+        this.recreate(1);
+    }
+    recreateCollapse() {
+        this.universe.bodyPointedness = 0.1;
+        this.universe.gravityConstant = 1000;
+        this.recreate();
+    }
+    recreate(universeRadius = 12) {
+        const [bodyDescriptions, initialState] = createUniverse(this.universe.bodiesCount, universeRadius);
+        this.universe.bodyDescriptions = bodyDescriptions;
+        this.universe.state = initialState;
+    }
     static loop() {
         return __awaiter(this, void 0, void 0, function* () {
             const device = yield gpuDevice();
-            const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element, 4);
+            const limits = device.device.limits;
+            const workgroupSize = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
+            const canvas = Toy.descriptor.input.pointers.canvas.element;
             const universeLayout = new UniverseLayout(device);
-            const universe = universeLayout.instance(...createUniverse(16384));
+            const universe = universeLayout.instance(...createUniverse(64 * workgroupSize));
             const visualsLayout = new VisualsLayout(device);
             const visuals = visualsLayout.instance();
             const engineLayout = new EngineLayout(universeLayout);
-            const engine = yield newEngine(engineLayout);
-            const renderer = yield newRenderer(device, canvas, visuals);
-            return gear.loops.newLoop(new Toy(canvas, universe, visuals, engine, renderer), Toy.descriptor);
+            const engine = yield newEngine(engineLayout, workgroupSize);
+            const renderer1 = yield meshRenderer.newRenderer(device, canvas, visuals);
+            const renderer2 = yield pointsRenderer.newRenderer(device, canvas, visuals);
+            return gear.loops.newLoop(new Toy(universe, visuals, engine, [renderer1, renderer2]), Toy.descriptor);
         });
     }
 }
@@ -153,6 +181,14 @@ Toy.descriptor = {
                 virtualKeys: "#control-4",
                 physicalKeys: [["Digit4"]],
             },
+            nextRenderer: {
+                virtualKeys: "#control-next-renderer",
+                physicalKeys: [["ArrowRight"]]
+            },
+            prevRenderer: {
+                virtualKeys: "#control-prev-renderer",
+                physicalKeys: [["ArrowLeft"]]
+            },
         },
     },
     output: {
@@ -169,28 +205,6 @@ Toy.descriptor = {
         }
     },
 };
-function resetRendering(visuals, renderer) {
-    visuals.modelMatrix = aether.mat4.identity();
-    visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
-    visuals.radiusScale = 0.06;
-    visuals.zoom = 1;
-    renderer.resize();
-}
-function recreateKaboom(universe) {
-    universe.bodyPointedness = 5;
-    universe.gravityConstant = 25;
-    recreate(universe, 1);
-}
-function recreateCollapse(universe) {
-    universe.bodyPointedness = 0.1;
-    universe.gravityConstant = 1000;
-    recreate(universe);
-}
-function recreate(universe, universeRadius = 12) {
-    const [bodyDescriptions, initialState] = createUniverse(universe.bodiesCount, universeRadius);
-    universe.bodyDescriptions = bodyDescriptions;
-    universe.state = initialState;
-}
 function createUniverse(bodiesCount, universeRadius = 12) {
     const descriptions = [];
     const initialState = [];

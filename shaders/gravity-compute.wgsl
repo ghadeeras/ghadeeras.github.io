@@ -9,7 +9,7 @@ struct BodyState {
 };
 
 struct UniverseUniforms {
-    bodyPointedness: f32,
+    bodyFluffiness: f32,
     gravityConstant: f32,
     dT: f32,
 };
@@ -49,22 +49,23 @@ fn calculateBodiesCount() -> u32 {
 }
 
 fn accelerationFrom(body: BodyDesc, bodyPosition: vec3<f32>, position: vec3<f32>) -> vec3<f32> {
-    var posToBody = bodyPosition - position;
-    var distance = length(posToBody);
-    var safeDistance = body.radius / universeUniforms.bodyPointedness + distance;
-    var direction = posToBody / safeDistance;
-    var acceleration = (universeUniforms.gravityConstant / safeDistance) * (body.mass / safeDistance);
+    let posToBody = bodyPosition - position;
+    let distance = length(posToBody);
+    let safeDistance = body.radius * universeUniforms.bodyFluffiness + distance;
+    let proximity = 1.0 / safeDistance;
+    let direction = posToBody * proximity;
+    let acceleration = (universeUniforms.gravityConstant * proximity) * (body.mass * proximity);
     return acceleration * direction;
 }
 
 fn accelerationAt(position: vec3<f32>, bodiesCount: u32) -> vec3<f32> {
     var acceleration = vec3<f32>(0.0, 0.0, 0.0);
     for (var i = 0u; i < bodiesCount; i = i + 1u) {
-        var body = universeDesc.bodies[i];
+        let body = universeDesc.bodies[i];
         if (body.mass <= 0.0) {
             continue;
         }
-        var bodyState = currentState.bodies[i];
+        let bodyState = currentState.bodies[i];
         acceleration = acceleration + accelerationFrom(body, bodyState.position, position);
     }
     return acceleration;
@@ -73,22 +74,22 @@ fn accelerationAt(position: vec3<f32>, bodiesCount: u32) -> vec3<f32> {
 @compute
 @workgroup_size([[workgroup_size]])
 fn c_main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
-    var bodiesCount = calculateBodiesCount();
+    let bodiesCount = calculateBodiesCount();
 
-    var index = global_invocation_id.x; 
+    let index = global_invocation_id.x; 
     if (index >= bodiesCount) {
         return;
     }
 
-    var body = universeDesc.bodies[index];
+    let body = universeDesc.bodies[index];
     if (body.mass <= 0.0) {
         return;
     }
 
-    var bodyState = currentState.bodies[index];
+    let bodyState = currentState.bodies[index];
 
-    var dV = accelerationAt(bodyState.position, bodiesCount) * universeUniforms.dT;
-    var dP = (0.5 * dV + bodyState.velocity) * universeUniforms.dT; 
+    let dV = accelerationAt(bodyState.position, bodiesCount) * universeUniforms.dT;
+    let dP = (0.5 * dV + bodyState.velocity) * universeUniforms.dT; 
     nextState.bodies[index] = BodyState(
         bodyState.position + dP, 
         bodyState.velocity + dV 

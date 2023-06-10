@@ -21,6 +21,7 @@ VisualsLayout.bindGroupLayoutEntries = {
 };
 VisualsLayout.uniformsStruct = gpu.struct({
     mvpMatrix: gpu.f32.x4.x4,
+    mvMatrix: gpu.f32.x4.x4,
     mMatrix: gpu.f32.x4.x4,
     radiusScale: gpu.f32,
 });
@@ -35,6 +36,7 @@ export class Visuals {
         /* Buffers */
         this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, VisualsLayout.uniformsStruct.view([{
                 mvpMatrix: this.mvpMatrix,
+                mvMatrix: this.modelMatrix,
                 mMatrix: this.modelMatrix,
                 radiusScale: 0.06
             }]));
@@ -79,6 +81,9 @@ export class Visuals {
     }
     get mvpMatrix() {
         return aether.mat4.mul(this.projectionViewMatrix, this._modelMatrix);
+    }
+    get mvMatrix() {
+        return aether.mat4.mul(this._viewMatrix, this._modelMatrix);
     }
     get projectionViewMatrix() {
         return aether.mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);

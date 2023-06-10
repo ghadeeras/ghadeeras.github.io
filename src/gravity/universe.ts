@@ -41,7 +41,7 @@ export class UniverseLayout {
     } satisfies gpu.BindGroupLayoutEntries
 
     static readonly uniformsStruct = gpu.struct({
-        bodyPointedness: gpu.f32,
+        bodyFluffiness: gpu.f32,
         gravityConstant: gpu.f32,
         dT: gpu.f32,
     })
@@ -84,7 +84,7 @@ export class Universe {
         /* Buffers */
         this.bodyDescriptionsBuffer = layout.device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, UniverseLayout.bodyDescription.view(bodyDescriptions))
         this.uniformsBuffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, UniverseLayout.uniformsStruct.view([{
-            bodyPointedness: 0.1,
+            bodyFluffiness: 1.0 / 0.1,
             gravityConstant: 1000,
             dT: 0.0001
         }]))
@@ -124,11 +124,11 @@ export class Universe {
     }
 
     get bodyPointedness() {
-        return this.uniformsBuffer.get(UniverseLayout.uniformsStruct.members.bodyPointedness)
+        return 1 / this.uniformsBuffer.get(UniverseLayout.uniformsStruct.members.bodyFluffiness)
     }
 
-    set bodyPointedness(v: number) {
-        this.uniformsBuffer.set(UniverseLayout.uniformsStruct.members.bodyPointedness, v)
+    set bodyPointedness(p: number) {
+        this.uniformsBuffer.set(UniverseLayout.uniformsStruct.members.bodyFluffiness, 1 / p)
     }
 
     get gravityConstant() {

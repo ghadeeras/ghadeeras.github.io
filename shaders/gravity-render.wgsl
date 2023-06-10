@@ -5,6 +5,7 @@ struct Varyings {
 
 struct Uniforms {
     mvpMatrix: mat4x4<f32>,
+    mvMatrix: mat4x4<f32>,
     mMatrix: mat4x4<f32>,
     radiusScale: f32,
 };

@@ -1,13 +1,14 @@
-import { Buffer, SyncBuffer } from "./buffer";
-import { Device } from "./device";
-import { PipelineLayoutEntry } from "./pipeline";
-import { Sampler, TextureView } from "./texture";
+import { Buffer, SyncBuffer } from "./buffer.js";
+import { Device } from "./device.js";
+import { PipelineLayoutEntry } from "./pipeline.js";
+import { Sampler, TextureView } from "./texture.js";
 
 export type BindGroupLayoutEntries = Record<string, GPUBindGroupLayoutEntry>
 export type BindGroupEntries<L extends BindGroupLayoutEntries> = {
     [k in keyof L]
         : L[k]["buffer" ] extends {} ? (Buffer | SyncBuffer) 
         : L[k]["texture"] extends {} ? TextureView 
+        : L[k]["storageTexture"] extends {} ? TextureView 
         : L[k]["sampler"] extends {} ? Sampler 
         : never
 }
