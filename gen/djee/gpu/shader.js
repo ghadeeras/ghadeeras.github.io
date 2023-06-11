@@ -76,7 +76,7 @@ export class ShaderModule {
     }
 }
 export const renderingShaders = {
-    fullScreenPass: (shader) => /*wgsl*/ `
+    fullScreenPassVertex: (fragmentShader) => /*wgsl*/ `
         struct Varyings {
             @builtin(position) position: vec4<f32>,
             @location(0) clipPosition: vec2<f32>,
@@ -94,6 +94,9 @@ export const renderingShaders = {
             return Varyings(vec4<f32>(clipPosition, 0.0, 1.0), clipPosition);
         }
     
+        ${fragmentShader}
+    `,
+    fullScreenPass: (shader) => renderingShaders.fullScreenPassVertex(/*wgsl*/ `
         ${shader}
 
         @fragment
@@ -108,6 +111,6 @@ export const renderingShaders = {
             );
             return colorAt(positionAndSize.xy, aspect, positionAndSize.z);
         }  
-    `
+    `)
 };
 //# sourceMappingURL=shader.js.map

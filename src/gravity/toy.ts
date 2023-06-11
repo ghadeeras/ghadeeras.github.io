@@ -71,12 +71,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     virtualKeys: "#control-4",
                     physicalKeys: [["Digit4"]],
                 },
+                record: {
+                    virtualKeys: "#control-5",
+                    physicalKeys: [["Digit5"]],
+                },
                 nextRenderer: {
-                    virtualKeys: "#control-next-renderer",
+                    virtualKeys: "#control-right",
                     physicalKeys: [["ArrowRight"]]
                 },
                 prevRenderer: {
-                    virtualKeys: "#control-prev-renderer",
+                    virtualKeys: "#control-left",
                     physicalKeys: [["ArrowLeft"]]
                 },
             },
@@ -108,7 +112,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private constructor(private universe: Universe, private visuals: Visuals, private engine: Engine, private renderers: Renderer[]) {    
     }
 
-    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, _: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
@@ -126,6 +130,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 kaboom: { onPressed: () => this.recreateKaboom() },
                 reset: { onPressed: () => this.resetRendering() },
                 pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
                 nextRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer + 1) % this.renderers.length },
                 prevRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer - 1) % this.renderers.length }
             },

@@ -40,7 +40,7 @@ class Toy {
         this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
         this.currentRenderer = 0;
     }
-    inputWiring(inputs, _, controller) {
+    inputWiring(inputs, outputs, controller) {
         return {
             pointers: {
                 canvas: {
@@ -58,6 +58,7 @@ class Toy {
                 kaboom: { onPressed: () => this.recreateKaboom() },
                 reset: { onPressed: () => this.resetRendering() },
                 pauseResume: { onPressed: () => controller.animationPaused = !controller.animationPaused },
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
                 nextRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer + 1) % this.renderers.length },
                 prevRenderer: { onPressed: () => this.currentRenderer = (this.currentRenderer - 1) % this.renderers.length }
             },
@@ -181,12 +182,16 @@ Toy.descriptor = {
                 virtualKeys: "#control-4",
                 physicalKeys: [["Digit4"]],
             },
+            record: {
+                virtualKeys: "#control-5",
+                physicalKeys: [["Digit5"]],
+            },
             nextRenderer: {
-                virtualKeys: "#control-next-renderer",
+                virtualKeys: "#control-right",
                 physicalKeys: [["ArrowRight"]]
             },
             prevRenderer: {
-                virtualKeys: "#control-prev-renderer",
+                virtualKeys: "#control-left",
                 physicalKeys: [["ArrowLeft"]]
             },
         },
