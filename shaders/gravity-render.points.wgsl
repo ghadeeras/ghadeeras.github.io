@@ -20,13 +20,13 @@ fn v_main(
     @location(1) bodyPosition: vec3<f32>
 ) -> Varyings {
     let mass = bodyDesc.x;
-    let radius = 32.0 * uniforms.radiusScale *  (1.0 - exp2(bodyDesc.y));
+    let radius = 16.0 * uniforms.radiusScale *  (1.0 - exp2(-4.0 * bodyDesc.y));
 
     let position = vec4<f32>(bodyPosition, 1.0);
     let relativePosition = uniforms.mvMatrix * position;
     let projectedPosition = uniforms.mvpMatrix * position;
 
-    let shade = 32.0 * radius * radius / dot(relativePosition, relativePosition);
+    let shade = 1024.0 * radius * radius / dot(relativePosition, relativePosition);
     let coldness = exp2(-mass);
     let hotness = 1.0 - coldness;
     let f = max(coldness, hotness);

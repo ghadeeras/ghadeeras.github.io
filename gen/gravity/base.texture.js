@@ -58,7 +58,7 @@ BaseTexture.shaderCode = gpu.renderingShaders.fullScreenPassVertex(/*wgsl*/ `
         @fragment
         fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
             let uv = 0.5 * vec2(1.0 + varyings.clipPosition.x, 1.0 - varyings.clipPosition.y);
-            return sqrt(textureSample(baseTexture, textureSampler, uv));
+            return textureSample(baseTexture, textureSampler, uv);
         }
     `);
 BaseTexture.groupLayoutEntries = {
