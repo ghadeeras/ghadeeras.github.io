@@ -75,36 +75,12 @@ class Filter1D {
     }
 }
 Filter1D.filterGroupLayoutEntries = {
-    filter: {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "read-only-storage"
-        }
-    }
+    filter: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage"))
 };
 Filter1D.ioGroupLayoutEntries = {
-    direction: {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "uniform"
-        }
-    },
-    source: {
-        binding: 1,
-        visibility: GPUShaderStage.COMPUTE,
-        texture: {
-            sampleType: "float"
-        }
-    },
-    target: {
-        binding: 2,
-        visibility: GPUShaderStage.COMPUTE,
-        storageTexture: {
-            format: "rgba16float"
-        }
-    }
+    direction: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("uniform")),
+    source: gpu.binding(1, GPUShaderStage.COMPUTE, gpu.texture("float")),
+    target: gpu.binding(2, GPUShaderStage.COMPUTE, gpu.storageTexture("rgba16float")),
 };
 export { Filter1D };
 export class Filtering1D {

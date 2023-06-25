@@ -34,7 +34,7 @@ export class BindGroup {
             });
         }
         this.descriptor = {
-            label,
+            label: `${layout.descriptor.label}@${label}`,
             layout: layout.wrapped,
             entries: entryList
         };

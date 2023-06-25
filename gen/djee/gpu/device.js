@@ -15,6 +15,7 @@ import { CommandEncoder } from "./encoder.js";
 import { ShaderModule } from "./shader.js";
 import { Texture, Sampler } from "./texture.js";
 import { PipelineLayout } from "./pipeline.js";
+import { AppLayoutBuilder } from "./layout.js";
 export class Device {
     constructor(device, adapter) {
         this.device = device;
@@ -88,6 +89,9 @@ export class Device {
                 resource: discriminator in resource ? resource.asBindingResource() : resource,
             }))
         });
+    }
+    appLayoutBuilder(label) {
+        return new AppLayoutBuilder(label, this);
     }
     monitorErrors(filter, expression) {
         return __awaiter(this, void 0, void 0, function* () {

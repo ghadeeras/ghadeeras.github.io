@@ -3,14 +3,23 @@ import { Device } from "./device.js";
 import { PipelineLayoutEntry } from "./pipeline.js";
 import { Sampler, TextureView } from "./texture.js";
 
+export type ResourceType = "buffer" | "texture" | "storageTexture" | "externalTexture" | "sampler"
+export type SubBindGroupLayoutEntry<T extends ResourceType> = Pick<Required<GPUBindGroupLayoutEntry>, T>
+export type BindGroupLayoutEntry<T extends ResourceType> = Omit<GPUBindGroupLayoutEntry, ResourceType> & SubBindGroupLayoutEntry<T>
+export type ResourceForType<T extends ResourceType> = 
+    T extends "buffer" ? (SyncBuffer | Buffer) :
+    T extends "texture" ? TextureView :
+    T extends "storageTexture" ? TextureView :
+    T extends "externalTexture" ? TextureView :
+    T extends "sampler" ? Sampler :
+    never
+export type ResourceForLayoutEntry<E extends GPUBindGroupLayoutEntry> = 
+    E extends BindGroupLayoutEntry<infer T> ? ResourceForType<T> : 
+    never
+
 export type BindGroupLayoutEntries = Record<string, GPUBindGroupLayoutEntry>
 export type BindGroupEntries<L extends BindGroupLayoutEntries> = {
-    [k in keyof L]
-        : L[k]["buffer" ] extends {} ? (Buffer | SyncBuffer) 
-        : L[k]["texture"] extends {} ? TextureView 
-        : L[k]["storageTexture"] extends {} ? TextureView 
-        : L[k]["sampler"] extends {} ? Sampler 
-        : never
+    [k in keyof L] : ResourceForLayoutEntry<L[k]>
 }
 
 export class BindGroupLayout<L extends BindGroupLayoutEntries> {
@@ -57,7 +66,7 @@ export class BindGroup<L extends BindGroupLayoutEntries> {
             })
         }
         this.descriptor = {
-            label,
+            label: `${layout.descriptor.label}@${label}`,
             layout: layout.wrapped,
             entries: entryList
         }

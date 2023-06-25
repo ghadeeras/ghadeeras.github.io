@@ -11,13 +11,7 @@ class VisualsLayout {
     }
 }
 VisualsLayout.bindGroupLayoutEntries = {
-    uniforms: {
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: {
-            type: "uniform"
-        }
-    }
+    uniforms: gpu.binding(0, GPUShaderStage.VERTEX, gpu.buffer("uniform"))
 };
 VisualsLayout.uniformsStruct = gpu.struct({
     mvpMatrix: gpu.f32.x4.x4,

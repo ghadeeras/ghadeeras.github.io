@@ -7,6 +7,7 @@ import { ShaderModule } from "./shader.js"
 import { Texture, Sampler } from "./texture.js"
 import { Resource } from "./utils.js"
 import { PipelineLayout, PipelineLayoutEntries } from "./pipeline.js"
+import { AppLayoutBuilder } from "./layout.js"
 
 export class Device {
 
@@ -93,6 +94,10 @@ export class Device {
                 resource: discriminator in resource ? resource.asBindingResource() : resource,
             }))
         })
+    }
+
+    appLayoutBuilder(label: string): AppLayoutBuilder {
+        return new AppLayoutBuilder(label, this)
     }
     
     async monitorErrors<T>(filter: GPUErrorFilter, expression: () => T): Promise<T> {

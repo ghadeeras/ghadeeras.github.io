@@ -18,22 +18,8 @@ export class BaseTexture {
     `)
 
     static groupLayoutEntries = {
-        textureSampler: {
-            binding: 0,
-            visibility: GPUShaderStage.FRAGMENT,
-            sampler: {
-                type: "non-filtering"
-            }
-        },
-        baseTexture: {
-            binding: 1,
-            visibility: GPUShaderStage.FRAGMENT,
-            texture: {
-                multisampled: false,
-                sampleType: "float",
-                viewDimension: "2d",
-            }
-        }
+        textureSampler: gpu.binding(0, GPUShaderStage.FRAGMENT, gpu.sampler("non-filtering")),
+        baseTexture: gpu.binding(1, GPUShaderStage.FRAGMENT, gpu.texture("float")),
     } satisfies gpu.BindGroupLayoutEntries
 
     private groupLayout: gpu.BindGroupLayout<typeof BaseTexture.groupLayoutEntries>

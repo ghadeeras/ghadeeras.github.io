@@ -9,13 +9,7 @@ export type VisualsBindGroup = gpu.BindGroup<typeof VisualsLayout.bindGroupLayou
 export class VisualsLayout {
 
     static readonly bindGroupLayoutEntries = {
-        uniforms: {
-            binding: 0,
-            visibility: GPUShaderStage.VERTEX,
-            buffer: {
-                type: "uniform"
-            }
-        }
+        uniforms: gpu.binding(0, GPUShaderStage.VERTEX, gpu.buffer("uniform"))
     } satisfies gpu.BindGroupLayoutEntries
 
     static readonly uniformsStruct = gpu.struct({

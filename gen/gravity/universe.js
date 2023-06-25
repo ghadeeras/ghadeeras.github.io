@@ -9,34 +9,10 @@ class UniverseLayout {
     }
 }
 UniverseLayout.bindGroupLayoutEntries = {
-    universeDesc: {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "read-only-storage"
-        }
-    },
-    currentState: {
-        binding: 1,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "read-only-storage"
-        }
-    },
-    nextState: {
-        binding: 2,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "storage"
-        }
-    },
-    universeUniforms: {
-        binding: 3,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: {
-            type: "uniform"
-        }
-    },
+    universeDesc: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
+    currentState: gpu.binding(1, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
+    nextState: gpu.binding(2, GPUShaderStage.COMPUTE, gpu.buffer("storage")),
+    universeUniforms: gpu.binding(3, GPUShaderStage.COMPUTE, gpu.buffer("uniform")),
 };
 UniverseLayout.uniformsStruct = gpu.struct({
     bodyFluffiness: gpu.f32,
