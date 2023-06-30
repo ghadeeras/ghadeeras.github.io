@@ -37,13 +37,13 @@ export class GPUView implements View {
     private uniformsGroupLayout: GPUBindGroupLayout
     private uniformsGroup: GPUBindGroup
 
-    private nodeGroupLayout: GPUBindGroupLayout
     private pipelineLayout: GPUPipelineLayout
 
     private fragmentState: GPUFragmentState
     private depthState: GPUDepthStencilState
 
-    private renderer: gpu.GPURenderer | null = null
+    private rendererFactory: gpu.GPURendererFactory
+    private renderer: ReturnType<gpu.GPURendererFactory["newInstance"]> | null = null
 
     private _viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
     private _modelMatrix = aether.mat4.identity()
@@ -68,19 +68,16 @@ export class GPUView implements View {
             }],
         })
         this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
-        
-        this.nodeGroupLayout = device.device.createBindGroupLayout({
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: {
-                    type: "uniform",
-                },
-            }],
-        })
+
+        this.rendererFactory = new gpu.GPURendererFactory(
+            this.device,
+            1,
+            { POSITION: 0, NORMAL: 1 },
+            (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
+        )
 
         this.pipelineLayout = this.device.device.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout],
+            bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],
         });
 
         this.fragmentState = this.shaderModule.fragmentState("f_main", [this.gpuCanvas])
@@ -163,14 +160,7 @@ export class GPUView implements View {
             this.renderer.destroy();
             this.renderer = null;
         }
-        this.renderer = new gpu.GPURenderer(
-            model,
-            this.device,
-            1,
-            { POSITION: 0, NORMAL: 1 },
-            (buffer, offset) => this.nodeBindGroup(buffer, offset),
-            (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
-        );
+        this.renderer = this.rendererFactory.newInstance(model);
     }
 
     private primitivePipeline(vertexLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState): GPURenderPipeline {
@@ -184,20 +174,6 @@ export class GPUView implements View {
             },
             vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
             primitive: primitiveState,
-        });
-    }
-
-    private nodeBindGroup(buffer: gpu.Buffer, offset: number): GPUBindGroup {
-        return this.device.device.createBindGroup({
-            layout: this.nodeGroupLayout,
-            entries: [{
-                binding: 0,
-                resource: {
-                    buffer: buffer.buffer,
-                    offset,
-                    size: uniformsStruct.members.mat.paddedSize
-                }
-            }]
         });
     }
 

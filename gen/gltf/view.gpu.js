@@ -42,17 +42,9 @@ export class GPUView {
                 }],
         });
         this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
-        this.nodeGroupLayout = device.device.createBindGroupLayout({
-            entries: [{
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: {
-                        type: "uniform",
-                    },
-                }],
-        });
+        this.rendererFactory = new gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         this.pipelineLayout = this.device.device.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.nodeGroupLayout],
+            bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],
         });
         this.fragmentState = this.shaderModule.fragmentState("f_main", [this.gpuCanvas]);
         this.depthState = this.depthTexture.depthState();
@@ -119,7 +111,7 @@ export class GPUView {
                 this.renderer.destroy();
                 this.renderer = null;
             }
-            this.renderer = new gpu.GPURenderer(model, this.device, 1, { POSITION: 0, NORMAL: 1 }, (buffer, offset) => this.nodeBindGroup(buffer, offset), (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
+            this.renderer = this.rendererFactory.newInstance(model);
         });
     }
     primitivePipeline(vertexLayouts, primitiveState) {
@@ -133,19 +125,6 @@ export class GPUView {
             },
             vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
             primitive: primitiveState,
-        });
-    }
-    nodeBindGroup(buffer, offset) {
-        return this.device.device.createBindGroup({
-            layout: this.nodeGroupLayout,
-            entries: [{
-                    binding: 0,
-                    resource: {
-                        buffer: buffer.buffer,
-                        offset,
-                        size: uniformsStruct.members.mat.paddedSize
-                    }
-                }]
         });
     }
     resize() {

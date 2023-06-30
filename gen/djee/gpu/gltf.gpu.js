@@ -1,26 +1,62 @@
 import * as renderer from "../gltf/gltf.renderer.js";
 import * as types from "./types.js";
 import { failure } from "../utils.js";
-const matricesStruct = types.struct({
+export const gltfMatricesStruct = types.struct({
     matrix: types.mat4x4,
     antiMatrix: types.mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false);
-export class GPURenderer extends renderer.GLTFRenderer {
-    constructor(model, device, bindGroupIndex, attributeLocations, bindGroupSupplier, pipelineSupplier) {
-        super(model, new GPUAdapter(device, bindGroupIndex, attributeLocations, bindGroupSupplier, caching(pipelineSupplier)));
+export const gltfMatrixGroupLayout = {
+    entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            buffer: {
+                type: "uniform",
+                hasDynamicOffset: true,
+            },
+        }],
+};
+export class MatricesResource {
+    constructor(group, buffer) {
+        this.group = group;
+        this.buffer = buffer;
+    }
+    destroy() {
+        this.buffer.destroy();
     }
 }
-export class GPUAdapter {
-    constructor(device, bindGroupIndex, attributeLocations, bindGroupSupplier, pipelineSupplier) {
+export class GPURendererFactory {
+    constructor(device, matricesGroupIndex, attributeLocations, pipelineSupplier) {
+        this.adapter = new GPUAdapter(device, device.device.createBindGroupLayout(gltfMatrixGroupLayout), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
+    }
+    newInstance(model) {
+        return new renderer.GLTFRenderer(model, this.adapter);
+    }
+    get matricesGroupLayout() {
+        return this.adapter.matricesGroupLayout;
+    }
+}
+class GPUAdapter {
+    constructor(device, matricesGroupLayout, matricesGroupIndex, attributeLocations, pipelineSupplier) {
         this.device = device;
-        this.bindGroupIndex = bindGroupIndex;
+        this.matricesGroupLayout = matricesGroupLayout;
+        this.matricesGroupIndex = matricesGroupIndex;
         this.attributeLocations = attributeLocations;
-        this.bindGroupSupplier = bindGroupSupplier;
         this.pipelineSupplier = pipelineSupplier;
     }
     matricesBuffer(matrices) {
-        const dataView = matricesStruct.view(matrices);
-        return this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, matricesStruct.stride);
+        const dataView = gltfMatricesStruct.view(matrices);
+        const buffer = this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, gltfMatricesStruct.stride);
+        const group = this.device.device.createBindGroup({
+            layout: this.matricesGroupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: {
+                        buffer: buffer.buffer,
+                        size: gltfMatricesStruct.paddedSize,
+                    }
+                }]
+        });
+        return new MatricesResource(group, buffer);
     }
     vertexBuffer(dataView, stride) {
         return this.device.buffer("vertex", GPUBufferUsage.VERTEX, dataView, stride);
@@ -29,8 +65,7 @@ export class GPUAdapter {
         return this.device.buffer("index", GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride);
     }
     matrixBinder(matrixBuffer, index) {
-        const bindGroup = this.bindGroupSupplier(matrixBuffer, index * matricesStruct.stride);
-        return pass => pass.setBindGroup(this.bindGroupIndex, bindGroup);
+        return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, [index * gltfMatricesStruct.stride]);
     }
     primitiveBinder(count, mode, attributes, index = null) {
         const topology = toGpuTopology(mode);
