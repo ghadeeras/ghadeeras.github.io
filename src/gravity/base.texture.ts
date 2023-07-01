@@ -1,4 +1,5 @@
 import * as gpu from '../djee/gpu/index.js'
+import * as meta from './meta.js';
 
 export class BaseTexture {
 
@@ -17,24 +18,14 @@ export class BaseTexture {
         }
     `)
 
-    static groupLayoutEntries = {
-        textureSampler: gpu.binding(0, GPUShaderStage.FRAGMENT, gpu.sampler("non-filtering")),
-        baseTexture: gpu.binding(1, GPUShaderStage.FRAGMENT, gpu.texture("float")),
-    } satisfies gpu.BindGroupLayoutEntries
-
-    private groupLayout: gpu.BindGroupLayout<typeof BaseTexture.groupLayoutEntries>
     private pipeline: GPURenderPipeline
 
     private sampler: gpu.Sampler;
 
-    constructor(shader: gpu.ShaderModule, target: gpu.TextureFormatSource) {
+    constructor(private appLayout: meta.AppLayout, shader: gpu.ShaderModule, target: gpu.TextureFormatSource) {
         const device = shader.device
-        this.groupLayout = device.groupLayout("BaseTextureGroupLayout", BaseTexture.groupLayoutEntries)
-        const pipelineLayout = device.pipelineLayout("BaseTexturePipelineLayout", {
-            group: this.groupLayout.asGroup(0)
-        })
         this.pipeline = device.device.createRenderPipeline({
-            layout: pipelineLayout.wrapped,
+            layout: appLayout.pipelineLayouts.texturePasting.wrapped,
             vertex: shader.vertexState("v_main", []),
             fragment: shader.fragmentState("f_main", [target]),
             primitive: {
@@ -46,7 +37,7 @@ export class BaseTexture {
     }
 
     rendererFor(texture: gpu.Texture): BaseTextureRenderer {
-        const group = this.groupLayout.instance("BaseTextureGroup", {
+        const group = this.appLayout.groupLayouts.sampledTexture.instance("BaseTextureGroup", {
             textureSampler: this.sampler,
             baseTexture: texture.createView()
         })
@@ -60,9 +51,9 @@ export class BaseTexture {
         })
     }
 
-    static async create(device: gpu.Device, target: gpu.TextureFormatSource): Promise<BaseTexture> {
-        const shader = await device.shaderModule("BaseTexture", BaseTexture.shaderCode)
-        return new BaseTexture(shader, target)
+    static async create(appLayout: meta.AppLayout, target: gpu.TextureFormatSource): Promise<BaseTexture> {
+        const shader = await appLayout.device.shaderModule("BaseTexture", BaseTexture.shaderCode)
+        return new BaseTexture(appLayout, shader, target)
     }
 
 }

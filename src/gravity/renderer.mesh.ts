@@ -1,16 +1,11 @@
 import * as gpu from '../djee/gpu/index.js'
 import * as geo from './geo.js'
-import { Universe, UniverseLayout } from './universe.js'
+import { Universe } from './universe.js'
 import { Visuals } from './visuals.js'
 import * as r from './renderer.js'
+import * as meta from './meta.js'
 
 export class Renderer implements r.Renderer {
-
-    private bodyDesc = gpu.vertex({
-        massAndRadius: gpu.f32.x2
-    })  
-
-    private bodyPosition = UniverseLayout.bodyState.asVertex(['position'])
 
     private mesh: geo.ShaderMesh 
 
@@ -18,8 +13,8 @@ export class Renderer implements r.Renderer {
     
     private depthTexture: gpu.Texture
 
-    constructor(private device: gpu.Device, private canvas: gpu.Canvas, private visuals: Visuals, renderShader: gpu.ShaderModule) {
-        this.mesh = new geo.ShaderMesh(device, geo.sphere(18, 9))
+    constructor(private layout: meta.AppLayout, private canvas: gpu.Canvas, private visuals: Visuals, renderShader: gpu.ShaderModule) {
+        this.mesh = new geo.ShaderMesh(layout.device, geo.sphere(18, 9))
 
         this.depthTexture = canvas.depthTexture()
         visuals.aspectRatio = canvas.element.width / canvas.element.height
@@ -31,8 +26,8 @@ export class Renderer implements r.Renderer {
     private createPipeline(shaderModule: gpu.ShaderModule): GPURenderPipeline {
         return shaderModule.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
-                this.bodyDesc.asBufferLayout('instance'),
-                this.bodyPosition.asBufferLayout('instance'),
+                meta.bodyDescriptionAsVertex.asBufferLayout('instance'),
+                meta.bodyPosition.asBufferLayout('instance'),
                 this.mesh.vertexLayout
             ]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
@@ -44,10 +39,7 @@ export class Renderer implements r.Renderer {
             multisample: {
                 count: this.canvas.sampleCount
             },
-            layout: this.device.device.createPipelineLayout({ 
-                label:"rendererPipelineLayout",
-                bindGroupLayouts: [this.visuals.layout.bindGroupLayout.wrapped]
-            })
+            layout: this.layout.pipelineLayouts.renderer.wrapped
         })
     }
 
@@ -62,7 +54,7 @@ export class Renderer implements r.Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         }
-        this.device.enqueueCommand("render", encoder => {
+        this.layout.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped)
@@ -77,7 +69,8 @@ export class Renderer implements r.Renderer {
 
 }
 
-export async function newRenderer(device: gpu.Device, canvas: string, visuals: Visuals) {
+export async function newRenderer(layout: meta.AppLayout, canvas: string, visuals: Visuals) {
+    const device = layout.device
     const shaderModule = await device.loadShaderModule("gravity-render.wgsl")
-    return new Renderer(device, device.canvas(canvas, 4), visuals, shaderModule)
+    return new Renderer(layout, device.canvas(canvas, 4), visuals, shaderModule)
 }

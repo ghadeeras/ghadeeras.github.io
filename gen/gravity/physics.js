@@ -7,27 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-export class EngineLayout {
-    constructor(universeLayout) {
-        this.pipelineLayout = universeLayout.device.pipelineLayout("engineLayout", engineLayout(universeLayout));
-    }
-    instance(computeShader, workgroupSize) {
-        return new Engine(this, computeShader, workgroupSize);
-    }
-}
-function engineLayout(universeLayout) {
-    return {
-        universe: universeLayout.bindGroupLayout.asGroup(0)
-    };
-}
-export class Engine {
+export class Physics {
     constructor(layout, computeShader, workgroupSize) {
         this.layout = layout;
         this.computeShader = computeShader;
         this.workgroupSize = workgroupSize;
-        this.pipeline = layout.pipelineLayout.computeInstance(computeShader, "c_main");
+        this.pipeline = layout.pipelineLayouts.physics.computeInstance(computeShader, "c_main");
     }
-    move(universe) {
+    apply(universe) {
         const workGroupsCount = Math.ceil(universe.bodiesCount / this.workgroupSize);
         this.computeShader.device.enqueueCommand("compute", encoder => {
             encoder.computePass(pass => {
@@ -38,13 +25,13 @@ export class Engine {
             });
         });
     }
-}
-export function newEngine(engineLayout, workgroupSize) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const device = engineLayout.pipelineLayout.device;
-        console.warn(`Workgroup Size: ${workgroupSize}`);
-        const shaderModule = yield device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`));
-        return engineLayout.instance(shaderModule, workgroupSize);
-    });
+    static create(layout, workgroupSize) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const device = layout.device;
+            console.warn(`Workgroup Size: ${workgroupSize}`);
+            const shaderModule = yield device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`));
+            return new Physics(layout, shaderModule, workgroupSize);
+        });
+    }
 }
 //# sourceMappingURL=physics.js.map

@@ -10,11 +10,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
-import { UniverseLayout } from './universe.js';
+import { Universe } from './universe.js';
 import * as meshRenderer from './renderer.mesh.js';
 import * as pointsRenderer from './renderer.points.js';
-import { EngineLayout, newEngine } from './physics.js';
-import { VisualsLayout } from './visuals.js';
+import { Physics } from './physics.js';
+import { Visuals } from './visuals.js';
+import * as meta from './meta.js';
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
 export const video = "https://youtu.be/BrZm6LlOQlI";
 export const huds = {
@@ -27,10 +28,10 @@ export function init() {
     });
 }
 class Toy {
-    constructor(universe, visuals, engine, renderers) {
+    constructor(universe, visuals, physics, renderers) {
         this.universe = universe;
         this.visuals = visuals;
-        this.engine = engine;
+        this.physics = physics;
         this.renderers = renderers;
         this.gravityDragging = this.draggingTarget("gravity", dragging.RatioDragging.dragger(1, 10000));
         this.pointednessDragging = this.draggingTarget("pointedness", dragging.RatioDragging.dragger(0.001, 1000));
@@ -72,7 +73,7 @@ class Toy {
             },
         };
     }
-    animate() { this.engine.move(this.universe); }
+    animate() { this.physics.apply(this.universe); }
     get defaultDraggingTarget() {
         return this.rotationDragging;
     }
@@ -122,15 +123,13 @@ class Toy {
             const limits = device.device.limits;
             const workgroupSize = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
             const canvas = Toy.descriptor.input.pointers.canvas.element;
-            const universeLayout = new UniverseLayout(device);
-            const universe = universeLayout.instance(...createUniverse(64 * workgroupSize));
-            const visualsLayout = new VisualsLayout(device);
-            const visuals = visualsLayout.instance();
-            const engineLayout = new EngineLayout(universeLayout);
-            const engine = yield newEngine(engineLayout, workgroupSize);
-            const renderer1 = yield meshRenderer.newRenderer(device, canvas, visuals);
-            const renderer2 = yield pointsRenderer.newRenderer(device, canvas, visuals);
-            return gear.loops.newLoop(new Toy(universe, visuals, engine, [renderer1, renderer2]), Toy.descriptor);
+            const appLayout = meta.appLayoutBuilder.build(device);
+            const universe = new Universe(appLayout, ...createUniverse(64 * workgroupSize));
+            const visuals = new Visuals(appLayout);
+            const physics = yield Physics.create(appLayout, workgroupSize);
+            const renderer1 = yield meshRenderer.newRenderer(appLayout, canvas, visuals);
+            const renderer2 = yield pointsRenderer.newRenderer(appLayout, canvas, visuals);
+            return gear.loops.newLoop(new Toy(universe, visuals, physics, [renderer1, renderer2]), Toy.descriptor);
         });
     }
 }

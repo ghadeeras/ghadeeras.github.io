@@ -7,19 +7,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as gpu from '../djee/gpu/index.js';
 import * as geo from './geo.js';
-import { UniverseLayout } from './universe.js';
+import * as meta from './meta.js';
 export class Renderer {
-    constructor(device, canvas, visuals, renderShader) {
-        this.device = device;
+    constructor(layout, canvas, visuals, renderShader) {
+        this.layout = layout;
         this.canvas = canvas;
         this.visuals = visuals;
-        this.bodyDesc = gpu.vertex({
-            massAndRadius: gpu.f32.x2
-        });
-        this.bodyPosition = UniverseLayout.bodyState.asVertex(['position']);
-        this.mesh = new geo.ShaderMesh(device, geo.sphere(18, 9));
+        this.mesh = new geo.ShaderMesh(layout.device, geo.sphere(18, 9));
         this.depthTexture = canvas.depthTexture();
         visuals.aspectRatio = canvas.element.width / canvas.element.height;
         /* Pipeline */
@@ -28,8 +23,8 @@ export class Renderer {
     createPipeline(shaderModule) {
         return shaderModule.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
-                this.bodyDesc.asBufferLayout('instance'),
-                this.bodyPosition.asBufferLayout('instance'),
+                meta.bodyDescriptionAsVertex.asBufferLayout('instance'),
+                meta.bodyPosition.asBufferLayout('instance'),
                 this.mesh.vertexLayout
             ]),
             fragment: shaderModule.fragmentState("f_main", [this.canvas]),
@@ -41,10 +36,7 @@ export class Renderer {
             multisample: {
                 count: this.canvas.sampleCount
             },
-            layout: this.device.device.createPipelineLayout({
-                label: "rendererPipelineLayout",
-                bindGroupLayouts: [this.visuals.layout.bindGroupLayout.wrapped]
-            })
+            layout: this.layout.pipelineLayouts.renderer.wrapped
         });
     }
     resize() {
@@ -57,7 +49,7 @@ export class Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         };
-        this.device.enqueueCommand("render", encoder => {
+        this.layout.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped);
@@ -70,10 +62,11 @@ export class Renderer {
         });
     }
 }
-export function newRenderer(device, canvas, visuals) {
+export function newRenderer(layout, canvas, visuals) {
     return __awaiter(this, void 0, void 0, function* () {
+        const device = layout.device;
         const shaderModule = yield device.loadShaderModule("gravity-render.wgsl");
-        return new Renderer(device, device.canvas(canvas, 4), visuals, shaderModule);
+        return new Renderer(layout, device.canvas(canvas, 4), visuals, shaderModule);
     });
 }
 //# sourceMappingURL=renderer.mesh.js.map

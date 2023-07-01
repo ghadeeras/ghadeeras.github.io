@@ -1,67 +1,72 @@
 export class AppLayoutBuilder {
-    constructor(label, device) {
+    constructor(label) {
         this.label = label;
-        this.device = device;
     }
     withGroupLayouts(record) {
-        return new AppLayoutBuilderWithGroupLayouts(this.label, this.device, record);
+        return new AppLayoutBuilderWithGroupLayouts(this.label, record);
     }
 }
 export class AppLayoutBuilderWithGroupLayouts {
-    constructor(label, device, record) {
+    constructor(label, record) {
         this.label = label;
-        this.device = device;
         this.record = record;
-        const groupLayouts = {};
-        for (const key of Object.keys(record)) {
-            this.setMember(groupLayouts, key);
-        }
-        this.groupLayouts = groupLayouts;
     }
     withPipelineLayouts(record) {
-        return new AppLayoutBuilderWithPipelineLayouts(this.label, this.device, this.groupLayouts, record);
+        return new AppLayoutBuilderWithPipelineLayouts(this, record);
     }
-    setMember(members, key) {
-        members[key] = this.device.groupLayout(`${this.label}/groups/${key.toString()}`, this.record[key]);
+    build(device) {
+        const groupLayouts = {};
+        for (const key of Object.keys(this.record)) {
+            this.setMember(device, groupLayouts, key);
+        }
+        return groupLayouts;
+    }
+    setMember(device, members, key) {
+        members[key] = device.groupLayout(`${this.label}/groups/${key.toString()}`, this.record[key]);
     }
 }
 export class AppLayoutBuilderWithPipelineLayouts {
-    constructor(label, device, groupLayouts, record) {
-        this.label = label;
-        this.device = device;
-        this.groupLayouts = groupLayouts;
+    constructor(parent, record) {
+        this.parent = parent;
         this.record = record;
-        const pipelineLayouts = {};
-        for (const key of Object.keys(record)) {
-            this.setPipelineLayout(pipelineLayouts, key);
-        }
-        this.pipelineLayouts = pipelineLayouts;
     }
-    build() {
+    build(device) {
+        const groupLayouts = this.parent.build(device);
         return {
-            pipelineLayouts: this.pipelineLayouts,
-            groupLayouts: this.groupLayouts,
+            device,
+            groupLayouts,
+            pipelineLayouts: this.pipelineLayouts(device, groupLayouts),
         };
     }
-    setPipelineLayout(result, key) {
-        result[key] = this.device.pipelineLayout(`${this.label}/pipelines/${key.toString()}`, this.pipelineLayout(this.record[key]));
+    pipelineLayouts(device, groupLayouts) {
+        const pipelineLayouts = {};
+        for (const key of Object.keys(this.record)) {
+            this.setPipelineLayout(device, groupLayouts, pipelineLayouts, key);
+        }
+        return pipelineLayouts;
     }
-    pipelineLayout(layout) {
+    setPipelineLayout(device, groupLayouts, result, key) {
+        result[key] = device.pipelineLayout(`${this.parent.label}/pipelines/${key.toString()}`, this.pipelineLayout(groupLayouts, this.record[key]));
+    }
+    pipelineLayout(groupLayouts, layout) {
         const result = {};
         for (const key of Object.keys(layout)) {
-            this.setPipelineLayoutEntry(result, key, layout);
+            this.setPipelineLayoutEntry(groupLayouts, result, key, layout);
         }
         return result;
     }
-    setPipelineLayoutEntry(result, key, layout) {
-        result[key] = this.pipelineLayoutEntry(layout[key]);
+    setPipelineLayoutEntry(groupLayouts, result, key, layout) {
+        result[key] = this.pipelineLayoutEntry(groupLayouts, layout[key]);
     }
-    pipelineLayoutEntry(entry) {
+    pipelineLayoutEntry(groupLayouts, entry) {
         return {
             group: entry.group,
-            layout: this.groupLayouts[entry.layout]
+            layout: groupLayouts[entry.layout]
         };
     }
+}
+export function appLayoutBuilder(label) {
+    return new AppLayoutBuilder(label);
 }
 export function buffer(type) {
     return {

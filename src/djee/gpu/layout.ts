@@ -2,7 +2,12 @@ import { Device } from "./device.js";
 import { BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, ResourceType, SubBindGroupLayoutEntry } from "./group.js";
 import { PipelineLayout } from "./pipeline.js";
 
+export type AppLayoutFrom<B extends AppLayoutBuilderWithPipelineLayouts<any, any>> = ReturnType<B["build"]>
+export type BindGroupFrom<L extends BindGroupLayout<any>> = ReturnType<L["instance"]>
+export type ComputePipelineFrom<L extends PipelineLayout<any>> = ReturnType<L["computeInstance"]>
+
 export type AppLayout<G extends BindGroupLayoutsRecord, P extends RefPipelineLayoutsRecord<G>> = {
+    device: Device
     pipelineLayouts: PipelineLayouts<G, P>
     groupLayouts: BindGroupLayouts<G>
 }
@@ -29,78 +34,86 @@ export type BindGroupLayoutsRecord = Record<string, BindGroupLayoutEntries>
 
 export class AppLayoutBuilder {
 
-    constructor(private label: string, private device: Device) {}
+    constructor(private label: string) {}
 
     withGroupLayouts<G extends BindGroupLayoutsRecord>(record: G): AppLayoutBuilderWithGroupLayouts<G> {
-        return new AppLayoutBuilderWithGroupLayouts(this.label, this.device, record)
+        return new AppLayoutBuilderWithGroupLayouts(this.label, record)
     }
 
 }
 
 export class AppLayoutBuilderWithGroupLayouts<G extends BindGroupLayoutsRecord> {
 
-    private groupLayouts: BindGroupLayouts<G>
-
-    constructor(private label: string, private device: Device, private record: G) {
-        const groupLayouts: Partial<BindGroupLayouts<G>> = {}
-        for (const key of Object.keys(record)) {
-            this.setMember(groupLayouts, key)
-        }
-        this.groupLayouts = groupLayouts as BindGroupLayouts<G>
+    constructor(readonly label: string, private record: G) {
     }
 
     withPipelineLayouts<P extends RefPipelineLayoutsRecord<G>>(record: P): AppLayoutBuilderWithPipelineLayouts<G, P> {
-        return new AppLayoutBuilderWithPipelineLayouts(this.label, this.device, this.groupLayouts, record)
+        return new AppLayoutBuilderWithPipelineLayouts(this, record)
     }
 
-    private setMember<K extends keyof G>(members: Partial<BindGroupLayouts<G>>, key: K) {
-        members[key] = this.device.groupLayout(`${this.label}/groups/${key.toString()}`, this.record[key])
+    build(device: Device): BindGroupLayouts<G> {
+        const groupLayouts: Partial<BindGroupLayouts<G>> = {}
+        for (const key of Object.keys(this.record)) {
+            this.setMember(device, groupLayouts, key)
+        }
+        return groupLayouts as BindGroupLayouts<G>
+    }
+
+    private setMember<K extends keyof G>(device: Device, members: Partial<BindGroupLayouts<G>>, key: K) {
+        members[key] = device.groupLayout(`${this.label}/groups/${key.toString()}`, this.record[key])
     }
 
 }
 
 export class AppLayoutBuilderWithPipelineLayouts<G extends BindGroupLayoutsRecord, P extends RefPipelineLayoutsRecord<G>> {
 
-    private pipelineLayouts: PipelineLayouts<G, P>
-
-    constructor(private label: string, private device: Device, private groupLayouts: BindGroupLayouts<G>, private record: P) {
-        const pipelineLayouts: Partial<PipelineLayouts<G, P>> = {}
-        for (const key of Object.keys(record)) {
-            this.setPipelineLayout(pipelineLayouts, key);
-        }
-        this.pipelineLayouts = pipelineLayouts as PipelineLayouts<G, P>
+    constructor(private parent: AppLayoutBuilderWithGroupLayouts<G>, private record: P) {
     }
 
-    build(): AppLayout<G, P> {
+    build(device: Device): AppLayout<G, P> {
+        const groupLayouts = this.parent.build(device);
         return {
-            pipelineLayouts: this.pipelineLayouts,
-            groupLayouts: this.groupLayouts,
+            device,
+            groupLayouts,
+            pipelineLayouts: this.pipelineLayouts(device, groupLayouts),
         }
     }
 
-    private setPipelineLayout<K extends keyof P>(result: Partial<PipelineLayouts<G, P>>, key: K) {
-        result[key] = this.device.pipelineLayout(`${this.label}/pipelines/${key.toString()}`,  this.pipelineLayout(this.record[key]));
+    private pipelineLayouts(device: Device, groupLayouts: BindGroupLayouts<G>): PipelineLayouts<G, P> {
+        const pipelineLayouts: Partial<PipelineLayouts<G, P>> = {}
+        for (const key of Object.keys(this.record)) {
+            this.setPipelineLayout(device, groupLayouts, pipelineLayouts, key);
+        }
+        return pipelineLayouts as PipelineLayouts<G, P>
     }
 
-    private pipelineLayout<L extends RefPipelineLayoutEntries<G>>(layout: L): DerefPipelineLayoutEntries<G, L> {
+    private setPipelineLayout<K extends keyof P>(device: Device, groupLayouts: BindGroupLayouts<G>, result: Partial<PipelineLayouts<G, P>>, key: K) {
+        result[key] = device.pipelineLayout(`${this.parent.label}/pipelines/${key.toString()}`,  this.pipelineLayout(groupLayouts, this.record[key]));
+    }
+
+    private pipelineLayout<L extends RefPipelineLayoutEntries<G>>(groupLayouts: BindGroupLayouts<G>, layout: L): DerefPipelineLayoutEntries<G, L> {
         const result: Partial<DerefPipelineLayoutEntries<G, L>> = {}
         for (const key of Object.keys(layout)) {
-            this.setPipelineLayoutEntry(result, key, layout);
+            this.setPipelineLayoutEntry(groupLayouts, result, key, layout);
         }
         return result as DerefPipelineLayoutEntries<G, L>
     }
 
-    private setPipelineLayoutEntry<L extends RefPipelineLayoutEntries<G>, K extends keyof L>(result: Partial<DerefPipelineLayoutEntries<G, L>>, key: K, layout: L) {
-        result[key] = this.pipelineLayoutEntry(layout[key]);
+    private setPipelineLayoutEntry<L extends RefPipelineLayoutEntries<G>, K extends keyof L>(groupLayouts: BindGroupLayouts<G>, result: Partial<DerefPipelineLayoutEntries<G, L>>, key: K, layout: L) {
+        result[key] = this.pipelineLayoutEntry(groupLayouts, layout[key]);
     }
 
-    private pipelineLayoutEntry<E extends RefPipelineLayoutEntry<G>>(entry: E): DerefPipelineLayoutEntry<G, E> {
+    private pipelineLayoutEntry<E extends RefPipelineLayoutEntry<G>>(groupLayouts: BindGroupLayouts<G>, entry: E): DerefPipelineLayoutEntry<G, E> {
         return {
             group: entry.group,
-            layout: this.groupLayouts[entry.layout]
+            layout: groupLayouts[entry.layout]
         }
     }
 
+}
+
+export function appLayoutBuilder(label: string) {
+    return new AppLayoutBuilder(label)
 }
 
 export function buffer(type: GPUBufferBindingType): SubBindGroupLayoutEntry<"buffer"> {

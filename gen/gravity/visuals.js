@@ -1,25 +1,6 @@
 import { aether } from '/gen/libs.js';
-import * as gpu from '../djee/gpu/index.js';
+import * as meta from './meta.js';
 const projection = new aether.PerspectiveProjection(1, null, false, false);
-class VisualsLayout {
-    constructor(device) {
-        this.device = device;
-        this.bindGroupLayout = device.groupLayout("visualsBindGroupLayout", VisualsLayout.bindGroupLayoutEntries);
-    }
-    instance() {
-        return new Visuals(this);
-    }
-}
-VisualsLayout.bindGroupLayoutEntries = {
-    uniforms: gpu.binding(0, GPUShaderStage.VERTEX, gpu.buffer("uniform"))
-};
-VisualsLayout.uniformsStruct = gpu.struct({
-    mvpMatrix: gpu.f32.x4.x4,
-    mvMatrix: gpu.f32.x4.x4,
-    mMatrix: gpu.f32.x4.x4,
-    radiusScale: gpu.f32,
-});
-export { VisualsLayout };
 export class Visuals {
     constructor(layout) {
         this.layout = layout;
@@ -28,14 +9,14 @@ export class Visuals {
         this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = aether.mat4.identity();
         /* Buffers */
-        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, VisualsLayout.uniformsStruct.view([{
+        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
                 mvpMatrix: this.mvpMatrix,
                 mvMatrix: this.modelMatrix,
                 mMatrix: this.modelMatrix,
                 radiusScale: 0.06
             }]));
         /* Bind Groups */
-        this.bindGroup = layout.bindGroupLayout.instance("visualsGroup", {
+        this.bindGroup = layout.groupLayouts.visuals.instance("visualsGroup", {
             uniforms: this.buffer
         });
     }
@@ -68,10 +49,10 @@ export class Visuals {
         this.updateMvpMatrix();
     }
     get radiusScale() {
-        return this.buffer.get(VisualsLayout.uniformsStruct.members.radiusScale);
+        return this.buffer.get(meta.visualsUniforms.members.radiusScale);
     }
     set radiusScale(v) {
-        this.buffer.set(VisualsLayout.uniformsStruct.members.radiusScale, v);
+        this.buffer.set(meta.visualsUniforms.members.radiusScale, v);
     }
     get mvpMatrix() {
         return aether.mat4.mul(this.projectionViewMatrix, this._modelMatrix);
@@ -83,8 +64,8 @@ export class Visuals {
         return aether.mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);
     }
     updateMvpMatrix() {
-        this.buffer.set(VisualsLayout.uniformsStruct.members.mvpMatrix, this.mvpMatrix);
-        this.buffer.set(VisualsLayout.uniformsStruct.members.mMatrix, this.modelMatrix);
+        this.buffer.set(meta.visualsUniforms.members.mvpMatrix, this.mvpMatrix);
+        this.buffer.set(meta.visualsUniforms.members.mMatrix, this.modelMatrix);
     }
 }
 //# sourceMappingURL=visuals.js.map

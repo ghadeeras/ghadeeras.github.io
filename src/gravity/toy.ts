@@ -1,12 +1,13 @@
 import { aether, gear } from '/gen/libs.js'
 import * as dragging from '../utils/dragging.js'
 import * as gpu from '../djee/gpu/index.js'
-import { BodyDescriptionStruct, BodyStateStruct, Universe, UniverseLayout } from './universe.js'
+import { Universe } from './universe.js'
 import * as meshRenderer from './renderer.mesh.js'
 import * as pointsRenderer from './renderer.points.js'
-import { Engine, EngineLayout, newEngine } from './physics.js'
-import { Visuals, VisualsLayout } from './visuals.js'
+import { Physics } from './physics.js'
+import { Visuals } from './visuals.js'
 import { Renderer } from './renderer.js'
+import * as meta from './meta.js'
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
 export const video = "https://youtu.be/BrZm6LlOQlI"
@@ -109,7 +110,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private currentRenderer = 0;
 
-    private constructor(private universe: Universe, private visuals: Visuals, private engine: Engine, private renderers: Renderer[]) {    
+    private constructor(private universe: Universe, private visuals: Visuals, private physics: Physics, private renderers: Renderer[]) {    
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -146,7 +147,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
-    animate() { this.engine.move(this.universe) }
+    animate() { this.physics.apply(this.universe) }
 
     get defaultDraggingTarget() {
         return this.rotationDragging
@@ -213,22 +214,20 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             limits.maxComputeWorkgroupSizeZ
         )
         const canvas = Toy.descriptor.input.pointers.canvas.element
-        const universeLayout = new UniverseLayout(device)
-        const universe = universeLayout.instance(...createUniverse(64 * workgroupSize))
-        const visualsLayout = new VisualsLayout(device)
-        const visuals = visualsLayout.instance()
-        const engineLayout = new EngineLayout(universeLayout)
-        const engine = await newEngine(engineLayout, workgroupSize)
-        const renderer1 = await meshRenderer.newRenderer(device, canvas, visuals)
-        const renderer2 = await pointsRenderer.newRenderer(device, canvas, visuals)
-        return gear.loops.newLoop(new Toy(universe, visuals, engine, [renderer1, renderer2]), Toy.descriptor)
+        const appLayout = meta.appLayoutBuilder.build(device)
+        const universe = new Universe(appLayout, ...createUniverse(64 * workgroupSize))
+        const visuals = new Visuals(appLayout)
+        const physics = await Physics.create(appLayout, workgroupSize)
+        const renderer1 = await meshRenderer.newRenderer(appLayout, canvas, visuals)
+        const renderer2 = await pointsRenderer.newRenderer(appLayout, canvas, visuals)
+        return gear.loops.newLoop(new Toy(universe, visuals, physics, [renderer1, renderer2]), Toy.descriptor)
     }
 
 }
 
-function createUniverse(bodiesCount: number, universeRadius = 12): [BodyDescriptionStruct[], BodyStateStruct[]] {
-    const descriptions: BodyDescriptionStruct[] = []
-    const initialState: BodyStateStruct[] = []
+function createUniverse(bodiesCount: number, universeRadius = 12): [meta.BodyDescriptionStruct[], meta.BodyStateStruct[]] {
+    const descriptions: meta.BodyDescriptionStruct[] = []
+    const initialState: meta.BodyStateStruct[] = []
 
     for (let i = 0; i < bodiesCount; i++) {
         const mass = skewDown(Math.random(), 16) * 0.999 + 0.001

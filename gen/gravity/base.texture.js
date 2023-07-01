@@ -9,14 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as gpu from '../djee/gpu/index.js';
 class BaseTexture {
-    constructor(shader, target) {
+    constructor(appLayout, shader, target) {
+        this.appLayout = appLayout;
         const device = shader.device;
-        this.groupLayout = device.groupLayout("BaseTextureGroupLayout", BaseTexture.groupLayoutEntries);
-        const pipelineLayout = device.pipelineLayout("BaseTexturePipelineLayout", {
-            group: this.groupLayout.asGroup(0)
-        });
         this.pipeline = device.device.createRenderPipeline({
-            layout: pipelineLayout.wrapped,
+            layout: appLayout.pipelineLayouts.texturePasting.wrapped,
             vertex: shader.vertexState("v_main", []),
             fragment: shader.fragmentState("f_main", [target]),
             primitive: {
@@ -27,7 +24,7 @@ class BaseTexture {
         this.sampler = device.sampler();
     }
     rendererFor(texture) {
-        const group = this.groupLayout.instance("BaseTextureGroup", {
+        const group = this.appLayout.groupLayouts.sampledTexture.instance("BaseTextureGroup", {
             textureSampler: this.sampler,
             baseTexture: texture.createView()
         });
@@ -40,10 +37,10 @@ class BaseTexture {
             });
         });
     }
-    static create(device, target) {
+    static create(appLayout, target) {
         return __awaiter(this, void 0, void 0, function* () {
-            const shader = yield device.shaderModule("BaseTexture", BaseTexture.shaderCode);
-            return new BaseTexture(shader, target);
+            const shader = yield appLayout.device.shaderModule("BaseTexture", BaseTexture.shaderCode);
+            return new BaseTexture(appLayout, shader, target);
         });
     }
 }
@@ -61,10 +58,6 @@ BaseTexture.shaderCode = gpu.renderingShaders.fullScreenPassVertex(/*wgsl*/ `
             return textureSample(baseTexture, textureSampler, uv);
         }
     `);
-BaseTexture.groupLayoutEntries = {
-    textureSampler: gpu.binding(0, GPUShaderStage.FRAGMENT, gpu.sampler("non-filtering")),
-    baseTexture: gpu.binding(1, GPUShaderStage.FRAGMENT, gpu.texture("float")),
-};
 export { BaseTexture };
 export class BaseTextureRenderer {
     constructor(render) {

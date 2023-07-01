@@ -7,23 +7,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import * as gpu from '../djee/gpu/index.js';
-import { UniverseLayout } from './universe.js';
 import { Filter1D, gaussianWeights } from './filter.1d.js';
 import { BaseTexture } from './base.texture.js';
+import * as meta from './meta.js';
 export class Renderer {
-    constructor(device, canvas, visuals, renderShader, filter, baseTexture) {
-        this.device = device;
+    constructor(layout, canvas, visuals, renderShader, filter, baseTexture) {
+        this.layout = layout;
         this.canvas = canvas;
         this.visuals = visuals;
         this.filter = filter;
         this.baseTexture = baseTexture;
-        this.bodyDesc = gpu.vertex({
-            massAndRadius: gpu.f32.x2
-        });
-        this.bodyPosition = UniverseLayout.bodyState.asVertex(['position']);
         visuals.aspectRatio = canvas.element.width / canvas.element.height;
-        this.texture = device.texture({
+        this.texture = layout.device.texture({
             label: "saturated-channel",
             format: "rgba16float",
             size: canvas.size,
@@ -37,8 +32,8 @@ export class Renderer {
     createPipeline(shaderModule) {
         return shaderModule.device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
-                this.bodyDesc.asBufferLayout('vertex'),
-                this.bodyPosition.asBufferLayout('vertex'),
+                meta.bodyDescriptionAsVertex.asBufferLayout('vertex'),
+                meta.bodyPosition.asBufferLayout('vertex'),
             ]),
             fragment: shaderModule.fragmentState("f_main", [{
                     format: this.texture.descriptor.format,
@@ -61,10 +56,7 @@ export class Renderer {
             multisample: {
                 count: this.canvas.sampleCount
             },
-            layout: this.device.device.createPipelineLayout({
-                label: "rendererPipelineLayout",
-                bindGroupLayouts: [this.visuals.layout.bindGroupLayout.wrapped]
-            })
+            layout: this.layout.pipelineLayouts.renderer.wrapped
         });
     }
     resize() {
@@ -82,7 +74,7 @@ export class Renderer {
         const descriptor2 = {
             colorAttachments: [this.texture.createView().colorAttachment()],
         };
-        this.device.enqueueCommand("render", encoder => {
+        this.layout.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe));
             this.filtering.apply(encoder, 4);
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe));
@@ -97,13 +89,14 @@ export class Renderer {
         pass.draw(universe.bodiesCount);
     }
 }
-export function newRenderer(device, canvas, visuals) {
+export function newRenderer(layout, canvas, visuals) {
     return __awaiter(this, void 0, void 0, function* () {
+        const device = layout.device;
         const shaderModule = yield device.loadShaderModule("gravity-render.points.wgsl");
         const gpuCanvas = device.canvas(canvas);
-        const filter = yield Filter1D.create(device, gaussianWeights(1 / 8, 8));
-        const baseTexture = yield BaseTexture.create(device, gpuCanvas);
-        return new Renderer(device, gpuCanvas, visuals, shaderModule, filter, baseTexture);
+        const filter = yield Filter1D.create(layout, gaussianWeights(1 / 8, 8));
+        const baseTexture = yield BaseTexture.create(layout, gpuCanvas);
+        return new Renderer(layout, gpuCanvas, visuals, shaderModule, filter, baseTexture);
     });
 }
 //# sourceMappingURL=renderer.points.js.map

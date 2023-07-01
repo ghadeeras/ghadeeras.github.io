@@ -1,62 +1,34 @@
-import * as gpu from '../djee/gpu/index.js';
-class UniverseLayout {
-    constructor(device) {
-        this.device = device;
-        this.bindGroupLayout = this.device.groupLayout("universeGroupLayout", UniverseLayout.bindGroupLayoutEntries);
-    }
-    instance(bodyDescriptions, initialState) {
-        return new Universe(this, bodyDescriptions, initialState, bodyDescriptions.length);
-    }
-}
-UniverseLayout.bindGroupLayoutEntries = {
-    universeDesc: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
-    currentState: gpu.binding(1, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
-    nextState: gpu.binding(2, GPUShaderStage.COMPUTE, gpu.buffer("storage")),
-    universeUniforms: gpu.binding(3, GPUShaderStage.COMPUTE, gpu.buffer("uniform")),
-};
-UniverseLayout.uniformsStruct = gpu.struct({
-    bodyFluffiness: gpu.f32,
-    gravityConstant: gpu.f32,
-    dT: gpu.f32,
-});
-UniverseLayout.bodyDescription = gpu.struct({
-    mass: gpu.f32,
-    radius: gpu.f32,
-});
-UniverseLayout.bodyState = gpu.struct({
-    position: gpu.f32.x3,
-    velocity: gpu.f32.x3,
-});
-export { UniverseLayout };
+import * as meta from './meta.js';
 export class Universe {
-    constructor(layout, bodyDescriptions, initialState, bodiesCount) {
+    constructor(layout, bodyDescriptions, initialState, bodiesCount = bodyDescriptions.length) {
         this.bodiesCount = bodiesCount;
-        const initialStateView = UniverseLayout.bodyState.view(initialState);
+        const initialStateView = meta.bodyState.view(initialState);
+        const device = layout.device;
         /* Buffers */
-        this.bodyDescriptionsBuffer = layout.device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, UniverseLayout.bodyDescription.view(bodyDescriptions));
-        this.uniformsBuffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, UniverseLayout.uniformsStruct.view([{
+        this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, meta.bodyDescription.view(bodyDescriptions));
+        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.physicsUniforms.view([{
                 bodyFluffiness: 1.0 / 0.1,
                 gravityConstant: 1000,
                 dT: 0.0001
             }]));
         const stateBufferUsage = GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
         this.buffers = [
-            layout.device.buffer("state0", stateBufferUsage, initialStateView),
-            layout.device.buffer("state1", stateBufferUsage, initialStateView.byteLength),
+            device.buffer("state0", stateBufferUsage, initialStateView),
+            device.buffer("state1", stateBufferUsage, initialStateView.byteLength),
         ];
         /* Bind Groups */
         this.bindGroups = [
-            layout.bindGroupLayout.instance("universeGroup0", {
+            layout.groupLayouts.universe.instance("universeGroup0", {
                 universeDesc: this.bodyDescriptionsBuffer,
                 currentState: this.buffers[0],
                 nextState: this.buffers[1],
-                universeUniforms: this.uniformsBuffer,
+                uniforms: this.uniformsBuffer,
             }),
-            layout.bindGroupLayout.instance("universeGroup1", {
+            layout.groupLayouts.universe.instance("universeGroup1", {
                 universeDesc: this.bodyDescriptionsBuffer,
                 currentState: this.buffers[1],
                 nextState: this.buffers[0],
-                universeUniforms: this.uniformsBuffer,
+                uniforms: this.uniformsBuffer,
             }),
         ];
         this.currentBuffer = 0;
@@ -70,30 +42,30 @@ export class Universe {
         return this.buffers[this.currentBuffer];
     }
     get bodyPointedness() {
-        return 1 / this.uniformsBuffer.get(UniverseLayout.uniformsStruct.members.bodyFluffiness);
+        return 1 / this.uniformsBuffer.get(meta.physicsUniforms.members.bodyFluffiness);
     }
     set bodyPointedness(p) {
-        this.uniformsBuffer.set(UniverseLayout.uniformsStruct.members.bodyFluffiness, 1 / p);
+        this.uniformsBuffer.set(meta.physicsUniforms.members.bodyFluffiness, 1 / p);
     }
     get gravityConstant() {
-        return this.uniformsBuffer.get(UniverseLayout.uniformsStruct.members.gravityConstant);
+        return this.uniformsBuffer.get(meta.physicsUniforms.members.gravityConstant);
     }
     set gravityConstant(v) {
-        this.uniformsBuffer.set(UniverseLayout.uniformsStruct.members.gravityConstant, v);
+        this.uniformsBuffer.set(meta.physicsUniforms.members.gravityConstant, v);
     }
     get dT() {
-        return this.uniformsBuffer.get(UniverseLayout.uniformsStruct.members.dT);
+        return this.uniformsBuffer.get(meta.physicsUniforms.members.dT);
     }
     set dT(v) {
-        this.uniformsBuffer.set(UniverseLayout.uniformsStruct.members.dT, v);
+        this.uniformsBuffer.set(meta.physicsUniforms.members.dT, v);
     }
     set state(state) {
-        const initialStateView = UniverseLayout.bodyState.view(state);
+        const initialStateView = meta.bodyState.view(state);
         this.buffers[0].writeAt(0, initialStateView);
         this.buffers[1].writeAt(0, initialStateView);
     }
     set bodyDescriptions(bodyDescriptions) {
-        const bodyDescriptionsView = UniverseLayout.bodyDescription.view(bodyDescriptions);
+        const bodyDescriptionsView = meta.bodyDescription.view(bodyDescriptions);
         this.bodyDescriptionsBuffer.writeAt(0, bodyDescriptionsView);
     }
 }

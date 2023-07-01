@@ -1,38 +1,16 @@
 import * as gpu from '../djee/gpu/index.js'
-import { ComputePipeline, PipelineLayout } from '../djee/gpu/pipeline.js'
-import { Universe, UniverseLayout } from './universe.js'
+import * as meta from './meta.js'
+import { Universe } from './universe.js'
 
-export type EnginePipelineLayout = ReturnType<typeof engineLayout>
+export class Physics {
 
-export class EngineLayout {
-
-    readonly pipelineLayout: PipelineLayout<EnginePipelineLayout>
+    readonly pipeline: meta.PhysicsPipeline
     
-    constructor(universeLayout: UniverseLayout) {
-        this.pipelineLayout = universeLayout.device.pipelineLayout("engineLayout", engineLayout(universeLayout))
+    private constructor(readonly layout: meta.AppLayout, readonly computeShader: gpu.ShaderModule, private workgroupSize: number) {
+        this.pipeline = layout.pipelineLayouts.physics.computeInstance(computeShader, "c_main")
     }
 
-    instance(computeShader: gpu.ShaderModule, workgroupSize: number) {
-        return new Engine(this, computeShader, workgroupSize)
-    }
-
-}
-
-function engineLayout(universeLayout: UniverseLayout) {
-    return {
-        universe: universeLayout.bindGroupLayout.asGroup(0)
-    }
-}
-
-export class Engine {
-
-    readonly pipeline: ComputePipeline<EnginePipelineLayout>
-    
-    constructor(readonly layout: EngineLayout, readonly computeShader: gpu.ShaderModule, private workgroupSize: number) {
-        this.pipeline = layout.pipelineLayout.computeInstance(computeShader, "c_main")
-    }
-
-    move(universe: Universe) {
+    apply(universe: Universe) {
         const workGroupsCount = Math.ceil(universe.bodiesCount / this.workgroupSize)
         this.computeShader.device.enqueueCommand("compute", encoder => {
             encoder.computePass(pass => {
@@ -44,11 +22,11 @@ export class Engine {
         })
     }
 
-}
-
-export async function newEngine(engineLayout: EngineLayout, workgroupSize: number) {
-    const device = engineLayout.pipelineLayout.device
-    console.warn(`Workgroup Size: ${workgroupSize}`)
-    const shaderModule = await device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`))
-    return engineLayout.instance(shaderModule, workgroupSize)
+    static async create(layout: meta.AppLayout, workgroupSize: number) {
+        const device = layout.device
+        console.warn(`Workgroup Size: ${workgroupSize}`)
+        const shaderModule = await device.loadShaderModule("gravity-compute.wgsl", code => code.replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`))
+        return new Physics(layout, shaderModule, workgroupSize)
+    }
+    
 }

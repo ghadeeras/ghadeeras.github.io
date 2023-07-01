@@ -1,49 +1,22 @@
 import { aether } from '/gen/libs.js'
 import * as gpu from '../djee/gpu/index.js'
+import * as meta from './meta.js'
 
 const projection = new aether.PerspectiveProjection(1, null, false, false)
-
-export type VisualsBindGroupLayout = gpu.BindGroupLayout<typeof VisualsLayout.bindGroupLayoutEntries>
-export type VisualsBindGroup = gpu.BindGroup<typeof VisualsLayout.bindGroupLayoutEntries>
-
-export class VisualsLayout {
-
-    static readonly bindGroupLayoutEntries = {
-        uniforms: gpu.binding(0, GPUShaderStage.VERTEX, gpu.buffer("uniform"))
-    } satisfies gpu.BindGroupLayoutEntries
-
-    static readonly uniformsStruct = gpu.struct({
-        mvpMatrix: gpu.f32.x4.x4,
-        mvMatrix: gpu.f32.x4.x4,
-        mMatrix: gpu.f32.x4.x4,
-        radiusScale: gpu.f32,
-    })
-
-    readonly bindGroupLayout: VisualsBindGroupLayout
-
-    constructor(readonly device: gpu.Device) {
-        this.bindGroupLayout = device.groupLayout("visualsBindGroupLayout", VisualsLayout.bindGroupLayoutEntries)
-    }
-
-    instance() {
-        return new Visuals(this)
-    }
-
-}
 
 export class Visuals {
 
     readonly buffer: gpu.SyncBuffer
-    readonly bindGroup: VisualsBindGroup
+    readonly bindGroup: meta.VisualsBindGroup
 
     private _zoom = 1
     private _aspectRatio = 1
     private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
     private _modelMatrix = aether.mat4.identity()
 
-    constructor(readonly layout: VisualsLayout) {
+    constructor(readonly layout: meta.AppLayout) {
         /* Buffers */
-        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, VisualsLayout.uniformsStruct.view([{
+        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
             mvpMatrix: this.mvpMatrix,
             mvMatrix: this.modelMatrix,
             mMatrix: this.modelMatrix,
@@ -51,7 +24,7 @@ export class Visuals {
         }]))
 
         /* Bind Groups */
-        this.bindGroup = layout.bindGroupLayout.instance("visualsGroup", {
+        this.bindGroup = layout.groupLayouts.visuals.instance("visualsGroup", {
             uniforms: this.buffer
         })
     }
@@ -93,11 +66,11 @@ export class Visuals {
     }
 
     get radiusScale() {
-        return this.buffer.get(VisualsLayout.uniformsStruct.members.radiusScale)
+        return this.buffer.get(meta.visualsUniforms.members.radiusScale)
     }
 
     set radiusScale(v: number) {
-        this.buffer.set(VisualsLayout.uniformsStruct.members.radiusScale, v)
+        this.buffer.set(meta.visualsUniforms.members.radiusScale, v)
     }
 
     get mvpMatrix() {
@@ -122,8 +95,8 @@ export class Visuals {
     }
 
     private updateMvpMatrix() {
-        this.buffer.set(VisualsLayout.uniformsStruct.members.mvpMatrix, this.mvpMatrix)
-        this.buffer.set(VisualsLayout.uniformsStruct.members.mMatrix, this.modelMatrix)
+        this.buffer.set(meta.visualsUniforms.members.mvpMatrix, this.mvpMatrix)
+        this.buffer.set(meta.visualsUniforms.members.mMatrix, this.modelMatrix)
     }
 
 }
