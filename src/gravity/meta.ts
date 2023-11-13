@@ -33,18 +33,12 @@ export const bodyDescriptionAsVertex = gpu.vertex({
 export const bodyPosition = bodyState.asVertex(['position'])
 
 export type AppLayout = gpu.AppLayoutFrom<typeof appLayoutBuilder>
-export type UniverseBindGroupLayout = AppLayout["groupLayouts"]["universe"]
-export type UniverseBindGroup = gpu.BindGroupFrom<UniverseBindGroupLayout>
-export type VisualsBindGroupLayout = AppLayout["groupLayouts"]["visuals"]
-export type VisualsBindGroup = gpu.BindGroupFrom<VisualsBindGroupLayout>
-export type Filter1DBindGroupLayout = AppLayout["groupLayouts"]["filter1D"]
-export type Filter1DBindGroup = gpu.BindGroupFrom<Filter1DBindGroupLayout>
-export type Filter1DIOBindGroupLayout = AppLayout["groupLayouts"]["filter1DIO"]
-export type Filter1DIOBindGroup = gpu.BindGroupFrom<Filter1DIOBindGroupLayout>
-export type PhysicsPipelineLayout = AppLayout["pipelineLayouts"]["physics"]
-export type PhysicsPipeline = gpu.ComputePipelineFrom<PhysicsPipelineLayout>
-export type FilteringPipelineLayout = AppLayout["pipelineLayouts"]["filtering"]
-export type FilteringPipeline = gpu.ComputePipelineFrom<FilteringPipelineLayout>
+export type UniverseBindGroup = gpu.BindGroupFrom<AppLayout, "universe">
+export type VisualsBindGroup = gpu.BindGroupFrom<AppLayout, "visuals">
+export type Filter1DBindGroup = gpu.BindGroupFrom<AppLayout, "filter1D">
+export type Filter1DIOBindGroup = gpu.BindGroupFrom<AppLayout, "filter1DIO">
+export type PhysicsPipeline = gpu.ComputePipelineFrom<AppLayout, "physics">
+export type FilteringPipeline = gpu.ComputePipelineFrom<AppLayout, "filtering">
 
 export const appLayoutBuilder = gpu.appLayoutBuilder("Gravity")
     .withGroupLayouts({

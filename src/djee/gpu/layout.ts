@@ -3,8 +3,8 @@ import { BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, Resource
 import { PipelineLayout } from "./pipeline.js";
 
 export type AppLayoutFrom<B extends AppLayoutBuilderWithPipelineLayouts<any, any>> = ReturnType<B["build"]>
-export type BindGroupFrom<L extends BindGroupLayout<any>> = ReturnType<L["instance"]>
-export type ComputePipelineFrom<L extends PipelineLayout<any>> = ReturnType<L["computeInstance"]>
+export type BindGroupFrom<A extends AppLayout<any, any>, L extends keyof A["groupLayouts"]> = ReturnType<A["groupLayouts"][L]["instance"]>
+export type ComputePipelineFrom<A extends AppLayout<any, any>, L extends keyof A["pipelineLayouts"]> = ReturnType<A["pipelineLayouts"][L]["computeInstance"]>
 
 export type AppLayout<G extends BindGroupLayoutsRecord, P extends RefPipelineLayoutsRecord<G>> = {
     device: Device
