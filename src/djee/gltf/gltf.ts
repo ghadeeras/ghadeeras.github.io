@@ -13,6 +13,8 @@ export type Model = {
 
     nodes: Node[]
 
+    cameras?: Camera[]
+
     meshes: Mesh[]
 
     buffers: BufferRef[]
@@ -31,6 +33,8 @@ export type Scene = {
 
 export type Node = {
 
+    camera?: number
+    
     mesh?: number
 
     children?: number[]
@@ -85,6 +89,26 @@ export type Accessor = {
 
     max?: number[]
 
+}
+
+export type Camera = PerspectiveCamera | OrthographicCamera
+export type PerspectiveCamera = {
+    type: "perspective",
+    perspective: {
+        aspectRatio?: number,
+        yfov: number,
+        zfar?: number,
+        znear: number,
+    }
+}
+export type OrthographicCamera = {
+    type: "orthographic",
+    orthographic: {
+        xmag: number,
+        ymag: number,
+        zfar: number,
+        znear: number,
+    }
 }
 
 export type Mesh = {

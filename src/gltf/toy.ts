@@ -109,7 +109,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private readonly modelNameElement = gear.required(document.getElementById("model-name"))
     private readonly statusElement = gear.required(document.getElementById("status"))
 
-    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, -4))
     readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
     readonly scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
     readonly zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
@@ -185,7 +185,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos
         const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2)
         const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
-        return aether.vec3.add(aether.vec3.from(this.view.viewMatrix[3]), p);
+        return p;
     }
 
     get projectionAndViewMatrices(): [aether.Mat4, aether.Mat4] {
@@ -206,7 +206,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     set modelIndex(i: number) {
-        this._modelIndex = i % this.models.length
+        this._modelIndex = (i + this.models.length) % this.models.length
         const [name, uri] = this.models[this._modelIndex]
         this.modelNameElement.innerText = name
         this.view.modelMatrix = aether.mat4.identity()

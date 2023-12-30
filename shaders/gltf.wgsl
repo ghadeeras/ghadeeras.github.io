@@ -34,7 +34,7 @@ fn color(
     frontFacing: bool
 ) -> vec4<f32> {
     var materialColor = uniforms.color.rgb;
-    var lightRay = fragPosition - uniforms.lightPos.xyz;
+    var lightRay = -uniforms.lightPos.xyz;
 
     var viewDir = normalize(fragPosition);
     var normal = normalize(fragNormal);

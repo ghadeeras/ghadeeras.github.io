@@ -13,8 +13,6 @@ export type ModelIndexEntry = {
     }
 }
 
-const projection = new aether.PerspectiveProjection(1, null, false, true)
-
 export class GLView implements View {
 
     private context: wgl.Context;
@@ -34,8 +32,10 @@ export class GLView implements View {
 
     private renderer: wgl.GLRenderer | null = null
 
-    private _viewMatrix: aether.Mat<4> = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0])
+    private _viewMatrix: aether.Mat<4> = aether.mat4.identity()
     private _modelMatrix: aether.Mat<4> = aether.mat4.identity()
+
+    private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective(true)
 
     constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string) {
         this.context = wgl.Context.of(canvasId);
@@ -64,7 +64,8 @@ export class GLView implements View {
 
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
-        gl.clearDepth(1);
+        gl.depthFunc(gl.GREATER);
+        gl.clearDepth(0);
         gl.clearColor(1, 1, 1, 1);
     }
 
@@ -133,11 +134,12 @@ export class GLView implements View {
     }
 
     async loadModel(modelUri: any) {
+        const model = await gltf.graph.Model.create(modelUri, true);
+        this.perspective = model.scene.perspectives[0]
+        this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
+        this._viewMatrix = this.perspective.matrix;
         this._modelMatrix = aether.mat4.identity();
-        this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
         this.updateModelViewMatrix();
-        this.projectionMatrix = projection.matrix(2, this.aspectRatio);
-        const model = await gltf.graph.Model.create(modelUri);
         if (this.renderer) {
             this.renderer.destroy();
             this.renderer = null;
@@ -150,7 +152,7 @@ export class GLView implements View {
 
     resize(): void {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
-        this.projectionMatrix = projection.matrix(this.focalLength, this.aspectRatio)
+        this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength)
     }
 
     draw() {
@@ -168,7 +170,7 @@ export class GLView implements View {
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const shaders = await gear.fetchTextFiles({
         vertexShaderCode: "gltf.vert",
-        fragmentShaderCode: "generic.frag"
+        fragmentShaderCode: "gltf.frag"
     }, "/shaders")
     return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode)
 }

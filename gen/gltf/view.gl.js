@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether, gear } from "/gen/libs.js";
 import { wgl, gltf } from "../djee/index.js";
-const projection = new aether.PerspectiveProjection(1, null, false, true);
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this.renderer = null;
-        this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+        this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
+        this.perspective = gltf.graph.defaultPerspective(true);
         this.context = wgl.Context.of(canvasId);
         const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
@@ -32,7 +32,8 @@ export class GLView {
         this.uFogginess = program.uniform("fogginess");
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
-        gl.clearDepth(1);
+        gl.depthFunc(gl.GREATER);
+        gl.clearDepth(0);
         gl.clearColor(1, 1, 1, 1);
     }
     get canvas() {
@@ -86,11 +87,12 @@ export class GLView {
     }
     loadModel(modelUri) {
         return __awaiter(this, void 0, void 0, function* () {
+            const model = yield gltf.graph.Model.create(modelUri, true);
+            this.perspective = model.scene.perspectives[0];
+            this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
+            this._viewMatrix = this.perspective.matrix;
             this._modelMatrix = aether.mat4.identity();
-            this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
             this.updateModelViewMatrix();
-            this.projectionMatrix = projection.matrix(2, this.aspectRatio);
-            const model = yield gltf.graph.Model.create(modelUri);
             if (this.renderer) {
                 this.renderer.destroy();
                 this.renderer = null;
@@ -103,7 +105,7 @@ export class GLView {
     }
     resize() {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
-        this.projectionMatrix = projection.matrix(this.focalLength, this.aspectRatio);
+        this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
     }
     draw() {
         const gl = this.context.gl;
@@ -119,7 +121,7 @@ export function newViewFactory(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const shaders = yield gear.fetchTextFiles({
             vertexShaderCode: "gltf.vert",
-            fragmentShaderCode: "generic.frag"
+            fragmentShaderCode: "gltf.frag"
         }, "/shaders");
         return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
     });

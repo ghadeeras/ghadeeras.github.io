@@ -12,16 +12,18 @@ export const gltfMatricesStruct = types.struct({
     antiMatrix: types.mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false)
 
-export const gltfMatrixGroupLayout = {
-    entries: [{
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-        buffer: {
-            type: "uniform",
-            hasDynamicOffset: true,
-        },
-    }],
-} satisfies GPUBindGroupLayoutDescriptor
+export function gltfMatrixGroupLayout() {
+    return {
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            buffer: {
+                type: "uniform",
+                hasDynamicOffset: true,
+            },
+        }],
+    } satisfies GPUBindGroupLayoutDescriptor
+}
 
 export class MatricesResource implements Resource {
     
@@ -45,7 +47,7 @@ export class GPURendererFactory {
     ) {
         this.adapter = new GPUAdapter(
             device, 
-            device.device.createBindGroupLayout(gltfMatrixGroupLayout), 
+            device.device.createBindGroupLayout(gltfMatrixGroupLayout()), 
             matricesGroupIndex, 
             attributeLocations, 
             caching(pipelineSupplier)

@@ -34,7 +34,7 @@ class GLTFToy {
         this.view = view;
         this.modelNameElement = gear.required(document.getElementById("model-name"));
         this.statusElement = gear.required(document.getElementById("status"));
-        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, -4));
         this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
         this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
@@ -96,7 +96,7 @@ class GLTFToy {
         const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
         const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2);
         const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
-        return aether.vec3.add(aether.vec3.from(this.view.viewMatrix[3]), p);
+        return p;
     }
     get projectionAndViewMatrices() {
         return [this.view.projectionMatrix, this.view.viewMatrix];
@@ -112,7 +112,7 @@ class GLTFToy {
         return this._modelIndex;
     }
     set modelIndex(i) {
-        this._modelIndex = i % this.models.length;
+        this._modelIndex = (i + this.models.length) % this.models.length;
         const [name, uri] = this.models[this._modelIndex];
         this.modelNameElement.innerText = name;
         this.view.modelMatrix = aether.mat4.identity();

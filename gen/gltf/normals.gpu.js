@@ -16,14 +16,14 @@ const uniformsStruct = gpu.struct({
     }),
     projectionMat: gpu.mat4x4,
 });
-const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class NormalsRenderer {
     constructor(shaderModule, depthTexture) {
         this.shaderModule = shaderModule;
         this.depthTexture = depthTexture;
         this.renderer = null;
-        this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
+        this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
+        this.perspective = gltf.graph.defaultPerspective();
         this.device = shaderModule.device;
         this.uniforms = this.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
         const uniformsGroupLayout = this.device.device.createBindGroupLayout({
@@ -41,7 +41,7 @@ export class NormalsRenderer {
             bindGroupLayouts: [uniformsGroupLayout, this.rendererFactory.matricesGroupLayout]
         });
         this.fragmentState = this.shaderModule.fragmentState("f_main", ["rgba32float"]);
-        this.depthState = this.depthTexture.depthState();
+        this.depthState = this.depthTexture.depthState({ depthCompare: "greater" });
     }
     get aspectRatio() {
         const m = this.projectionMatrix;
@@ -79,12 +79,12 @@ export class NormalsRenderer {
     }
     loadModel(modelUri) {
         return __awaiter(this, void 0, void 0, function* () {
-            this._modelMatrix = aether.mat4.identity();
-            this._viewMatrix = aether.mat4.lookAt([-2, 2, 2], [0, 0, 0], [0, 1, 0]);
-            const modelView = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
-            this.uniforms.set(uniformsStruct.members.mat, { positions: modelView, normals: modelView });
-            this.projectionMatrix = projection.matrix(2, this.aspectRatio);
             const model = yield gltf.graph.Model.create(modelUri);
+            this.perspective = model.scene.perspectives[0];
+            this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
+            this._viewMatrix = this.perspective.matrix;
+            this._modelMatrix = aether.mat4.identity();
+            this.resetModelViewMatrix();
             if (this.renderer !== null) {
                 this.renderer.destroy();
                 this.renderer = null;
@@ -103,12 +103,12 @@ export class NormalsRenderer {
     }
     resize(width, height) {
         this.depthTexture.resize({ width, height });
-        this.projectionMatrix = projection.matrix(this.focalLength, width / height);
+        this.projectionMatrix = this.perspective.camera.matrix(width / height, this.focalLength);
     }
     render(encoder, attachment) {
         const passDescriptor = {
             colorAttachments: [attachment],
-            depthStencilAttachment: this.depthTexture.createView().depthAttachment()
+            depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
         };
         encoder.renderPass(passDescriptor, pass => {
             if (this.renderer !== null) {
