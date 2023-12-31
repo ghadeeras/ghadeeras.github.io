@@ -109,18 +109,23 @@ fn backOut() {
 }
 
 fn hitColor() -> vec4<f32> {
+    let extent = ray.extent;
+    let direction = normalize(uniforms.modelMatrix * ray.direction);
     if (abs(sample.derivative) < EPSILON) {
         extendRay();
     }
-    ray = newRay(
-        uniforms.modelMatrix * ray.origin,
-        uniforms.modelMatrix * ray.direction
-    );
+
     let normal = normalize(firstFieldSign * uniforms.modelMatrix * sample.gradient);
-    let reflection = reflect(ray.direction, normal);
+    let reflection = reflect(direction, normal);
     let specular = max(pow(dot(reflection, uniforms.lightDirection), uniforms.lightNarrowness), 0.0);
     let diffuse = 0.5 * (dot(normal, uniforms.lightDirection) + 1.0);
-    let shade = 0.25 * diffuse * diffuse + 0.75 * specular;
+
+    ray = newRay(extent, uniforms.lightDirection * uniforms.modelMatrix);
+
+    let occluded = (diffuse < 0.5) || ((stillInBounds() || hitBounds()) && hitContourSurface());
+    let d = diffuse * select(diffuse * diffuse * diffuse, 0.125, occluded);
+    let s = select(specular, 0.0, occluded);
+    let shade = 0.25 * d + 0.75 * s;
     let hue = 0.5 * (uniforms.contourValue + 1.0);
     return vec4(4.0 * shade * vec3(hue, 0.0, 1.0 - hue), 1.0);
 }
@@ -143,6 +148,14 @@ fn extendRay() {
     ray.length += select(uniforms.step, extension, extension > 0.0) + EPSILON;
     ray.extent = ray.origin + ray.length * ray.direction;
     sample = currentSample();
+}
+
+fn stillInBounds() -> bool {
+    let result = inBounds();
+    if (result) {
+        sample = currentSample();
+    }
+    return result;
 }
 
 fn currentSample() -> Sample {
