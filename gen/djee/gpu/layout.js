@@ -89,7 +89,7 @@ export function sampler(type) {
     };
 }
 export function binding(binding, visibility, resource) {
-    return Object.assign({ binding, visibility }, resource);
+    return Object.assign({ binding, visibility: visibility.map(v => GPUShaderStage[v]).reduce((v1, v2) => v1 | v2) }, resource);
 }
 export function group(group, layout) {
     return { group, layout };

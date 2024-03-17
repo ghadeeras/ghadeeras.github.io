@@ -1,3 +1,4 @@
+import { KeyOfType } from "../utils.js";
 import { Device } from "./device.js";
 import { BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, ResourceType, SubBindGroupLayoutEntry } from "./group.js";
 import { PipelineLayout } from "./pipeline.js";
@@ -140,9 +141,9 @@ export function sampler(type: GPUSamplerBindingType): SubBindGroupLayoutEntry<"s
     }
 }
 
-export function binding<T extends ResourceType>(binding: number, visibility: number, resource: SubBindGroupLayoutEntry<T>): BindGroupLayoutEntry<T> {
+export function binding<T extends ResourceType>(binding: number, visibility: KeyOfType<number, GPUShaderStage>[], resource: SubBindGroupLayoutEntry<T>): BindGroupLayoutEntry<T> {
     return {
-        binding, visibility, ...resource
+        binding, visibility: visibility.map(v => GPUShaderStage[v]).reduce((v1, v2) => v1 | v2), ...resource
     }
 }
 

@@ -25,25 +25,25 @@ export const bodyPosition = bodyState.asVertex(['position']);
 export const appLayoutBuilder = gpu.appLayoutBuilder("Gravity")
     .withGroupLayouts({
     sampledTexture: {
-        textureSampler: gpu.binding(0, GPUShaderStage.FRAGMENT, gpu.sampler("non-filtering")),
-        baseTexture: gpu.binding(1, GPUShaderStage.FRAGMENT, gpu.texture("float")),
+        textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),
+        baseTexture: gpu.binding(1, ["FRAGMENT"], gpu.texture("float")),
     },
     filter1D: {
-        weights: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage"))
+        weights: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage"))
     },
     filter1DIO: {
-        direction: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("uniform")),
-        source: gpu.binding(1, GPUShaderStage.COMPUTE, gpu.texture("float")),
-        target: gpu.binding(2, GPUShaderStage.COMPUTE, gpu.storageTexture("rgba16float")),
+        direction: gpu.binding(0, ["COMPUTE"], gpu.buffer("uniform")),
+        source: gpu.binding(1, ["COMPUTE"], gpu.texture("float")),
+        target: gpu.binding(2, ["COMPUTE"], gpu.storageTexture("rgba16float")),
     },
     universe: {
-        universeDesc: gpu.binding(0, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
-        currentState: gpu.binding(1, GPUShaderStage.COMPUTE, gpu.buffer("read-only-storage")),
-        nextState: gpu.binding(2, GPUShaderStage.COMPUTE, gpu.buffer("storage")),
-        uniforms: gpu.binding(3, GPUShaderStage.COMPUTE, gpu.buffer("uniform")),
+        universeDesc: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage")),
+        currentState: gpu.binding(1, ["COMPUTE"], gpu.buffer("read-only-storage")),
+        nextState: gpu.binding(2, ["COMPUTE"], gpu.buffer("storage")),
+        uniforms: gpu.binding(3, ["COMPUTE"], gpu.buffer("uniform")),
     },
     visuals: {
-        uniforms: gpu.binding(0, GPUShaderStage.VERTEX, gpu.buffer("uniform"))
+        uniforms: gpu.binding(0, ["VERTEX"], gpu.buffer("uniform"))
     }
 })
     .withPipelineLayouts({

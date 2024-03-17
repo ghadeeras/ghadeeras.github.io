@@ -1,4 +1,8 @@
 export type StrictOmit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+export type KeyOfType<V, O> = FilteredKeysOf<O, keyof O, V>
+export type FilteredKeysOf<O, K, V> = K extends keyof O 
+    ? O[K] extends V ? K : never
+    : never
 
 export type Supplier<T> = () => T
 
