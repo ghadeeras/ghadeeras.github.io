@@ -45,6 +45,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["ArrowDown"]],
                     virtualKeys: "#control-down"
                 },
+                record: {
+                    physicalKeys: [["KeyV"]],
+                    virtualKeys: "#control-v"
+                },
             },
             pointers: {
                 primary: {
@@ -118,7 +122,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.lodElement.innerText = this.fieldSampler.depth.toFixed(0)
     }
 
-    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         const v = 0.01
         return {
             keys: {
@@ -128,6 +132,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 scale: { onPressed: () => inputs.pointers.primary.draggingTarget =  this.scaleDragging },
                 incDepth: { onPressed: () => this.changeDepth(+1) },
                 decDepth: { onPressed: () => this.changeDepth(-1) },
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
                 primary: {

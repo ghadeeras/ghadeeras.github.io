@@ -75,6 +75,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyS"]],
                     virtualKeys: "#control-s",
                 }, 
+                record: {
+                    physicalKeys: [["KeyV"]],
+                    virtualKeys: "#control-v",
+                },
                 incLOD: {
                     physicalKeys: [["ArrowUp"]],
                     virtualKeys: "#control-up",
@@ -137,7 +141,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.currentStone = stone
     }
 
-    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging },
@@ -152,6 +156,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) }, 
                 export: { onPressed: () => this.exportModel() }, 
                 save: { onPressed: () => this.saveModel() }, 
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() }, 
                 incLOD: { onPressed: () => this.addToLOD(8) }, 
                 decLOD: { onPressed: () => this.addToLOD(-8) },
             }

@@ -58,7 +58,7 @@ class Toy {
         this.modelMatrix = aether.mat4.identity();
         this.currentStone = stone;
     }
-    inputWiring(inputs) {
+    inputWiring(inputs, outputs) {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging },
@@ -73,6 +73,7 @@ class Toy {
                 undo: { onPressed: () => this.currentStone = this.carving.undo(this.currentStone) },
                 export: { onPressed: () => this.exportModel() },
                 save: { onPressed: () => this.saveModel() },
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
                 incLOD: { onPressed: () => this.addToLOD(8) },
                 decLOD: { onPressed: () => this.addToLOD(-8) },
             }
@@ -248,6 +249,10 @@ Toy.descriptor = {
             save: {
                 physicalKeys: [["KeyS"]],
                 virtualKeys: "#control-s",
+            },
+            record: {
+                physicalKeys: [["KeyV"]],
+                virtualKeys: "#control-v",
             },
             incLOD: {
                 physicalKeys: [["ArrowUp"]],

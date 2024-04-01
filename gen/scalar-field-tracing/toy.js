@@ -69,7 +69,7 @@ class Toy {
         this.resampling.perform();
         this.lodElement.innerText = this.fieldSampler.depth.toFixed(0);
     }
-    inputWiring(inputs) {
+    inputWiring(inputs, outputs) {
         const v = 0.01;
         return {
             keys: {
@@ -79,6 +79,7 @@ class Toy {
                 scale: { onPressed: () => inputs.pointers.primary.draggingTarget = this.scaleDragging },
                 incDepth: { onPressed: () => this.changeDepth(+1) },
                 decDepth: { onPressed: () => this.changeDepth(-1) },
+                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
                 primary: {
@@ -136,6 +137,10 @@ Toy.descriptor = {
             decDepth: {
                 physicalKeys: [["ArrowDown"]],
                 virtualKeys: "#control-down"
+            },
+            record: {
+                physicalKeys: [["KeyV"]],
+                virtualKeys: "#control-v"
             },
         },
         pointers: {
