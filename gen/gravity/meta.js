@@ -1,4 +1,5 @@
 import * as gpu from '../djee/gpu/index.js';
+import { BaseTexture } from './base.texture.js';
 export const visualsUniforms = gpu.struct({
     mvpMatrix: gpu.f32.x4.x4,
     mvMatrix: gpu.f32.x4.x4,
@@ -22,7 +23,14 @@ export const bodyDescriptionAsVertex = gpu.vertex({
     massAndRadius: gpu.f32.x2
 });
 export const bodyPosition = bodyState.asVertex(['position']);
-export const appLayoutBuilder = gpu.appLayoutBuilder("Gravity")
+export const appLayoutBuilder = gpu.appBuilder("Gravity")
+    .withShaders({
+    baseTexture: { code: BaseTexture.shaderCode },
+    bloom: { path: "filter-1d.wgsl" },
+    physics: { path: "gravity-compute.wgsl" },
+    meshRenderer: { path: "gravity-render.wgsl" },
+    pointsRenderer: { path: "gravity-render.points.wgsl" },
+})
     .withGroupLayouts({
     sampledTexture: {
         textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),

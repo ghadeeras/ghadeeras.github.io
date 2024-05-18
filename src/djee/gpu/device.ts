@@ -13,15 +13,19 @@ export class Device {
     constructor(readonly device: GPUDevice, readonly adapter: GPUAdapter) {
     }
 
-    async loadShaderModule(shaderName: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
-        const response = await fetch(`${basePath}/${shaderName}`, { method : "get", mode : "no-cors" })
-        const rawShaderCode = await response.text()
-        return await this.shaderModule(shaderName, rawShaderCode, templateFunction)
+    async loadShaderModule(relativePath: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
+        return await this.labeledShaderModule(relativePath, relativePath, templateFunction, basePath)
     }
     
-    async shaderModule(shaderName: string, rawShaderCode: string, templateFunction: (code: string) => string = s => s): Promise<ShaderModule> {
+    async labeledShaderModule(label: string, relativePath: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
+        const response = await fetch(`${basePath}/${relativePath}`, { method : "get", mode : "no-cors" })
+        const rawShaderCode = await response.text()
+        return await this.shaderModule(label, rawShaderCode, templateFunction)
+    }
+    
+    async shaderModule(label: string, rawShaderCode: string, templateFunction: (code: string) => string = s => s): Promise<ShaderModule> {
         const shaderCode = templateFunction(rawShaderCode)
-        const shaderModule = new ShaderModule(shaderName, this, shaderCode)
+        const shaderModule = new ShaderModule(label, this, shaderCode)
 
         if (await shaderModule.hasCompilationErrors()) {
             throw new Error("Module compilation failed!")

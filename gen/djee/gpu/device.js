@@ -20,17 +20,22 @@ export class Device {
         this.device = device;
         this.adapter = adapter;
     }
-    loadShaderModule(shaderName, templateFunction = s => s, basePath = "/shaders") {
+    loadShaderModule(relativePath, templateFunction = s => s, basePath = "/shaders") {
         return __awaiter(this, void 0, void 0, function* () {
-            const response = yield fetch(`${basePath}/${shaderName}`, { method: "get", mode: "no-cors" });
-            const rawShaderCode = yield response.text();
-            return yield this.shaderModule(shaderName, rawShaderCode, templateFunction);
+            return yield this.labeledShaderModule(relativePath, relativePath, templateFunction, basePath);
         });
     }
-    shaderModule(shaderName, rawShaderCode, templateFunction = s => s) {
+    labeledShaderModule(label, relativePath, templateFunction = s => s, basePath = "/shaders") {
+        return __awaiter(this, void 0, void 0, function* () {
+            const response = yield fetch(`${basePath}/${relativePath}`, { method: "get", mode: "no-cors" });
+            const rawShaderCode = yield response.text();
+            return yield this.shaderModule(label, rawShaderCode, templateFunction);
+        });
+    }
+    shaderModule(label, rawShaderCode, templateFunction = s => s) {
         return __awaiter(this, void 0, void 0, function* () {
             const shaderCode = templateFunction(rawShaderCode);
-            const shaderModule = new ShaderModule(shaderName, this, shaderCode);
+            const shaderModule = new ShaderModule(label, this, shaderCode);
             if (yield shaderModule.hasCompilationErrors()) {
                 throw new Error("Module compilation failed!");
             }

@@ -10,4 +10,5 @@ export * from './encoder.js';
 export * from './types.js';
 export * from './utils.js';
 export * from './gltf.gpu.js';
+export * from './app.js';
 //# sourceMappingURL=index.js.map

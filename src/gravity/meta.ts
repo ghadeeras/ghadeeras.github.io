@@ -1,4 +1,5 @@
 import * as gpu from '../djee/gpu/index.js'
+import { BaseTexture } from './base.texture.js'
 
 export type BodyDescriptionStruct = gpu.DataTypeOf<typeof bodyDescription>
 export type BodyStateStruct = gpu.DataTypeOf<typeof bodyState>
@@ -32,6 +33,7 @@ export const bodyDescriptionAsVertex = gpu.vertex({
 
 export const bodyPosition = bodyState.asVertex(['position'])
 
+export type App = gpu.AppFrom<typeof appLayoutBuilder>
 export type AppLayout = gpu.AppLayoutFrom<typeof appLayoutBuilder>
 export type UniverseBindGroup = gpu.BindGroupFrom<AppLayout, "universe">
 export type VisualsBindGroup = gpu.BindGroupFrom<AppLayout, "visuals">
@@ -40,7 +42,14 @@ export type Filter1DIOBindGroup = gpu.BindGroupFrom<AppLayout, "filter1DIO">
 export type PhysicsPipeline = gpu.ComputePipelineFrom<AppLayout, "physics">
 export type FilteringPipeline = gpu.ComputePipelineFrom<AppLayout, "filtering">
 
-export const appLayoutBuilder = gpu.appLayoutBuilder("Gravity")
+export const appLayoutBuilder = gpu.appBuilder("Gravity")
+    .withShaders({
+        baseTexture: { code: BaseTexture.shaderCode },
+        bloom: { path: "filter-1d.wgsl" },
+        physics: { path: "gravity-compute.wgsl" },
+        meshRenderer: { path: "gravity-render.wgsl" },
+        pointsRenderer: { path: "gravity-render.points.wgsl" },
+    })
     .withGroupLayouts({
         sampledTexture: {
             textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),

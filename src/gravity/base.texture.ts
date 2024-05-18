@@ -22,22 +22,21 @@ export class BaseTexture {
 
     private sampler: gpu.Sampler;
 
-    constructor(private appLayout: meta.AppLayout, shader: gpu.ShaderModule, target: gpu.TextureFormatSource) {
-        const device = shader.device
-        this.pipeline = device.device.createRenderPipeline({
-            layout: appLayout.pipelineLayouts.texturePasting.wrapped,
-            vertex: shader.vertexState("v_main", []),
-            fragment: shader.fragmentState("f_main", [target]),
+    constructor(private app: meta.App, target: gpu.TextureFormatSource) {
+        this.pipeline = app.device.device.createRenderPipeline({
+            layout: app.layout.pipelineLayouts.texturePasting.wrapped,
+            vertex: app.shaders.baseTexture.vertexState("v_main", []),
+            fragment: app.shaders.baseTexture.fragmentState("f_main", [target]),
             primitive: {
                 topology: "triangle-list"
             },
             label: "BaseTexturePipeline"
         })
-        this.sampler = device.sampler()
+        this.sampler = app.device.sampler()
     }
 
     rendererFor(texture: gpu.Texture): BaseTextureRenderer {
-        const group = this.appLayout.groupLayouts.sampledTexture.instance("BaseTextureGroup", {
+        const group = this.app.layout.groupLayouts.sampledTexture.instance("BaseTextureGroup", {
             textureSampler: this.sampler,
             baseTexture: texture.createView()
         })
@@ -49,11 +48,6 @@ export class BaseTexture {
                 pass.draw(3)
             })
         })
-    }
-
-    static async create(appLayout: meta.AppLayout, target: gpu.TextureFormatSource): Promise<BaseTexture> {
-        const shader = await appLayout.device.shaderModule("BaseTexture", BaseTexture.shaderCode)
-        return new BaseTexture(appLayout, shader, target)
     }
 
 }

@@ -13,14 +13,14 @@ export class Renderer implements r.Renderer {
     
     private depthTexture: gpu.Texture
 
-    constructor(private layout: meta.AppLayout, private canvas: gpu.Canvas, private visuals: Visuals, renderShader: gpu.ShaderModule) {
-        this.mesh = new geo.ShaderMesh(layout.device, geo.sphere(18, 9))
+    constructor(private app: meta.App, private canvas: gpu.Canvas, private visuals: Visuals) {
+        this.mesh = new geo.ShaderMesh(app.layout.device, geo.sphere(18, 9))
 
         this.depthTexture = canvas.depthTexture()
         visuals.aspectRatio = canvas.element.width / canvas.element.height
     
         /* Pipeline */
-        this.pipeline = this.createPipeline(renderShader)
+        this.pipeline = this.createPipeline(app.shaders.meshRenderer)
     }
 
     private createPipeline(shaderModule: gpu.ShaderModule): GPURenderPipeline {
@@ -39,7 +39,7 @@ export class Renderer implements r.Renderer {
             multisample: {
                 count: this.canvas.sampleCount
             },
-            layout: this.layout.pipelineLayouts.renderer.wrapped
+            layout: this.app.layout.pipelineLayouts.renderer.wrapped
         })
     }
 
@@ -54,7 +54,7 @@ export class Renderer implements r.Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         }
-        this.layout.device.enqueueCommand("render", encoder => {
+        this.app.layout.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped)
@@ -67,10 +67,4 @@ export class Renderer implements r.Renderer {
         })
     }
 
-}
-
-export async function newRenderer(layout: meta.AppLayout, canvas: string, visuals: Visuals) {
-    const device = layout.device
-    const shaderModule = await device.loadShaderModule("gravity-render.wgsl")
-    return new Renderer(layout, device.canvas(canvas, 4), visuals, shaderModule)
 }

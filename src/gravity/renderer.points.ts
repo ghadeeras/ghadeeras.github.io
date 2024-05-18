@@ -13,10 +13,10 @@ export class Renderer implements r.Renderer {
     private filtering: Filtering1D
     private baseTextureRenderer: BaseTextureRenderer
     
-    constructor(private layout: meta.AppLayout, private canvas: gpu.Canvas, private visuals: Visuals, renderShader: gpu.ShaderModule, private filter: Filter1D, private baseTexture: BaseTexture) {
+    constructor(private app: meta.App, private canvas: gpu.Canvas, private visuals: Visuals, private filter: Filter1D, private baseTexture: BaseTexture) {
         visuals.aspectRatio = canvas.element.width / canvas.element.height
 
-        this.texture = layout.device.texture({
+        this.texture = app.layout.device.texture({
             label: "saturated-channel",
             format: "rgba16float",
             size: canvas.size,
@@ -24,7 +24,7 @@ export class Renderer implements r.Renderer {
         })
     
         /* Pipeline */
-        this.pipeline = this.createPipeline(renderShader)
+        this.pipeline = this.createPipeline(app.shaders.pointsRenderer)
 
         this.filtering = filter.forTexture(this.texture)
         this.baseTextureRenderer = this.baseTexture.rendererFor(this.texture)
@@ -57,7 +57,7 @@ export class Renderer implements r.Renderer {
             multisample: {
                 count: this.canvas.sampleCount
             },
-            layout: this.layout.pipelineLayouts.renderer.wrapped
+            layout: this.app.layout.pipelineLayouts.renderer.wrapped
         })
     }
 
@@ -77,7 +77,7 @@ export class Renderer implements r.Renderer {
         const descriptor2: GPURenderPassDescriptor = {
             colorAttachments: [this.texture.createView().colorAttachment()],
         }
-        this.layout.device.enqueueCommand("render", encoder => {
+        this.app.layout.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe))
             this.filtering.apply(encoder, 4)
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe))
@@ -94,11 +94,8 @@ export class Renderer implements r.Renderer {
     }
 }
 
-export async function newRenderer(layout: meta.AppLayout, canvas: string, visuals: Visuals) {
-    const device = layout.device
-    const shaderModule = await device.loadShaderModule("gravity-render.points.wgsl")
-    const gpuCanvas = device.canvas(canvas);
-    const filter = await Filter1D.create(layout, gaussianWeights(1 / 8, 8));
-    const baseTexture =  await BaseTexture.create(layout, gpuCanvas)
-    return new Renderer(layout, gpuCanvas, visuals, shaderModule, filter, baseTexture)
+export function newRenderer(app: meta.App, canvas: gpu.Canvas, visuals: Visuals, wgX: number, wgY: number) {
+    const filter = new Filter1D(app, gaussianWeights(1 / 8, 8), [wgX, wgY]);
+    const baseTexture =  new BaseTexture(app, canvas)
+    return new Renderer(app, canvas, visuals, filter, baseTexture)
 }

@@ -1,9 +1,18 @@
 import { KeyOfType } from "../utils.js";
+import { App, AppBuilderWithPipelineLayouts } from "./app.js";
 import { Device } from "./device.js";
 import { BindGroupLayout, BindGroupLayoutEntries, BindGroupLayoutEntry, ResourceType, SubBindGroupLayoutEntry } from "./group.js";
 import { PipelineLayout } from "./pipeline.js";
 
-export type AppLayoutFrom<B extends AppLayoutBuilderWithPipelineLayouts<any, any>> = ReturnType<B["build"]>
+export type AppLayoutFrom<B> = 
+      B extends AppLayoutBuilderWithPipelineLayouts<any, any> ? ReturnType<B["build"]> 
+    : B extends AppBuilderWithPipelineLayouts<any, any, any> ? AppFrom<B>["layout"]
+    : never
+
+export type AppFrom<B extends AppBuilderWithPipelineLayouts<any, any, any>> = 
+    ReturnType<B["build"]> extends Promise<infer A extends App<any, any, any>>
+        ? A
+        : never
 export type BindGroupFrom<A extends AppLayout<any, any>, L extends keyof A["groupLayouts"]> = ReturnType<A["groupLayouts"][L]["instance"]>
 export type ComputePipelineFrom<A extends AppLayout<any, any>, L extends keyof A["pipelineLayouts"]> = ReturnType<A["pipelineLayouts"][L]["computeInstance"]>
 

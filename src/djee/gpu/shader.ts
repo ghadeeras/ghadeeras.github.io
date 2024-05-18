@@ -117,3 +117,49 @@ export const renderingShaders = {
     `)
     
 }
+
+export type AppShaders<S extends AppShadersRecord> = {
+    [k in keyof S]: ShaderModule
+}
+
+export type AppShadersRecord = Record<string, AppShaderRecord>
+
+export type AppShaderRecord = {
+    path: string, code?: never
+} | {
+    code: string, path?: never
+}
+
+export class AppShadersBuilder {
+
+    constructor(private label: string) {}
+
+    withShaders<S extends AppShadersRecord>(shaders: S): AppShadersBuilderWithShaders<S> {
+        return new AppShadersBuilderWithShaders<S>(this.label, shaders)
+    }
+
+}
+
+export class AppShadersBuilderWithShaders<S extends AppShadersRecord> {
+
+    constructor(private label: string, private shaders: S) {}
+
+    async build(device: Device, rootPath: string = ".", processor: (code: string, path?: string | null) => string = code => code): Promise<AppShaders<S>> {
+        const result: Partial<AppShaders<S>> = {}
+        for (const k of Object.keys(this.shaders)) {
+            const shader = this.shaders[k]
+            const label = `${this.label}.shaders.${k}`
+            const templateFunction = (code: string) => processor(code, rootPath)
+            result[k as keyof S] = await (typeof shader.path == 'string' 
+                ? device.labeledShaderModule(label, shader.path, templateFunction, rootPath)
+                : device.shaderModule(label, shader.code, templateFunction)
+            )
+        }
+        return result as AppShaders<S>
+    }
+
+}
+
+export function appShadersBuilder(label: string): AppShadersBuilder {
+    return new AppShadersBuilder(label)
+}

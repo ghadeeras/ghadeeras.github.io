@@ -113,4 +113,35 @@ export const renderingShaders = {
         }  
     `)
 };
+export class AppShadersBuilder {
+    constructor(label) {
+        this.label = label;
+    }
+    withShaders(shaders) {
+        return new AppShadersBuilderWithShaders(this.label, shaders);
+    }
+}
+export class AppShadersBuilderWithShaders {
+    constructor(label, shaders) {
+        this.label = label;
+        this.shaders = shaders;
+    }
+    build(device, rootPath = ".", processor = code => code) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = {};
+            for (const k of Object.keys(this.shaders)) {
+                const shader = this.shaders[k];
+                const label = `${this.label}.shaders.${k}`;
+                const templateFunction = (code) => processor(code, rootPath);
+                result[k] = yield (typeof shader.path == 'string'
+                    ? device.labeledShaderModule(label, shader.path, templateFunction, rootPath)
+                    : device.shaderModule(label, shader.code, templateFunction));
+            }
+            return result;
+        });
+    }
+}
+export function appShadersBuilder(label) {
+    return new AppShadersBuilder(label);
+}
 //# sourceMappingURL=shader.js.map

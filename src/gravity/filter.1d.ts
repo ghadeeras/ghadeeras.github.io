@@ -10,28 +10,27 @@ export class Filter1D {
     private vertical: gpu.Buffer
     private filterGroup: meta.Filter1DBindGroup
 
-    constructor(private layout: meta.AppLayout, shader: gpu.ShaderModule, private weights: number[], private workgroupSize: [number, number]) {
-        const device = layout.device
-        this.pipeline = layout.pipelineLayouts.filtering.computeInstance(shader, "c_main")
-        this.horizontal = device.buffer(`ioGroup0.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([0]))
-        this.vertical = device.buffer(`ioGroup1.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([1]))
-        this.filterGroup = layout.groupLayouts.filter1D.instance(`filterWeightsGroup`, {
-            weights: device.buffer(`filterWeightsBuffer`, GPUBufferUsage.STORAGE, gpu.f32.view(this.weights))
+    constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number]) {
+        this.pipeline = app.layout.pipelineLayouts.filtering.computeInstance(app.shaders.bloom, "c_main")
+        this.horizontal = app.device.buffer(`ioGroup0.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([0]))
+        this.vertical = app.device.buffer(`ioGroup1.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([1]))
+        this.filterGroup = app.layout.groupLayouts.filter1D.instance(`filterWeightsGroup`, {
+            weights: app.device.buffer(`filterWeightsBuffer`, GPUBufferUsage.STORAGE, gpu.f32.view(this.weights))
         })
     }
 
     forTexture(texture: gpu.Texture): Filtering1D {
-        const device = this.layout.device
+        const device = this.app.layout.device
         const temp = device.texture({
             ...texture.descriptor,
             label: `${texture.descriptor.label}_temp`
         })
-        const ioGroup1 = this.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup1`, {
+        const ioGroup1 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup1`, {
             direction: this.horizontal,
             source: texture.createView(),
             target: temp.createView()
         })
-        const ioGroup2 = this.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup2`, {
+        const ioGroup2 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup2`, {
             direction: this.vertical,
             source: temp.createView(),
             target: texture.createView()
@@ -63,20 +62,6 @@ export class Filter1D {
             }
         })
     }
-
-    static async create(layout: meta.AppLayout, weights: number[]): Promise<Filter1D> {
-        const device = layout.device
-        const [wgMaxX, wgMaxY] = [device.device.limits.maxComputeWorkgroupSizeX, device.device.limits.maxComputeWorkgroupSizeY]
-        const wgS = 2 ** Math.floor(Math.log2(wgMaxX * wgMaxY) / 4)
-        const wgX = Math.min(wgS, wgMaxX); 
-        const wgY = 2 ** Math.floor(Math.log2(wgMaxY / wgX)); 
-        console.log(`Filter Workgroup Size: [${wgX}, ${wgY}]`)
-        const shader = await device.loadShaderModule("filter-1d.wgsl", s => s
-            .replace(/\[\[workgroup_size_x\]\]/g, wgX.toString())
-            .replace(/\[\[workgroup_size_y\]\]/g, wgY.toString())
-        )
-        return new Filter1D(layout, shader, weights, [wgX, wgY])
-    } 
 
 }
 
