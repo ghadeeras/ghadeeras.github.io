@@ -20,6 +20,14 @@ export class GPUView implements View {
         return this.gpuCanvas.element
     }
 
+    get aspectRatio(): number {
+        return this.normalsRenderer.aspectRatio;
+    }
+
+    get focalLength() {
+        return this.normalsRenderer.focalLength
+    }
+
     set modelColor(color: [number, number, number, number]) {
     }
 

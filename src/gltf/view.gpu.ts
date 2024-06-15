@@ -149,7 +149,7 @@ export class GPUView implements View {
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
 
-    async loadModel(modelUri: string) {
+    async loadModel(modelUri: string): Promise<gltf.graph.Model> {
         const model = await gltf.graph.Model.create(modelUri);
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
@@ -161,6 +161,7 @@ export class GPUView implements View {
             this.renderer = null;
         }
         this.renderer = this.rendererFactory.newInstance(model);
+        return model
     }
 
     private primitivePipeline(vertexLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState): GPURenderPipeline {

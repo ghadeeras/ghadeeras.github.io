@@ -1,11 +1,12 @@
 import { aether, gear } from "../libs.js";
+import * as dgee from '../djee/index.js'
 import * as gpuView from "./view.gpu.js"
 import * as gpuWiresView from "./view.wires.gpu.js"
 import * as glView from "./view.gl.js"
 
 export interface View {
 
-    loadModel(modelUri: string): Promise<void>
+    loadModel(modelUri: string): Promise<dgee.gltf.graph.Model>
 
     resize(): void
     
@@ -18,6 +19,10 @@ export interface View {
     modelMatrix: aether.Mat4
 
     readonly canvas: HTMLCanvasElement
+
+    readonly aspectRatio: number
+
+    readonly focalLength: number
 
     set modelColor(color: aether.Vec4)
 

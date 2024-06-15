@@ -34,6 +34,7 @@ class GLTFToy {
         this.view = view;
         this.modelNameElement = gear.required(document.getElementById("model-name"));
         this.statusElement = gear.required(document.getElementById("status"));
+        this.cameraElement = gear.required(document.getElementById("camera"));
         this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, -4));
         this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
@@ -43,7 +44,9 @@ class GLTFToy {
         this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this._perspectives = [];
         this._modelIndex = 0;
+        this._cameraIndex = 0;
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];
         this.view.shininess = 1;
@@ -79,6 +82,8 @@ class GLTFToy {
                 fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
                 nextModel: { onPressed: () => this.modelIndex-- },
                 previousModel: { onPressed: () => this.modelIndex++ },
+                nextCamera: { onPressed: () => this.cameraIndex++ },
+                previousCamera: { onPressed: () => this.cameraIndex-- },
             }
         };
     }
@@ -118,11 +123,27 @@ class GLTFToy {
         this.view.modelMatrix = aether.mat4.identity();
         this.statusElement.innerText = "Loading Model ...";
         this.view.loadModel(uri)
-            .then(() => this.statusElement.innerText = "Rendering Model ...")
+            .then(model => {
+            this.statusElement.innerText = "Rendering Model ...";
+            this.cameraElement.innerText = `1 / ${model.scene.perspectives.length}`;
+            this._perspectives = model.scene.perspectives;
+            this._cameraIndex = 0;
+        })
             .catch(reason => {
             console.error(reason);
             return this.statusElement.innerText = "Failed to load model!";
         });
+    }
+    get cameraIndex() {
+        return this._cameraIndex;
+    }
+    set cameraIndex(i) {
+        this._cameraIndex = (i + this._perspectives.length) % this._perspectives.length;
+        const perspective = this._perspectives[this._cameraIndex];
+        this.view.modelMatrix = aether.mat4.identity();
+        this.view.projectionMatrix = perspective.camera.matrix(this.view.aspectRatio, this.view.focalLength);
+        this.view.viewMatrix = perspective.matrix;
+        this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
     }
 }
 GLTFToy.descriptor = {
@@ -176,6 +197,14 @@ GLTFToy.descriptor = {
             previousModel: {
                 physicalKeys: [["ArrowRight"]],
                 virtualKeys: "#control-right",
+            },
+            nextCamera: {
+                physicalKeys: [["ArrowUp"]],
+                virtualKeys: "#control-up",
+            },
+            previousCamera: {
+                physicalKeys: [["ArrowDown"]],
+                virtualKeys: "#control-down",
             },
         }
     },

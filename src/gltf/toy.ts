@@ -2,6 +2,7 @@ import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";
+import { gltf } from "../djee/index.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -89,6 +90,14 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["ArrowRight"]],
                     virtualKeys: "#control-right",
                 },
+                nextCamera: {
+                    physicalKeys: [["ArrowUp"]],
+                    virtualKeys: "#control-up",
+                },
+                previousCamera: {
+                    physicalKeys: [["ArrowDown"]],
+                    virtualKeys: "#control-down",
+                },
             }
         },
         output: {
@@ -108,6 +117,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     
     private readonly modelNameElement = gear.required(document.getElementById("model-name"))
     private readonly statusElement = gear.required(document.getElementById("status"))
+    private readonly cameraElement = gear.required(document.getElementById("camera"))
 
     readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, -4))
     readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4))
@@ -119,7 +129,9 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
     readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
+    private _perspectives: gltf.graph.Perspective[] = []
     private _modelIndex = 0
+    private _cameraIndex = 0
 
     private constructor(private models: [string, string][], private view: View) {
         this.modelIndex = 1
@@ -164,6 +176,8 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging }, 
                 nextModel: { onPressed: () => this.modelIndex-- }, 
                 previousModel: { onPressed: () => this.modelIndex++ },
+                nextCamera: { onPressed: () => this.cameraIndex++ }, 
+                previousCamera: { onPressed: () => this.cameraIndex-- },
             }
         }
     }
@@ -172,7 +186,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         return {
             onRender: () => this.view.draw(),
             canvases: {
-                scene: { onResize: () => this.view.resize()}
+                scene: { onResize: () => this.view.resize() }
             }
         }
         
@@ -212,11 +226,29 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.modelMatrix = aether.mat4.identity()
         this.statusElement.innerText = "Loading Model ..."
         this.view.loadModel(uri)
-            .then(() => this.statusElement.innerText = "Rendering Model ...")
+            .then(model => {
+                this.statusElement.innerText = "Rendering Model ..."
+                this.cameraElement.innerText = `1 / ${model.scene.perspectives.length}`
+                this._perspectives = model.scene.perspectives
+                this._cameraIndex = 0
+            })
             .catch(reason => {
                 console.error(reason)
                 return this.statusElement.innerText = "Failed to load model!"
             })
+    }
+    
+    get cameraIndex() {
+        return this._cameraIndex
+    }
+
+    set cameraIndex(i: number) {
+        this._cameraIndex = (i + this._perspectives.length) % this._perspectives.length
+        const perspective = this._perspectives[this._cameraIndex]
+        this.view.modelMatrix = aether.mat4.identity()
+        this.view.projectionMatrix = perspective.camera.matrix(this.view.aspectRatio, this.view.focalLength)
+        this.view.viewMatrix = perspective.matrix
+        this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`
     }
     
 }

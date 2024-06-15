@@ -90,6 +90,7 @@ export class NormalsRenderer {
                 this.renderer = null;
             }
             this.renderer = this.rendererFactory.newInstance(model);
+            return model;
         });
     }
     primitivePipeline(vertexLayouts, primitiveState) {

@@ -101,6 +101,7 @@ export class GLView {
                 "POSITION": this.position,
                 "NORMAL": this.normal,
             }, this.uPositionsMat, this.uNormalsMat);
+            return model;
         });
     }
     resize() {

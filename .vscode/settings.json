@@ -6,5 +6,16 @@
         "Djee",
         "gltf"
     ],
-    "deno.lint": true
+    "deno.lint": true,
+    "emojisense.languages": {
+        "markdown": true,
+        "plaintext": {
+            "markupCompletionsEnabled": false,
+            "emojiDecoratorsEnabled": false
+        },
+        "scminput": true,
+        "git-commit": true,
+        "html": true,
+        "typescript": true
+    }
 }

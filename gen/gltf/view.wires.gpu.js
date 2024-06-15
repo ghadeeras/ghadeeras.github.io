@@ -24,6 +24,12 @@ export class GPUView {
     get canvas() {
         return this.gpuCanvas.element;
     }
+    get aspectRatio() {
+        return this.normalsRenderer.aspectRatio;
+    }
+    get focalLength() {
+        return this.normalsRenderer.focalLength;
+    }
     set modelColor(color) {
     }
     set lightPosition(p) {

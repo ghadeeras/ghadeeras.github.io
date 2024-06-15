@@ -133,7 +133,7 @@ export class GLView implements View {
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
 
-    async loadModel(modelUri: any) {
+    async loadModel(modelUri: any): Promise<gltf.graph.Model> {
         const model = await gltf.graph.Model.create(modelUri, true);
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
@@ -148,6 +148,7 @@ export class GLView implements View {
             "POSITION": this.position,
             "NORMAL": this.normal,
         }, this.uPositionsMat, this.uNormalsMat);
+        return model
     }
 
     resize(): void {
