@@ -53,13 +53,13 @@ export class Buffer {
             this.writeAt(0, data);
         }
     }
-    writeAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
-        return __awaiter(this, void 0, void 0, function* () {
+    writeAt(bufferOffset_1, data_1) {
+        return __awaiter(this, arguments, void 0, function* (bufferOffset, data, dataOffset = 0, size = data.byteLength) {
             return yield this.writer(bufferOffset, data, dataOffset, size);
         });
     }
-    readAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
-        return __awaiter(this, void 0, void 0, function* () {
+    readAt(bufferOffset_1, data_1) {
+        return __awaiter(this, arguments, void 0, function* (bufferOffset, data, dataOffset = 0, size = data.byteLength) {
             return yield this.reader(bufferOffset, data, dataOffset, size);
         });
     }

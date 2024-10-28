@@ -126,8 +126,8 @@ export class AppShadersBuilderWithShaders {
         this.label = label;
         this.shaders = shaders;
     }
-    build(device, rootPath = ".", processor = code => code) {
-        return __awaiter(this, void 0, void 0, function* () {
+    build(device_1) {
+        return __awaiter(this, arguments, void 0, function* (device, rootPath = ".", processor = code => code) {
             const result = {};
             for (const k of Object.keys(this.shaders)) {
                 const shader = this.shaders[k];

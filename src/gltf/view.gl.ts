@@ -1,5 +1,5 @@
 import { aether, gear } from "/gen/libs.js";
-import { wgl, gltf } from "../djee/index.js"
+import { wgl, gltf, xr } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
@@ -38,7 +38,11 @@ export class GLView implements View {
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective(true)
 
     constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string) {
-        this.context = wgl.Context.of(canvasId);
+        try {
+            this.context = wgl.Context.of(canvasId, { xrCompatible: true });
+        } catch (e) {
+            this.context = wgl.Context.of(canvasId);
+        }
 
         const program = this.context.link(
             this.context.vertexShader(vertexShaderCode),
@@ -164,6 +168,22 @@ export class GLView implements View {
             this.renderer.render(this.context)
         }
         gl.flush();
+    }
+
+    async xrSwitch(): Promise<xr.XRSwitch | null> {
+        const viewMatrix: aether.Mat4[] = []
+        return xr.XRSwitch.create(
+            this.context, 
+            (w, h) => {
+                viewMatrix.push(this.viewMatrix)
+                this.context.gl.viewport(0, 0, w, h)
+                this.projectionMatrix = this.perspective.camera.matrix(w / h, this.focalLength)
+            }, 
+            m => {
+                this.viewMatrix = aether.mat4.mul(m, viewMatrix[0])
+                this.draw()
+            }
+        )
     }
 
 }

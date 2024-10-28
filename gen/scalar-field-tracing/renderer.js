@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as gpu from "../djee/gpu/index.js";
 import { gear, aether } from "../libs.js";
-class FieldRenderer {
+export class FieldRenderer {
     constructor(shader, field, targetFormat) {
         this.shader = shader;
         this.field = field;
@@ -174,5 +174,4 @@ FieldRenderer.uniformsStruct = gpu.struct({
     focalLength: gpu.f32,
     step: gpu.f32,
 });
-export { FieldRenderer };
 //# sourceMappingURL=renderer.js.map

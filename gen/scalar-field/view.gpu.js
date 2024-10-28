@@ -11,7 +11,7 @@ import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { picker } from "./picker.gpu.js";
 const projection = new aether.PerspectiveProjection(1, null, false, false);
-class GPUView {
+export class GPUView {
     constructor(device, canvasId, shaderModule) {
         this.device = device;
         this.uniformsStruct = gpu.struct({
@@ -155,7 +155,6 @@ GPUView.vertex = gpu.vertex({
     position: gpu.f32.x3,
     normal: gpu.f32.x3,
 });
-export { GPUView };
 export function newView(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const device = yield gpu.Device.instance();

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as gpu from "../djee/gpu/index.js";
 import { aether } from "../libs.js";
-class FieldSampler {
+export class FieldSampler {
     constructor(shader) {
         this.shader = shader;
         const device = shader.device;
@@ -80,5 +80,4 @@ FieldSampler.uniformsStruct = gpu.struct({
     depth: gpu.u32,
 });
 FieldSampler.SIZE = 128;
-export { FieldSampler };
 //# sourceMappingURL=sampler.js.map

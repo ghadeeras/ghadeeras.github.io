@@ -20,20 +20,20 @@ export class Device {
         this.device = device;
         this.adapter = adapter;
     }
-    loadShaderModule(relativePath, templateFunction = s => s, basePath = "/shaders") {
-        return __awaiter(this, void 0, void 0, function* () {
+    loadShaderModule(relativePath_1) {
+        return __awaiter(this, arguments, void 0, function* (relativePath, templateFunction = s => s, basePath = "/shaders") {
             return yield this.labeledShaderModule(relativePath, relativePath, templateFunction, basePath);
         });
     }
-    labeledShaderModule(label, relativePath, templateFunction = s => s, basePath = "/shaders") {
-        return __awaiter(this, void 0, void 0, function* () {
+    labeledShaderModule(label_1, relativePath_1) {
+        return __awaiter(this, arguments, void 0, function* (label, relativePath, templateFunction = s => s, basePath = "/shaders") {
             const response = yield fetch(`${basePath}/${relativePath}`, { method: "get", mode: "no-cors" });
             const rawShaderCode = yield response.text();
             return yield this.shaderModule(label, rawShaderCode, templateFunction);
         });
     }
-    shaderModule(label, rawShaderCode, templateFunction = s => s) {
-        return __awaiter(this, void 0, void 0, function* () {
+    shaderModule(label_1, rawShaderCode_1) {
+        return __awaiter(this, arguments, void 0, function* (label, rawShaderCode, templateFunction = s => s) {
             const shaderCode = templateFunction(rawShaderCode);
             const shaderModule = new ShaderModule(label, this, shaderCode);
             if (yield shaderModule.hasCompilationErrors()) {

@@ -11,13 +11,13 @@ export class Context {
     readonly canvas: HTMLCanvasElement
     readonly gl: WebGL2RenderingContext
 
-    private constructor(canvasElementId: string) {
+    private constructor(canvasElementId: string, options?: WebGLContextAttributes) {
         this.canvas = getCanvas(canvasElementId)
-        this.gl = getContext(this.canvas)
+        this.gl = getContext(this.canvas, options)
     }
 
-    static of(canvasElementId: string) {
-        return new Context(canvasElementId)
+    static of(canvasElementId: string, options?: WebGLContextAttributes) {
+        return new Context(canvasElementId, options)
     }
 
     shaderFromElement(scriptId: string) {
@@ -72,7 +72,7 @@ function getCanvas(canvasId: string): HTMLCanvasElement {
     return canvas ? canvas as HTMLCanvasElement : failure(`No canvas found with ID: ${canvasId}`)
 }
 
-function getContext(canvas: HTMLCanvasElement): WebGL2RenderingContext {
-    const context = canvas.getContext("webgl2")
+function getContext(canvas: HTMLCanvasElement, options?: WebGLContextAttributes): WebGL2RenderingContext {
+    const context = canvas.getContext("webgl2", options)
     return context ?? failure(`Failed to get GL context from element: ${canvas.id}`)
 }

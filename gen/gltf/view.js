@@ -11,8 +11,8 @@ import { gear } from "../libs.js";
 import * as gpuView from "./view.gpu.js";
 import * as gpuWiresView from "./view.wires.gpu.js";
 import * as glView from "./view.gl.js";
-export function newViewFactory(canvasId, wires = false) {
-    return __awaiter(this, void 0, void 0, function* () {
+export function newViewFactory(canvasId_1) {
+    return __awaiter(this, arguments, void 0, function* (canvasId, wires = false) {
         const apiElement = gear.required(document.getElementById("graphics-api"));
         try {
             const view = wires ? yield gpuWiresView.newViewFactory(canvasId) : yield gpuView.newViewFactory(canvasId);

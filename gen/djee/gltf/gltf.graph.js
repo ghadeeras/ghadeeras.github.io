@@ -25,8 +25,8 @@ export class Model {
         this.scenes = model.scenes.map((scene, i) => new Scene(scene, i, this.nodes, legacyPerspective));
         this.scene = this.scenes[(_b = model.scene) !== null && _b !== void 0 ? _b : 0];
     }
-    static create(modelUri, legacyPerspective = false) {
-        return __awaiter(this, void 0, void 0, function* () {
+    static create(modelUri_1) {
+        return __awaiter(this, arguments, void 0, function* (modelUri, legacyPerspective = false) {
             const response = yield fetch(modelUri, { mode: "cors" });
             const model = yield response.json();
             const buffers = yield gltf.fetchBuffers(model.buffers, modelUri);

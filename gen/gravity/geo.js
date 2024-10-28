@@ -1,5 +1,5 @@
 import { gpu } from '../djee/index.js';
-class ShaderMesh {
+export class ShaderMesh {
     constructor(device, mesh) {
         this.mesh = mesh;
         this.indexFormat = mesh.positions.length > 0xFFFF ? "uint32" : "uint16";
@@ -13,7 +13,6 @@ class ShaderMesh {
 ShaderMesh.bodySurfaceVertex = gpu.vertex({
     position: gpu.f32.x3
 });
-export { ShaderMesh };
 export function sphere(slices, stacks) {
     return {
         topology: "triangle-strip",

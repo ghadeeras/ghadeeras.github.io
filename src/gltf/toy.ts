@@ -2,7 +2,7 @@ import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";
-import { gltf } from "../djee/index.js";
+import { gltf, xr } from "../djee/index.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -98,6 +98,10 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["ArrowDown"]],
                     virtualKeys: "#control-down",
                 },
+                xr: {
+                    physicalKeys: [["KeyX"]],
+                    virtualKeys: "#control-xr",
+                },
             }
         },
         output: {
@@ -133,13 +137,16 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private _modelIndex = 0
     private _cameraIndex = 0
 
-    private constructor(private models: [string, string][], private view: View) {
+    private constructor(private models: [string, string][], private view: View, private xrSwitch: xr.XRSwitch | null) {
         this.modelIndex = 1
         this.view.modelColor = [0.8, 0.8, 0.8, 1]
         this.view.shininess = 1
         this.view.fogginess = 0
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5])
         this.view.lightRadius = 0.005
+        if (xrSwitch) {
+            gear.required(document.getElementById("xr")).style.visibility = "visible"
+        }
     }
 
     static async loop(wires: boolean): Promise<gear.loops.Loop> {
@@ -155,11 +162,12 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     
         const viewFactory = await newViewFactory("canvas", wires)
         const view = viewFactory()
+        const xrSwitch = await view.xrSwitch()
     
-        return gear.loops.newLoop(new GLTFToy(models, view), GLTFToy.descriptor)
+        return gear.loops.newLoop(new GLTFToy(models, view, xrSwitch), GLTFToy.descriptor)
     }
 
-    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
+    inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>, controller: gear.loops.LoopController): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             pointers: {
                 canvas: { defaultDraggingTarget: this.rotationDragging }
@@ -178,6 +186,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ }, 
                 previousCamera: { onPressed: () => this.cameraIndex-- },
+                xr: { onPressed: () => this.switchXROn(controller) },
             }
         }
     }
@@ -251,6 +260,20 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`
     }
     
+    private switchXROn(controller: gear.loops.LoopController) {
+        if (this.xrSwitch !== null) {
+            if (this.xrSwitch.isOn) {
+                this.xrSwitch.turnOff()
+                this.view.resize()
+            } else {
+                controller.animationPaused = true;
+                this.xrSwitch.turnOn("local", () => {
+                    controller.animationPaused = false;
+                });
+            }
+        }
+    }
+
 }
 
 function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {

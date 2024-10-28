@@ -1,5 +1,5 @@
 import { aether } from "/gen/libs.js";
-import { gpu } from "../djee/index.js"
+import { gpu, xr } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { NormalsRenderer } from "./normals.gpu.js";
 import { NormalsFilter } from "./filter.gpu.js";
@@ -80,6 +80,10 @@ export class GPUView implements View {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment())
             this.normalsFilter.render(encoder, this.gpuCanvas.attachment({r: 0, g: 0, b: 0, a: 0}))    
         })
+    }
+
+    async xrSwitch(): Promise<xr.XRSwitch | null> {
+        return null
     }
 
 }

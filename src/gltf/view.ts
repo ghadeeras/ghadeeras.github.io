@@ -12,6 +12,8 @@ export interface View {
     
     draw(): void
 
+    xrSwitch(): Promise<dgee.xr.XRSwitch | null>
+
     projectionMatrix: aether.Mat4
 
     viewMatrix: aether.Mat4

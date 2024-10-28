@@ -8,19 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import { wgl, gltf, xr } from "../djee/index.js";
-export class GLView {
-    constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
+import { wgl, gltf } from "../djee/index.js";
+export class XRView {
+    constructor(context, layer, vertexShaderCode, fragmentShaderCode) {
+        this.context = context;
+        this.layer = layer;
         this.renderer = null;
         this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
         this.perspective = gltf.graph.defaultPerspective(true);
-        try {
-            this.context = wgl.Context.of(canvasId, { xrCompatible: true });
-        }
-        catch (e) {
-            this.context = wgl.Context.of(canvasId);
-        }
+        this.context.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, this.layer.framebuffer);
         const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
         this.position = program.attribute("position");
@@ -39,7 +36,7 @@ export class GLView {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
         gl.clearDepth(0);
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(0, 0, 1, 0);
     }
     get canvas() {
         return this.context.canvas;
@@ -60,7 +57,7 @@ export class GLView {
         this.uFogginess.data = [f];
     }
     get aspectRatio() {
-        return this.context.canvas.width / this.context.canvas.height;
+        return this.layer.framebufferWidth / this.layer.framebufferHeight;
     }
     get focalLength() {
         const m = this.projectionMatrix;
@@ -88,7 +85,12 @@ export class GLView {
         this.updateModelViewMatrix();
     }
     updateModelViewMatrix() {
-        this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
+        const m = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
+        const oldM = this.uModelViewMat.data;
+        if (m.some((c, i) => c !== oldM[i])) {
+            console.log(m);
+        }
+        this.uModelViewMat.data = m;
     }
     loadModel(modelUri) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -110,8 +112,11 @@ export class GLView {
         });
     }
     resize() {
-        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+        const gl = this.context.gl;
+        gl.viewport(0, 0, this.layer.framebufferWidth, this.layer.framebufferHeight);
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
+        // this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height)
+        // this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength)
     }
     draw() {
         const gl = this.context.gl;
@@ -124,25 +129,27 @@ export class GLView {
     }
     xrSwitch() {
         return __awaiter(this, void 0, void 0, function* () {
-            const viewMatrix = [];
-            return xr.XRSwitch.create(this.context, (w, h) => {
-                viewMatrix.push(this.viewMatrix);
-                this.context.gl.viewport(0, 0, w, h);
-                this.projectionMatrix = this.perspective.camera.matrix(w / h, this.focalLength);
-            }, m => {
-                this.viewMatrix = aether.mat4.mul(m, viewMatrix[0]);
-                this.draw();
-            });
+            return null;
         });
     }
 }
-export function newViewFactory(canvasId) {
+export function newViewFactory(session, canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
         const shaders = yield gear.fetchTextFiles({
             vertexShaderCode: "gltf.vert",
             fragmentShaderCode: "gltf.frag"
         }, "/shaders");
-        return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
+        const context = wgl.Context.of(canvasId, { xrCompatible: true });
+        const layer = new XRWebGLLayer(session, context.gl, {
+            depth: true,
+            ignoreDepthValues: false,
+            stencil: false,
+            antialias: true,
+            alpha: false
+        });
+        const view = new XRView(context, layer, shaders.vertexShaderCode, shaders.fragmentShaderCode);
+        yield session.updateRenderState({ baseLayer: layer });
+        return () => view;
     });
 }
-//# sourceMappingURL=view.gl.js.map
+//# sourceMappingURL=view.xr.js.map

@@ -1,5 +1,5 @@
 import * as gpu from '../djee/gpu/index.js';
-class BaseTexture {
+export class BaseTexture {
     constructor(app, target) {
         this.app = app;
         this.pipeline = app.device.device.createRenderPipeline({
@@ -42,7 +42,6 @@ BaseTexture.shaderCode = gpu.renderingShaders.fullScreenPassVertex(/*wgsl*/ `
             return textureSample(baseTexture, textureSampler, uv);
         }
     `);
-export { BaseTexture };
 export class BaseTextureRenderer {
     constructor(render) {
         this.render = render;

@@ -6,12 +6,12 @@ import { Texture2D } from "./texture.js";
 import { RenderBuffer } from "./renderbuffer.js";
 import { FrameBuffer } from "./framebuffer.js";
 export class Context {
-    constructor(canvasElementId) {
+    constructor(canvasElementId, options) {
         this.canvas = getCanvas(canvasElementId);
-        this.gl = getContext(this.canvas);
+        this.gl = getContext(this.canvas, options);
     }
-    static of(canvasElementId) {
-        return new Context(canvasElementId);
+    static of(canvasElementId, options) {
+        return new Context(canvasElementId, options);
     }
     shaderFromElement(scriptId) {
         return Shader.fromElement(this, scriptId);
@@ -52,8 +52,8 @@ function getCanvas(canvasId) {
     const canvas = document.getElementById(canvasId);
     return canvas ? canvas : failure(`No canvas found with ID: ${canvasId}`);
 }
-function getContext(canvas) {
-    const context = canvas.getContext("webgl2");
+function getContext(canvas, options) {
+    const context = canvas.getContext("webgl2", options);
     return context !== null && context !== void 0 ? context : failure(`Failed to get GL context from element: ${canvas.id}`);
 }
 //# sourceMappingURL=context.js.map
