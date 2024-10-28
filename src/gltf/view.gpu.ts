@@ -206,6 +206,10 @@ export class GPUView implements View {
 }
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
+    const gpuParam = new URL(location.href).searchParams.get("gpu")
+    if (gpuParam && gpuParam?.toUpperCase() == 'N') {
+        throw new Error("Unsupported by choice")
+    }
     const device = await gpu.Device.instance()
     const shaderModule = await device.loadShaderModule("gltf.wgsl")
     return () => new GPUView(device, shaderModule, canvasId)

@@ -155,6 +155,10 @@ export class GPUView {
 }
 export function newViewFactory(canvasId) {
     return __awaiter(this, void 0, void 0, function* () {
+        const gpuParam = new URL(location.href).searchParams.get("gpu");
+        if (gpuParam && (gpuParam === null || gpuParam === void 0 ? void 0 : gpuParam.toUpperCase()) == 'N') {
+            throw new Error("Unsupported by choice");
+        }
         const device = yield gpu.Device.instance();
         const shaderModule = yield device.loadShaderModule("gltf.wgsl");
         return () => new GPUView(device, shaderModule, canvasId);
