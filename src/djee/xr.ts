@@ -9,14 +9,16 @@ export class XRSwitch {
         readonly context: wgl.Context, 
         readonly xr: XRSystem, 
         readonly mode: XRSessionMode,
-        private resize: (width: number, height: number) => void,
-        private draw: (matrix: aether.Mat4) => void
+        private enter: (space: XRReferenceSpace) => XRReferenceSpace,
+        private leave: () => void, 
+        private draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, matrix: aether.Mat4) => void
     ) {}
 
     static async create(
         context: wgl.Context, 
-        resize: (width: number, height: number) => void, 
-        draw: (matrix: aether.Mat4) => void
+        enter: (space: XRReferenceSpace) => XRReferenceSpace, 
+        leave: () => void, 
+        draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, matrix: aether.Mat4) => void
     ): Promise<XRSwitch | null> {
         const xr = navigator.xr
         if (!xr) {
@@ -33,7 +35,7 @@ export class XRSwitch {
             return null
         }
 
-        return new XRSwitch(context, xr, supportedMode, resize, draw)
+        return new XRSwitch(context, xr, supportedMode, enter, leave, draw)
     }
 
     get session(): XRSession | null {
@@ -49,6 +51,7 @@ export class XRSwitch {
             const session = await this.xr.requestSession(this.mode)
             session.onend = () => {
                 onEnd()
+                this.leave()
                 this._session = null
             }
 
@@ -62,17 +65,27 @@ export class XRSwitch {
             await session.updateRenderState({ baseLayer: layer })
             this.context.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, layer.framebuffer)
             this._session = session
-            
+
             const space = await session.requestReferenceSpace(spaceType)
+            const localSpace = this.enter(space)
             const render = (time: number, frame: XRFrame) => {
-                const pose = frame.getViewerPose(space)
-                if (pose) {
-                    session.requestAnimationFrame(render)
-                    this.draw(aether.mat4.from(pose.transform.inverse.matrix))
+                const pose = frame.getViewerPose(localSpace)
+                if (!pose) {
+                    return
+                }
+                session.requestAnimationFrame(render)
+                for (let i = 0; i < pose.views.length; i++) {
+                    const view = pose.views[i]
+                    const viewPort = layer.getViewport(view)
+                    if (!viewPort) {
+                        continue
+                    }
+                    const proj = aether.mat4.from(view.projectionMatrix)
+                    const matrix = aether.mat4.from(view.transform.inverse.matrix);
+                    this.draw(i, viewPort, proj, matrix)
                 }
             }
             session.requestAnimationFrame(render)
-            this.resize(layer.framebufferWidth, layer.framebufferHeight)
         }
         return this
     }

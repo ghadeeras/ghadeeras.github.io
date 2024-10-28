@@ -9,15 +9,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { aether } from "../libs.js";
 export class XRSwitch {
-    constructor(context, xr, mode, resize, draw) {
+    constructor(context, xr, mode, enter, leave, draw) {
         this.context = context;
         this.xr = xr;
         this.mode = mode;
-        this.resize = resize;
+        this.enter = enter;
+        this.leave = leave;
         this.draw = draw;
         this._session = null;
     }
-    static create(context, resize, draw) {
+    static create(context, enter, leave, draw) {
         return __awaiter(this, void 0, void 0, function* () {
             const xr = navigator.xr;
             if (!xr) {
@@ -30,7 +31,7 @@ export class XRSwitch {
             if (supportedMode === null) {
                 return null;
             }
-            return new XRSwitch(context, xr, supportedMode, resize, draw);
+            return new XRSwitch(context, xr, supportedMode, enter, leave, draw);
         });
     }
     get session() {
@@ -45,6 +46,7 @@ export class XRSwitch {
                 const session = yield this.xr.requestSession(this.mode);
                 session.onend = () => {
                     onEnd();
+                    this.leave();
                     this._session = null;
                 };
                 const layer = new XRWebGLLayer(session, this.context.gl, {
@@ -58,15 +60,25 @@ export class XRSwitch {
                 this.context.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, layer.framebuffer);
                 this._session = session;
                 const space = yield session.requestReferenceSpace(spaceType);
+                const localSpace = this.enter(space);
                 const render = (time, frame) => {
-                    const pose = frame.getViewerPose(space);
-                    if (pose) {
-                        session.requestAnimationFrame(render);
-                        this.draw(aether.mat4.from(pose.transform.inverse.matrix));
+                    const pose = frame.getViewerPose(localSpace);
+                    if (!pose) {
+                        return;
+                    }
+                    session.requestAnimationFrame(render);
+                    for (let i = 0; i < pose.views.length; i++) {
+                        const view = pose.views[i];
+                        const viewPort = layer.getViewport(view);
+                        if (!viewPort) {
+                            continue;
+                        }
+                        const proj = aether.mat4.from(view.projectionMatrix);
+                        const matrix = aether.mat4.from(view.transform.inverse.matrix);
+                        this.draw(i, viewPort, proj, matrix);
                     }
                 };
                 session.requestAnimationFrame(render);
-                this.resize(layer.framebufferWidth, layer.framebufferHeight);
             }
             return this;
         });

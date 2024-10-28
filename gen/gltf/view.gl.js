@@ -113,9 +113,11 @@ export class GLView {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
     }
-    draw() {
+    draw(eye = 0) {
         const gl = this.context.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        if (eye === 0) {
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        }
         this.normal.setTo(0, 1, 0);
         if (this.renderer) {
             this.renderer.render(this.context);
@@ -125,13 +127,26 @@ export class GLView {
     xrSwitch() {
         return __awaiter(this, void 0, void 0, function* () {
             const viewMatrix = [];
-            return xr.XRSwitch.create(this.context, (w, h) => {
+            const projMatrix = [];
+            return xr.XRSwitch.create(this.context, space => {
+                const gl = this.context.gl;
+                gl.depthFunc(gl.LESS);
+                gl.clearDepth(1);
                 viewMatrix.push(this.viewMatrix);
-                this.context.gl.viewport(0, 0, w, h);
-                this.projectionMatrix = this.perspective.camera.matrix(w / h, this.focalLength);
-            }, m => {
-                this.viewMatrix = aether.mat4.mul(m, viewMatrix[0]);
-                this.draw();
+                projMatrix.push(this.projectionMatrix);
+                return space;
+            }, () => {
+                const gl = this.context.gl;
+                gl.depthFunc(gl.GREATER);
+                gl.clearDepth(0);
+                this.viewMatrix = gear.required(viewMatrix.pop());
+                this.projectionMatrix = gear.required(projMatrix.pop());
+                this.resize();
+            }, (eye, viewPort, proj, matrix) => {
+                this.context.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height);
+                this.projectionMatrix = proj;
+                this.viewMatrix = aether.mat4.mul(matrix, viewMatrix[0]);
+                this.draw(eye);
             });
         });
     }
