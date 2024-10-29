@@ -74,8 +74,16 @@ export class XRSwitch {
                             continue;
                         }
                         const proj = aether.mat4.from(view.projectionMatrix);
-                        const matrix = aether.mat4.from(view.transform.inverse.matrix);
-                        this.draw(i, viewPort, proj, matrix);
+                        const camera = aether.mat4.from(view.transform.inverse.matrix);
+                        let model = aether.mat4.identity();
+                        const inputSpace = [...session.inputSources.values()].find(s => s.gripSpace);
+                        if (inputSpace && inputSpace.gripSpace) {
+                            const inputPose = frame.getPose(inputSpace.gripSpace, localSpace);
+                            if (inputPose) {
+                                model = aether.mat4.from(inputPose.transform.matrix);
+                            }
+                        }
+                        this.draw(i, viewPort, proj, camera, model);
                     }
                 };
                 session.requestAnimationFrame(render);

@@ -1,4 +1,4 @@
-import { wgl } from "."
+import { required, wgl } from "."
 import { aether } from "../libs.js";
 
 export class XRSwitch {
@@ -11,14 +11,14 @@ export class XRSwitch {
         readonly mode: XRSessionMode,
         private enter: (space: XRReferenceSpace) => XRReferenceSpace,
         private leave: () => void, 
-        private draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, matrix: aether.Mat4) => void
+        private draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, view: aether.Mat4, model: aether.Mat4) => void
     ) {}
 
     static async create(
         context: wgl.Context, 
         enter: (space: XRReferenceSpace) => XRReferenceSpace, 
         leave: () => void, 
-        draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, matrix: aether.Mat4) => void
+        draw: (eye: number, viewPort: XRViewport, proj: aether.Mat4, matrix: aether.Mat4, model: aether.Mat4) => void
     ): Promise<XRSwitch | null> {
         const xr = navigator.xr
         if (!xr) {
@@ -81,8 +81,16 @@ export class XRSwitch {
                         continue
                     }
                     const proj = aether.mat4.from(view.projectionMatrix)
-                    const matrix = aether.mat4.from(view.transform.inverse.matrix);
-                    this.draw(i, viewPort, proj, matrix)
+                    const camera = aether.mat4.from(view.transform.inverse.matrix);
+                    let model = aether.mat4.identity()
+                    const inputSpace = [...session.inputSources.values()].find(s => s.gripSpace)
+                    if (inputSpace && inputSpace.gripSpace) {
+                        const inputPose = frame.getPose(inputSpace.gripSpace, localSpace)
+                        if (inputPose) {
+                            model = aether.mat4.from(inputPose.transform.matrix)
+                        }
+                    }
+                    this.draw(i, viewPort, proj, camera, model)
                 }
             }
             session.requestAnimationFrame(render)

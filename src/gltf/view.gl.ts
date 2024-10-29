@@ -193,10 +193,11 @@ export class GLView implements View {
                 this.projectionMatrix = gear.required(projMatrix.pop())
                 this.resize()
             },
-            (eye, viewPort, proj, matrix) => {
+            (eye, viewPort, proj, view, model) => {
                 this.context.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height)
                 this.projectionMatrix = proj
-                this.viewMatrix = aether.mat4.mul(matrix, viewMatrix[0])
+                this.viewMatrix = view
+                this.modelMatrix = aether.mat4.mul(model, aether.mat4.scaling(0.125, 0.125, 0.125))
                 this.draw(eye)
             }
         )
