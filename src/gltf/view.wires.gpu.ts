@@ -1,5 +1,5 @@
 import { aether } from "/gen/libs.js";
-import { gpu, xr } from "../djee/index.js"
+import { gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { NormalsRenderer } from "./normals.gpu.js";
 import { NormalsFilter } from "./filter.gpu.js";
@@ -82,7 +82,7 @@ export class GPUView implements View {
         })
     }
 
-    async xrSwitch(): Promise<xr.XRSwitch | null> {
+    get xrContext(): WebGL2RenderingContext | null {
         return null
     }
 

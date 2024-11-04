@@ -39,14 +39,7 @@ export abstract class ModelMatrixDragging implements gear.DraggingHandler<aether
     protected abstract delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4>
 
     finalize(matrix: aether.Mat<4>): aether.Mat<4> {
-        const s = aether.mat4.determinant(matrix) ** (1 / 3)
-        const [x, y, z, w] = aetherx.orthogonal(matrix)
-        return [
-            aether.vec4.scale(x, s), 
-            aether.vec4.scale(y, s), 
-            aether.vec4.scale(z, s), 
-            w
-        ];
+        return aetherx.orthogonal(matrix)
     }
 
 }

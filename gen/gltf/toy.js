@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
+import * as xr from "../utils/xr.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
 export const huds = {
     "monitor": "monitor-button"
@@ -48,14 +49,15 @@ class GLTFToy {
         this._perspectives = [];
         this._modelIndex = 0;
         this._cameraIndex = 0;
+        this.xrSession = null;
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];
         this.view.shininess = 1;
         this.view.fogginess = 0;
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5]);
         this.view.lightRadius = 0.005;
-        if (xrSwitch) {
-            gear.required(document.getElementById("xr")).style.visibility = "visible";
+        if (xrSwitch && this.view.xrContext !== null) {
+            gear.required(document.getElementById("xr")).style.removeProperty("visibility");
         }
     }
     static loop(wires) {
@@ -66,7 +68,7 @@ class GLTFToy {
             models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
             const viewFactory = yield newViewFactory("canvas", wires);
             const view = viewFactory();
-            const xrSwitch = yield view.xrSwitch();
+            const xrSwitch = yield xr.XRSwitch.create();
             return gear.loops.newLoop(new GLTFToy(models, view, xrSwitch), GLTFToy.descriptor);
         });
     }
@@ -89,7 +91,7 @@ class GLTFToy {
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ },
                 previousCamera: { onPressed: () => this.cameraIndex-- },
-                xr: { onPressed: () => this.switchXROn(controller) },
+                xr: { onPressed: () => this.toggleXR(controller) },
             }
         };
     }
@@ -151,19 +153,69 @@ class GLTFToy {
         this.view.viewMatrix = perspective.matrix;
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
     }
-    switchXROn(controller) {
-        if (this.xrSwitch !== null) {
-            if (this.xrSwitch.isOn) {
-                this.xrSwitch.turnOff();
-                this.view.resize();
+    toggleXR(controller) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const gl = this.view.xrContext;
+            if (this.xrSwitch !== null) {
+                if (this.xrSession) {
+                    this.xrSession.end();
+                    this.xrSession = null;
+                }
+                else if (gl) {
+                    this.xrSession = yield this.xrTurnOn(this.xrSwitch, controller, gl);
+                    this.xrStartAnimation(this.xrSession, controller);
+                }
             }
-            else {
-                controller.animationPaused = true;
-                this.xrSwitch.turnOn("local", () => {
-                    controller.animationPaused = false;
-                });
-            }
-        }
+        });
+    }
+    xrTurnOn(xrSwitch, controller, gl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const snapshot = this.snapshot(controller);
+            const listeners = {
+                end: () => this.restore(snapshot, controller)
+            };
+            return yield xrSwitch.turnOn(["local", "viewer"], gl, listeners);
+        });
+    }
+    xrStartAnimation(xrSession, controller) {
+        controller.animationPaused = true;
+        this.cameraIndex = -1;
+        xrSession.startAnimation(frame => this.xrRender(frame));
+    }
+    xrRender(frame) {
+        const projectionMat = aether.mat4.from(frame.view.projectionMatrix);
+        projectionMat.forEach(c => c[2] = -c[2]); // reverse Z
+        this.view.projectionMatrix = projectionMat;
+        this.view.viewMatrix = aether.mat4.from(frame.view.transform.inverse.matrix);
+        const inputSource = [...frame.frame.session.inputSources]
+            .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
+            .find(s => s.gripSpace);
+        const pose = inputSource
+            ? inputSource.gripSpace
+                ? frame.frame.getPose(inputSource.gripSpace, frame.space)
+                : undefined
+            : undefined;
+        this.view.modelMatrix = pose
+            ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
+            : aether.mat4.translation([0, 0, -4]);
+        this.view.draw(frame.viewerPose.views.indexOf(frame.view));
+    }
+    snapshot(controller) {
+        return {
+            projectionMat: this.view.projectionMatrix,
+            viewMat: this.view.viewMatrix,
+            modelMat: this.view.modelMatrix,
+            cameraIndex: this.cameraIndex,
+            animationPaused: controller.animationPaused
+        };
+    }
+    restore(snapshot, controller) {
+        this.view.projectionMatrix = snapshot.projectionMat;
+        this.view.viewMatrix = snapshot.viewMat;
+        this.view.modelMatrix = snapshot.modelMat;
+        this.cameraIndex = snapshot.cameraIndex;
+        controller.animationPaused = snapshot.animationPaused;
+        this.view.resize();
     }
 }
 GLTFToy.descriptor = {

@@ -10,9 +10,7 @@ export interface View {
 
     resize(): void
     
-    draw(): void
-
-    xrSwitch(): Promise<dgee.xr.XRSwitch | null>
+    draw(eye?: number): void
 
     projectionMatrix: aether.Mat4
 
@@ -21,6 +19,8 @@ export interface View {
     modelMatrix: aether.Mat4
 
     readonly canvas: HTMLCanvasElement
+
+    readonly xrContext: WebGL2RenderingContext | null
 
     readonly aspectRatio: number
 

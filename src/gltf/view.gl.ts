@@ -1,5 +1,5 @@
 import { aether, gear } from "/gen/libs.js";
-import { wgl, gltf, xr } from "../djee/index.js"
+import { wgl, gltf } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
@@ -16,6 +16,7 @@ export type ModelIndexEntry = {
 export class GLView implements View {
 
     private context: wgl.Context;
+    private xrCompatible: boolean
 
     private position: wgl.Attribute;
     private normal: wgl.Attribute;
@@ -40,8 +41,10 @@ export class GLView implements View {
     constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string) {
         try {
             this.context = wgl.Context.of(canvasId, { xrCompatible: true });
+            this.xrCompatible = true
         } catch (e) {
             this.context = wgl.Context.of(canvasId);
+            this.xrCompatible = false
         }
 
         const program = this.context.link(
@@ -163,7 +166,7 @@ export class GLView implements View {
     draw(eye: number = 0) {
         const gl = this.context.gl;
         if (eye === 0) {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
         }
         this.normal.setTo(0, 1, 0)
         if (this.renderer) {
@@ -172,35 +175,8 @@ export class GLView implements View {
         gl.flush();
     }
 
-    async xrSwitch(): Promise<xr.XRSwitch | null> {
-        const viewMatrix: aether.Mat4[] = []
-        const projMatrix: aether.Mat4[] = []
-        return xr.XRSwitch.create(
-            this.context, 
-            space => {
-                const gl = this.context.gl
-                gl.depthFunc(gl.LESS)
-                gl.clearDepth(1)
-                viewMatrix.push(this.viewMatrix)
-                projMatrix.push(this.projectionMatrix)
-                return space
-            },
-            () => {
-                const gl = this.context.gl
-                gl.depthFunc(gl.GREATER)
-                gl.clearDepth(0)
-                this.viewMatrix = gear.required(viewMatrix.pop())
-                this.projectionMatrix = gear.required(projMatrix.pop())
-                this.resize()
-            },
-            (eye, viewPort, proj, view, model) => {
-                this.context.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height)
-                this.projectionMatrix = proj
-                this.viewMatrix = view
-                this.modelMatrix = aether.mat4.mul(model, aether.mat4.scaling(0.125, 0.125, 0.125))
-                this.draw(eye)
-            }
-        )
+    get xrContext(): WebGL2RenderingContext | null {
+        return this.xrCompatible ? this.context.gl : null
     }
 
 }

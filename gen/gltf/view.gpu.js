@@ -147,10 +147,8 @@ export class GPUView {
             });
         });
     }
-    xrSwitch() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return null;
-        });
+    get xrContext() {
+        return null;
     }
 }
 export function newViewFactory(canvasId) {

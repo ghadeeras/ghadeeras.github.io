@@ -83,9 +83,10 @@ export function applyMatrixToRange(matrix: aether.Mat4, range: Range3D): Range3D
     ]
 }
 
-export function orthogonal(matrix: aether.Mat4): aether.Mat4 {
-    const x = aether.vec4.unit(matrix[0]);
-    const y = aether.vec4.unit(aether.vec4.subAll(matrix[1], aether.vec4.project(matrix[1], x)));
-    const z = aether.vec4.unit(aether.vec4.subAll(matrix[2], aether.vec4.project(matrix[2], x), aether.vec4.project(matrix[2], y)));
+export function orthogonal(matrix: aether.Mat4, keepScale: boolean = true): aether.Mat4 {
+    const s = keepScale ? aether.mat4.determinant(matrix) ** (1 / 3) : 1
+    const x = aether.vec4.setLength(matrix[0], s);
+    const y = aether.vec4.setLength(aether.vec4.subAll(matrix[1], aether.vec4.project(matrix[1], x)), s);
+    const z = aether.vec4.setLength(aether.vec4.subAll(matrix[2], aether.vec4.project(matrix[2], x), aether.vec4.project(matrix[2], y)), s);
     return [x, y, z, matrix[3]];
 }

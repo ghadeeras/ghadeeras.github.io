@@ -51,10 +51,7 @@ export class Scene extends IdentifiableObject {
         this.range = aetherX.isOpen(range) ? [[-1, -1, -1], [1, 1, 1]] : range;
         this.matrix = aether.mat4.identity();
         this.perspectives = collectScenePerspectives(this);
-        if (this.perspectives.length === 0) {
-            this.matrix = aetherX.centeringMatrix(this.range);
-            this.perspectives.push(defaultPerspective(legacyPerspective));
-        }
+        this.perspectives.push(defaultPerspective(legacyPerspective, aetherX.centeringMatrix(this.range)));
     }
 }
 export class Node extends IdentifiableObject {
@@ -183,8 +180,8 @@ export class BufferView extends IdentifiableObject {
             sizeOf(references[0]));
     }
 }
-export function defaultPerspective(legacyPerspective = false) {
-    return new Perspective(defaultCamera(legacyPerspective), defaultViewMatrix());
+export function defaultPerspective(legacyPerspective = false, matrix = aether.mat4.identity()) {
+    return new Perspective(defaultCamera(legacyPerspective), aether.mat4.mul(defaultViewMatrix(), matrix));
 }
 export function defaultCamera(legacyPerspective = false) {
     return new PerspectiveCamera({

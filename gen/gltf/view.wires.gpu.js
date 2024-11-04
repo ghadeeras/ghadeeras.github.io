@@ -71,10 +71,8 @@ export class GPUView {
             this.normalsFilter.render(encoder, this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 0 }));
         });
     }
-    xrSwitch() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return null;
-        });
+    get xrContext() {
+        return null;
     }
 }
 export function newViewFactory(canvasId) {

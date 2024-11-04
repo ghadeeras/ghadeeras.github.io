@@ -1,5 +1,5 @@
 import { aether } from "/gen/libs.js";
-import { gltf, gpu, xr } from "../djee/index.js"
+import { gltf, gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
@@ -199,7 +199,7 @@ export class GPUView implements View {
         })
     }
 
-    async xrSwitch(): Promise<xr.XRSwitch | null> {
+    get xrContext(): WebGL2RenderingContext | null {
         return null
     }
 

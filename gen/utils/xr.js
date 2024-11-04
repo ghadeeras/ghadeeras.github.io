@@ -32,29 +32,37 @@ export class XRSwitch {
             return new XRSwitch(xr, supportedMode);
         });
     }
-    turnOn(spaceType, gl, listeners) {
+    turnOn(spaceTypes, gl, listeners) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield XRealitySession.create(this.xr, this.mode, spaceType, gl, listeners);
+            return yield XRealitySession.create(this.xr, this.mode, spaceTypes, gl, listeners);
         });
     }
 }
 export class XRealitySession {
-    constructor(session, space, gl) {
+    constructor(session, spaceType, space, gl) {
         this.session = session;
+        this.spaceType = spaceType;
         this.space = space;
         this.gl = gl;
         this.animationRequest = null;
         this.renderer = null;
     }
-    static create(xr, mode, spaceType, gl, listeners) {
+    static create(xr, mode, spaceTypes, gl, listeners) {
         return __awaiter(this, void 0, void 0, function* () {
             const session = yield xr.requestSession(mode);
             for (const k in listeners) {
                 session.addEventListener(k, listeners[k]);
             }
             yield session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-            const space = yield session.requestReferenceSpace(spaceType);
-            return new XRealitySession(session, space, gl);
+            const spaceFinder = i => {
+                return i < spaceTypes.length
+                    ? session.requestReferenceSpace(spaceTypes[i])
+                        .then(s => [spaceTypes[i], s])
+                        .catch(() => spaceFinder(i + 1))
+                    : Promise.reject("");
+            };
+            const [spaceType, space] = yield spaceFinder(0);
+            return new XRealitySession(session, spaceType, space, gl);
         });
     }
     end() {
@@ -84,6 +92,7 @@ export class XRealitySession {
         return this.session.requestAnimationFrame((t, f) => this.renderFrame(t, f, renderer));
     }
     renderFrame(time, frame, renderer) {
+        const spaceType = this.spaceType;
         const space = this.space;
         const viewerPose = frame.getViewerPose(space);
         if (!viewerPose) {
@@ -103,7 +112,7 @@ export class XRealitySession {
                 continue;
             }
             this.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height);
-            renderer({ time, frame, layer, space, viewerPose, view });
+            renderer({ time, frame, layer, spaceType, space, viewerPose, view });
         }
     }
 }

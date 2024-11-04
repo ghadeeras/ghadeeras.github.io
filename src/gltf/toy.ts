@@ -2,7 +2,8 @@ import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";
-import { gltf, xr } from "../djee/index.js";
+import { gltf } from "../djee/index.js";
+import * as xr from "../utils/xr.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -35,6 +36,14 @@ export async function init(wires: boolean = false) {
 }
 
 type ToyDescriptor = typeof GLTFToy.descriptor
+
+type Snapshot = {
+    projectionMat: aether.Mat4
+    viewMat: aether.Mat4
+    modelMat: aether.Mat4
+    cameraIndex: number;
+    animationPaused: boolean;
+};
 
 class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
@@ -137,6 +146,8 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private _modelIndex = 0
     private _cameraIndex = 0
 
+    private xrSession: xr.XRealitySession | null = null
+
     private constructor(private models: [string, string][], private view: View, private xrSwitch: xr.XRSwitch | null) {
         this.modelIndex = 1
         this.view.modelColor = [0.8, 0.8, 0.8, 1]
@@ -144,8 +155,8 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.fogginess = 0
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5])
         this.view.lightRadius = 0.005
-        if (xrSwitch) {
-            gear.required(document.getElementById("xr")).style.visibility = "visible"
+        if (xrSwitch && this.view.xrContext !== null) {
+            gear.required(document.getElementById("xr")).style.removeProperty("visibility")
         }
     }
 
@@ -162,7 +173,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     
         const viewFactory = await newViewFactory("canvas", wires)
         const view = viewFactory()
-        const xrSwitch = await view.xrSwitch()
+        const xrSwitch = await xr.XRSwitch.create()
     
         return gear.loops.newLoop(new GLTFToy(models, view, xrSwitch), GLTFToy.descriptor)
     }
@@ -186,7 +197,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ }, 
                 previousCamera: { onPressed: () => this.cameraIndex-- },
-                xr: { onPressed: () => this.switchXROn(controller) },
+                xr: { onPressed: () => this.toggleXR(controller) },
             }
         }
     }
@@ -260,18 +271,69 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`
     }
     
-    private switchXROn(controller: gear.loops.LoopController) {
+    private async toggleXR(controller: gear.loops.LoopController) {
+        const gl = this.view.xrContext
         if (this.xrSwitch !== null) {
-            if (this.xrSwitch.isOn) {
-                this.xrSwitch.turnOff()
-                this.view.resize()
-            } else {
-                controller.animationPaused = true;
-                this.xrSwitch.turnOn("local", () => {
-                    controller.animationPaused = false;
-                });
+            if (this.xrSession) {
+                this.xrSession.end()
+                this.xrSession = null
+            } else if (gl) {
+                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, gl);
+                this.xrStartAnimation(this.xrSession, controller);
             }
         }
+    }
+
+    private async xrTurnOn(xrSwitch: xr.XRSwitch, controller: gear.loops.LoopController, gl: WebGL2RenderingContext) {
+        const snapshot = this.snapshot(controller);
+        const listeners = {
+            end: () => this.restore(snapshot, controller)
+        };
+        return await xrSwitch.turnOn(["local", "viewer"], gl, listeners);
+    }
+
+    private xrStartAnimation(xrSession: xr.XRealitySession, controller: gear.loops.LoopController) {
+        controller.animationPaused = true;
+        this.cameraIndex = -1;
+        xrSession.startAnimation(frame => this.xrRender(frame));
+    }
+
+    private xrRender(frame: xr.XRealityFrame) {
+        const projectionMat = aether.mat4.from(frame.view.projectionMatrix);
+        projectionMat.forEach(c => c[2] = -c[2]); // reverse Z
+        this.view.projectionMatrix = projectionMat;
+        this.view.viewMatrix = aether.mat4.from(frame.view.transform.inverse.matrix);
+        const inputSource = [...frame.frame.session.inputSources]
+            .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
+            .find(s => s.gripSpace);
+        const pose = inputSource
+            ? inputSource.gripSpace
+                ? frame.frame.getPose(inputSource.gripSpace, frame.space)
+                : undefined
+            : undefined;
+        this.view.modelMatrix = pose
+            ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
+            : aether.mat4.translation([0, 0, -4]);
+        this.view.draw(frame.viewerPose.views.indexOf(frame.view));
+    }
+
+    private snapshot(controller: gear.loops.LoopController) {
+        return {
+            projectionMat: this.view.projectionMatrix,
+            viewMat: this.view.viewMatrix,
+            modelMat: this.view.modelMatrix,
+            cameraIndex: this.cameraIndex,
+            animationPaused: controller.animationPaused
+        };
+    }
+
+    private restore(snapshot: Snapshot, controller: gear.loops.LoopController) {
+        this.view.projectionMatrix = snapshot.projectionMat;
+        this.view.viewMatrix = snapshot.viewMat;
+        this.view.modelMatrix = snapshot.modelMat;
+        this.cameraIndex = snapshot.cameraIndex;
+        controller.animationPaused = snapshot.animationPaused;
+        this.view.resize()
     }
 
 }

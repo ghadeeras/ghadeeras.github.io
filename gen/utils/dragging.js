@@ -33,14 +33,7 @@ export class ModelMatrixDragging {
         };
     }
     finalize(matrix) {
-        const s = Math.pow(aether.mat4.determinant(matrix), (1 / 3));
-        const [x, y, z, w] = aetherx.orthogonal(matrix);
-        return [
-            aether.vec4.scale(x, s),
-            aether.vec4.scale(y, s),
-            aether.vec4.scale(z, s),
-            w
-        ];
+        return aetherx.orthogonal(matrix);
     }
 }
 export class RotationDragging extends ModelMatrixDragging {

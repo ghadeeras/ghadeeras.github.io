@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import { aether, gear } from "/gen/libs.js";
-import { wgl, gltf, xr } from "../djee/index.js";
+import { wgl, gltf } from "../djee/index.js";
 export class GLView {
     constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
         this.renderer = null;
@@ -17,9 +17,11 @@ export class GLView {
         this.perspective = gltf.graph.defaultPerspective(true);
         try {
             this.context = wgl.Context.of(canvasId, { xrCompatible: true });
+            this.xrCompatible = true;
         }
         catch (e) {
             this.context = wgl.Context.of(canvasId);
+            this.xrCompatible = false;
         }
         const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
         program.use();
@@ -124,32 +126,8 @@ export class GLView {
         }
         gl.flush();
     }
-    xrSwitch() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const viewMatrix = [];
-            const projMatrix = [];
-            return xr.XRSwitch.create(this.context, space => {
-                const gl = this.context.gl;
-                gl.depthFunc(gl.LESS);
-                gl.clearDepth(1);
-                viewMatrix.push(this.viewMatrix);
-                projMatrix.push(this.projectionMatrix);
-                return space;
-            }, () => {
-                const gl = this.context.gl;
-                gl.depthFunc(gl.GREATER);
-                gl.clearDepth(0);
-                this.viewMatrix = gear.required(viewMatrix.pop());
-                this.projectionMatrix = gear.required(projMatrix.pop());
-                this.resize();
-            }, (eye, viewPort, proj, view, model) => {
-                this.context.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height);
-                this.projectionMatrix = proj;
-                this.viewMatrix = view;
-                this.modelMatrix = aether.mat4.mul(model, aether.mat4.scaling(0.125, 0.125, 0.125));
-                this.draw(eye);
-            });
-        });
+    get xrContext() {
+        return this.xrCompatible ? this.context.gl : null;
     }
 }
 export function newViewFactory(canvasId) {
