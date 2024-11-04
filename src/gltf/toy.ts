@@ -145,6 +145,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private _perspectives: gltf.graph.Perspective[] = []
     private _modelIndex = 0
     private _cameraIndex = 0
+    private _model: gltf.graph.Model | null = null
 
     private xrSession: xr.XRealitySession | null = null
 
@@ -243,10 +244,10 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this._modelIndex = (i + this.models.length) % this.models.length
         const [name, uri] = this.models[this._modelIndex]
         this.modelNameElement.innerText = name
-        this.view.modelMatrix = aether.mat4.identity()
         this.statusElement.innerText = "Loading Model ..."
         this.view.loadModel(uri)
             .then(model => {
+                this._model = model
                 this.statusElement.innerText = "Rendering Model ..."
                 this.cameraElement.innerText = `1 / ${model.scene.perspectives.length}`
                 this._perspectives = model.scene.perspectives
@@ -265,7 +266,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     set cameraIndex(i: number) {
         this._cameraIndex = (i + this._perspectives.length) % this._perspectives.length
         const perspective = this._perspectives[this._cameraIndex]
-        this.view.modelMatrix = aether.mat4.identity()
+        this.view.modelMatrix = perspective.modelMatrix
         this.view.projectionMatrix = perspective.camera.matrix(this.view.aspectRatio, this.view.focalLength)
         this.view.viewMatrix = perspective.matrix
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`
@@ -286,8 +287,10 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private async xrTurnOn(xrSwitch: xr.XRSwitch, controller: gear.loops.LoopController, gl: WebGL2RenderingContext) {
         const snapshot = this.snapshot(controller);
-        const listeners = {
-            end: () => this.restore(snapshot, controller)
+        const listeners: xr.XRealitySessionListeners = {
+            end: () => this.restore(snapshot, controller),
+            select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
+            squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
         };
         return await xrSwitch.turnOn(["local", "viewer"], gl, listeners);
     }
@@ -311,9 +314,12 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 ? frame.frame.getPose(inputSource.gripSpace, frame.space)
                 : undefined
             : undefined;
-        this.view.modelMatrix = pose
-            ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
-            : aether.mat4.translation([0, 0, -4]);
+        this.view.modelMatrix = aether.mat4.mul(
+            pose
+                ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
+                : aether.mat4.translation([0, 0, -4]),
+            this._model ? this._model.scene.matrix : aether.mat4.identity()
+        );
         this.view.draw(frame.viewerPose.views.indexOf(frame.view));
     }
 

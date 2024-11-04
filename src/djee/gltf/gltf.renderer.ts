@@ -182,7 +182,7 @@ export class GLTFRenderer<U extends Resource, V extends Resource, I extends Reso
 
 function collectSceneMatrices(scene: graph.Scene): Matrix[] {
     const matrix: Matrix = {
-        matrix: scene.matrix,
+        matrix: aether.mat4.identity(),
         antiMatrix: aether.mat4.identity()
     }
     const matrices = [matrix]

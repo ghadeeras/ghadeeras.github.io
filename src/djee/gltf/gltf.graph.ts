@@ -66,9 +66,9 @@ export class Scene extends IdentifiableObject {
         const ranges = this.nodes.map(node => node.range);
         const range = aetherX.union(ranges);
         this.range = aetherX.isOpen(range) ? [[-1, -1, -1], [1, 1, 1]] : range
-        this.matrix = aether.mat4.identity()
+        this.matrix = aetherX.centeringMatrix(this.range)
         this.perspectives = collectScenePerspectives(this)
-        this.perspectives.push(defaultPerspective(legacyPerspective, aetherX.centeringMatrix(this.range)))
+        this.perspectives.push(defaultPerspective(legacyPerspective, this.matrix))
     }
 
 }
@@ -103,7 +103,7 @@ export class Perspective {
 
     readonly antiMatrix: aether.Mat4
     
-    constructor(readonly camera: Camera, readonly matrix: aether.Mat4) {
+    constructor(readonly camera: Camera, readonly matrix: aether.Mat4, readonly modelMatrix = aether.mat4.identity()) {
         this.antiMatrix = aetherX.anti(matrix)
     }
 
@@ -273,7 +273,8 @@ export class BufferView extends IdentifiableObject {
 export function defaultPerspective(legacyPerspective: boolean = false, matrix = aether.mat4.identity()): Perspective {
     return new Perspective(
         defaultCamera(legacyPerspective),
-        aether.mat4.mul(defaultViewMatrix(), matrix)
+        defaultViewMatrix(),
+        matrix
     )
 }
 
@@ -284,7 +285,7 @@ export function defaultCamera(legacyPerspective = false): Camera {
     }, legacyPerspective)
 }
 
-export function defaultViewMatrix(): [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]] {
+export function defaultViewMatrix(): aether.Mat4 {
     return aether.mat4.lookAt([2, 2, 2])
 }
 
@@ -321,7 +322,7 @@ function componentSize(componentType: gltf.ScalarType): number {
 function collectScenePerspectives(scene: Scene): Perspective[] {
     const perspectives: Perspective[] = []
     for (const node of scene.nodes) {
-        collectNodePerspectives(node, scene.matrix, perspectives)
+        collectNodePerspectives(node, aether.mat4.identity(), perspectives)
     }
     return perspectives
 }

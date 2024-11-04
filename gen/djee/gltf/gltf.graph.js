@@ -49,9 +49,9 @@ export class Scene extends IdentifiableObject {
         const ranges = this.nodes.map(node => node.range);
         const range = aetherX.union(ranges);
         this.range = aetherX.isOpen(range) ? [[-1, -1, -1], [1, 1, 1]] : range;
-        this.matrix = aether.mat4.identity();
+        this.matrix = aetherX.centeringMatrix(this.range);
         this.perspectives = collectScenePerspectives(this);
-        this.perspectives.push(defaultPerspective(legacyPerspective, aetherX.centeringMatrix(this.range)));
+        this.perspectives.push(defaultPerspective(legacyPerspective, this.matrix));
     }
 }
 export class Node extends IdentifiableObject {
@@ -70,9 +70,10 @@ export class Node extends IdentifiableObject {
     }
 }
 export class Perspective {
-    constructor(camera, matrix) {
+    constructor(camera, matrix, modelMatrix = aether.mat4.identity()) {
         this.camera = camera;
         this.matrix = matrix;
+        this.modelMatrix = modelMatrix;
         this.antiMatrix = aetherX.anti(matrix);
     }
 }
@@ -181,7 +182,7 @@ export class BufferView extends IdentifiableObject {
     }
 }
 export function defaultPerspective(legacyPerspective = false, matrix = aether.mat4.identity()) {
-    return new Perspective(defaultCamera(legacyPerspective), aether.mat4.mul(defaultViewMatrix(), matrix));
+    return new Perspective(defaultCamera(legacyPerspective), defaultViewMatrix(), matrix);
 }
 export function defaultCamera(legacyPerspective = false) {
     return new PerspectiveCamera({
@@ -222,7 +223,7 @@ function componentSize(componentType) {
 function collectScenePerspectives(scene) {
     const perspectives = [];
     for (const node of scene.nodes) {
-        collectNodePerspectives(node, scene.matrix, perspectives);
+        collectNodePerspectives(node, aether.mat4.identity(), perspectives);
     }
     return perspectives;
 }

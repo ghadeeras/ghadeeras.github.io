@@ -154,7 +154,7 @@ export class GPUView implements View {
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
         this._viewMatrix = this.perspective.matrix
-        this._modelMatrix = aether.mat4.identity()
+        this._modelMatrix = this.perspective.modelMatrix
         this.resetModelViewMatrix()
         if (this.renderer !== null) {
             this.renderer.destroy();

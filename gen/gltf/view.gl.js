@@ -98,7 +98,7 @@ export class GLView {
             this.perspective = model.scene.perspectives[0];
             this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
             this._viewMatrix = this.perspective.matrix;
-            this._modelMatrix = aether.mat4.identity();
+            this._modelMatrix = this.perspective.modelMatrix;
             this.updateModelViewMatrix();
             if (this.renderer) {
                 this.renderer.destroy();

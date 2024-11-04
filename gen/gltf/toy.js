@@ -49,6 +49,7 @@ class GLTFToy {
         this._perspectives = [];
         this._modelIndex = 0;
         this._cameraIndex = 0;
+        this._model = null;
         this.xrSession = null;
         this.modelIndex = 1;
         this.view.modelColor = [0.8, 0.8, 0.8, 1];
@@ -128,10 +129,10 @@ class GLTFToy {
         this._modelIndex = (i + this.models.length) % this.models.length;
         const [name, uri] = this.models[this._modelIndex];
         this.modelNameElement.innerText = name;
-        this.view.modelMatrix = aether.mat4.identity();
         this.statusElement.innerText = "Loading Model ...";
         this.view.loadModel(uri)
             .then(model => {
+            this._model = model;
             this.statusElement.innerText = "Rendering Model ...";
             this.cameraElement.innerText = `1 / ${model.scene.perspectives.length}`;
             this._perspectives = model.scene.perspectives;
@@ -148,7 +149,7 @@ class GLTFToy {
     set cameraIndex(i) {
         this._cameraIndex = (i + this._perspectives.length) % this._perspectives.length;
         const perspective = this._perspectives[this._cameraIndex];
-        this.view.modelMatrix = aether.mat4.identity();
+        this.view.modelMatrix = perspective.modelMatrix;
         this.view.projectionMatrix = perspective.camera.matrix(this.view.aspectRatio, this.view.focalLength);
         this.view.viewMatrix = perspective.matrix;
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
@@ -172,7 +173,9 @@ class GLTFToy {
         return __awaiter(this, void 0, void 0, function* () {
             const snapshot = this.snapshot(controller);
             const listeners = {
-                end: () => this.restore(snapshot, controller)
+                end: () => this.restore(snapshot, controller),
+                select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
+                squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
             };
             return yield xrSwitch.turnOn(["local", "viewer"], gl, listeners);
         });
@@ -195,9 +198,9 @@ class GLTFToy {
                 ? frame.frame.getPose(inputSource.gripSpace, frame.space)
                 : undefined
             : undefined;
-        this.view.modelMatrix = pose
+        this.view.modelMatrix = aether.mat4.mul(pose
             ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
-            : aether.mat4.translation([0, 0, -4]);
+            : aether.mat4.translation([0, 0, -4]), this._model ? this._model.scene.matrix : aether.mat4.identity());
         this.view.draw(frame.viewerPose.views.indexOf(frame.view));
     }
     snapshot(controller) {

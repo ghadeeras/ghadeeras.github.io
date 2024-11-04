@@ -126,7 +126,7 @@ export class GLTFRenderer {
 }
 function collectSceneMatrices(scene) {
     const matrix = {
-        matrix: scene.matrix,
+        matrix: aether.mat4.identity(),
         antiMatrix: aether.mat4.identity()
     };
     const matrices = [matrix];
