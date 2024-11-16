@@ -78,5 +78,5 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     }
     sameNormal /= sampleCount;
     samePlane /= sampleCount;
-    return vec4(1.0) * pow(sameNormal * samePlane, 2.0);
+    return vec4(vec3(pow(sameNormal * samePlane, 2.0)), 1.0);
 }
