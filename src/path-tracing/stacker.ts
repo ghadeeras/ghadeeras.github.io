@@ -41,6 +41,7 @@ export class Stacker {
         this.frameViews =  this.device.buffer("frameViews", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize * 256, uniformsStruct.paddedSize)
 
         this.groupLayout = this.device.device.createBindGroupLayout({
+            label: "stacker-bind-group",
             entries: [{
                 binding: 0,
                 visibility: GPUShaderStage.FRAGMENT,

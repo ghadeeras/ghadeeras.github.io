@@ -27,6 +27,7 @@ export class Denoiser {
         })
 
         this.groupLayout = this.device.device.createBindGroupLayout({
+            label: "denoiser-bind-group",
             entries: [{
                 binding: 0,
                 visibility: GPUShaderStage.FRAGMENT,
