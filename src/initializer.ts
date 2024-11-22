@@ -47,8 +47,14 @@ function doLink(element: HTMLElement, url: string, inNewWindow = false) {
 }
 
 function setupHud(hudId: string, buttonId: string) {
-    const hud = required(document.getElementById(hudId))
-    const hudButton = required(document.getElementById(buttonId))
+    const hud = document.getElementById(hudId)
+    if (!hud) {
+        return
+    }
+    const hudButton = document.getElementById(buttonId)
+    if (!hudButton) {
+        return
+    }
     hudButton.onclick = _ => {
         if (currentHudId !== null && currentHudId !== hudId) {
             const currentHud = required(document.getElementById(currentHudId))
