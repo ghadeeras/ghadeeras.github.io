@@ -74,8 +74,9 @@ function createBinaryBuffer(indexedVertices) {
     const uniqueVerticesCount = indexedVertices.vertices.length / 6;
     const intScalarSize = uniqueVerticesCount > 0xFFFF ? 4 : 2;
     const binaryBuffer = new ArrayBuffer(indexedVertices.indices.length * intScalarSize + indexedVertices.vertices.length * 4);
-    const arrayConstructor = intScalarSize == 2 ? Uint16Array : Uint32Array;
-    const indicesView = new arrayConstructor(binaryBuffer, 0, indexedVertices.indices.length);
+    const indicesView = intScalarSize == 2
+        ? new Uint16Array(binaryBuffer, 0, indexedVertices.indices.length)
+        : new Uint32Array(binaryBuffer, 0, indexedVertices.indices.length);
     const verticesView = new Float32Array(binaryBuffer, indicesView.byteLength);
     indicesView.set(indexedVertices.indices);
     verticesView.set(indexedVertices.vertices);
