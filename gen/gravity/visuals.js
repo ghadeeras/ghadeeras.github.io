@@ -2,21 +2,21 @@ import { aether } from '/gen/libs.js';
 import * as meta from './meta.js';
 const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class Visuals {
-    constructor(layout) {
-        this.layout = layout;
+    constructor(app) {
+        this.app = app;
         this._zoom = 1;
         this._aspectRatio = 1;
         this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = aether.mat4.identity();
         /* Buffers */
-        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
+        this.buffer = app.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
                 mvpMatrix: this.mvpMatrix,
                 mvMatrix: this.modelMatrix,
                 mMatrix: this.modelMatrix,
                 radiusScale: 0.06
             }]));
         /* Bind Groups */
-        this.bindGroup = layout.groupLayouts.visuals.instance("visualsGroup", {
+        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", {
             uniforms: this.buffer
         });
     }

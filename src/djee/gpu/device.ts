@@ -7,10 +7,12 @@ import { ShaderModule } from "./shader.js"
 import { Texture, Sampler } from "./texture.js"
 import { Resource } from "./utils.js"
 import { PipelineLayout, PipelineLayoutEntries } from "./pipeline.js"
+import { GPUObject } from "./meta.js"
 
-export class Device {
+export class Device extends GPUObject {
 
     constructor(readonly device: GPUDevice, readonly adapter: GPUAdapter) {
+        super()
     }
 
     async loadShaderModule(relativePath: string, templateFunction: (code: string) => string = s => s, basePath = "/shaders"): Promise<ShaderModule> {
@@ -84,8 +86,8 @@ export class Device {
         return new BindGroupLayout(label, this, entries)
     }
 
-    pipelineLayout<L extends PipelineLayoutEntries>(label: string, entries: L): PipelineLayout<L> {
-        return new PipelineLayout(label, this, entries)
+    async pipelineLayout<L extends PipelineLayoutEntries>(label: string, entries: L): Promise<PipelineLayout<L>> {
+        return await PipelineLayout.create(this, label, { bindGroupLayouts: entries })
     }
 
     bindGroup(bindGroupLayout: GPUBindGroupLayout, resources: (Resource | GPUBindingResource)[]) {
@@ -98,6 +100,33 @@ export class Device {
             }))
         })
     }
+
+    suggestedGroupSizes() {
+        const limits = this.device.limits
+        const wgs = Math.max(
+            limits.maxComputeWorkgroupSizeX,
+            limits.maxComputeWorkgroupSizeY,
+            limits.maxComputeWorkgroupSizeZ
+        )
+        const bitCount1D = Math.floor(Math.log2(wgs))
+        const bitCount2DY = bitCount1D >>> 1
+        const bitCount2DX = bitCount1D - bitCount2DY
+        const bitCount3DZ = Math.floor(bitCount1D / 3)
+        const bitCount3DY = (bitCount1D - bitCount3DZ) >>> 1
+        const bitCount3DX = bitCount1D - bitCount2DY - bitCount3DZ
+        const oneD = 1 << bitCount1D
+        const twoDX = 1 << bitCount2DX
+        const twoDY = 1 << bitCount2DY
+        const threeDX = 1 << bitCount3DX
+        const threeDY = 1 << bitCount3DY
+        const threeDZ = 1 << bitCount3DZ
+        return [ 
+            [oneD], 
+            [twoDX, twoDY ],
+            [threeDX, threeDY, threeDZ]
+        ]
+    }
+    
 
     async monitorErrors<T>(filter: GPUErrorFilter, expression: () => T): Promise<T> {
         this.device.pushErrorScope(filter)

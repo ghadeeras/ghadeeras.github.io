@@ -16,7 +16,7 @@ export class Renderer implements r.Renderer {
     constructor(private app: meta.App, private canvas: gpu.Canvas, private visuals: Visuals, private filter: Filter1D, private baseTexture: BaseTexture) {
         visuals.aspectRatio = canvas.element.width / canvas.element.height
 
-        this.texture = app.layout.device.texture({
+        this.texture = app.device.texture({
             label: "saturated-channel",
             format: "rgba16float",
             size: canvas.size,
@@ -77,7 +77,7 @@ export class Renderer implements r.Renderer {
         const descriptor2: GPURenderPassDescriptor = {
             colorAttachments: [this.texture.createView().colorAttachment()],
         }
-        this.app.layout.device.enqueueCommand("render", encoder => {
+        this.app.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe))
             this.filtering.apply(encoder, 4)
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe))

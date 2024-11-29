@@ -15,8 +15,10 @@ import { CommandEncoder } from "./encoder.js";
 import { ShaderModule } from "./shader.js";
 import { Texture, Sampler } from "./texture.js";
 import { PipelineLayout } from "./pipeline.js";
-export class Device {
+import { GPUObject } from "./meta.js";
+export class Device extends GPUObject {
     constructor(device, adapter) {
+        super();
         this.device = device;
         this.adapter = adapter;
     }
@@ -82,7 +84,9 @@ export class Device {
         return new BindGroupLayout(label, this, entries);
     }
     pipelineLayout(label, entries) {
-        return new PipelineLayout(label, this, entries);
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield PipelineLayout.create(this, label, { bindGroupLayouts: entries });
+        });
     }
     bindGroup(bindGroupLayout, resources) {
         const discriminator = "asBindingResource";
@@ -93,6 +97,27 @@ export class Device {
                 resource: discriminator in resource ? resource.asBindingResource() : resource,
             }))
         });
+    }
+    suggestedGroupSizes() {
+        const limits = this.device.limits;
+        const wgs = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
+        const bitCount1D = Math.floor(Math.log2(wgs));
+        const bitCount2DY = bitCount1D >>> 1;
+        const bitCount2DX = bitCount1D - bitCount2DY;
+        const bitCount3DZ = Math.floor(bitCount1D / 3);
+        const bitCount3DY = (bitCount1D - bitCount3DZ) >>> 1;
+        const bitCount3DX = bitCount1D - bitCount2DY - bitCount3DZ;
+        const oneD = 1 << bitCount1D;
+        const twoDX = 1 << bitCount2DX;
+        const twoDY = 1 << bitCount2DY;
+        const threeDX = 1 << bitCount3DX;
+        const threeDY = 1 << bitCount3DY;
+        const threeDZ = 1 << bitCount3DZ;
+        return [
+            [oneD],
+            [twoDX, twoDY],
+            [threeDX, threeDY, threeDZ]
+        ];
     }
     monitorErrors(filter, expression) {
         return __awaiter(this, void 0, void 0, function* () {

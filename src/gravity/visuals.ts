@@ -7,16 +7,17 @@ const projection = new aether.PerspectiveProjection(1, null, false, false)
 export class Visuals {
 
     readonly buffer: gpu.SyncBuffer
-    readonly bindGroup: meta.VisualsBindGroup
+    
+    readonly bindGroup
 
     private _zoom = 1
     private _aspectRatio = 1
     private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
     private _modelMatrix = aether.mat4.identity()
 
-    constructor(readonly layout: meta.AppLayout) {
+    constructor(readonly app: meta.App) {
         /* Buffers */
-        this.buffer = layout.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
+        this.buffer = app.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
             mvpMatrix: this.mvpMatrix,
             mvMatrix: this.modelMatrix,
             mMatrix: this.modelMatrix,
@@ -24,7 +25,7 @@ export class Visuals {
         }]))
 
         /* Bind Groups */
-        this.bindGroup = layout.groupLayouts.visuals.instance("visualsGroup", {
+        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", {
             uniforms: this.buffer
         })
     }

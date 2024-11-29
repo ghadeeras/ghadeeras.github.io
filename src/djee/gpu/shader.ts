@@ -1,17 +1,38 @@
 import { Device } from "./device.js";
-import { asColorTargetState, TextureFormatSource } from "./utils.js";
+import { Definition, GPUObject } from "./meta.js";
+import { asColorTargetState, TextureFormatSource, CaseObject } from "./utils.js";
 
-export class ShaderModule {
+export type ShaderModuleCode = 
+      CaseObject<"path" | "code", "path", string>
+    | CaseObject<"path" | "code", "code", string>
+
+export type ShaderModuleDescriptor = ShaderModuleCode & {
+    compilationHints?: Array<GPUShaderModuleCompilationHint>;
+    templateFunction?: (code: string) => string
+}
+
+export class ShaderModule extends GPUObject {
 
     readonly shaderModule: GPUShaderModule
     readonly descriptor: Readonly<GPUShaderModuleDescriptor>
 
     constructor(label: string, readonly device: Device, code: string) {
+        super()
         this.descriptor = { code, label };
         this.shaderModule = this.device.device.createShaderModule(this.descriptor)
         if (this.shaderModule === null) {
             throw new Error("Module compilation failed!")
         }
+    }
+
+    static from(descriptor: ShaderModuleDescriptor) {
+        return new Definition((device, label) => ShaderModule.create(descriptor, device, label))
+    }
+
+    static async create(descriptor: ShaderModuleDescriptor, device: Device, label: string): Promise<ShaderModule> {
+        return descriptor.path !== undefined
+            ? await device.labeledShaderModule(label, descriptor.path, descriptor.templateFunction)
+            : await device.shaderModule(label, descriptor.code, descriptor.templateFunction);
     }
 
     async hasCompilationErrors() {

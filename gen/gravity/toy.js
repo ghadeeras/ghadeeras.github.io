@@ -120,16 +120,12 @@ class Toy {
     static loop() {
         return __awaiter(this, void 0, void 0, function* () {
             const device = yield gpuDevice();
-            const { workgroupSize, workgroupSizeX, workgroupSizeY } = workGroupSizer(device);
+            const [[workgroupSize], [workgroupSizeX, workgroupSizeY], _] = device.suggestedGroupSizes();
             const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element);
-            const app = yield meta.appLayoutBuilder.build(device, "/shaders", code => code
-                .replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`)
-                .replace(/\[\[workgroup_size_x\]\]/g, `${workgroupSizeX}`)
-                .replace(/\[\[workgroup_size_y\]\]/g, `${workgroupSizeY}`));
-            const appLayout = app.layout;
-            const universe = new Universe(appLayout, ...createUniverse(64 * workgroupSize));
-            const visuals = new Visuals(appLayout);
-            const physics = yield Physics.create(appLayout, workgroupSize);
+            const app = yield meta.appDefinition(workgroupSize, workgroupSizeX, workgroupSizeY).create(device, "Gravity");
+            const universe = new Universe(app, ...createUniverse(64 * workgroupSize));
+            const visuals = new Visuals(app);
+            const physics = new Physics(app, workgroupSize);
             const renderer1 = new meshRenderer.Renderer(app, canvas, visuals);
             const renderer2 = pointsRenderer.newRenderer(app, canvas, visuals, workgroupSizeX, workgroupSizeY);
             return gear.loops.newLoop(new Toy(universe, visuals, physics, [renderer1, renderer2]), Toy.descriptor);
@@ -255,16 +251,5 @@ function gpuDevice() {
             throw e;
         }
     });
-}
-function workGroupSizer(device) {
-    const limits = device.device.limits;
-    const wgs = Math.max(limits.maxComputeWorkgroupSizeX, limits.maxComputeWorkgroupSizeY, limits.maxComputeWorkgroupSizeZ);
-    const bitCount = Math.floor(Math.log2(wgs));
-    const bitCountY = bitCount >>> 1;
-    const bitCountX = bitCount - bitCountY;
-    const workgroupSize = 1 << bitCount;
-    const workgroupSizeX = 1 << bitCountX;
-    const workgroupSizeY = 1 << bitCountY;
-    return { workgroupSize, workgroupSizeX, workgroupSizeY };
 }
 //# sourceMappingURL=toy.js.map

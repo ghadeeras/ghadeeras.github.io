@@ -33,58 +33,73 @@ export const bodyDescriptionAsVertex = gpu.vertex({
 
 export const bodyPosition = bodyState.asVertex(['position'])
 
-export type App = gpu.AppFrom<typeof appLayoutBuilder>
-export type AppLayout = gpu.AppLayoutFrom<typeof appLayoutBuilder>
-export type UniverseBindGroup = gpu.BindGroupFrom<AppLayout, "universe">
-export type VisualsBindGroup = gpu.BindGroupFrom<AppLayout, "visuals">
-export type Filter1DBindGroup = gpu.BindGroupFrom<AppLayout, "filter1D">
-export type Filter1DIOBindGroup = gpu.BindGroupFrom<AppLayout, "filter1DIO">
-export type PhysicsPipeline = gpu.ComputePipelineFrom<AppLayout, "physics">
-export type FilteringPipeline = gpu.ComputePipelineFrom<AppLayout, "filtering">
+function shaders(workgroupSize: number, workgroupSizeX: number, workgroupSizeY: number) {
+    const templateFunction: (code: string) => string = code => code
+        .replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`)
+        .replace(/\[\[workgroup_size_x\]\]/g, `${workgroupSizeX}`)
+        .replace(/\[\[workgroup_size_y\]\]/g, `${workgroupSizeY}`)
+    const shaderDef = gpu.ShaderModule.from
+    return {
+        baseTexture: shaderDef({ code: BaseTexture.shaderCode }),
+        bloom: shaderDef({ path: "filter-1d.wgsl", templateFunction }),
+        physics: shaderDef({ path: "gravity-compute.wgsl", templateFunction }),
+        meshRenderer: shaderDef({ path: "gravity-render.wgsl", templateFunction }),
+        pointsRenderer: shaderDef({ path: "gravity-render.points.wgsl", templateFunction }),
+    }
+}
 
-export const appLayoutBuilder = gpu.appBuilder("Gravity")
-    .withShaders({
-        baseTexture: { code: BaseTexture.shaderCode },
-        bloom: { path: "filter-1d.wgsl" },
-        physics: { path: "gravity-compute.wgsl" },
-        meshRenderer: { path: "gravity-render.wgsl" },
-        pointsRenderer: { path: "gravity-render.points.wgsl" },
-    })
-    .withGroupLayouts({
-        sampledTexture: {
-            textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),
-            baseTexture: gpu.binding(1, ["FRAGMENT"], gpu.texture("float")),
-        },
-        filter1D: {
-            weights: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage"))
-        },
-        filter1DIO: {
-            direction: gpu.binding(0, ["COMPUTE"], gpu.buffer("uniform")),
-            source: gpu.binding(1, ["COMPUTE"], gpu.texture("float")),
-            target: gpu.binding(2, ["COMPUTE"], gpu.storageTexture("rgba16float")),
-        },
-        universe: {
-            universeDesc: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage")),
-            currentState: gpu.binding(1, ["COMPUTE"], gpu.buffer("read-only-storage")),
-            nextState: gpu.binding(2, ["COMPUTE"], gpu.buffer("storage")),
-            uniforms: gpu.binding(3, ["COMPUTE"], gpu.buffer("uniform")),
-        },
-        visuals: {
-            uniforms: gpu.binding(0, ["VERTEX"], gpu.buffer("uniform"))
+const groupDef = gpu.BindGroupLayout.from
+const groupLayouts = {
+    sampledTexture: groupDef({ entries: {
+        textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),
+        baseTexture: gpu.binding(1, ["FRAGMENT"], gpu.texture("float")),
+    }}),
+    filter1D: groupDef({ entries: {
+        weights: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage"))
+    }}),
+    filter1DIO: groupDef({ entries: {
+        direction: gpu.binding(0, ["COMPUTE"], gpu.buffer("uniform")),
+        source: gpu.binding(1, ["COMPUTE"], gpu.texture("float")),
+        target: gpu.binding(2, ["COMPUTE"], gpu.storageTexture("rgba16float")),
+    }}),
+    universe: groupDef({ entries: {
+        universeDesc: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage")),
+        currentState: gpu.binding(1, ["COMPUTE"], gpu.buffer("read-only-storage")),
+        nextState: gpu.binding(2, ["COMPUTE"], gpu.buffer("storage")),
+        uniforms: gpu.binding(3, ["COMPUTE"], gpu.buffer("uniform")),
+    }}),
+    visuals: groupDef({ entries: {
+        uniforms: gpu.binding(0, ["VERTEX"], gpu.buffer("uniform"))
+    }})
+}
+
+const pipelineDef = gpu.PipelineLayout.from
+const pipelineLayouts = {
+    texturePasting: pipelineDef({ bindGroupLayouts: {
+        group: gpu.group(0, groupLayouts.sampledTexture)
+    }}),
+    filtering: pipelineDef({ bindGroupLayouts: {
+        filter: gpu.group(0, groupLayouts.filter1D),
+        io: gpu.group(1, groupLayouts.filter1DIO)
+    }}),
+    physics: pipelineDef({ bindGroupLayouts: {
+        universe: gpu.group(0, groupLayouts.universe)
+    }}),
+    renderer: pipelineDef({ bindGroupLayouts: {
+        visuals: gpu.group(0, groupLayouts.visuals)
+    }})
+}
+
+export function appDefinition(workgroupSize: number, workgroupSizeX: number, workgroupSizeY: number) {
+    return gpu.Definition.from({
+        device: gpu.Definition.device(),
+        shaders: shaders(workgroupSize, workgroupSizeX, workgroupSizeY), 
+        layout: {
+            groupLayouts, pipelineLayouts
         }
     })
-    .withPipelineLayouts({
-        texturePasting: {
-            group: gpu.group(0, "sampledTexture")
-        },
-        filtering: {
-            filter: gpu.group(0, "filter1D"),
-            io: gpu.group(1, "filter1DIO")
-        },
-        physics: {
-            universe: gpu.group(0, "universe")
-        },
-        renderer: {
-            visuals: gpu.group(0, "visuals")
-        }
-    })
+}
+
+export type App = gpu.InferObject<ReturnType<typeof appDefinition>>
+export type AppLayout = App["layout"]
+

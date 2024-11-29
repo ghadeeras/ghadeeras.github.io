@@ -1,9 +1,9 @@
 import * as meta from './meta.js';
 export class Universe {
-    constructor(layout, bodyDescriptions, initialState, bodiesCount = bodyDescriptions.length) {
+    constructor(app, bodyDescriptions, initialState, bodiesCount = bodyDescriptions.length) {
         this.bodiesCount = bodiesCount;
         const initialStateView = meta.bodyState.view(initialState);
-        const device = layout.device;
+        const device = app.device;
         /* Buffers */
         this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, meta.bodyDescription.view(bodyDescriptions));
         this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.physicsUniforms.view([{
@@ -18,13 +18,13 @@ export class Universe {
         ];
         /* Bind Groups */
         this.bindGroups = [
-            layout.groupLayouts.universe.instance("universeGroup0", {
+            app.layout.groupLayouts.universe.instance("universeGroup0", {
                 universeDesc: this.bodyDescriptionsBuffer,
                 currentState: this.buffers[0],
                 nextState: this.buffers[1],
                 uniforms: this.uniformsBuffer,
             }),
-            layout.groupLayouts.universe.instance("universeGroup1", {
+            app.layout.groupLayouts.universe.instance("universeGroup1", {
                 universeDesc: this.bodyDescriptionsBuffer,
                 currentState: this.buffers[1],
                 nextState: this.buffers[0],

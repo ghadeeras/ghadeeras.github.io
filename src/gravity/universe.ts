@@ -7,13 +7,13 @@ export class Universe {
     private readonly uniformsBuffer: gpu.SyncBuffer
     private readonly buffers: [gpu.Buffer, gpu.Buffer]
 
-    private readonly bindGroups: [meta.UniverseBindGroup, meta.UniverseBindGroup]
+    private readonly bindGroups
 
     private currentBuffer: number
 
-    constructor(layout: meta.AppLayout, bodyDescriptions: meta.BodyDescriptionStruct[], initialState: meta.BodyStateStruct[], readonly bodiesCount = bodyDescriptions.length) {
+    constructor(app: meta.App, bodyDescriptions: meta.BodyDescriptionStruct[], initialState: meta.BodyStateStruct[], readonly bodiesCount = bodyDescriptions.length) {
         const initialStateView = meta.bodyState.view(initialState)
-        const device = layout.device
+        const device = app.device
 
         /* Buffers */
         this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, meta.bodyDescription.view(bodyDescriptions))
@@ -30,13 +30,13 @@ export class Universe {
 
         /* Bind Groups */
         this.bindGroups = [
-            layout.groupLayouts.universe.instance("universeGroup0", {
+            app.layout.groupLayouts.universe.instance("universeGroup0", {
                 universeDesc: this.bodyDescriptionsBuffer, 
                 currentState: this.buffers[0], 
                 nextState: this.buffers[1],
                 uniforms: this.uniformsBuffer,
             }),
-            layout.groupLayouts.universe.instance("universeGroup1", {
+            app.layout.groupLayouts.universe.instance("universeGroup1", {
                 universeDesc: this.bodyDescriptionsBuffer, 
                 currentState: this.buffers[1], 
                 nextState: this.buffers[0], 

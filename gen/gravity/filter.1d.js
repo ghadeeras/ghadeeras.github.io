@@ -13,7 +13,7 @@ export class Filter1D {
         });
     }
     forTexture(texture) {
-        const device = this.app.layout.device;
+        const device = this.app.device;
         const temp = device.texture(Object.assign(Object.assign({}, texture.descriptor), { label: `${texture.descriptor.label}_temp` }));
         const ioGroup1 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup1`, {
             direction: this.horizontal,
@@ -28,18 +28,17 @@ export class Filter1D {
         const wgCountX = Math.ceil(texture.size.width / this.workgroupSize[0]);
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1]);
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`);
-        return new Filtering1D((encoder, count = 1) => this.pass(ioGroup1, ioGroup2, wgCountX, wgCountY, encoder, count), () => temp.destroy());
-    }
-    pass(ioGroup1, ioGroup2, wgCountX, wgCountY, encoder, count) {
-        encoder.computePass(pass => {
-            this.pipeline.addTo(pass, { filter: this.filterGroup });
-            for (let i = 0; i < count; i++) {
-                this.pipeline.addGroupsTo(pass, { io: ioGroup1 });
-                pass.dispatchWorkgroups(wgCountX, wgCountY);
-                this.pipeline.addGroupsTo(pass, { io: ioGroup2 });
-                pass.dispatchWorkgroups(wgCountX, wgCountY);
-            }
-        });
+        return new Filtering1D((encoder, count = 1) => {
+            encoder.computePass(pass => {
+                this.pipeline.addTo(pass, { filter: this.filterGroup });
+                for (let i = 0; i < count; i++) {
+                    this.pipeline.addGroupsTo(pass, { io: ioGroup1 });
+                    pass.dispatchWorkgroups(wgCountX, wgCountY);
+                    this.pipeline.addGroupsTo(pass, { io: ioGroup2 });
+                    pass.dispatchWorkgroups(wgCountX, wgCountY);
+                }
+            });
+        }, () => temp.destroy());
     }
 }
 export class Filtering1D {

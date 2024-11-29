@@ -4,11 +4,11 @@ import { gear } from '../libs.js'
 
 export class Filter1D {
 
-    private pipeline: meta.FilteringPipeline
+    private pipeline
+    private filterGroup
 
     private horizontal: gpu.Buffer
     private vertical: gpu.Buffer
-    private filterGroup: meta.Filter1DBindGroup
 
     constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number]) {
         this.pipeline = app.layout.pipelineLayouts.filtering.computeInstance(app.shaders.bloom, "c_main")
@@ -20,7 +20,7 @@ export class Filter1D {
     }
 
     forTexture(texture: gpu.Texture): Filtering1D {
-        const device = this.app.layout.device
+        const device = this.app.device
         const temp = device.texture({
             ...texture.descriptor,
             label: `${texture.descriptor.label}_temp`
@@ -39,28 +39,19 @@ export class Filter1D {
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1])
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`)
         return new Filtering1D(
-            (encoder, count = 1) => this.pass(ioGroup1, ioGroup2, wgCountX, wgCountY, encoder, count),
+            (encoder, count = 1) => {
+                encoder.computePass(pass => {
+                    this.pipeline.addTo(pass, { filter: this.filterGroup })
+                    for (let i = 0; i < count; i++) {
+                        this.pipeline.addGroupsTo(pass, { io: ioGroup1 })
+                        pass.dispatchWorkgroups(wgCountX, wgCountY)
+                        this.pipeline.addGroupsTo(pass, { io: ioGroup2 })
+                        pass.dispatchWorkgroups(wgCountX, wgCountY)
+                    }
+                })
+                    },
             () => temp.destroy()
         )
-    }
-
-    private pass(
-        ioGroup1: meta.Filter1DIOBindGroup,
-        ioGroup2: meta.Filter1DIOBindGroup,
-        wgCountX: number, 
-        wgCountY: number,
-        encoder: gpu.CommandEncoder, 
-        count: number
-    ) {
-        encoder.computePass(pass => {
-            this.pipeline.addTo(pass, { filter: this.filterGroup })
-            for (let i = 0; i < count; i++) {
-                this.pipeline.addGroupsTo(pass, { io: ioGroup1 })
-                pass.dispatchWorkgroups(wgCountX, wgCountY)
-                this.pipeline.addGroupsTo(pass, { io: ioGroup2 })
-                pass.dispatchWorkgroups(wgCountX, wgCountY)
-            }
-        })
     }
 
 }

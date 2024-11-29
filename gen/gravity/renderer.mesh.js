@@ -5,7 +5,7 @@ export class Renderer {
         this.app = app;
         this.canvas = canvas;
         this.visuals = visuals;
-        this.mesh = new geo.ShaderMesh(app.layout.device, geo.sphere(18, 9));
+        this.mesh = new geo.ShaderMesh(app.device, geo.sphere(18, 9));
         this.depthTexture = canvas.depthTexture();
         visuals.aspectRatio = canvas.element.width / canvas.element.height;
         /* Pipeline */
@@ -40,7 +40,7 @@ export class Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         };
-        this.app.layout.device.enqueueCommand("render", encoder => {
+        this.app.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped);

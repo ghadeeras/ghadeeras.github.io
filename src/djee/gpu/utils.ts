@@ -22,6 +22,10 @@ export type TypedArray =
     Uint16Array |
     Uint8Array
 
+export type CaseObject<S extends string, K extends S, T> = 
+    { [k in K]: T } & { [k in Exclude<S, K>]?: never }
+
+
 export function asColorTargetState(formatted: TextureFormatSource): GPUColorTargetState {
     return typeof formatted != 'string' && ("blend" in formatted || "writeMask" in formatted) 
         ? formatted 

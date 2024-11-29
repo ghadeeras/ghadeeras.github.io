@@ -9,7 +9,7 @@ export class Renderer {
         this.filter = filter;
         this.baseTexture = baseTexture;
         visuals.aspectRatio = canvas.element.width / canvas.element.height;
-        this.texture = app.layout.device.texture({
+        this.texture = app.device.texture({
             label: "saturated-channel",
             format: "rgba16float",
             size: canvas.size,
@@ -65,7 +65,7 @@ export class Renderer {
         const descriptor2 = {
             colorAttachments: [this.texture.createView().colorAttachment()],
         };
-        this.app.layout.device.enqueueCommand("render", encoder => {
+        this.app.device.enqueueCommand("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe));
             this.filtering.apply(encoder, 4);
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe));

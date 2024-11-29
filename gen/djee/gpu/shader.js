@@ -7,15 +7,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { Definition, GPUObject } from "./meta.js";
 import { asColorTargetState } from "./utils.js";
-export class ShaderModule {
+export class ShaderModule extends GPUObject {
     constructor(label, device, code) {
+        super();
         this.device = device;
         this.descriptor = { code, label };
         this.shaderModule = this.device.device.createShaderModule(this.descriptor);
         if (this.shaderModule === null) {
             throw new Error("Module compilation failed!");
         }
+    }
+    static from(descriptor) {
+        return new Definition((device, label) => ShaderModule.create(descriptor, device, label));
+    }
+    static create(descriptor, device, label) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return descriptor.path !== undefined
+                ? yield device.labeledShaderModule(label, descriptor.path, descriptor.templateFunction)
+                : yield device.shaderModule(label, descriptor.code, descriptor.templateFunction);
+        });
     }
     hasCompilationErrors() {
         return __awaiter(this, void 0, void 0, function* () {
