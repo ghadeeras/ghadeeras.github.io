@@ -1,26 +1,19 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { uniformsStruct } from "./tracer.js";
 export class Stacker {
     constructor(shaderModule, size, uniforms, normalsTexture, inputFormat, outputFormat) {
-        var _a;
         this.size = size;
         this.uniforms = uniforms;
         this.normalsTexture = normalsTexture;
         this.inputFormat = inputFormat;
         this.outputFormat = outputFormat;
         this.device = shaderModule.device;
-        this.maxLayersCount = (_a = size.depthOrArrayLayers) !== null && _a !== void 0 ? _a : this.device.device.limits.maxTextureArrayLayers;
+        this.maxLayersCount = size.depthOrArrayLayers ?? this.device.device.limits.maxTextureArrayLayers;
         this.texture = this.device.texture({
             format: inputFormat,
-            size: Object.assign(Object.assign({}, size), { depthOrArrayLayers: this.maxLayersCount }),
+            size: {
+                ...size,
+                depthOrArrayLayers: this.maxLayersCount
+            },
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
         this.sampler = this.device.sampler({
@@ -120,10 +113,8 @@ export class Stacker {
             pass.draw(4, 1, 0, this._layer);
         });
     }
-    static create(device, size, uniforms, normalsTexture, inputFormat, outputFormat) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Stacker(yield device.loadShaderModule("stacker.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat);
-        });
+    static async create(device, size, uniforms, normalsTexture, inputFormat, outputFormat) {
+        return new Stacker(await device.loadShaderModule("stacker.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat);
     }
 }
 //# sourceMappingURL=stacker.js.map

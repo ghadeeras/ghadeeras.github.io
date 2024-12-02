@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether } from "/gen/libs.js";
 import { gltf, gpu } from "../djee/index.js";
 const uniformsStruct = gpu.struct({
@@ -77,21 +68,19 @@ export class NormalsRenderer {
         const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
-    loadModel(modelUri) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const model = yield gltf.graph.Model.create(modelUri);
-            this.perspective = model.scene.perspectives[0];
-            this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
-            this._viewMatrix = this.perspective.matrix;
-            this._modelMatrix = this.perspective.modelMatrix;
-            this.resetModelViewMatrix();
-            if (this.renderer !== null) {
-                this.renderer.destroy();
-                this.renderer = null;
-            }
-            this.renderer = this.rendererFactory.newInstance(model);
-            return model;
-        });
+    async loadModel(modelUri) {
+        const model = await gltf.graph.Model.create(modelUri);
+        this.perspective = model.scene.perspectives[0];
+        this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
+        this._viewMatrix = this.perspective.matrix;
+        this._modelMatrix = this.perspective.modelMatrix;
+        this.resetModelViewMatrix();
+        if (this.renderer !== null) {
+            this.renderer.destroy();
+            this.renderer = null;
+        }
+        this.renderer = this.rendererFactory.newInstance(model);
+        return model;
     }
     primitivePipeline(vertexLayouts, primitiveState) {
         return this.device.device.createRenderPipeline({

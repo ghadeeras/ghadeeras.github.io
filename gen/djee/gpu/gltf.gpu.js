@@ -241,7 +241,10 @@ function computeIfAbsent(map, key, computer) {
 }
 function digest(bufferLayouts) {
     return [...bufferLayouts]
-        .map(l => (Object.assign(Object.assign({}, l), { attributes: [...l.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation) })))
+        .map(l => ({
+        ...l,
+        attributes: [...l.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation)
+    }))
         .sort((l1, l2) => l1.attributes[0].shaderLocation - l2.attributes[0].shaderLocation)
         .reduce((s, l, i) => s + (i > 0 ? "|" : "") + digestLayout(l), "[") + "]";
 }

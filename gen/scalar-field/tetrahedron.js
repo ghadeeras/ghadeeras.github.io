@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 import * as dragging from "../utils/dragging.js";
@@ -28,88 +19,86 @@ const projectionMatrix = aether.mat4.projection(2);
 export function initTetrahedronDemo() {
     window.onload = () => doInit();
 }
-function doInit() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShaderCode: "vertexColors.vert",
-            fragmentShaderCode: "vertexColors.frag"
-        }, "/shaders");
-        const scalarFieldModule = yield aether.loadScalarFieldModule();
-        scalarFieldInstance = scalarFieldModule.newInstance();
-        context = wgl.Context.of("canvas-gl");
-        const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
-        program.use();
-        tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
-        contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
-        position = program.attribute("position");
-        normal = program.attribute("normal");
-        color = program.attribute("color");
-        matModel = program.uniform("matModel");
-        const matView = program.uniform("matView");
-        const matProjection = program.uniform("matProjection");
-        lightPosition = program.uniform("lightPosition");
-        shininess = program.uniform("shininess");
-        fogginess = program.uniform("fogginess");
-        matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity());
-        matView.data = aether.mat4.columnMajorArray(viewMatrix);
-        matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
-        lightPosition.data = [2, 2, 2];
-        shininess.data = [1];
-        fogginess.data = [0];
-        const gl = context.gl;
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.clearColor(1, 1, 1, 1);
-        const canvas = gear.elementEvents("canvas-gl");
-        const transformer = new dragging.RotationDragging(() => aether.mat4.from(matModel.data), () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
-        const cases = {
-            rotation: new gear.Value(),
-            lightPosition: new gear.Value(),
-            contourValue: new gear.Value(),
-            value0: new gear.Value(),
-            value1: new gear.Value(),
-            value2: new gear.Value(),
-            value3: new gear.Value(),
-        };
-        const mouseBinding = gear.readableValue("mouse-binding");
-        gear.invokeLater(() => mouseBinding.flow("rotation"));
-        canvas.dragging.value.switch(mouseBinding, cases);
-        cases.rotation
-            .then(gear.drag(transformer))
-            .defaultsTo(aether.mat4.identity())
-            .attach(m => matModel.data = aether.mat4.columnMajorArray(m));
-        cases.lightPosition
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
-            .defaultsTo([Math.PI / 4, Math.PI / 4])
-            .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
-            .attach(pos => lightPosition.data = pos);
-        cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => y)
-            .defaultsTo(0)
-            .map(v => contourSurfaceData(tetrahedron, contourValue = v))
-            .attach(data => contourSurfaceBuffer.data = data);
-        const tetrahedronValue = gear.Value.from(cases.value0
-            .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(0)), cases.value1
-            .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(1)), cases.value2
-            .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(2)), cases.value3
-            .then(gear.drag(dragging.positionDragging))
-            .map(cornerValue(3))).reduce(tetrahedronAdjustor, tetrahedron).defaultsTo(tetrahedron);
-        tetrahedronValue
-            .map(t => tetrahedronData(tetrahedron = t))
-            .attach(data => tetrahedronBuffer.float32Data = data);
-        gear.Value.from(tetrahedronValue
-            .map(t => contourSurfaceData(tetrahedron = t, contourValue)), cases.contourValue
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => y)
-            .defaultsTo(0)
-            .map(v => contourSurfaceData(tetrahedron, contourValue = v))).attach(data => contourSurfaceBuffer.float32Data = data);
-        draw();
-    });
+async function doInit() {
+    const shaders = await gear.fetchTextFiles({
+        vertexShaderCode: "vertexColors.vert",
+        fragmentShaderCode: "vertexColors.frag"
+    }, "/shaders");
+    const scalarFieldModule = await aether.loadScalarFieldModule();
+    scalarFieldInstance = scalarFieldModule.newInstance();
+    context = wgl.Context.of("canvas-gl");
+    const program = context.link(context.vertexShader(shaders.vertexShaderCode), context.fragmentShader(shaders.fragmentShaderCode));
+    program.use();
+    tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
+    contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
+    position = program.attribute("position");
+    normal = program.attribute("normal");
+    color = program.attribute("color");
+    matModel = program.uniform("matModel");
+    const matView = program.uniform("matView");
+    const matProjection = program.uniform("matProjection");
+    lightPosition = program.uniform("lightPosition");
+    shininess = program.uniform("shininess");
+    fogginess = program.uniform("fogginess");
+    matModel.data = aether.mat4.columnMajorArray(aether.mat4.identity());
+    matView.data = aether.mat4.columnMajorArray(viewMatrix);
+    matProjection.data = aether.mat4.columnMajorArray(projectionMatrix);
+    lightPosition.data = [2, 2, 2];
+    shininess.data = [1];
+    fogginess.data = [0];
+    const gl = context.gl;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.clearColor(1, 1, 1, 1);
+    const canvas = gear.elementEvents("canvas-gl");
+    const transformer = new dragging.RotationDragging(() => aether.mat4.from(matModel.data), () => aether.mat4.mul(projectionMatrix, viewMatrix), 4);
+    const cases = {
+        rotation: new gear.Value(),
+        lightPosition: new gear.Value(),
+        contourValue: new gear.Value(),
+        value0: new gear.Value(),
+        value1: new gear.Value(),
+        value2: new gear.Value(),
+        value3: new gear.Value(),
+    };
+    const mouseBinding = gear.readableValue("mouse-binding");
+    gear.invokeLater(() => mouseBinding.flow("rotation"));
+    canvas.dragging.value.switch(mouseBinding, cases);
+    cases.rotation
+        .then(gear.drag(transformer))
+        .defaultsTo(aether.mat4.identity())
+        .attach(m => matModel.data = aether.mat4.columnMajorArray(m));
+    cases.lightPosition
+        .then(gear.drag(dragging.positionDragging))
+        .map(([x, y]) => aether.vec2.of(x * Math.PI / 2, y * Math.PI / 2))
+        .defaultsTo([Math.PI / 4, Math.PI / 4])
+        .map(([x, y]) => [2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y)])
+        .attach(pos => lightPosition.data = pos);
+    cases.contourValue
+        .then(gear.drag(dragging.positionDragging))
+        .map(([_, y]) => y)
+        .defaultsTo(0)
+        .map(v => contourSurfaceData(tetrahedron, contourValue = v))
+        .attach(data => contourSurfaceBuffer.data = data);
+    const tetrahedronValue = gear.Value.from(cases.value0
+        .then(gear.drag(dragging.positionDragging))
+        .map(cornerValue(0)), cases.value1
+        .then(gear.drag(dragging.positionDragging))
+        .map(cornerValue(1)), cases.value2
+        .then(gear.drag(dragging.positionDragging))
+        .map(cornerValue(2)), cases.value3
+        .then(gear.drag(dragging.positionDragging))
+        .map(cornerValue(3))).reduce(tetrahedronAdjustor, tetrahedron).defaultsTo(tetrahedron);
+    tetrahedronValue
+        .map(t => tetrahedronData(tetrahedron = t))
+        .attach(data => tetrahedronBuffer.float32Data = data);
+    gear.Value.from(tetrahedronValue
+        .map(t => contourSurfaceData(tetrahedron = t, contourValue)), cases.contourValue
+        .then(gear.drag(dragging.positionDragging))
+        .map(([_, y]) => y)
+        .defaultsTo(0)
+        .map(v => contourSurfaceData(tetrahedron, contourValue = v))).attach(data => contourSurfaceBuffer.float32Data = data);
+    draw();
 }
 function cornerValue(corner) {
     return ([_, y]) => [corner, y];
@@ -168,7 +157,7 @@ function newTetrahedron(field0, field1, field2, field3) {
         value2: field2,
         value3: field3
     };
-    return Object.assign(Object.assign(Object.assign({}, points), gradients), values);
+    return { ...points, ...gradients, ...values };
 }
 function tetrahedronData(tetrahedron) {
     const normals = [

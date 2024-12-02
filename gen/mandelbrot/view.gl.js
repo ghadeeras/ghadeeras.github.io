@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 export class ViewGL {
@@ -84,12 +75,10 @@ export class ViewGL {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
     }
 }
-export function viewGL(canvasId, center, scale) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shader = yield gear.fetchTextFile("/shaders/mandelbrot.frag");
-        const vertexShader = wgl.vertexShaders.fullScreenPass;
-        const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
-        return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale);
-    });
+export async function viewGL(canvasId, center, scale) {
+    const shader = await gear.fetchTextFile("/shaders/mandelbrot.frag");
+    const vertexShader = wgl.vertexShaders.fullScreenPass;
+    const fragmentShader = wgl.fragmentShaders.fullScreenPass(shader);
+    return new ViewGL(canvasId, vertexShader, fragmentShader, center, scale);
 }
 //# sourceMappingURL=view.gl.js.map

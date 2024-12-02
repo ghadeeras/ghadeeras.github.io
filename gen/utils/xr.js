@@ -1,41 +1,28 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 export class XRSwitch {
     constructor(xr, mode) {
         this.xr = xr;
         this.mode = mode;
     }
-    static create() {
-        return __awaiter(this, arguments, void 0, function* (acceptableModes = ["immersive-vr", "inline"]) {
-            const xr = navigator.xr;
-            if (!xr) {
-                return null;
-            }
-            const modeFinder = (i) => __awaiter(this, void 0, void 0, function* () {
-                return i < acceptableModes.length
-                    ? (yield xr.isSessionSupported(acceptableModes[i]))
-                        ? acceptableModes[i]
-                        : yield modeFinder(i + 1)
-                    : null;
-            });
-            const supportedMode = yield modeFinder(0);
-            if (supportedMode === null) {
-                return null;
-            }
-            return new XRSwitch(xr, supportedMode);
-        });
+    static async create(acceptableModes = ["immersive-vr", "inline"]) {
+        const xr = navigator.xr;
+        if (!xr) {
+            return null;
+        }
+        const modeFinder = async (i) => {
+            return i < acceptableModes.length
+                ? await xr.isSessionSupported(acceptableModes[i])
+                    ? acceptableModes[i]
+                    : await modeFinder(i + 1)
+                : null;
+        };
+        const supportedMode = await modeFinder(0);
+        if (supportedMode === null) {
+            return null;
+        }
+        return new XRSwitch(xr, supportedMode);
     }
-    turnOn(spaceTypes, gl, listeners) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield XRealitySession.create(this.xr, this.mode, spaceTypes, gl, listeners);
-        });
+    async turnOn(spaceTypes, gl, listeners) {
+        return await XRealitySession.create(this.xr, this.mode, spaceTypes, gl, listeners);
     }
 }
 export class XRealitySession {
@@ -47,29 +34,25 @@ export class XRealitySession {
         this.animationRequest = null;
         this.renderer = null;
     }
-    static create(xr, mode, spaceTypes, gl, listeners) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const session = yield xr.requestSession(mode);
-            for (const k in listeners) {
-                session.addEventListener(k, listeners[k]);
-            }
-            yield session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-            const spaceFinder = i => {
-                return i < spaceTypes.length
-                    ? session.requestReferenceSpace(spaceTypes[i])
-                        .then(s => [spaceTypes[i], s])
-                        .catch(() => spaceFinder(i + 1))
-                    : Promise.reject("");
-            };
-            const [spaceType, space] = yield spaceFinder(0);
-            return new XRealitySession(session, spaceType, space, gl);
-        });
+    static async create(xr, mode, spaceTypes, gl, listeners) {
+        const session = await xr.requestSession(mode);
+        for (const k in listeners) {
+            session.addEventListener(k, listeners[k]);
+        }
+        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+        const spaceFinder = i => {
+            return i < spaceTypes.length
+                ? session.requestReferenceSpace(spaceTypes[i])
+                    .then(s => [spaceTypes[i], s])
+                    .catch(() => spaceFinder(i + 1))
+                : Promise.reject("");
+        };
+        const [spaceType, space] = await spaceFinder(0);
+        return new XRealitySession(session, spaceType, space, gl);
     }
-    end() {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.stopAnimation();
-            this.session.end();
-        });
+    async end() {
+        this.stopAnimation();
+        this.session.end();
     }
     startAnimation(renderer) {
         if (this.animationRequest === null) {

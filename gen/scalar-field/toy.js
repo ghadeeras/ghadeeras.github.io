@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { gltf } from "../djee/index.js";
 import * as v from "./view.js";
@@ -14,12 +5,10 @@ import * as dragging from "../utils/dragging.js";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield Toy.create();
-        const loop = gear.loops.newLoop(toy, Toy.descriptor);
-        loop.run();
-    });
+export async function init() {
+    const toy = await Toy.create();
+    const loop = gear.loops.newLoop(toy, Toy.descriptor);
+    loop.run();
 }
 class Toy {
     constructor(view, scalarFieldInstance) {
@@ -42,13 +31,11 @@ class Toy {
         this.resolution = 64;
         this.field = 0;
     }
-    static create() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const scalarFieldModule = yield aether.loadScalarFieldModule();
-            const scalarFieldInstance = scalarFieldModule.newInstance();
-            const view = yield v.newView(Toy.descriptor.output.canvases.scene.element);
-            return new Toy(view, scalarFieldInstance);
-        });
+    static async create() {
+        const scalarFieldModule = await aether.loadScalarFieldModule();
+        const scalarFieldInstance = scalarFieldModule.newInstance();
+        const view = await v.newView(Toy.descriptor.output.canvases.scene.element);
+        return new Toy(view, scalarFieldInstance);
     }
     inputWiring(inputs) {
         return {

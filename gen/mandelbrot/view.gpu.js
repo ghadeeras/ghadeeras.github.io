@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { gear } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 export class ViewGPU {
@@ -107,13 +98,11 @@ export class ViewGPU {
         });
     }
 }
-export function viewGPU(canvasId, center, scale) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const device = yield gpu.Device.instance();
-        const code = yield gear.fetchTextFile("/shaders/mandelbrot.wgsl");
-        const shaderModule = yield device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
-        return new ViewGPU(device, canvasId, shaderModule, center, scale);
-    });
+export async function viewGPU(canvasId, center, scale) {
+    const device = await gpu.Device.instance();
+    const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl");
+    const shaderModule = await device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
+    return new ViewGPU(device, canvasId, shaderModule, center, scale);
 }
 export function required(value) {
     if (!value) {

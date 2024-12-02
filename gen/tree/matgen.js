@@ -22,8 +22,8 @@ export class MatricesGenerator {
         this.branch3Matrix = aether.mat4.mul(aether.mat4.translation([0, 2, 0]), aether.mat4.mul(aether.mat4.rotation(this._angle, this.axis3), this.scaling));
     }
     generateMatrices(depth, angle) {
-        this._depth = depth !== null && depth !== void 0 ? depth : this._depth;
-        this._angle = angle !== null && angle !== void 0 ? angle : this._angle;
+        this._depth = depth ?? this._depth;
+        this._angle = angle ?? this._angle;
         this.init();
         const result = [];
         this.doGenerateMatrices(result, this._depth, aether.mat4.identity());

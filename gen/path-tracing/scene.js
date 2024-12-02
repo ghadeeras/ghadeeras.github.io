@@ -9,7 +9,7 @@ export class Scene {
         this.materials = [];
     }
     createGrid() {
-        const grid = new Array(Math.pow(this.gridSize, 3));
+        const grid = new Array(this.gridSize ** 3);
         for (let i = 0; i < grid.length; i++) {
             grid[i] = {
                 boxes: [

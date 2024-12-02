@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { gltf } from "../djee/index.js";
 import { Carving } from "./carving.js";
@@ -18,19 +9,17 @@ export const video = "https://youtu.be/eeZ6qSAXo2o";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const view = yield v.newView(Toy.descriptor.input.pointers.canvas.element);
-        const picker = yield view.picker();
-        const scalarFieldModule = yield aether.loadScalarFieldModule();
-        const stone = scalarFieldModule.newInstance();
-        stone.resolution = 64;
-        stone.sampler = field;
-        stone.contourValue = 0.5;
-        const toy = new Toy(stone, scalarFieldModule, view, picker);
-        const loop = gear.loops.newLoop(toy, Toy.descriptor);
-        loop.run();
-    });
+export async function init() {
+    const view = await v.newView(Toy.descriptor.input.pointers.canvas.element);
+    const picker = await view.picker();
+    const scalarFieldModule = await aether.loadScalarFieldModule();
+    const stone = scalarFieldModule.newInstance();
+    stone.resolution = 64;
+    stone.sampler = field;
+    stone.contourValue = 0.5;
+    const toy = new Toy(stone, scalarFieldModule, view, picker);
+    const loop = gear.loops.newLoop(toy, Toy.descriptor);
+    loop.run();
 }
 class Toy {
     constructor(stone, scalarFieldModule, view, picker) {
@@ -137,7 +126,7 @@ class Toy {
         return [...p, 1];
     }
     serializeStone() {
-        const samplesCount = Math.pow((this.stone.resolution + 1), 3);
+        const samplesCount = (this.stone.resolution + 1) ** 3;
         const vectorSize = 4;
         const headerSize = 4;
         const buffer = new ArrayBuffer(headerSize * Uint16Array.BYTES_PER_ELEMENT +
@@ -182,7 +171,7 @@ class Toy {
             return this.stone;
         }
         const stone = this.scalarFieldModule.newInstance();
-        stone.resolution = Math.round(Math.pow((xRes * yRes * zRes), (1 / 3)));
+        stone.resolution = Math.round((xRes * yRes * zRes) ** (1 / 3));
         stone.sampler = (x, y, z) => {
             const i = Math.round((x + 1) * xRes / 2);
             const j = Math.round((y + 1) * yRes / 2);
@@ -201,9 +190,9 @@ class Toy {
         element.ondragover = e => {
             e.preventDefault();
         };
-        element.ondrop = (e) => __awaiter(this, void 0, void 0, function* () {
-            this.currentStone = this.deserializeStone(yield data(e));
-        });
+        element.ondrop = async (e) => {
+            this.currentStone = this.deserializeStone(await data(e));
+        };
     }
 }
 Toy.descriptor = {
@@ -278,30 +267,26 @@ Toy.descriptor = {
         },
     },
 };
-function data(e) {
-    return __awaiter(this, void 0, void 0, function* () {
-        e.preventDefault();
-        if (e.dataTransfer) {
-            const item = e.dataTransfer.items[0];
-            return item.kind == 'file' ?
-                gear.required(item.getAsFile()).arrayBuffer() :
-                asURL(item).then(fetch).then(response => response.arrayBuffer());
-        }
-        else {
-            return Promise.reject("Not a data transfer!");
-        }
-    });
+async function data(e) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+        const item = e.dataTransfer.items[0];
+        return item.kind == 'file' ?
+            gear.required(item.getAsFile()).arrayBuffer() :
+            asURL(item).then(fetch).then(response => response.arrayBuffer());
+    }
+    else {
+        return Promise.reject("Not a data transfer!");
+    }
 }
-function asURL(transferItem) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return yield new Promise((resolve, reject) => {
-            try {
-                transferItem.getAsString(resolve);
-            }
-            catch (e) {
-                reject(e);
-            }
-        });
+async function asURL(transferItem) {
+    return await new Promise((resolve, reject) => {
+        try {
+            transferItem.getAsString(resolve);
+        }
+        catch (e) {
+            reject(e);
+        }
     });
 }
 const twoPi = 2 * Math.PI;

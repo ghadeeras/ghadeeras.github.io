@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { required, timeOut } from "../utils.js";
 import { BindGroupLayout } from "./group.js";
 import { Buffer, SyncBuffer } from "./buffer.js";
@@ -22,27 +13,21 @@ export class Device extends GPUObject {
         this.device = device;
         this.adapter = adapter;
     }
-    loadShaderModule(relativePath_1) {
-        return __awaiter(this, arguments, void 0, function* (relativePath, templateFunction = s => s, basePath = "/shaders") {
-            return yield this.labeledShaderModule(relativePath, relativePath, templateFunction, basePath);
-        });
+    async loadShaderModule(relativePath, templateFunction = s => s, basePath = "/shaders") {
+        return await this.labeledShaderModule(relativePath, relativePath, templateFunction, basePath);
     }
-    labeledShaderModule(label_1, relativePath_1) {
-        return __awaiter(this, arguments, void 0, function* (label, relativePath, templateFunction = s => s, basePath = "/shaders") {
-            const response = yield fetch(`${basePath}/${relativePath}`, { method: "get", mode: "no-cors" });
-            const rawShaderCode = yield response.text();
-            return yield this.shaderModule(label, rawShaderCode, templateFunction);
-        });
+    async labeledShaderModule(label, relativePath, templateFunction = s => s, basePath = "/shaders") {
+        const response = await fetch(`${basePath}/${relativePath}`, { method: "get", mode: "no-cors" });
+        const rawShaderCode = await response.text();
+        return await this.shaderModule(label, rawShaderCode, templateFunction);
     }
-    shaderModule(label_1, rawShaderCode_1) {
-        return __awaiter(this, arguments, void 0, function* (label, rawShaderCode, templateFunction = s => s) {
-            const shaderCode = templateFunction(rawShaderCode);
-            const shaderModule = new ShaderModule(label, this, shaderCode);
-            if (yield shaderModule.hasCompilationErrors()) {
-                throw new Error("Module compilation failed!");
-            }
-            return shaderModule;
-        });
+    async shaderModule(label, rawShaderCode, templateFunction = s => s) {
+        const shaderCode = templateFunction(rawShaderCode);
+        const shaderModule = new ShaderModule(label, this, shaderCode);
+        if (await shaderModule.hasCompilationErrors()) {
+            throw new Error("Module compilation failed!");
+        }
+        return shaderModule;
     }
     enqueueCommands(name, ...encodings) {
         this.enqueue(...this.commands(name, ...encodings));
@@ -83,10 +68,8 @@ export class Device extends GPUObject {
     groupLayout(label, entries) {
         return new BindGroupLayout(label, this, entries);
     }
-    pipelineLayout(label, entries) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield PipelineLayout.create(this, label, { bindGroupLayouts: entries });
-        });
+    async pipelineLayout(label, entries) {
+        return await PipelineLayout.create(this, label, { bindGroupLayouts: entries });
     }
     bindGroup(bindGroupLayout, resources) {
         const discriminator = "asBindingResource";
@@ -119,24 +102,20 @@ export class Device extends GPUObject {
             [threeDX, threeDY, threeDZ]
         ];
     }
-    monitorErrors(filter, expression) {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.device.pushErrorScope(filter);
-            const result = expression();
-            const error = yield this.device.popErrorScope();
-            if (error) {
-                throw error;
-            }
-            return result;
-        });
+    async monitorErrors(filter, expression) {
+        this.device.pushErrorScope(filter);
+        const result = expression();
+        const error = await this.device.popErrorScope();
+        if (error) {
+            throw error;
+        }
+        return result;
     }
-    static instance() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const gpu = required(navigator.gpu);
-            const adapter = required(yield timeOut(gpu.requestAdapter(), 5000, "GPU Adapter"));
-            const device = required(yield timeOut(adapter.requestDevice(), 5000, "GPU Device"));
-            return new Device(device, adapter);
-        });
+    static async instance() {
+        const gpu = required(navigator.gpu);
+        const adapter = required(await timeOut(gpu.requestAdapter(), 5000, "GPU Adapter"));
+        const device = required(await timeOut(adapter.requestDevice(), 5000, "GPU Device"));
+        return new Device(device, adapter);
     }
 }
 //# sourceMappingURL=device.js.map

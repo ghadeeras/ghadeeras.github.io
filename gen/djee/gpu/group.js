@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { Definition, GPUObject } from "./meta.js";
 export class BindGroupLayout extends GPUObject {
     constructor(label, device, entries) {
@@ -55,10 +46,10 @@ export class BindGroup {
         this.wrapped = layout.device.device.createBindGroup(this.descriptor);
     }
     static from(descriptor) {
-        return new Definition((device, label) => __awaiter(this, void 0, void 0, function* () {
-            const layout = yield descriptor.layout.create(device, `${label}.layout`);
+        return new Definition(async (device, label) => {
+            const layout = await descriptor.layout.create(device, `${label}.layout`);
             return new BindGroup(label, layout, descriptor.entries);
-        }));
+        });
     }
 }
 export function buffer(type) {
@@ -82,6 +73,8 @@ export function sampler(type) {
     };
 }
 export function binding(binding, visibility, resource) {
-    return Object.assign({ binding, visibility: visibility.map(v => GPUShaderStage[v]).reduce((v1, v2) => v1 | v2) }, resource);
+    return {
+        binding, visibility: visibility.map(v => GPUShaderStage[v]).reduce((v1, v2) => v1 | v2), ...resource
+    };
 }
 //# sourceMappingURL=group.js.map

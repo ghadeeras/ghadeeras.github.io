@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 export class GLPicker {
@@ -65,13 +56,11 @@ function newFrameBuffer(context) {
     frameBuffer.depthBuffer = context.newRenderBuffer(WebGL2RenderingContext.DEPTH_COMPONENT16, canvas.width, canvas.height);
     return frameBuffer;
 }
-export function picker(mainView, vertices) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShader: "picker.vert",
-            fragmentShader: "picker.frag"
-        }, "/shaders");
-        return new GLPicker(mainView, shaders.vertexShader, shaders.fragmentShader, vertices);
-    });
+export async function picker(mainView, vertices) {
+    const shaders = await gear.fetchTextFiles({
+        vertexShader: "picker.vert",
+        fragmentShader: "picker.frag"
+    }, "/shaders");
+    return new GLPicker(mainView, shaders.vertexShader, shaders.fragmentShader, vertices);
 }
 //# sourceMappingURL=picker.gl.js.map

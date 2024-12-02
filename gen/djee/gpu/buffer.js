@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { required } from "../utils.js";
 export class Buffer {
     constructor(label, device, usage, dataOrSize, stride = size(dataOrSize)) {
@@ -40,7 +31,10 @@ export class Buffer {
         this._buffer.destroy();
     }
     asBindingResource(binding = {}) {
-        return Object.assign(Object.assign({}, binding), { buffer: this._buffer });
+        return {
+            ...binding,
+            buffer: this._buffer,
+        };
     }
     setData(data) {
         this._size = data.byteLength;
@@ -53,15 +47,11 @@ export class Buffer {
             this.writeAt(0, data);
         }
     }
-    writeAt(bufferOffset_1, data_1) {
-        return __awaiter(this, arguments, void 0, function* (bufferOffset, data, dataOffset = 0, size = data.byteLength) {
-            return yield this.writer(bufferOffset, data, dataOffset, size);
-        });
+    async writeAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
+        return await this.writer(bufferOffset, data, dataOffset, size);
     }
-    readAt(bufferOffset_1, data_1) {
-        return __awaiter(this, arguments, void 0, function* (bufferOffset, data, dataOffset = 0, size = data.byteLength) {
-            return yield this.reader(bufferOffset, data, dataOffset, size);
-        });
+    async readAt(bufferOffset, data, dataOffset = 0, size = data.byteLength) {
+        return await this.reader(bufferOffset, data, dataOffset, size);
     }
     copyAt(thisOffset, that, thatOffset, size) {
         const thisValidOffset = lowerMultipleOf(4, thisOffset);
@@ -100,36 +90,32 @@ export class Buffer {
         buffer.unmap();
         return [buffer, descriptor, data.byteLength];
     }
-    writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const dataOffsetInBytes = data.byteOffset + dataOffset;
-            const validBufferOffset = lowerMultipleOf(8, bufferOffset);
-            const offsetCorrection = bufferOffset - validBufferOffset;
-            const validSize = upperMultipleOf(4, size + offsetCorrection);
-            return yield this._buffer.mapAsync(GPUMapMode.WRITE, validBufferOffset, validSize).then(() => {
-                const range = this._buffer.getMappedRange(validBufferOffset, validSize);
-                const src = new Uint8Array(data.buffer, dataOffsetInBytes, size);
-                const dst = new Uint8Array(range, offsetCorrection, size);
-                dst.set(src);
-                this._buffer.unmap();
-                return this;
-            });
+    async writeToMapWriteBuffer(bufferOffset, data, dataOffset, size) {
+        const dataOffsetInBytes = data.byteOffset + dataOffset;
+        const validBufferOffset = lowerMultipleOf(8, bufferOffset);
+        const offsetCorrection = bufferOffset - validBufferOffset;
+        const validSize = upperMultipleOf(4, size + offsetCorrection);
+        return await this._buffer.mapAsync(GPUMapMode.WRITE, validBufferOffset, validSize).then(() => {
+            const range = this._buffer.getMappedRange(validBufferOffset, validSize);
+            const src = new Uint8Array(data.buffer, dataOffsetInBytes, size);
+            const dst = new Uint8Array(range, offsetCorrection, size);
+            dst.set(src);
+            this._buffer.unmap();
+            return this;
         });
     }
-    readFromMapReadBuffer(bufferOffset, data, dataOffset, size) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const dataOffsetInBytes = data.byteOffset + dataOffset;
-            const validBufferOffset = lowerMultipleOf(8, bufferOffset);
-            const offsetCorrection = bufferOffset - validBufferOffset;
-            const validSize = upperMultipleOf(4, size + offsetCorrection);
-            return yield this.buffer.mapAsync(GPUMapMode.READ, validBufferOffset, validSize).then(() => {
-                const range = this._buffer.getMappedRange(validBufferOffset, validSize);
-                const src = new Uint8Array(range, offsetCorrection, size);
-                const dst = new Uint8Array(data.buffer, dataOffsetInBytes, size);
-                dst.set(src);
-                this._buffer.unmap();
-                return data;
-            });
+    async readFromMapReadBuffer(bufferOffset, data, dataOffset, size) {
+        const dataOffsetInBytes = data.byteOffset + dataOffset;
+        const validBufferOffset = lowerMultipleOf(8, bufferOffset);
+        const offsetCorrection = bufferOffset - validBufferOffset;
+        const validSize = upperMultipleOf(4, size + offsetCorrection);
+        return await this.buffer.mapAsync(GPUMapMode.READ, validBufferOffset, validSize).then(() => {
+            const range = this._buffer.getMappedRange(validBufferOffset, validSize);
+            const src = new Uint8Array(range, offsetCorrection, size);
+            const dst = new Uint8Array(data.buffer, dataOffsetInBytes, size);
+            dst.set(src);
+            this._buffer.unmap();
+            return data;
         });
     }
     writeToCopyDstBuffer(bufferOffset, data, dataOffset, size) {
@@ -141,17 +127,15 @@ export class Buffer {
         this.device.device.queue.writeBuffer(this._buffer, validBufferOffset, data.buffer, validDataOffset, validSize);
         return Promise.resolve(this);
     }
-    readFromCopySrcBuffer(bufferOffset, data, dataOffset, size) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const temp = this.device.buffer(`${this._descriptor.label}-temp`, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, size);
-            try {
-                temp.copyAt(0, this, bufferOffset, size);
-                return yield temp.readFromMapReadBuffer(0, data, dataOffset, size);
-            }
-            finally {
-                temp.destroy();
-            }
-        });
+    async readFromCopySrcBuffer(bufferOffset, data, dataOffset, size) {
+        const temp = this.device.buffer(`${this._descriptor.label}-temp`, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, size);
+        try {
+            temp.copyAt(0, this, bufferOffset, size);
+            return await temp.readFromMapReadBuffer(0, data, dataOffset, size);
+        }
+        finally {
+            temp.destroy();
+        }
     }
 }
 export class SyncBuffer {

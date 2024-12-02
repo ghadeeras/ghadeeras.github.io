@@ -1,13 +1,12 @@
 import { failure } from "../utils.js";
 export class Buffer {
     constructor(target, context, byteStride = 0, isDynamic = false) {
-        var _a;
         this.target = target;
         this.context = context;
         this.byteStride = byteStride;
         this._data = new Float32Array([]);
         const gl = context.gl;
-        this.glBuffer = (_a = gl.createBuffer()) !== null && _a !== void 0 ? _a : failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`);
+        this.glBuffer = gl.createBuffer() ?? failure(`Failed to create GL buffer in context: ${this.context.canvas.id}`);
         this.usageHint = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
     }
     destroy() {

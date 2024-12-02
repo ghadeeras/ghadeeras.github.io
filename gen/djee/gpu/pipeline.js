@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { Definition, GPUObject } from "./meta.js";
 export class PipelineLayout extends GPUObject {
     constructor(label, device, entries, bindGroupLayouts) {
@@ -19,18 +10,16 @@ export class PipelineLayout extends GPUObject {
     static from(descriptor) {
         return new Definition((device, label) => PipelineLayout.create(device, label, descriptor));
     }
-    static create(device, label, descriptor) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const entries = descriptor.bindGroupLayouts;
-            const count = Object.keys(entries).map(k => entries[k].group).reduce((a, b) => a > b ? a : b) + 1;
-            const bindGroupLayouts = new Array(count);
-            for (const k of Object.keys(entries)) {
-                const entry = entries[k];
-                const groupLayout = yield entry.layout.create(device, `${label}.${k}`);
-                bindGroupLayouts[entry.group] = groupLayout.wrapped;
-            }
-            return new PipelineLayout(label, device, descriptor.bindGroupLayouts, bindGroupLayouts);
-        });
+    static async create(device, label, descriptor) {
+        const entries = descriptor.bindGroupLayouts;
+        const count = Object.keys(entries).map(k => entries[k].group).reduce((a, b) => a > b ? a : b) + 1;
+        const bindGroupLayouts = new Array(count);
+        for (const k of Object.keys(entries)) {
+            const entry = entries[k];
+            const groupLayout = await entry.layout.create(device, `${label}.${k}`);
+            bindGroupLayouts[entry.group] = groupLayout.wrapped;
+        }
+        return new PipelineLayout(label, device, descriptor.bindGroupLayouts, bindGroupLayouts);
     }
     computeInstance(module, entryPoint) {
         return new ComputePipeline(this, module, entryPoint);
