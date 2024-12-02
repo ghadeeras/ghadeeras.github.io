@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { wgl, gltf } from "../djee/index.js";
 export class GLView {
@@ -92,24 +83,22 @@ export class GLView {
     updateModelViewMatrix() {
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
-    loadModel(modelUri) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const model = yield gltf.graph.Model.create(modelUri, true);
-            this.perspective = model.scene.perspectives[0];
-            this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
-            this._viewMatrix = this.perspective.matrix;
-            this._modelMatrix = this.perspective.modelMatrix;
-            this.updateModelViewMatrix();
-            if (this.renderer) {
-                this.renderer.destroy();
-                this.renderer = null;
-            }
-            this.renderer = new wgl.GLRenderer(model, this.context, {
-                "POSITION": this.position,
-                "NORMAL": this.normal,
-            }, this.uPositionsMat, this.uNormalsMat);
-            return model;
-        });
+    async loadModel(modelUri) {
+        const model = await gltf.graph.Model.create(modelUri, true);
+        this.perspective = model.scene.perspectives[0];
+        this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
+        this._viewMatrix = this.perspective.matrix;
+        this._modelMatrix = this.perspective.modelMatrix;
+        this.updateModelViewMatrix();
+        if (this.renderer) {
+            this.renderer.destroy();
+            this.renderer = null;
+        }
+        this.renderer = new wgl.GLRenderer(model, this.context, {
+            "POSITION": this.position,
+            "NORMAL": this.normal,
+        }, this.uPositionsMat, this.uNormalsMat);
+        return model;
     }
     resize() {
         this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
@@ -130,13 +119,11 @@ export class GLView {
         return this.xrCompatible ? this.context.gl : null;
     }
 }
-export function newViewFactory(canvasId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShaderCode: "gltf.vert",
-            fragmentShaderCode: "gltf.frag"
-        }, "/shaders");
-        return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
-    });
+export async function newViewFactory(canvasId) {
+    const shaders = await gear.fetchTextFiles({
+        vertexShaderCode: "gltf.vert",
+        fragmentShaderCode: "gltf.frag"
+    }, "/shaders");
+    return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
 }
 //# sourceMappingURL=view.gl.js.map

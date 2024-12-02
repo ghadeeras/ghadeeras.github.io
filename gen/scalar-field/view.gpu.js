@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether } from "/gen/libs.js";
 import * as gpu from "../djee/gpu/index.js";
 import { picker } from "./picker.gpu.js";
@@ -50,10 +41,8 @@ export class GPUView {
         });
         this.uniformsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
     }
-    picker() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield picker(this.gpuCanvas, () => this.vertices);
-        });
+    async picker() {
+        return await picker(this.gpuCanvas, () => this.vertices);
     }
     resize() {
         this._aspectRatio = this.gpuCanvas.element.width / this.gpuCanvas.element.height;
@@ -155,11 +144,9 @@ GPUView.vertex = gpu.vertex({
     position: gpu.f32.x3,
     normal: gpu.f32.x3,
 });
-export function newView(canvasId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const device = yield gpu.Device.instance();
-        const shaderModule = yield device.loadShaderModule("generic.wgsl");
-        return new GPUView(device, canvasId, shaderModule);
-    });
+export async function newView(canvasId) {
+    const device = await gpu.Device.instance();
+    const shaderModule = await device.loadShaderModule("generic.wgsl");
+    return new GPUView(device, canvasId, shaderModule);
 }
 //# sourceMappingURL=view.gpu.js.map

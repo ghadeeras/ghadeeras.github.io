@@ -1,12 +1,11 @@
 import { failure } from "../utils.js";
 export class Attribute {
     constructor(program, name) {
-        var _a;
         this.program = program;
         this.name = name;
         const gl = program.context.gl;
         this.location = gl.getAttribLocation(program.program, name);
-        this.info = (_a = program.attributeInfos[name]) !== null && _a !== void 0 ? _a : failure(`Could not introspect attribute '${name}'`);
+        this.info = program.attributeInfos[name] ?? failure(`Could not introspect attribute '${name}'`);
         this.setter = getSetter(gl, this.location, this.info);
     }
     pointTo(buffer, byteOffset = 0, normalized = false, info = this.info) {

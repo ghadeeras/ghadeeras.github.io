@@ -14,7 +14,10 @@ export class Filter1D {
     }
     forTexture(texture) {
         const device = this.app.device;
-        const temp = device.texture(Object.assign(Object.assign({}, texture.descriptor), { label: `${texture.descriptor.label}_temp` }));
+        const temp = device.texture({
+            ...texture.descriptor,
+            label: `${texture.descriptor.label}_temp`
+        });
         const ioGroup1 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup1`, {
             direction: this.horizontal,
             source: texture.createView(),

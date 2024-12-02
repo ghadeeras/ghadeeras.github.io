@@ -1,40 +1,29 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import * as gear from "/gear/latest/index.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/texture-3d/toy.ts";
 export const huds = {};
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const canvas = required(document.getElementById("canvas"));
-        let canvasManager = new gear.loops.CanvasSizeManager();
-        const gpu = navigator.gpu;
-        const gpuAdapter = required(yield gpu.requestAdapter());
-        const gpuDevice = required(yield gpuAdapter.requestDevice());
-        const gpuContext = required(canvas.getContext("webgpu"));
-        const canvasConfig = {
-            device: gpuDevice,
-            format: gpu.getPreferredCanvasFormat(),
-        };
-        gpuContext.configure(canvasConfig);
-        const texture3D = gpuDevice.createTexture({
-            dimension: "3d",
-            format: "rgba16float",
-            size: { width: 16, height: 16, depthOrArrayLayers: 16 },
-            usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
-        });
-        const texture3DComputer = new Texture3DComputer(gpuDevice, texture3D);
-        const renderer = new Renderer(gpuDevice, canvasConfig.format, texture3D);
-        canvasManager.observe(canvas, c => renderer.setAspectRatio(c.width / c.height));
-        texture3DComputer.computeTexture3D();
-        startAnimation(renderer, gpuContext);
+export async function init() {
+    const canvas = required(document.getElementById("canvas"));
+    let canvasManager = new gear.loops.CanvasSizeManager();
+    const gpu = navigator.gpu;
+    const gpuAdapter = required(await gpu.requestAdapter());
+    const gpuDevice = required(await gpuAdapter.requestDevice());
+    const gpuContext = required(canvas.getContext("webgpu"));
+    const canvasConfig = {
+        device: gpuDevice,
+        format: gpu.getPreferredCanvasFormat(),
+    };
+    gpuContext.configure(canvasConfig);
+    const texture3D = gpuDevice.createTexture({
+        dimension: "3d",
+        format: "rgba16float",
+        size: { width: 16, height: 16, depthOrArrayLayers: 16 },
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
     });
+    const texture3DComputer = new Texture3DComputer(gpuDevice, texture3D);
+    const renderer = new Renderer(gpuDevice, canvasConfig.format, texture3D);
+    canvasManager.observe(canvas, c => renderer.setAspectRatio(c.width / c.height));
+    texture3DComputer.computeTexture3D();
+    startAnimation(renderer, gpuContext);
 }
 function startAnimation(renderer, gpuContext) {
     const startTime = [null];
@@ -133,10 +122,8 @@ class Renderer {
                 }],
         });
     }
-    setAspectRatio(value) {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.gpuDevice.queue.writeBuffer(this.uniforms, 0, new Float32Array([value]));
-        });
+    async setAspectRatio(value) {
+        this.gpuDevice.queue.writeBuffer(this.uniforms, 0, new Float32Array([value]));
     }
     renderTo(texture, elapsedTime) {
         const encoder = this.gpuDevice.createCommandEncoder();

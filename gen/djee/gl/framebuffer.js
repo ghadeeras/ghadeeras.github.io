@@ -2,12 +2,11 @@ import { RenderBuffer } from "./renderbuffer.js";
 import { failure } from "../utils.js";
 export class FrameBuffer {
     constructor(context) {
-        var _a;
         this.context = context;
         this.target = WebGL2RenderingContext.FRAMEBUFFER;
         this._colorBuffer = null;
         this._depthBuffer = null;
-        this.glFrameBuffer = (_a = context.gl.createFramebuffer()) !== null && _a !== void 0 ? _a : failure("Failed to create a frame buffer!");
+        this.glFrameBuffer = context.gl.createFramebuffer() ?? failure("Failed to create a frame buffer!");
     }
     delete() {
         this.context.gl.deleteFramebuffer(this.glFrameBuffer);

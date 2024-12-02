@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 import { picker } from "./picker.gl.js";
@@ -143,13 +134,11 @@ export class GLView {
         this._fogginess.data = [f];
     }
 }
-export function newView(canvasId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShader: "generic.vert",
-            fragmentShader: "generic.frag"
-        }, "/shaders");
-        return new GLView(canvasId, shaders.vertexShader, shaders.fragmentShader);
-    });
+export async function newView(canvasId) {
+    const shaders = await gear.fetchTextFiles({
+        vertexShader: "generic.vert",
+        fragmentShader: "generic.frag"
+    }, "/shaders");
+    return new GLView(canvasId, shaders.vertexShader, shaders.fragmentShader);
 }
 //# sourceMappingURL=view.gl.js.map

@@ -9,9 +9,8 @@ export class GLTFRenderer {
         this.primitiveBinders = this.createPrimitiveBinders();
     }
     destroy() {
-        var _a;
         while (this.resources.length > 0) {
-            (_a = this.resources.pop()) === null || _a === void 0 ? void 0 : _a.destroy();
+            this.resources.pop()?.destroy();
         }
     }
     createNodeBinders() {
@@ -56,7 +55,6 @@ export class GLTFRenderer {
         return this.adapter.primitiveBinder(primitive.count, primitive.mode, attributes, index);
     }
     asVertexAttributes(primitive, buffers) {
-        var _a;
         const result = [];
         for (const attribute of Object.keys(primitive.attributes)) {
             const accessor = primitive.attributes[attribute];
@@ -67,17 +65,16 @@ export class GLTFRenderer {
                 offset: accessor.byteOffset,
                 stride: accessor.bufferView.byteStride,
                 normalized: accessor.normalized,
-                buffer: ((_a = buffers.get(accessor.bufferView)) !== null && _a !== void 0 ? _a : failure("Missing vertex buffer!")),
+                buffer: (buffers.get(accessor.bufferView) ?? failure("Missing vertex buffer!")),
             });
         }
         return result;
     }
     asIndex(primitive, buffers) {
-        var _a;
         return primitive.indices !== null ? {
             componentType: primitive.indices.componentType,
             offset: primitive.indices.byteOffset,
-            buffer: ((_a = buffers.get(primitive.indices.bufferView)) !== null && _a !== void 0 ? _a : failure("Missing index buffer!")),
+            buffer: (buffers.get(primitive.indices.bufferView) ?? failure("Missing index buffer!")),
         } : null;
     }
     gpuBuffers() {
@@ -93,16 +90,14 @@ export class GLTFRenderer {
         return buffers;
     }
     render(renderer) {
-        var _a;
-        const binder = (_a = this.matrixBinders.get(this.model.scene)) !== null && _a !== void 0 ? _a : failure("There must be at least a scene renderer!");
+        const binder = this.matrixBinders.get(this.model.scene) ?? failure("There must be at least a scene renderer!");
         binder(renderer);
         for (const node of this.model.scene.nodes) {
             this.renderNode(renderer, node, binder);
         }
     }
     renderNode(renderer, node, parentBinder) {
-        var _a;
-        const binder = (_a = this.matrixBinders.get(node)) !== null && _a !== void 0 ? _a : parentBinder;
+        const binder = this.matrixBinders.get(node) ?? parentBinder;
         if (node.meshes.length > 0) {
             binder(renderer);
         }
@@ -119,8 +114,7 @@ export class GLTFRenderer {
         }
     }
     renderPrimitive(renderer, primitive) {
-        var _a;
-        const binder = (_a = this.primitiveBinders.get(primitive)) !== null && _a !== void 0 ? _a : failure(`No renderer for primitive ${primitive.key}`);
+        const binder = this.primitiveBinders.get(primitive) ?? failure(`No renderer for primitive ${primitive.key}`);
         binder(renderer);
     }
 }

@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import * as gpu from "../djee/gpu/index.js";
 import { aether, gear } from "../libs.js";
 import { RotationDragging } from "../utils/dragging.js";
@@ -20,11 +11,9 @@ export const video = "https://youtu.be/xlMvArfR2do";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const loop = yield Toy.loop();
-        loop.run();
-    });
+export async function init() {
+    const loop = await Toy.loop();
+    loop.run();
 }
 class Toy {
     constructor(canvas, tracer, denoiser, stacker, scene) {
@@ -50,16 +39,14 @@ class Toy {
         this.denoising = gear.required(this.denoisingElement.textContent).toLowerCase() == "on";
         tracer.position = [36, 36, 36];
     }
-    static loop() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const scene = buildScene();
-            const device = yield gpuDevice();
-            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
-            const tracer = yield Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
-            const denoiser = yield Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
-            const stacker = yield Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
-            return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
-        });
+    static async loop() {
+        const scene = buildScene();
+        const device = await gpuDevice();
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
+        const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
+        const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
+        const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
+        return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
     }
     inputWiring(_, outputs) {
         return {
@@ -325,18 +312,16 @@ function timeDistance(v1, v2, velocity) {
     const distances = aether.vec3.div(gap, velocity).map(c => !Number.isNaN(c) && c >= 0 ? c : 1);
     return Math.min(...distances);
 }
-function gpuDevice() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.required(document.getElementById("gpu-status"));
-        try {
-            const device = yield gpu.Device.instance();
-            gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
-            return device;
-        }
-        catch (e) {
-            gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
-            throw e;
-        }
-    });
+async function gpuDevice() {
+    const gpuStatus = gear.required(document.getElementById("gpu-status"));
+    try {
+        const device = await gpu.Device.instance();
+        gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
+        return device;
+    }
+    catch (e) {
+        gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
+        throw e;
+    }
 }
 //# sourceMappingURL=toy.js.map

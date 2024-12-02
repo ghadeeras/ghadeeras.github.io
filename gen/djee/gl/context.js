@@ -54,6 +54,6 @@ function getCanvas(canvasId) {
 }
 function getContext(canvas, options) {
     const context = canvas.getContext("webgl2", options);
-    return context !== null && context !== void 0 ? context : failure(`Failed to get GL context from element: ${canvas.id}`);
+    return context ?? failure(`Failed to get GL context from element: ${canvas.id}`);
 }
 //# sourceMappingURL=context.js.map

@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { wgl } from "../djee/index.js";
 export class Renderer {
@@ -125,13 +116,11 @@ function cone(radiusTop, radiusBottom, height, stacks, slices) {
     }
     return result;
 }
-export function renderer(proj, view, inputSuppliers) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const shaders = yield gear.fetchTextFiles({
-            vertexShaderCode: "tree.vert",
-            fragmentShaderCode: "tree.frag"
-        }, "/shaders");
-        return new Renderer(shaders.vertexShaderCode, shaders.fragmentShaderCode, proj, view, inputSuppliers);
-    });
+export async function renderer(proj, view, inputSuppliers) {
+    const shaders = await gear.fetchTextFiles({
+        vertexShaderCode: "tree.vert",
+        fragmentShaderCode: "tree.frag"
+    }, "/shaders");
+    return new Renderer(shaders.vertexShaderCode, shaders.fragmentShaderCode, proj, view, inputSuppliers);
 }
 //# sourceMappingURL=renderer.js.map

@@ -1,12 +1,11 @@
 import { failure } from "../utils.js";
 export class Uniform {
     constructor(program, name) {
-        var _a, _b;
         this.program = program;
         this.name = name;
         const gl = program.context.gl;
-        this.location = (_a = gl.getUniformLocation(program.program, name)) !== null && _a !== void 0 ? _a : this.failure(name);
-        this.info = (_b = program.uniformInfos[name]) !== null && _b !== void 0 ? _b : failure(`Could not introspect attribute '${name}'`);
+        this.location = gl.getUniformLocation(program.program, name) ?? this.failure(name);
+        this.info = program.uniformInfos[name] ?? failure(`Could not introspect attribute '${name}'`);
         this.setter = getSetter(gl, this.location, this.info);
         this._data = new Array(this.info.itemSize);
     }

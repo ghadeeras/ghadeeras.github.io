@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import { view } from "./view.js";
 import { positionDragging } from "../utils/dragging.js";
@@ -15,11 +6,9 @@ export const gitHubRepo = "ghadeeras.github.io/tree/master/src/mandelbrot";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const loop = yield Toy.loop();
-        loop.run();
-    });
+export async function init() {
+    const loop = await Toy.loop();
+    loop.run();
 }
 class Toy {
     constructor(mandelbrotView) {
@@ -42,11 +31,9 @@ class Toy {
             this.intensityWatch.innerText = toFixed(this.mandelbrotView.intensity);
         });
     }
-    static loop() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const mandelbrotView = yield view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2);
-            return gear.loops.newLoop(new Toy(mandelbrotView), Toy.descriptor);
-        });
+    static async loop() {
+        const mandelbrotView = await view(Toy.descriptor.input.pointers.canvas.element, [-0.75, 0], 2);
+        return gear.loops.newLoop(new Toy(mandelbrotView), Toy.descriptor);
     }
     inputWiring(inputs) {
         return {
@@ -216,7 +203,7 @@ class Zoom {
         return to => {
             const delta = aether.vec2.mul(calculateDelta(from, to), bounds);
             const power = -delta[1];
-            const factor = Math.pow(16, power);
+            const factor = 16 ** power;
             return power == 0 ? initial : {
                 scale: initial.scale * factor,
                 center: aether.vec2.sub(initial.center, aether.vec2.scale(calculateDelta([0, 0], aether.vec2.mul(from, bounds), initial.scale), factor - 1))

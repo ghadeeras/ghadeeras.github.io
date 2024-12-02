@@ -27,11 +27,10 @@ export var ShaderType;
 })(ShaderType || (ShaderType = {}));
 function getScriptElement(scriptElementId) {
     const scriptElement = document.getElementById(scriptElementId);
-    return scriptElement !== null && scriptElement !== void 0 ? scriptElement : failure(`No script found with ID: ${scriptElementId}`);
+    return scriptElement ?? failure(`No script found with ID: ${scriptElementId}`);
 }
 function getShaderType(script) {
-    var _a;
-    const type = (_a = script.getAttribute('type')) !== null && _a !== void 0 ? _a : "x-shader/x-vertex";
+    const type = script.getAttribute('type') ?? "x-shader/x-vertex";
     switch (type) {
         case "x-shader/x-vertex": return ShaderType.VertexShader;
         case "x-shader/x-fragment": return ShaderType.FragmentShader;

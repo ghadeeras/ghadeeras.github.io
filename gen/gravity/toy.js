@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from '/gen/libs.js';
 import * as dragging from '../utils/dragging.js';
 import * as gpu from '../djee/gpu/index.js';
@@ -21,11 +12,9 @@ export const video = "https://youtu.be/BrZm6LlOQlI";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const loop = yield Toy.loop();
-        loop.run();
-    });
+export async function init() {
+    const loop = await Toy.loop();
+    loop.run();
 }
 class Toy {
     constructor(universe, visuals, physics, renderers) {
@@ -117,19 +106,17 @@ class Toy {
         this.universe.bodyDescriptions = bodyDescriptions;
         this.universe.state = initialState;
     }
-    static loop() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const device = yield gpuDevice();
-            const [[workgroupSize], [workgroupSizeX, workgroupSizeY], _] = device.suggestedGroupSizes();
-            const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element);
-            const app = yield meta.appDefinition(workgroupSize, workgroupSizeX, workgroupSizeY).create(device, "Gravity");
-            const universe = new Universe(app, ...createUniverse(64 * workgroupSize));
-            const visuals = new Visuals(app);
-            const physics = new Physics(app, workgroupSize);
-            const renderer1 = new meshRenderer.Renderer(app, canvas, visuals);
-            const renderer2 = pointsRenderer.newRenderer(app, canvas, visuals, workgroupSizeX, workgroupSizeY);
-            return gear.loops.newLoop(new Toy(universe, visuals, physics, [renderer1, renderer2]), Toy.descriptor);
-        });
+    static async loop() {
+        const device = await gpuDevice();
+        const [[workgroupSize], [workgroupSizeX, workgroupSizeY], _] = device.suggestedGroupSizes();
+        const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element);
+        const app = await meta.appDefinition(workgroupSize, workgroupSizeX, workgroupSizeY).create(device, "Gravity");
+        const universe = new Universe(app, ...createUniverse(64 * workgroupSize));
+        const visuals = new Visuals(app);
+        const physics = new Physics(app, workgroupSize);
+        const renderer1 = new meshRenderer.Renderer(app, canvas, visuals);
+        const renderer2 = pointsRenderer.newRenderer(app, canvas, visuals, workgroupSizeX, workgroupSizeY);
+        return gear.loops.newLoop(new Toy(universe, visuals, physics, [renderer1, renderer2]), Toy.descriptor);
     }
 }
 Toy.descriptor = {
@@ -213,7 +200,7 @@ function createUniverse(bodiesCount, universeRadius = 12) {
     const initialState = [];
     for (let i = 0; i < bodiesCount; i++) {
         const mass = skewDown(Math.random(), 16) * 0.999 + 0.001;
-        const radius = Math.pow(mass, (1 / 3));
+        const radius = mass ** (1 / 3);
         const p = randomVector(universeRadius);
         const v = randomVector(0.001 / mass);
         descriptions.push({ mass: 100 * mass, radius });
@@ -236,20 +223,18 @@ function skewUp(x, s) {
     return skewDown(x, 1 / s);
 }
 function skewDown(x, s) {
-    return Math.pow(x, s);
+    return x ** s;
 }
-function gpuDevice() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.required(document.getElementById("gpu-status"));
-        try {
-            const device = yield gpu.Device.instance();
-            gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
-            return device;
-        }
-        catch (e) {
-            gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
-            throw e;
-        }
-    });
+async function gpuDevice() {
+    const gpuStatus = gear.required(document.getElementById("gpu-status"));
+    try {
+        const device = await gpu.Device.instance();
+        gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
+        return device;
+    }
+    catch (e) {
+        gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
+        throw e;
+    }
 }
 //# sourceMappingURL=toy.js.map

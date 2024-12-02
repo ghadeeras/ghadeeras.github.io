@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import * as gpu from "../djee/gpu/index.js";
 import * as dragging from "../utils/dragging.js";
 import { FieldRenderer } from "./renderer.js";
@@ -15,12 +6,10 @@ import { aether, gear } from "../libs.js";
 export const huds = {
     "monitor": "monitor-button"
 };
-export function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const toy = yield Toy.create();
-        const loop = gear.loops.newLoop(toy, Toy.descriptor);
-        loop.run();
-    });
+export async function init() {
+    const toy = await Toy.create();
+    const loop = gear.loops.newLoop(toy, Toy.descriptor);
+    loop.run();
 }
 class Toy {
     constructor(canvas, fieldRenderer, fieldSampler) {
@@ -36,14 +25,12 @@ class Toy {
         this.lodElement = gear.required(document.getElementById("lod"));
         this.changeDepth(0);
     }
-    static create() {
-        return __awaiter(this, void 0, void 0, function* () {
-            const device = yield gpuDevice();
-            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
-            const sampler = yield FieldSampler.create(device);
-            const renderer = yield FieldRenderer.create(sampler.fieldTexture, canvas);
-            return new Toy(canvas, renderer, sampler);
-        });
+    static async create() {
+        const device = await gpuDevice();
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
+        const sampler = await FieldSampler.create(device);
+        const renderer = await FieldRenderer.create(sampler.fieldTexture, canvas);
+        return new Toy(canvas, renderer, sampler);
     }
     get scale() {
         return this.fieldSampler.scale;
@@ -163,19 +150,17 @@ Toy.descriptor = {
         },
     },
 };
-function gpuDevice() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const gpuStatus = gear.required(document.getElementById("gpu-status"));
-        try {
-            const device = yield gpu.Device.instance();
-            gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
-            return device;
-        }
-        catch (e) {
-            gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
-            throw e;
-        }
-    });
+async function gpuDevice() {
+    const gpuStatus = gear.required(document.getElementById("gpu-status"));
+    try {
+        const device = await gpu.Device.instance();
+        gpuStatus.innerHTML = "\u{1F60A} Supported! \u{1F389}";
+        return device;
+    }
+    catch (e) {
+        gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
+        throw e;
+    }
 }
 function mapped(property, mapper) {
     const pos = [[0, 0]];

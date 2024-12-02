@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { Definition, GPUObject } from "./meta.js";
 import { asColorTargetState } from "./utils.js";
 export class ShaderModule extends GPUObject {
@@ -22,36 +13,32 @@ export class ShaderModule extends GPUObject {
     static from(descriptor) {
         return new Definition((device, label) => ShaderModule.create(descriptor, device, label));
     }
-    static create(descriptor, device, label) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return descriptor.path !== undefined
-                ? yield device.labeledShaderModule(label, descriptor.path, descriptor.templateFunction)
-                : yield device.shaderModule(label, descriptor.code, descriptor.templateFunction);
-        });
+    static async create(descriptor, device, label) {
+        return descriptor.path !== undefined
+            ? await device.labeledShaderModule(label, descriptor.path, descriptor.templateFunction)
+            : await device.shaderModule(label, descriptor.code, descriptor.templateFunction);
     }
-    hasCompilationErrors() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.shaderModule.getCompilationInfo) {
-                // TODO remove check when compilationInfo becomes supported in all browsers. 
-                return false;
+    async hasCompilationErrors() {
+        if (!this.shaderModule.getCompilationInfo) {
+            // TODO remove check when compilationInfo becomes supported in all browsers. 
+            return false;
+        }
+        const info = await this.shaderModule.getCompilationInfo();
+        for (const message of info.messages) {
+            switch (message.type) {
+                case "info":
+                    console.log(message);
+                    break;
+                case "warning":
+                    console.warn(message);
+                    break;
+                case "error":
+                    console.error(message);
+                    break;
+                default:
             }
-            const info = yield this.shaderModule.getCompilationInfo();
-            for (const message of info.messages) {
-                switch (message.type) {
-                    case "info":
-                        console.log(message);
-                        break;
-                    case "warning":
-                        console.warn(message);
-                        break;
-                    case "error":
-                        console.error(message);
-                        break;
-                    default:
-                }
-            }
-            return info.messages.some(m => m.type == "error");
-        });
+        }
+        return info.messages.some(m => m.type == "error");
     }
     computePipeline(entryPoint, layout = "auto") {
         return this.device.device.createComputePipeline({
@@ -73,7 +60,13 @@ export class ShaderModule extends GPUObject {
                     index[0] += buffer;
                     return null;
                 }
-                return Object.assign(Object.assign({}, buffer), { attributes: [...buffer.attributes].map(attribute => (Object.assign(Object.assign({}, attribute), { shaderLocation: index[0]++ }))) });
+                return {
+                    ...buffer,
+                    attributes: [...buffer.attributes].map(attribute => ({
+                        ...attribute,
+                        shaderLocation: index[0]++
+                    }))
+                };
             })
         };
     }
@@ -138,19 +131,17 @@ export class AppShadersBuilderWithShaders {
         this.label = label;
         this.shaders = shaders;
     }
-    build(device_1) {
-        return __awaiter(this, arguments, void 0, function* (device, rootPath = ".", processor = code => code) {
-            const result = {};
-            for (const k of Object.keys(this.shaders)) {
-                const shader = this.shaders[k];
-                const label = `${this.label}.shaders.${k}`;
-                const templateFunction = (code) => processor(code, rootPath);
-                result[k] = yield (typeof shader.path == 'string'
-                    ? device.labeledShaderModule(label, shader.path, templateFunction, rootPath)
-                    : device.shaderModule(label, shader.code, templateFunction));
-            }
-            return result;
-        });
+    async build(device, rootPath = ".", processor = code => code) {
+        const result = {};
+        for (const k of Object.keys(this.shaders)) {
+            const shader = this.shaders[k];
+            const label = `${this.label}.shaders.${k}`;
+            const templateFunction = (code) => processor(code, rootPath);
+            result[k] = await (typeof shader.path == 'string'
+                ? device.labeledShaderModule(label, shader.path, templateFunction, rootPath)
+                : device.shaderModule(label, shader.code, templateFunction));
+        }
+        return result;
     }
 }
 export function appShadersBuilder(label) {

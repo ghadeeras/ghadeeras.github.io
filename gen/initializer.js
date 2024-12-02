@@ -2,18 +2,17 @@ import { required } from "/gear/latest/index.js";
 let currentHudId = null;
 export default function init(toy) {
     window.onload = () => {
-        var _a, _b, _c;
         link("logo", "/");
-        link("github", "https://github.com/ghadeeras/" + ((_a = toy.gitHubRepo) !== null && _a !== void 0 ? _a : "ghadeeras.github.io"), true);
+        link("github", "https://github.com/ghadeeras/" + (toy.gitHubRepo ?? "ghadeeras.github.io"), true);
         link("linkedin", "https://www.linkedin.com/in/ghadeer-abousaleh", true);
         link("mastodon", "https://techhub.social/@gee8sh", true);
-        link("youtube", (_b = toy.video) !== null && _b !== void 0 ? _b : "https://www.youtube.com/@gee8sh", true);
+        link("youtube", toy.video ?? "https://www.youtube.com/@gee8sh", true);
         for (const element of document.getElementsByClassName("toy")) {
             doLink(element, "/pages/" + element.id);
         }
         setupHud("about", "about-button");
         setupHud("controls", "controls-button");
-        const huds = ((_c = toy.huds) !== null && _c !== void 0 ? _c : {});
+        const huds = (toy.huds ?? {});
         for (const hudId of Object.keys(huds)) {
             setupHud(hudId, huds[hudId]);
         }

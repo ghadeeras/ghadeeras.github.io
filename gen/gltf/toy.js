@@ -1,12 +1,3 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 import { aether, gear } from "/gen/libs.js";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
@@ -23,11 +14,9 @@ export function wires() {
         init: () => init(true)
     };
 }
-export function init() {
-    return __awaiter(this, arguments, void 0, function* (wires = false) {
-        const loop = yield GLTFToy.loop(wires);
-        loop.run();
-    });
+export async function init(wires = false) {
+    const loop = await GLTFToy.loop(wires);
+    loop.run();
 }
 class GLTFToy {
     constructor(models, view, xrSwitch) {
@@ -61,17 +50,15 @@ class GLTFToy {
             gear.required(document.getElementById("xr")).style.removeProperty("visibility");
         }
     }
-    static loop(wires) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const modelIndexResponse = yield fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json");
-            const models = (yield modelIndexResponse.json())
-                .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`]);
-            models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
-            const viewFactory = yield newViewFactory("canvas", wires);
-            const view = viewFactory();
-            const xrSwitch = yield xr.XRSwitch.create();
-            return gear.loops.newLoop(new GLTFToy(models, view, xrSwitch), GLTFToy.descriptor);
-        });
+    static async loop(wires) {
+        const modelIndexResponse = await fetch("https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/model-index.json");
+        const models = (await modelIndexResponse.json())
+            .map(entry => [entry.name, `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${entry.name}/glTF/${entry.variants.glTF}`]);
+        models.unshift(["ScalarFieldIn", new URL("/models/ScalarFieldIn.gltf", window.location.href).href], ["ScalarField", new URL("/models/ScalarField.gltf", window.location.href).href], ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href], ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href]);
+        const viewFactory = await newViewFactory("canvas", wires);
+        const view = viewFactory();
+        const xrSwitch = await xr.XRSwitch.create();
+        return gear.loops.newLoop(new GLTFToy(models, view, xrSwitch), GLTFToy.descriptor);
     }
     inputWiring(inputs, outputs, controller) {
         return {
@@ -154,31 +141,27 @@ class GLTFToy {
         this.view.viewMatrix = perspective.matrix;
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
     }
-    toggleXR(controller) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const gl = this.view.xrContext;
-            if (this.xrSwitch !== null) {
-                if (this.xrSession) {
-                    this.xrSession.end();
-                    this.xrSession = null;
-                }
-                else if (gl) {
-                    this.xrSession = yield this.xrTurnOn(this.xrSwitch, controller, gl);
-                    this.xrStartAnimation(this.xrSession, controller);
-                }
+    async toggleXR(controller) {
+        const gl = this.view.xrContext;
+        if (this.xrSwitch !== null) {
+            if (this.xrSession) {
+                this.xrSession.end();
+                this.xrSession = null;
             }
-        });
+            else if (gl) {
+                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, gl);
+                this.xrStartAnimation(this.xrSession, controller);
+            }
+        }
     }
-    xrTurnOn(xrSwitch, controller, gl) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const snapshot = this.snapshot(controller);
-            const listeners = {
-                end: () => this.restore(snapshot, controller),
-                select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
-                squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
-            };
-            return yield xrSwitch.turnOn(["local", "viewer"], gl, listeners);
-        });
+    async xrTurnOn(xrSwitch, controller, gl) {
+        const snapshot = this.snapshot(controller);
+        const listeners = {
+            end: () => this.restore(snapshot, controller),
+            select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
+            squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
+        };
+        return await xrSwitch.turnOn(["local", "viewer"], gl, listeners);
     }
     xrStartAnimation(xrSession, controller) {
         controller.animationPaused = true;
