@@ -1,10 +1,3 @@
-export * as wgl from "./gl/index.js"
-export * as gpu from "./gpu/index.js"
 export * as gltf from "./gltf/index.js"
-export * from "./utils.js"
-
-export interface Resource {
-
-    destroy(): void
-
-} 
+export * as gltf_gl from "./gltf.gl.js"
+export * as gltf_gpu from "./gltf.gpu.js"

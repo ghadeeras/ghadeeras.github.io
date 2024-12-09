@@ -1,4 +1,4 @@
-import * as aether from '/aether/latest/index.js'
+import * as aether from "aether"
 import { Scene, volume } from "./scene.js"
 import { VolumeStruct } from './tracer.js'
 

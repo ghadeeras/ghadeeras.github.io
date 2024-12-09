@@ -1,4 +1,9 @@
-dependencies
-node_modules
 certificate.crt
 privatekey.key
+
+node_modules/*
+!node_modules/aether
+!node_modules/gear
+!node_modules/languasaurus
+!node_modules/lumen
+!node_modules/vibrato.js

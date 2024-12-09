@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js";
+import * as aether from "aether"
+import * as gear from "gear"
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";

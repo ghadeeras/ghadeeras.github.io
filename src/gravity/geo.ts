@@ -1,4 +1,4 @@
-import { gpu } from '../djee/index.js'
+import { gpu } from "lumen"
 
 export class ShaderMesh {
 

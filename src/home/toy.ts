@@ -1,5 +1,5 @@
-import { wgl } from "../djee/index.js"
-import { gear } from "../libs.js"
+import { wgl } from "lumen"
+import * as gear from "gear"
 
 const mySketch = new Image()
 

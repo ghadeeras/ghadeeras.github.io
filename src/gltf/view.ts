@@ -1,4 +1,5 @@
-import { aether, gear } from "../libs.js";
+import * as aether from "aether"
+import * as gear from "gear"
 import * as dgee from '../djee/index.js'
 import * as gpuView from "./view.gpu.js"
 import * as gpuWiresView from "./view.wires.gpu.js"

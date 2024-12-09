@@ -1,5 +1,5 @@
-import * as gpu from "../djee/gpu/index.js"
-import { gear } from "../libs.js"
+import { gpu } from "lumen"
+import * as gear from "gear"
 
 export function init() {
     window.onload = doInit

@@ -1,4 +1,4 @@
-import * as aether from '/aether/latest/index.js'
+import * as aether from "aether"
 import { BoxStruct, cellStruct, CellStruct, VolumeStruct } from "./tracer.js"
 
 export const NULL = 0xFFFFFFFF

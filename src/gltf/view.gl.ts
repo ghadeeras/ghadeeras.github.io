@@ -1,5 +1,7 @@
-import { aether, gear } from "/gen/libs.js";
-import { wgl, gltf } from "../djee/index.js"
+import * as aether from "aether"
+import * as gear from "gear"
+import { wgl } from "lumen";
+import { gltf, gltf_gl } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
@@ -31,7 +33,7 @@ export class GLView implements View {
     private uShininess: wgl.Uniform;
     private uFogginess: wgl.Uniform;
 
-    private renderer: wgl.GLRenderer | null = null
+    private renderer: gltf_gl.GLRenderer | null = null
 
     private _viewMatrix: aether.Mat<4> = aether.mat4.identity()
     private _modelMatrix: aether.Mat<4> = aether.mat4.identity()
@@ -151,7 +153,7 @@ export class GLView implements View {
             this.renderer.destroy();
             this.renderer = null;
         }
-        this.renderer = new wgl.GLRenderer(model, this.context, {
+        this.renderer = new gltf_gl.GLRenderer(model, this.context, {
             "POSITION": this.position,
             "NORMAL": this.normal,
         }, this.uPositionsMat, this.uNormalsMat);

@@ -1,4 +1,4 @@
-import { aether } from "/gen/libs.js"
+import * as aether from "aether"
 import { viewGL } from "./view.gl.js"
 import { required, viewGPU } from "./view.gpu.js"
 

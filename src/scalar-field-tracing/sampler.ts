@@ -1,5 +1,5 @@
-import * as gpu from "../djee/gpu/index.js"
-import { aether } from "../libs.js";
+import { gpu } from "lumen"
+import * as aether from "aether"
 
 export class FieldSampler {
 

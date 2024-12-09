@@ -1,5 +1,6 @@
-import { aether, gear } from "/gen/libs.js";
-import * as gpu from "../djee/gpu/index.js";
+import * as aether from "aether"
+import * as gear from "gear"
+import { gpu } from "lumen";
 import { View } from "./view.js";
 
 export class ViewGPU implements View {

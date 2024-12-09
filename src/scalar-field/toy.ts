@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js"
+import * as aether from "aether"
+import * as gear from "gear"
 import { gltf } from "../djee/index.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"

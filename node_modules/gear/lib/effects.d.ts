@@ -1,0 +1,10 @@
+import * as types from "./types.js";
+import { Value } from "./value.js";
+export declare function reduction<T, R>(reducer: types.Reducer<T, R>, identity: R): types.Effect<T, R>;
+export declare function mapping<T, R>(mapper: types.Mapper<T, R>): types.Effect<T, R>;
+export declare function filtering<T>(predicate: types.Predicate<T>): types.Effect<T, T>;
+export declare function latency<T>(): types.Effect<T, T>;
+export declare function propagation<A, B, C>(e1: types.Effect<A, B>, e2: types.Effect<B, C>): types.Effect<A, C>;
+export declare function flowSwitch<T>(on: Value<boolean>, initialState?: boolean): types.Effect<T, T>;
+export declare function repeater<T, R extends T>(interval: number, restValue: R): types.Effect<T, T>;
+export declare function choice<T>(trueValue: T, falseValue: T): types.Effect<boolean, T>;

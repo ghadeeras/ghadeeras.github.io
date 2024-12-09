@@ -1,4 +1,4 @@
-import { required } from "/gear/latest/index.js"
+import { required } from "gear"
 
 export type Toy = {
     gitHubRepo: string | null
@@ -10,7 +10,7 @@ export type Toy = {
 let currentHudId: string | null = null
 
 export default function init(toy: Toy) {
-    window.onload = () => {
+    // window.onload = () => {
         link("logo", "/")
         link("github",  "https://github.com/ghadeeras/" + (toy.gitHubRepo ?? "ghadeeras.github.io"), true)
         link("linkedin", "https://www.linkedin.com/in/ghadeer-abousaleh", true)
@@ -30,7 +30,7 @@ export default function init(toy: Toy) {
 
         toy.init()
     }
-}
+// }
 
 function link(elementId: string, url: string, inNewWindow = false) {
     const element = required(document.getElementById(elementId))

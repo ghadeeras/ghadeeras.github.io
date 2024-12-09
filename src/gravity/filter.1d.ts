@@ -1,6 +1,6 @@
-import * as gpu from '../djee/gpu/index.js'
+import { gpu } from 'lumen'
 import * as meta from './meta.js'
-import { gear } from '../libs.js'
+import * as gear from "gear"
 
 export class Filter1D {
 

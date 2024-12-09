@@ -1,0 +1,38 @@
+import * as automata from './automata.js';
+import * as sets from './sets.js';
+export type State = automata.State<true>;
+export type Automaton = automata.Automaton<true>;
+export declare function state(): State;
+export declare function endState(): State;
+export declare function from(state: State): RegEx;
+export declare function word(w: string): RegEx;
+export declare function chars(cs: string): RegEx;
+export declare function char(c: string): RegEx;
+export declare function charOtherThan(c: string): RegEx;
+export declare function charFrom(chars: string): RegEx;
+export declare function charNotFrom(chars: string): RegEx;
+export declare function charIn(range: string, ...ranges: string[]): RegEx;
+export declare function charOutOf(range: string, ...ranges: string[]): RegEx;
+export declare function concat(regex: RegEx, ...regexes: RegEx[]): RegEx;
+export declare function choice(regex: RegEx, ...regexes: RegEx[]): RegEx;
+export declare function oneOrMore(regex: RegEx): RegEx;
+export declare function zeroOrMore(regex: RegEx): RegEx;
+export declare class RegEx implements sets.SymbolSet<string> {
+    private _automaton;
+    private constructor();
+    get automaton(): automata.Automaton<true>;
+    contains(s: string): boolean;
+    random(): string;
+    shortestRandom(): string;
+    randomString(shortness: number): string;
+    matches(s: string): boolean;
+    find(s: string, from?: number): [number, number] | null;
+    longestMatch(s: string, from?: number): number | null;
+    shortestMatch(s: string, from?: number): number | null;
+    matchIndexes(s: string, from?: number): Generator<number, void, unknown>;
+    optional(): RegEx;
+    repeated(): RegEx;
+    then(r: RegEx): RegEx;
+    or(r: RegEx): RegEx;
+    static create(automaton: Automaton): RegEx;
+}

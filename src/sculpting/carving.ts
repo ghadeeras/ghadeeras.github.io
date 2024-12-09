@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js"
+import * as aether from "aether"
+import * as gear from "gear"
 import { Picker } from "../scalar-field/view.js";
 
 const weights = [0.5, 1, 0.5]

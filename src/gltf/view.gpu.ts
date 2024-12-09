@@ -1,5 +1,6 @@
-import { aether } from "/gen/libs.js";
-import { gltf, gpu } from "../djee/index.js"
+import * as aether from "aether"
+import { gpu } from "lumen";
+import { gltf, gltf_gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
@@ -40,8 +41,8 @@ export class GPUView implements View {
     private fragmentState: GPUFragmentState
     private depthState: GPUDepthStencilState
 
-    private rendererFactory: gpu.GPURendererFactory
-    private renderer: ReturnType<gpu.GPURendererFactory["newInstance"]> | null = null
+    private rendererFactory: gltf_gpu.GPURendererFactory
+    private renderer: ReturnType<gltf_gpu.GPURendererFactory["newInstance"]> | null = null
 
     private _viewMatrix = aether.mat4.identity()
     private _modelMatrix = aether.mat4.identity()
@@ -69,7 +70,7 @@ export class GPUView implements View {
         })
         this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
 
-        this.rendererFactory = new gpu.GPURendererFactory(
+        this.rendererFactory = new gltf_gpu.GPURendererFactory(
             this.device,
             1,
             { POSITION: 0, NORMAL: 1 },

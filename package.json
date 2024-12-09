@@ -2,7 +2,7 @@
   "name": "ghadeeras.github.io",
   "version": "1.0.0",
   "description": "Ghadeer's Playcloud",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,5 +21,11 @@
     "@webgpu/types": "^0.1.51",
     "http-server": "^14.1.1",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "aether": "git+https://github.com/ghadeeras/aether.git#next",
+    "gear": "git+https://github.com/ghadeeras/gear.git#next",
+    "languasaurus": "git+https://github.com/ghadeeras/languasaurus.git#next",
+    "lumen": "git+https://github.com/ghadeeras/lumen.git"
   }
 }

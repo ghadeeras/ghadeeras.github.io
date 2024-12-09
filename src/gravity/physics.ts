@@ -1,4 +1,4 @@
-import * as meta from './meta.js'
+import * as meta from "./meta.js"
 import { Universe } from './universe.js'
 
 export class Physics {

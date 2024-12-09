@@ -1,7 +1,8 @@
-import { aether, gear } from "/gen/libs.js"
-import { wgl } from "../djee/index.js"
-import { values } from "../djee/utils.js";
-import { ProgramSample } from "./samples.js";
+import * as aether from "aether"
+import * as gear from "gear"
+import { wgl } from "lumen"
+import { values } from "../djee/utils.js"
+import { ProgramSample } from "./samples.js"
 
 export type Named = {
     name: string;

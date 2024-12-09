@@ -1,4 +1,4 @@
-import * as gpu from '../djee/gpu/index.js'
+import { gpu } from 'lumen';
 import * as meta from './meta.js';
 
 export class BaseTexture {

@@ -1,5 +1,6 @@
-import * as gpu from "../djee/gpu/index.js"
-import { aether, gear } from "../libs.js"
+import { gpu } from "lumen"
+import * as aether from "aether"
+import * as gear from "gear"
 import { RotationDragging } from "../utils/dragging.js"
 import { Stacker } from "./stacker.js"
 import { Tracer, VolumeStruct } from "./tracer.js"

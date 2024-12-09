@@ -1,4 +1,4 @@
-import * as gpu from '../djee/gpu/index.js'
+import { gpu } from 'lumen'
 import { BaseTexture } from './base.texture.js'
 
 export type BodyDescriptionStruct = gpu.DataTypeOf<typeof bodyDescription>

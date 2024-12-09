@@ -1,5 +1,5 @@
-import * as aether from '/aether/latest/index.js'
-import * as gpu from "../djee/gpu/index.js"
+import * as aether from "aether"
+import { gpu } from "lumen"
 import { NULL, Scene } from './scene.js'
 
 export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>

@@ -5,10 +5,19 @@
         <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
         <title>Texture 3D</title>
         <link type="text/css" rel="stylesheet" href="/index.css" />
-      </style>
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js",
+                "vibrato.js/core": "/node_modules/vibrato.js/lib/js/core.js"
+              }
+            }
+        </script>          
         <script type="module">
-            import * as Texture3D from "../gen/texture-3d/toy.js"
-            import init from "../gen/initializer.js"
+            import * as Texture3D from "../js/texture-3d/toy.js"
+            import init from "../js/initializer.js"
             init(Texture3D);
         </script>
     </head>

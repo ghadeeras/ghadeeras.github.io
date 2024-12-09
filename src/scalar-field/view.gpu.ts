@@ -1,5 +1,5 @@
-import { aether } from "/gen/libs.js"
-import * as gpu from "../djee/gpu/index.js"
+import * as aether from "aether"
+import { gpu } from "lumen"
 import * as v from "./view.js"
 import { picker } from "./picker.gpu.js"
 

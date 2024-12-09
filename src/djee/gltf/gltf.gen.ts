@@ -1,4 +1,4 @@
-import { aether } from "/gen/libs.js"
+import * as aether from "aether"
 import * as gltf from "./gltf.js"
 
 type VerticesMap = {

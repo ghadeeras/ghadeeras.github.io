@@ -1,4 +1,4 @@
-import * as gear from "/gear/latest/index.js"
+import * as gear from "gear"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/texture-3d/toy.ts"
 export const huds = {}

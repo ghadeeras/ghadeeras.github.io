@@ -1,4 +1,4 @@
-import * as gpu from "../djee/gpu/index.js"
+import { gpu } from "lumen"
 import { uniformsStruct } from "./tracer.js"
 
 export class Stacker {

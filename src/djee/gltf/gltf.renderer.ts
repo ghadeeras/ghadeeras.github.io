@@ -1,5 +1,5 @@
-import { aether } from "/gen/libs.js";
-import { Resource } from "../index.js";
+import * as aether from "aether"
+import { Resource } from "lumen";
 import { failure } from "../utils.js";
 import * as gltf from "../gltf/gltf.js";
 import * as graph from "../gltf/gltf.graph.js";

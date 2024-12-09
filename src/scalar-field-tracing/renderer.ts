@@ -1,5 +1,6 @@
-import * as gpu from "../djee/gpu/index.js"
-import { gear, aether } from "../libs.js";
+import { gpu } from "lumen"
+import * as aether from "aether"
+import * as gear from "gear"
 
 export class FieldRenderer {
 

@@ -1,4 +1,4 @@
-import { aether } from "/gen/libs.js"
+import * as aether from "aether"
 
 export class MatricesGenerator {
 

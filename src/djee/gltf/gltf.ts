@@ -1,4 +1,4 @@
-import { aether } from "/gen/libs.js"
+import * as aether from "aether"
 import { failure } from "../utils.js"
 
 export type Model = {

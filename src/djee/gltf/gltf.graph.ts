@@ -1,6 +1,6 @@
 import * as gltf from './gltf.js'
 import * as utils from '../utils.js'
-import * as aether from '/aether/latest/index.js'
+import * as aether from "aether"
 import * as aetherX from '../../utils/aether.js'
 
 export class Model {

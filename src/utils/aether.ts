@@ -1,4 +1,4 @@
-import { aether } from "../libs.js"
+import * as aether from "aether"
 
 export type Range3D = [aether.Vec3, aether.Vec3]
 

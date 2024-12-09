@@ -1,8 +1,9 @@
-import * as gpu from "../djee/gpu/index.js"
+import { gpu } from "lumen"
 import * as dragging from "../utils/dragging.js"
 import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";
-import { aether, gear } from "../libs.js";
+import * as aether from "aether"
+import * as gear from "gear"
 
 export const huds = {
     "monitor": "monitor-button"

@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js";
+import * as aether from "aether"
+import * as gear from "gear"
 import * as aetherx from "./aether.js"
 
 export abstract class ModelMatrixDragging implements gear.DraggingHandler<aether.Mat<4>>, gear.loops.Dragger<aether.Mat<4>> {

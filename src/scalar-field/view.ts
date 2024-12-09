@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js"
+import * as aether from "aether"
+import * as gear from "gear"
 import * as glView from './view.gl.js' 
 import * as gpuView from './view.gpu.js' 
 

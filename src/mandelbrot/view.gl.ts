@@ -1,5 +1,6 @@
-import { aether, gear } from "/gen/libs.js"
-import { wgl } from "../djee/index.js"
+import * as aether from "aether"
+import * as gear from "gear"
+import { wgl } from "lumen"
 import { View } from "./view.js"
 
 export class ViewGL implements View {

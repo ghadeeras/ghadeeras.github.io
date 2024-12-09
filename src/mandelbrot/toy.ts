@@ -1,4 +1,5 @@
-import { aether, gear } from "/gen/libs.js"
+import * as aether from "aether"
+import * as gear from "gear"
 import { view, View } from "./view.js"
 import { positionDragging } from "../utils/dragging.js"
 

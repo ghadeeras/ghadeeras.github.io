@@ -2,9 +2,9 @@ import { MyScanner } from './my-scanner.js'
 
 const scanner = new MyScanner()
 console.log(scanner.tokenize(`
-import * as Aether from "../../aether/latest/index.js"
+import * as aether from "aether"
 import { View } from "./view.js"
-import * as Gear from "../gear/all.js"
+import * as gear from "gear"
 
 const audioContext = new window.AudioContext({sampleRate: 9450})
 const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
