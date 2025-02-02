@@ -23,9 +23,9 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "aether": "git+https://github.com/ghadeeras/aether.git#next",
-    "gear": "git+https://github.com/ghadeeras/gear.git#next",
-    "languasaurus": "git+https://github.com/ghadeeras/languasaurus.git#next",
+    "aether": "git+https://github.com/ghadeeras/aether.git",
+    "gear": "git+https://github.com/ghadeeras/gear.git",
+    "languasaurus": "git+https://github.com/ghadeeras/languasaurus.git",
     "lumen": "git+https://github.com/ghadeeras/lumen.git"
   }
 }
