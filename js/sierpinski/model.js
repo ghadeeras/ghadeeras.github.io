@@ -8,13 +8,13 @@ const defaultSierpinski = {
 };
 export function sierpinski(depth = new gear.Value(), a = new gear.Value(), b = new gear.Value(), c = new gear.Value()) {
     const sierpinski = { ...defaultSierpinski };
-    return gear.Value.from(depth.reduce((s, d) => s = { ...s, depth: d }, sierpinski), a.reduce((s, a) => s = { ...s, a: a }, sierpinski), b.reduce((s, b) => s = { ...s, b: b }, sierpinski), c.reduce((s, c) => s = { ...s, c: c }, sierpinski)).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
+    return gear.Value.from(depth.reduce((s, d) => s = { ...s, depth: d }, sierpinski), a.reduce((s, a) => s = { ...s, a: a }, sierpinski), b.reduce((s, b) => s = { ...s, b: b }, sierpinski), c.reduce((s, c) => s = { ...s, c: c }, sierpinski)).map(s => tessellatedTriangle(s.a, s.b, s.c, s.depth));
 }
 function vec(angleInDegrees) {
     const angle = Math.PI * angleInDegrees / 180;
     return [Math.cos(angle), Math.sin(angle)];
 }
-export function tesselatedTriangle(a, b, c, depth) {
+function tessellatedTriangle(a, b, c, depth) {
     const result = {
         corners: [],
         centers: [],

@@ -33,7 +33,7 @@ export function sierpinski(
         a.reduce((s, a) => s = {...s, a :a}, sierpinski), 
         b.reduce((s, b) => s = {...s, b :b}, sierpinski), 
         c.reduce((s, c) => s = {...s, c :c}, sierpinski) 
-    ).map(s => tesselatedTriangle(s.a, s.b, s.c, s.depth));
+    ).map(s => tessellatedTriangle(s.a, s.b, s.c, s.depth));
 }
 
 function vec(angleInDegrees: number): aether.Vec<2> {
@@ -41,7 +41,7 @@ function vec(angleInDegrees: number): aether.Vec<2> {
     return [Math.cos(angle), Math.sin(angle)];
 }
     
-export function tesselatedTriangle(a: aether.Vec<2>, b: aether.Vec<2>, c: aether.Vec<2>, depth: number) {
+function tessellatedTriangle(a: aether.Vec<2>, b: aether.Vec<2>, c: aether.Vec<2>, depth: number) {
     const result: FlattenedSierpinski = {
         corners: [],
         centers: [],
