@@ -16,7 +16,6 @@ out vec4 fragColor;
 out vec3 fragPosition;
 out vec3 fragNormal;
 out vec3 fragLightRay;
-out float fogDepth;
 
 void main() {
     mat4 matModelView = matView * matModel;
@@ -26,7 +25,6 @@ void main() {
     fragNormal = (matModelView * vec4(normal, 0.0)).xyz;
     fragColor = color;
     fragLightRay = fragPosition - viewedLightPosition;
-    fogDepth = length(fragPosition) + length(fragLightRay);
 
     gl_Position = matProjection * vec4(fragPosition, 1.0);
 }

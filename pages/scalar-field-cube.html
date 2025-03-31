@@ -1,71 +1,78 @@
 <!doctype html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
-    <title>Scalar Field Polygonizing (Cube)</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="importmap">
-        {
-          "imports": {
-            "lumen": "/node_modules/lumen/lib/index.js",
-            "aether": "/node_modules/aether/lib/index.js",
-            "gear": "/node_modules/gear/lib/index.js"
-          }
-        }
-    </script>          
-    <script type="module">
-        import * as ScalarField from "../js/scalar-field/cube.js"
-        ScalarField.initCubeDemo();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Scalar Field Polygonizing (Cube)</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Scalar Field Polygonizing - Cube</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js"
+              }
+            }
+        </script>          
+        <script type="module">
+            import * as toy from "../js/scalar-field/cube.toy.js"
+            import init from "../js/initializer.js"
+            init(toy)
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
-            <div>
-                <p>
-                    <div>Mouse Binding: 
-                        <select id="mouse-binding" name="mouse-binding">
-                            <option value="rotation" selected>Rotation</option>
-                            <option value="value0">Value 0 (Mouse Y)</option>
-                            <option value="value1">Value 1 (Mouse Y)</option>
-                            <option value="value2">Value 2 (Mouse Y)</option>
-                            <option value="value3">Value 3 (Mouse Y)</option>
-                            <option value="value4">Value 4 (Mouse Y)</option>
-                            <option value="value5">Value 5 (Mouse Y)</option>
-                            <option value="value6">Value 6 (Mouse Y)</option>
-                            <option value="value7">Value 7 (Mouse Y)</option>
-                            <option value="contourValue">Contour Value (Mouse Y)</option>
-                            <option value="lightPosition">Light Position</option>
-                        </select>
-                    </div>
-                </p>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
-
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
+        <div class="tiles">
+            <div style="width: 96.875%; height: 96.875%;">
+                <canvas id="canvas" style="cursor: all-scroll; width: 100%; height: 100%;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><th>FPS</th><td><span id="fps-watch">64</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-    </div>
-</body>
-
+        <div id="about" class="hud">
+            <div>
+                <h1>Scalar Field Polygonizing - Cube</h1>
+                <p>
+                </p>
+            </div>
+        </div>
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd id="control-c">C</kbd></td><td>Contour Value</td></tr>
+                    <tr><td><kbd id="control-r">R</kbd></td><td>Rotation</td></tr>
+                    <tr><td><kbd id="control-1">1</kbd></td><td>Value 1</td></tr>
+                    <tr><td><kbd id="control-2">2</kbd></td><td>Value 2</td></tr>
+                    <tr><td><kbd id="control-3">3</kbd></td><td>Value 3</td></tr>
+                    <tr><td><kbd id="control-4">4</kbd></td><td>Value 4</td></tr>
+                    <tr><td><kbd id="control-5">5</kbd></td><td>Value 5</td></tr>
+                    <tr><td><kbd id="control-6">6</kbd></td><td>Value 6</td></tr>
+                    <tr><td><kbd id="control-7">7</kbd></td><td>Value 7</td></tr>
+                    <tr><td><kbd id="control-8">8</kbd></td><td>Value 8</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

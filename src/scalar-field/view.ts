@@ -47,40 +47,6 @@ export interface Picker {
 
 }
 
-export type ViewInputs = {
-
-    matModel: gear.Value<aether.Mat<4>>
-
-    matView: gear.Value<aether.Mat<4>>
-
-    focalLength: gear.Value<number>
-
-    color: gear.Value<aether.Vec<4>>
-
-    shininess: gear.Value<number>
-
-    lightPosition: gear.Value<aether.Vec<4>>
-
-    lightRadius: gear.Value<number>
-
-    fogginess: gear.Value<number>
-
-    vertices: gear.Value<Float32Array>
-
-}
-
-export function wire(view: View, inputs: ViewInputs, primitives: GLenum = WebGL2RenderingContext.TRIANGLES) {
-    inputs.matModel.attach(mat => view.setMatModel(mat, mat))
-    inputs.matView.attach(mat => view.matView = mat)
-    inputs.focalLength.attach(l => view.focalLength = l)
-    inputs.color.attach(c => view.color = c)
-    inputs.shininess.attach(s => view.shininess = s)
-    inputs.lightPosition.attach(pos => view.lightPosition = pos)
-    inputs.lightRadius.attach(r => view.lightRadius = r)
-    inputs.fogginess.attach(f => view.fogginess = f)
-    inputs.vertices.attach(v => view.setMesh(primitives, v))
-}
-
 export async function newView(canvasId: string): Promise<View> {
     const apiElement = gear.required(document.getElementById("graphics-api"))
     try {
