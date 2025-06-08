@@ -30,14 +30,14 @@
   },
   "homepage": "https://github.com/ghadeeras/gear#readme",
   "devDependencies": {
-    "@types/chai": "^4.3.5",
-    "@types/mocha": "^10.0.1",
-    "@types/seedrandom": "^3.0.5",
-    "chai": "^4.3.7",
-    "mocha": "^10.2.0",
-    "nyc": "^15.1.0",
+    "@types/chai": "^5.2.2",
+    "@types/mocha": "^10.0.10",
+    "@types/seedrandom": "^3.0.8",
+    "chai": "^5.2.0",
+    "mocha": "^11.5.0",
+    "nyc": "^17.1.0",
     "seedrandom": "^3.0.5",
     "source-map-support": "^0.5.21",
-    "typescript": "5.7.2"
+    "typescript": "5.8.3"
   }
 }

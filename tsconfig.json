@@ -68,5 +68,5 @@
   },
   "include": [
     "./src"
-  ]
+, "src/.scratches/html.ts"  ]
 }

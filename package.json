@@ -17,10 +17,10 @@
   },
   "homepage": "https://github.com/ghadeeras/ghadeeras.github.io#readme",
   "devDependencies": {
-    "@types/webxr": "^0.5.20",
-    "@webgpu/types": "^0.1.51",
+    "@types/webxr": "^0.5.22",
+    "@webgpu/types": "^0.1.61",
     "http-server": "^14.1.1",
-    "typescript": "^5.7.2"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "aether": "git+https://github.com/ghadeeras/aether.git",

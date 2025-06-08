@@ -7,3 +7,5 @@ node_modules/*
 !node_modules/languasaurus
 !node_modules/lumen
 !node_modules/vibrato.js
+
+**/.scratches
