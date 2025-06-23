@@ -221,7 +221,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         gear.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
     }
 
-    toLightPosition(pos: gear.PointerPosition): aether.Vec4 {
+    toLightPosition(pos: gear.loops.PointerPosition): aether.Vec4 {
         const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
         const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP
         const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2)
@@ -278,8 +278,8 @@ function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
     }
 }
 
-function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
-    const pos: [gear.PointerPosition] = [[0, 0]]
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.PointerPosition, A>): gear.Property<gear.loops.PointerPosition> {
+    const pos: [gear.loops.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
         setter: b => {

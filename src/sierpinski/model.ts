@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import * as gear from "gear"
+import * as oldGear from "../utils/legacy/gear/index.js"
 
 export interface FlattenedSierpinski {
     corners: number[];
@@ -22,13 +22,13 @@ const defaultSierpinski: Sierpinski = {
 }
 
 export function sierpinski(
-    depth: gear.Value<number> = new gear.Value(),
-    a: gear.Value<aether.Vec<2>> = new gear.Value(), 
-    b: gear.Value<aether.Vec<2>> = new gear.Value(), 
-    c: gear.Value<aether.Vec<2>> = new gear.Value(),
-): gear.Value<FlattenedSierpinski> {
+    depth: oldGear.Value<number> = new oldGear.Value(),
+    a: oldGear.Value<aether.Vec<2>> = new oldGear.Value(), 
+    b: oldGear.Value<aether.Vec<2>> = new oldGear.Value(), 
+    c: oldGear.Value<aether.Vec<2>> = new oldGear.Value(),
+): oldGear.Value<FlattenedSierpinski> {
     const sierpinski: Sierpinski = { ...defaultSierpinski }
-    return gear.Value.from<Sierpinski>(
+    return oldGear.Value.from<Sierpinski>(
         depth.reduce((s, d) => s = {...s, depth :d}, sierpinski), 
         a.reduce((s, a) => s = {...s, a :a}, sierpinski), 
         b.reduce((s, b) => s = {...s, b :b}, sierpinski), 

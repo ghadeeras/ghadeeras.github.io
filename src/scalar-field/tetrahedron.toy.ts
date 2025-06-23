@@ -406,8 +406,8 @@ function normalFrom(p1: aether.Vec<3>, p2: aether.Vec<3>, p3: aether.Vec<3>) {
     return aether.vec3.unit(aether.vec3.cross(v12, v23));
 }
 
-function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
-    const pos: [gear.PointerPosition] = [[0, 0]]
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.PointerPosition, A>): gear.Property<gear.loops.PointerPosition> {
+    const pos: [gear.loops.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
         setter: b => {

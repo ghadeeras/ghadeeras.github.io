@@ -1,29 +1,28 @@
-import * as aether from "aether"
-import * as gear from "gear"
+import * as oldGear from "../utils/legacy/gear/index.js"
 import { wgl } from "lumen"
 import { FlattenedSierpinski } from "./model.js"
 
-const vertexShader = `
+const vertexShader = /*glsl*/`
     attribute vec2 vPosition;
     
     uniform float twist;
     uniform float scale;
     
     void main() {
-    vec2 p = scale * vPosition;
-    float angle = twist * length(p);
-    float s = sin(angle);
-    float c = cos(angle);
-    mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
-    gl_Position = vec4(rotation * p, 0.0, 1.0);
+        vec2 p = scale * vPosition;
+        float angle = twist * length(p);
+        float s = sin(angle);
+        float c = cos(angle);
+        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
+        gl_Position = vec4(rotation * p, 0.0, 1.0);
     }
 `;
 
-const fragmentShader = `
+const fragmentShader = /*glsl*/`
     precision mediump float;
     
     void main() {
-    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `
 
@@ -34,12 +33,12 @@ function round(value: number) {
 }
 
 export type ViewInputs = {
-    readonly sierpinsky: gear.Value<FlattenedSierpinski>;
-    readonly showCorners: gear.Value<boolean>;
-    readonly showCenters: gear.Value<boolean>;
-    readonly depth: gear.Value<number>;
-    readonly twist: gear.Value<number>;
-    readonly scale: gear.Value<number>;        
+    readonly sierpinsky: oldGear.Value<FlattenedSierpinski>;
+    readonly showCorners: oldGear.Value<boolean>;
+    readonly showCenters: oldGear.Value<boolean>;
+    readonly depth: oldGear.Value<number>;
+    readonly twist: oldGear.Value<number>;
+    readonly scale: oldGear.Value<number>;        
 }
 
 export class View {
@@ -85,9 +84,9 @@ export class View {
         const twist = inputs.twist.defaultsTo(0);
         const scale = inputs.scale.defaultsTo(1);
 
-        gear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "")
-        gear.text(twistId).value = twist.map(v => round(v) + "")
-        gear.text(scaleId).value = twist.map(v => round(v) + "")
+        oldGear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "");
+        oldGear.text(twistId).value = twist.map(v => round(v) + "")
+        oldGear.text(scaleId).value = twist.map(v => round(v) + "")
 
         twist.attach(t => this.setTwist(t))
         scale.attach(s => this.setScale(s))

@@ -535,8 +535,8 @@ function fieldColor(fieldValue: number, alpha = 0.4): aether.Vec<4> {
     return [(1 + fieldValue) / m, 0, (1 - fieldValue) / m, alpha]
 }
 
-function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
-    const pos: [gear.PointerPosition] = [[0, 0]]
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.PointerPosition, A>): gear.Property<gear.loops.PointerPosition> {
+    const pos: [gear.loops.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
         setter: b => {

@@ -1,5 +1,5 @@
 import * as aether from "aether";
-import * as gear from "gear";
+import * as oldGear from "./legacy/gear/index.js";
 import * as aetherx from "./aether.js";
 export class ModelMatrixDragging {
     constructor(matrix, projViewMatrix, speed = 1) {
@@ -123,7 +123,7 @@ export class LinearDragging {
         return new LinearDragging(supplyNothing, min, max, speed);
     }
 }
-class PositionDragging extends gear.SimpleDraggingHandler {
+class PositionDragging extends oldGear.SimpleDraggingHandler {
     constructor() {
         super(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)]);
     }

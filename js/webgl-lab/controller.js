@@ -1,11 +1,12 @@
 import * as gear from "gear";
+import * as oldGear from "../utils/legacy/gear/index.js";
 import { positionDragging } from "../utils/dragging.js";
 export class Controller {
     get program() {
         return gear.lazy(() => programFlow());
     }
     get mesh() {
-        return gear.lazy(() => gear.checkbox("mesh"));
+        return gear.lazy(() => oldGear.checkbox("mesh"));
     }
     get levelOfDetails() {
         return gear.lazy(() => levelOfDetailsFlow());
@@ -24,7 +25,7 @@ export class Controller {
     }
 }
 function programFlow() {
-    const compileBtn = gear.ElementEvents.create("compile-button");
+    const compileBtn = oldGear.ElementEvents.create("compile-button");
     return compileBtn.clickPos.value
         .map(program)
         .filter(program => program && program.vertexShader && program.fragmentShader ? true : false);
@@ -39,27 +40,27 @@ function program() {
     };
 }
 function levelOfDetailsFlow() {
-    const inc = gear.elementEvents("lod-inc").pointerButtons.value.map(([l, ..._]) => l ? +1 : 0);
-    const dec = gear.elementEvents("lod-dec").pointerButtons.value.map(([l, ..._]) => l ? -1 : 0);
-    return gear.Value.from(inc, dec)
-        .then(gear.repeater(128, 0))
+    const inc = oldGear.elementEvents("lod-inc").pointerButtons.value.map(([l, ..._]) => l ? +1 : 0);
+    const dec = oldGear.elementEvents("lod-dec").pointerButtons.value.map(([l, ..._]) => l ? -1 : 0);
+    return oldGear.Value.from(inc, dec)
+        .then(oldGear.repeater(128, 0))
         .reduce((i, lod) => clamp(lod + i, 0, 100), 50);
 }
 function programSampleFlow() {
-    return gear.readableValue("shader-sample")
+    return oldGear.readableValue("shader-sample")
         .map(value => parseInt(value));
 }
 function mouseXBindingFlow() {
-    return gear.readableValue("mouse-x")
+    return oldGear.readableValue("mouse-x")
         .map(value => parseInt(value));
 }
 function mouseYBindingFlow() {
-    return gear.readableValue("mouse-y")
+    return oldGear.readableValue("mouse-y")
         .map(value => parseInt(value));
 }
 function mouseXYFlow() {
-    const canvas = gear.ElementEvents.create("canvas-gl");
-    return canvas.dragging.value.then(gear.drag(positionDragging));
+    const canvas = oldGear.ElementEvents.create("canvas-gl");
+    return canvas.dragging.value.then(oldGear.drag(positionDragging));
 }
 function clamp(n, min, max) {
     return n < min ? min : (n > max ? max : n);

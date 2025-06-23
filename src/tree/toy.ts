@@ -185,8 +185,8 @@ class TreeToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 }
 
-function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
-    const pos: [gear.PointerPosition] = [[0, 0]]
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.PointerPosition, A>): gear.Property<gear.loops.PointerPosition> {
+    const pos: [gear.loops.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
         setter: b => {
@@ -201,14 +201,14 @@ const redVec: aether.Vec<2> = [1, 0];
 const greenVec: aether.Vec<2> = [Math.cos(third), Math.sin(third)];
 const blueVec: aether.Vec<2> = [Math.cos(2 * third), Math.sin(2 * third)];
 
-function positionToColor(vec: gear.PointerPosition): aether.Vec3 {
+function positionToColor(vec: gear.loops.PointerPosition): aether.Vec3 {
     const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
     const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
     const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
     return [red, green, blue];
 }
 
-function toLightPosition(pos: gear.PointerPosition) {
+function toLightPosition(pos: gear.loops.PointerPosition) {
     const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos
     const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2)
     const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));

@@ -62,7 +62,7 @@ export class Carving implements gear.loops.Dragger<aether.ScalarFieldInstance> {
         return newStone
     }
 
-    begin(stone: aether.ScalarFieldInstance, from: gear.PointerPosition): gear.loops.DraggingFunction<aether.ScalarFieldInstance> {
+    begin(stone: aether.ScalarFieldInstance, from: gear.loops.PointerPosition): gear.loops.DraggingFunction<aether.ScalarFieldInstance> {
         const newStone = recycle(this.spareStone, stone)
         this.spareStone = stone
 

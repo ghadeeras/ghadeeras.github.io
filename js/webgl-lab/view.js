@@ -1,4 +1,4 @@
-import * as gear from "gear";
+import * as oldGear from "../utils/legacy/gear/index.js";
 import { wgl } from "lumen";
 import { values } from "../djee/utils.js";
 export class View {
@@ -16,12 +16,12 @@ export class View {
         this.defaultSample = samples[0];
         inputs.mesh
             .defaultsTo(false)
-            .then(gear.choice(WebGL2RenderingContext.LINE_STRIP, WebGL2RenderingContext.TRIANGLE_STRIP))
+            .then(oldGear.choice(WebGL2RenderingContext.LINE_STRIP, WebGL2RenderingContext.TRIANGLE_STRIP))
             .attach(mode => {
             this.mode = mode;
             this.draw();
         });
-        gear.text("lod").value = inputs.levelOfDetails
+        oldGear.text("lod").value = inputs.levelOfDetails
             .defaultsTo(this.lod)
             .filter(lod => lod > 0 && lod <= 100)
             .attach(lod => this.resetBuffer(lod))
@@ -37,15 +37,15 @@ export class View {
             setOptions("mouse-y", [noneOption(), ...options(scalars)]);
         });
         const programSample = inputs.programSample.defaultsTo(this.defaultSample);
-        gear.writeableValue("vertex-shader").value = programSample.map(template => template.vertexShader);
-        gear.writeableValue("fragment-shader").value = programSample.map(template => template.fragmentShader);
+        oldGear.writeableValue("vertex-shader").value = programSample.map(template => template.vertexShader);
+        oldGear.writeableValue("fragment-shader").value = programSample.map(template => template.fragmentShader);
         const mouseXY = inputs.mouseXY.defaultsTo([0, 0]);
-        gear.text("mouse-x-val").value = gear.Value.from(inputs.mouseXBinding
+        oldGear.text("mouse-x-val").value = oldGear.Value.from(inputs.mouseXBinding
             .defaultsTo(0)
             .map(index => this.xScalar = index >= 0 ? this.programScalars[index] : null)
             .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY
             .map(([x, _]) => this.xScalar != null ? x.toPrecision(3) : ""));
-        gear.text("mouse-y-val").value = gear.Value.from(inputs.mouseYBinding
+        oldGear.text("mouse-y-val").value = oldGear.Value.from(inputs.mouseYBinding
             .defaultsTo(0)
             .map(index => this.yScalar = index >= 0 ? this.programScalars[index] : null)
             .map(scalar => scalar != null ? scalar.uniform.data[scalar.index].toPrecision(3) : ""), mouseXY

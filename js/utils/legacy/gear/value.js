@@ -1,7 +1,5 @@
 import * as effects from "./effects.js";
-import * as lazy from "./lazy.js";
-import * as scheduling from "./scheduling.js";
-import * as utils from "./utils.js";
+import * as gear from "gear";
 export class Value {
     constructor(producer = null) {
         this.consumers = [];
@@ -15,20 +13,20 @@ export class Value {
     }
     attach(consumer) {
         this.consumers.push(consumer);
-        this.compositeConsumer = utils.compositeConsumer(...this.consumers);
+        this.compositeConsumer = gear.compositeConsumer(...this.consumers);
         return this;
     }
     defaultsTo(value) {
         return new Value(consumer => {
             this.attach(consumer);
-            scheduling.invokeLater(() => {
+            gear.invokeLater(() => {
                 consumer(value);
             });
         });
     }
     then(effect) {
         return new Value(effectConsumer => {
-            this.attach(utils.causeConsumer(effect, effectConsumer));
+            this.attach(gear.causeConsumer(effect, effectConsumer));
         });
     }
     map(mapper) {
@@ -60,7 +58,7 @@ export class Value {
 }
 export class Source {
     constructor(supplier) {
-        this.lazyValue = lazy.lazy(supplier);
+        this.lazyValue = gear.lazy(supplier);
     }
     get value() {
         return this.lazyValue();
@@ -71,7 +69,7 @@ export class Source {
     static from(producer) {
         return new Source(() => new Value(producer));
     }
-    static fromEvent(object, key, adapter = utils.intact()) {
+    static fromEvent(object, key, adapter = gear.intact()) {
         return Source.from(consumer => object[key] = adapter(consumer));
     }
 }
@@ -143,3 +141,4 @@ class Join extends Value {
         }
     }
 }
+//# sourceMappingURL=value.js.map

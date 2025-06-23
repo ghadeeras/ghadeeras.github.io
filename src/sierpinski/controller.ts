@@ -1,13 +1,13 @@
-import * as gear from "gear"
+import * as oldGear from "../utils/legacy/gear/index.js";
 import { positionDragging } from "../utils/dragging.js";
 
 export class Controller {
 
-    readonly showCorners: gear.Value<boolean>;
-    readonly showCenters: gear.Value<boolean>;
-    readonly depth: gear.Value<number>;
-    readonly twist: gear.Value<number>;
-    readonly scale: gear.Value<number>;
+    readonly showCorners: oldGear.Value<boolean>;
+    readonly showCenters: oldGear.Value<boolean>;
+    readonly depth: oldGear.Value<number>;
+    readonly twist: oldGear.Value<number>;
+    readonly scale: oldGear.Value<number>;
     
     constructor(
         canvasId: string,
@@ -18,24 +18,24 @@ export class Controller {
         depthIncButtonId: string,
         depthDecButtonId: string
     ) {
-        const canvas = gear.ElementEvents.create(canvasId);
-        const depthIncButton = gear.ElementEvents.create(depthIncButtonId);
-        const depthDecButton = gear.ElementEvents.create(depthDecButtonId);
-        const twistEnabled = gear.checkbox(twistCheckboxId).defaultsTo(true);
-        const scaleEnabled = gear.checkbox(scaleCheckboxId).defaultsTo(true);
+        const canvas = oldGear.ElementEvents.create(canvasId);
+        const depthIncButton = oldGear.ElementEvents.create(depthIncButtonId);
+        const depthDecButton = oldGear.ElementEvents.create(depthDecButtonId);
+        const twistEnabled = oldGear.checkbox(twistCheckboxId).defaultsTo(true);
+        const scaleEnabled = oldGear.checkbox(scaleCheckboxId).defaultsTo(true);
 
-        this.showCorners = gear.checkbox(cornersCheckboxId);
-        this.showCenters = gear.checkbox(centersCheckboxId);
+        this.showCorners = oldGear.checkbox(cornersCheckboxId);
+        this.showCenters = oldGear.checkbox(centersCheckboxId);
 
-        const mousePos = canvas.dragging.value.then(gear.drag(positionDragging))
+        const mousePos = canvas.dragging.value.then(oldGear.drag(positionDragging))
         this.twist = mousePos
             .map(([x, _]) => 2 * Math.PI * x)
-            .then(gear.flowSwitch(twistEnabled));
+            .then(oldGear.flowSwitch(twistEnabled));
         this.scale = mousePos
             .map(([_, y]) => 2 * Math.PI * y)
-            .then(gear.flowSwitch(scaleEnabled));
+            .then(oldGear.flowSwitch(scaleEnabled));
         
-        this.depth = gear.Value.from(
+        this.depth = oldGear.Value.from(
             depthDecButton.click.value.map(_ => -1),
             depthIncButton.click.value.map(_ => 1),
         ).reduce((delta, depth) => Math.min(Math.max(depth + delta, 1), 8), 5);

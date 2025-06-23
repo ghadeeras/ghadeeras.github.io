@@ -232,7 +232,7 @@ class Zoom implements gear.loops.Dragger<Transformation> {
     constructor(private view: View) {
     }
 
-    begin(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
+    begin(value: Transformation, from: gear.loops.PointerPosition): gear.loops.DraggingFunction<Transformation> {
         const initial: Transformation = {
             center: value.center,
             scale: value.scale
@@ -267,7 +267,7 @@ class Move implements gear.loops.Dragger<Transformation> {
     constructor(private view: View) {
     }
 
-    begin(value: Transformation, from: gear.PointerPosition): gear.DraggingPositionMapper<Transformation> {
+    begin(value: Transformation, from: gear.loops.PointerPosition): gear.loops.DraggingFunction<Transformation> {
         const initial: Transformation = {
             center: value.center,
             scale: value.scale
@@ -295,15 +295,15 @@ class Move implements gear.loops.Dragger<Transformation> {
 
 }
 
-function calculateDelta(pos1: gear.PointerPosition, pos2: gear.PointerPosition, scale = 1) {
+function calculateDelta(pos1: gear.loops.PointerPosition, pos2: gear.loops.PointerPosition, scale = 1) {
     return aether.vec2.scale(
         aether.vec2.sub(pos2, pos1), 
         scale
     )
 }
 
-function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.PointerPosition, A>): gear.Property<gear.PointerPosition> {
-    const pos: [gear.PointerPosition] = [[0, 0]]
+function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.PointerPosition, A>): gear.Property<gear.loops.PointerPosition> {
+    const pos: [gear.loops.PointerPosition] = [[0, 0]]
     return {
         getter: () => pos[0],
         setter: b => {

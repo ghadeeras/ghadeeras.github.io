@@ -1,5 +1,5 @@
 import { Source, Value } from "./value.js";
-import * as utils from "./utils.js";
+import * as gear from "gear";
 import * as effects from "./effects.js";
 export function drag(handler) {
     const dragger = new Dragger(handler);
@@ -29,11 +29,11 @@ export function posIn(e) {
     ];
 }
 export function checkbox(elementId) {
-    const element = utils.htmlElement(elementId);
+    const element = gear.htmlElement(elementId);
     return Source.fromEvent(element, "onchange").value.map(() => element.checked);
 }
 export function readableValue(elementId) {
-    const element = utils.htmlElement(elementId);
+    const element = gear.htmlElement(elementId);
     return Source.fromEvent(element, "onchange").value.map(() => element.value);
 }
 export function elementEvents(elementId) {
@@ -95,15 +95,16 @@ export class ElementEvents {
         ]));
     }
     static create(elementId) {
-        return new ElementEvents(utils.htmlElement(elementId));
+        return new ElementEvents(gear.htmlElement(elementId));
     }
 }
 function trapping(consumer) {
     return e => {
-        utils.trap(e);
+        gear.trap(e);
         consumer(e);
     };
 }
 function primary(s) {
     return s.map(value => value.filter(e => e.isPrimary));
 }
+//# sourceMappingURL=ui.input.js.map

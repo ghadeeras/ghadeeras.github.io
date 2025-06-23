@@ -1,25 +1,25 @@
-import * as gear from "gear";
+import * as oldGear from "../utils/legacy/gear/index.js";
 import { wgl } from "lumen";
-const vertexShader = `
+const vertexShader = /*glsl*/ `
     attribute vec2 vPosition;
     
     uniform float twist;
     uniform float scale;
     
     void main() {
-    vec2 p = scale * vPosition;
-    float angle = twist * length(p);
-    float s = sin(angle);
-    float c = cos(angle);
-    mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
-    gl_Position = vec4(rotation * p, 0.0, 1.0);
+        vec2 p = scale * vPosition;
+        float angle = twist * length(p);
+        float s = sin(angle);
+        float c = cos(angle);
+        mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
+        gl_Position = vec4(rotation * p, 0.0, 1.0);
     }
 `;
-const fragmentShader = `
+const fragmentShader = /*glsl*/ `
     precision mediump float;
     
     void main() {
-    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `;
 const ST = wgl.ShaderType;
@@ -44,9 +44,9 @@ export class View {
         this.context.gl.clearColor(1, 1, 1, 1);
         const twist = inputs.twist.defaultsTo(0);
         const scale = inputs.scale.defaultsTo(1);
-        gear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "");
-        gear.text(twistId).value = twist.map(v => round(v) + "");
-        gear.text(scaleId).value = twist.map(v => round(v) + "");
+        oldGear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "");
+        oldGear.text(twistId).value = twist.map(v => round(v) + "");
+        oldGear.text(scaleId).value = twist.map(v => round(v) + "");
         twist.attach(t => this.setTwist(t));
         scale.attach(s => this.setScale(s));
         inputs.sierpinsky.attach(s => this.setSierpinski(s));

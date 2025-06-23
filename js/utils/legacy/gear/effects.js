@@ -1,4 +1,4 @@
-import { invokeLater } from "./scheduling.js";
+import * as gear from "gear";
 export function reduction(reducer, identity) {
     const accumulator = [identity];
     return (value, resultConsumer) => resultConsumer(accumulator[0] = reducer(accumulator[0], value));
@@ -11,11 +11,12 @@ export function filtering(predicate) {
         if (predicate(value)) {
             resultConsumer(value);
         }
+        gear;
     };
 }
 export function latency() {
     return (value, resultConsumer) => {
-        invokeLater(resultConsumer, value);
+        gear.invokeLater(resultConsumer, value);
     };
 }
 export function propagation(e1, e2) {
@@ -45,3 +46,4 @@ export function repeater(interval, restValue) {
 export function choice(trueValue, falseValue) {
     return mapping(v => v ? trueValue : falseValue);
 }
+//# sourceMappingURL=effects.js.map

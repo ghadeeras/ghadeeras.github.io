@@ -12,3 +12,4 @@ export class SimpleDraggingHandler {
         return value;
     }
 }
+//# sourceMappingURL=dragging.js.map
