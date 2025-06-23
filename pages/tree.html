@@ -1,79 +1,58 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
-    <title>Tree</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="importmap">
-        {
-          "imports": {
-            "lumen": "/node_modules/lumen/lib/index.js",
-            "aether": "/node_modules/aether/lib/index.js",
-            "gear": "/node_modules/gear/lib/index.js"
-          }
-        }
-    </script>          
-    <script type="module">
-        import * as Tree from "../js/tree/toy.js"
-        Tree.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong>Tree</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Tree</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js"
+              }
+            }
+        </script>          
+        <script type="module">
+            import * as tree from "../js/tree/toy.js"
+            import init from "../js/initializer.js"
+            init(tree);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
-            <div>
-                <p>
-                    <span title="Higher values may be slow to render, as the number of triangles increases exponentially.">Tree Depath</span>:
-                    <button id="depth-inc">+</button>
-                    <span id="depth">5</span>
-                    <button id="depth-dec">-</button>
-                </p>
-                <p>
-                    <div>Mouse Binding: 
-                        <select id="mouse-binding" name="mouse-binding">
-                            <option value="rotation" selected>Rotation</option>
-                            <option value="angle">Angle (Mouse X)</option>
-                            <option value="lightPosition">Light Position</option>
-                            <option value="color">Color</option>
-                            <option value="shininess">Shininess (Mouse Y)</option>
-                            <option value="fogginess">Fogginess (Mouse Y)</option>
-                            <option value="twist">Twist (Mouse Y)</option>
-                        </select>
-                    </div>
-                </p>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
             </div>
-
         </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
+        <div class="tiles">
+            <div style="width: 96.875%; height: 96.875%;">
+                <canvas id="canvas" style="cursor: all-scroll; width: 100%; height: 100%;">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><th>Depth</th><td><span id="depth-watch">0</span></td></tr>
+                            <tr><th>FPS</th><td><span id="fps-watch">0</span></td></tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div id="other-side">
-
-            <div class="section">
-                <strong>Description</strong>
-            </div>
-
+        <div id="about" class="hud">
             <div>
+                <h1>Tree</h1>
                 <p>
                     A tree is a classic example on fractals or models that could be constructed
                     in a recursive way. This instance of that classic example comes with a twist
@@ -87,10 +66,29 @@
                     matrix for each vertext normal to obtain realisting shading.
                 </p>
             </div>
-
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd id="control-m">M</kbd></td><td>Movement</td></tr>
+                    <tr><td><kbd id="control-r">R</kbd></td><td>Rotation</td></tr>
+                    <tr><td><kbd id="control-s">S</kbd></td><td>Scaling</td></tr>
+                    <tr><td><kbd id="control-z">Z</kbd></td><td>Zoom</td></tr>
+                    <tr><td><kbd id="control-c">C</kbd></td><td>Color</td></tr>
+                    <tr><td><kbd id="control-h">H</kbd></td><td>Shininess</td></tr>
+                    <tr><td><kbd id="control-d">D</kbd></td><td>Light Direction</td></tr>
+                    <tr><td><kbd id="control-f">F</kbd></td><td>Fog</td></tr>
+                    <tr><td><kbd id="control-t">T</kbd></td><td>Twist</td></tr>
+                    <tr><td><kbd id="control-a">A</kbd></td><td>Angle</td></tr>
+                </table>
+                <p>The following keys perform the specified actions:</p>
+                <table>
+                    <tr><td width="48px"><kbd id="control-up">&uparrow;</kbd></td><td>Increase depth</td></tr>
+                    <tr><td><kbd id="control-down">&downarrow;</kbd></td><td>Decrease depth</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

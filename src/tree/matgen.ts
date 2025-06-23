@@ -39,7 +39,7 @@ export class MatricesGenerator {
             )
         );
         this.branch3Matrix = aether.mat4.mul(
-            aether.mat4.translation([0, 2, 0]),
+            this.translation,
             aether.mat4.mul(
                 aether.mat4.rotation(this._angle, this.axis3),
                 this.scaling
@@ -47,12 +47,20 @@ export class MatricesGenerator {
         );
     }
 
+    get depth(): number {
+        return this._depth; 
+    }
+
+    get angle(): number {
+        return this._angle; 
+    }
+
     generateMatrices(depth: number | null, angle: number | null) {
         this._depth = depth ?? this._depth
         this._angle = angle ?? this._angle
         this.init()
         const result: aether.Mat<4>[] = [];
-        this.doGenerateMatrices(result, this._depth, aether.mat4.identity())
+        this.doGenerateMatrices(result, this._depth, aether.mat4.translation([0, -2, 0]))
         return result;
     }
 

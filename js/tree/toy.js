@@ -1,65 +1,191 @@
 import * as aether from "aether";
 import * as gear from "gear";
 import * as dragging from "../utils/dragging.js";
+import { view } from "./view.js";
 import { MatricesGenerator } from "./matgen.js";
-import { renderer } from "./renderer.js";
-export function init() {
-    window.onload = doInit;
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/tree";
+export const huds = {
+    "monitor": "monitor-button"
+};
+export async function init() {
+    const loop = await TreeToy.loop();
+    loop.run();
 }
-function doInit() {
-    const proj = aether.mat4.projection();
-    const view = aether.mat4.lookAt([-1, 4, 5], [0, 3, 0], [0, 1, 0]);
-    const modelMatrix = [aether.mat4.identity()];
-    renderer(proj, view, () => {
-        return rendererInputs(modelMatrix, aether.mat4.mul(proj, view));
-    });
+class TreeToy {
+    constructor(view) {
+        this.view = view;
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
+        this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
+        this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "color"), positionToColor), dragging.positionDragging);
+        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), toLightPosition), dragging.positionDragging);
+        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.twistDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "twist"), ([_, y]) => y), dragging.positionDragging);
+        this.angleDragging = gear.loops.draggingTarget(mapped(gear.property(this, "angle"), ([x, _]) => x * Math.PI), dragging.positionDragging);
+        this.matricesGenerator = new MatricesGenerator();
+        this.depthElement = gear.required(document.getElementById("depth-watch"));
+        this.view.color = positionToColor([0, 0]);
+        this.view.lightPosition = toLightPosition([-0.5, 0.5]);
+        this.depth = this.matricesGenerator.depth;
+    }
+    static async loop() {
+        const v = await view("canvas");
+        return gear.loops.newLoop(new TreeToy(v), TreeToy.descriptor);
+    }
+    inputWiring(inputs, outputs, controller) {
+        return {
+            pointers: {
+                canvas: { defaultDraggingTarget: this.rotationDragging }
+            },
+            keys: {
+                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.translationDragging },
+                rotate: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.rotationDragging },
+                scale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.scaleDragging },
+                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging },
+                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging },
+                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging },
+                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
+                twist: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.twistDragging },
+                angle: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.angleDragging },
+                up: { onPressed: () => this.depth += 1 },
+                down: { onPressed: () => this.depth -= 1 },
+            }
+        };
+    }
+    outputWiring() {
+        return {
+            onRender: () => this.view.draw(),
+            canvases: {
+                scene: { onResize: () => this.view.resize() }
+            }
+        };
+    }
+    animate() {
+    }
+    get projectionAndViewMatrices() {
+        return [this.view.projectionMatrix, this.view.viewMatrix];
+    }
+    set projectionAndViewMatrices([projectionMatrix, viewMatrix]) {
+        this.view.projectionMatrix = projectionMatrix;
+        this.view.viewMatrix = viewMatrix;
+    }
+    get projectionViewMatrix() {
+        return aether.mat4.mul(this.view.projectionMatrix, this.view.viewMatrix);
+    }
+    get depth() {
+        return this.matricesGenerator.depth;
+    }
+    set depth(value) {
+        const v = Math.max(0, Math.min(8, value));
+        this.view.matrices = this.matricesGenerator.generateMatrices(v, null);
+        this.depthElement.textContent = v.toString();
+    }
+    get angle() {
+        return this.matricesGenerator.angle;
+    }
+    set angle(value) {
+        this.view.matrices = this.matricesGenerator.generateMatrices(null, value);
+    }
 }
-function rendererInputs(modelMatrix, projView) {
-    const canvas = gear.elementEvents("canvas-gl");
-    const depthInc = gear.elementEvents("depth-inc");
-    const depthDec = gear.elementEvents("depth-dec");
-    const depth = gear.Value.from(depthInc.click.value.map(() => +1), depthDec.click.value.map(() => -1)).reduce((inc, depth) => Math.max(Math.min(8, inc + depth), 1), 5);
-    const mouseBinding = gear.readableValue("mouse-binding").defaultsTo("rotation");
-    const cases = {
-        rotation: new gear.Value(),
-        lightPosition: new gear.Value(),
-        color: new gear.Value(),
-        shininess: new gear.Value(),
-        fogginess: new gear.Value(),
-        twist: new gear.Value(),
-        angle: new gear.Value(),
-    };
-    canvas.dragging.value.switch(mouseBinding, cases);
-    const depthText = gear.text("depth");
-    depthText.value = depth.map(depth => depth.toString());
-    const generator = new MatricesGenerator();
-    const matrices = gear.Value.from(depth
-        .map(depth => generator.generateMatrices(depth, null)), cases.angle
-        .then(gear.drag(dragging.positionDragging))
-        .map(([x, _]) => Math.PI * x)
-        .defaultsTo(Math.PI / 4)
-        .map(angle => generator.generateMatrices(null, angle)));
+TreeToy.descriptor = {
+    input: {
+        pointers: {
+            canvas: {
+                element: "canvas"
+            }
+        },
+        keys: {
+            move: {
+                physicalKeys: [["KeyM"]],
+                virtualKeys: "#control-m",
+            },
+            rotate: {
+                physicalKeys: [["KeyR"]],
+                virtualKeys: "#control-r",
+            },
+            scale: {
+                physicalKeys: [["KeyS"]],
+                virtualKeys: "#control-s",
+            },
+            zoom: {
+                physicalKeys: [["KeyZ"]],
+                virtualKeys: "#control-z",
+            },
+            color: {
+                physicalKeys: [["KeyC"]],
+                virtualKeys: "#control-c",
+            },
+            shininess: {
+                physicalKeys: [["KeyH"]],
+                virtualKeys: "#control-h",
+            },
+            lightDirection: {
+                physicalKeys: [["KeyD"]],
+                virtualKeys: "#control-d",
+            },
+            fogginess: {
+                physicalKeys: [["KeyF"]],
+                virtualKeys: "#control-f",
+            },
+            twist: {
+                physicalKeys: [["KeyT"]],
+                virtualKeys: "#control-t",
+            },
+            angle: {
+                physicalKeys: [["KeyA"]],
+                virtualKeys: "#control-a",
+            },
+            up: {
+                physicalKeys: [["ArrowUp"]],
+                virtualKeys: "#control-up",
+            },
+            down: {
+                physicalKeys: [["ArrowDown"]],
+                virtualKeys: "#control-down",
+            },
+        }
+    },
+    output: {
+        canvases: {
+            scene: {
+                element: "canvas"
+            }
+        },
+        fps: {
+            element: "fps-watch"
+        },
+        styling: {
+            pressedButton: "pressed"
+        },
+    },
+};
+function mapped(property, mapper) {
+    const pos = [[0, 0]];
     return {
-        matrices: matrices,
-        rotation: cases.rotation
-            .then(gear.drag(new dragging.RotationDragging(() => modelMatrix[0], () => projView)))
-            .attach(m => modelMatrix[0] = m),
-        lightPosition: cases.lightPosition
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => aether.vec2.of(Math.PI * (1 - x) / 2, Math.PI * (1 - y) / 2))
-            .map(([x, y]) => aether.vec3.of(4 * Math.cos(x) * Math.sin(y), 4 * Math.cos(y), 4 * Math.sin(x) * Math.sin(y))),
-        color: cases.color
-            .then(gear.drag(dragging.positionDragging))
-            .map(([x, y]) => aether.vec2.of((x + 1) / 2, (y + 1) / 2)),
-        shininess: cases.shininess
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => (y + 1) / 2),
-        fogginess: cases.fogginess
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => (y + 1) / 2),
-        twist: cases.twist
-            .then(gear.drag(dragging.positionDragging))
-            .map(([_, y]) => y),
+        getter: () => pos[0],
+        setter: b => {
+            pos[0] = b;
+            property.setter(mapper(b));
+        }
     };
+}
+const third = 2 * Math.PI / 3;
+const redVec = [1, 0];
+const greenVec = [Math.cos(third), Math.sin(third)];
+const blueVec = [Math.cos(2 * third), Math.sin(2 * third)];
+function positionToColor(vec) {
+    const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
+    const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
+    const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
+    return [red, green, blue];
+}
+function toLightPosition(pos) {
+    const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
+    const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2);
+    const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+    return p;
 }
 //# sourceMappingURL=toy.js.map

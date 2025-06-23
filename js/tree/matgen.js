@@ -19,14 +19,20 @@ export class MatricesGenerator {
     init() {
         this.branch1Matrix = aether.mat4.mul(this.translation, aether.mat4.mul(aether.mat4.rotation(this._angle, this.axis1), this.scaling));
         this.branch2Matrix = aether.mat4.mul(this.translation, aether.mat4.mul(aether.mat4.rotation(this._angle, this.axis2), this.scaling));
-        this.branch3Matrix = aether.mat4.mul(aether.mat4.translation([0, 2, 0]), aether.mat4.mul(aether.mat4.rotation(this._angle, this.axis3), this.scaling));
+        this.branch3Matrix = aether.mat4.mul(this.translation, aether.mat4.mul(aether.mat4.rotation(this._angle, this.axis3), this.scaling));
+    }
+    get depth() {
+        return this._depth;
+    }
+    get angle() {
+        return this._angle;
     }
     generateMatrices(depth, angle) {
         this._depth = depth ?? this._depth;
         this._angle = angle ?? this._angle;
         this.init();
         const result = [];
-        this.doGenerateMatrices(result, this._depth, aether.mat4.identity());
+        this.doGenerateMatrices(result, this._depth, aether.mat4.translation([0, -2, 0]));
         return result;
     }
     doGenerateMatrices(result, depth, matrix) {
