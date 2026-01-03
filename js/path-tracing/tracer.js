@@ -63,14 +63,20 @@ export class Tracer {
         this.gridBuffer = this.createGridBuffer();
         this.clockBuffer = this.createClockBuffer();
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
-        this.group = this.device.bindGroup(this.groupLayout, [
-            this.uniformsBuffer,
-            this.materialsBuffer,
-            this.boxesBuffer,
-            this.gridBuffer,
-            this.importantDirectionsBuffer,
-            this.clockBuffer,
-        ]);
+        this.group = this.device.wrapped.createBindGroup({
+            layout: this.groupLayout,
+            entries: [
+                this.uniformsBuffer,
+                this.materialsBuffer,
+                this.boxesBuffer,
+                this.gridBuffer,
+                this.importantDirectionsBuffer,
+                this.clockBuffer,
+            ].map((r, i) => ({
+                binding: i,
+                resource: r.asBindingResource()
+            }))
+        });
     }
     static async create(device, canvas, scene, colorFormat, normalsFormat) {
         return new Tracer(await device.loadShaderModule("path-tracing.wgsl"), canvas, scene, colorFormat, normalsFormat);

@@ -68,7 +68,13 @@ export class GPUView implements View {
                 },
             }],
         })
-        this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
+        this.uniformsGroup = device.wrapped.createBindGroup({
+            layout: this.uniformsGroupLayout,
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.gpuBuffer
+            }]
+        });
 
         this.rendererFactory = new gltf_gpu.GPURendererFactory(
             this.device,

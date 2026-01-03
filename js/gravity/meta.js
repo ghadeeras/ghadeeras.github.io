@@ -23,67 +23,64 @@ export const bodyDescriptionAsVertex = gpu.vertex({
     massAndRadius: gpu.f32.x2
 });
 export const bodyPosition = bodyState.asVertex(['position']);
-export function appDefinition(workgroupSize, workgroupSizeX, workgroupSizeY) {
-    const groupDef = gpu.BindGroupLayout.from;
-    const groupLayouts = {
-        sampledTexture: groupDef({ entries: {
-                textureSampler: gpu.binding(0, ["FRAGMENT"], gpu.sampler("non-filtering")),
-                baseTexture: gpu.binding(1, ["FRAGMENT"], gpu.texture("float")),
-            } }),
-        filter1D: groupDef({ entries: {
-                weights: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage"))
-            } }),
-        filter1DIO: groupDef({ entries: {
-                direction: gpu.binding(0, ["COMPUTE"], gpu.buffer("uniform")),
-                source: gpu.binding(1, ["COMPUTE"], gpu.texture("float")),
-                target: gpu.binding(2, ["COMPUTE"], gpu.storageTexture("rgba16float")),
-            } }),
-        universe: groupDef({ entries: {
-                universeDesc: gpu.binding(0, ["COMPUTE"], gpu.buffer("read-only-storage")),
-                currentState: gpu.binding(1, ["COMPUTE"], gpu.buffer("read-only-storage")),
-                nextState: gpu.binding(2, ["COMPUTE"], gpu.buffer("storage")),
-                uniforms: gpu.binding(3, ["COMPUTE"], gpu.buffer("uniform")),
-            } }),
-        visuals: groupDef({ entries: {
-                uniforms: gpu.binding(0, ["VERTEX"], gpu.buffer("uniform"))
-            } })
-    };
-    const pipelineDef = gpu.PipelineLayout.from;
-    const pipelineLayouts = {
-        texturePasting: pipelineDef({ bindGroupLayouts: {
-                group: gpu.group(0, groupLayouts.sampledTexture)
-            } }),
-        filtering: pipelineDef({ bindGroupLayouts: {
-                filter: gpu.group(0, groupLayouts.filter1D),
-                io: gpu.group(1, groupLayouts.filter1DIO)
-            } }),
-        physics: pipelineDef({ bindGroupLayouts: {
-                universe: gpu.group(0, groupLayouts.universe)
-            } }),
-        renderer: pipelineDef({ bindGroupLayouts: {
-                visuals: gpu.group(0, groupLayouts.visuals)
-            } })
-    };
-    return gpu.Definition.from({
-        device: gpu.Definition.device(),
-        shaders: shaders(workgroupSize, workgroupSizeX, workgroupSizeY),
+export async function appDefinition(device, workgroupSize, workgroupSizeX, workgroupSizeY) {
+    const groupLayouts = device.groupLayouts({
+        sampledTexture: { entries: {
+                textureSampler: { binding: 0, visibility: ["FRAGMENT"], sampler: { type: "non-filtering" } },
+                baseTexture: { binding: 1, visibility: ["FRAGMENT"], texture: { sampleType: "float" } },
+            } },
+        filter1D: { entries: {
+                weights: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } }
+            } },
+        filter1DIO: { entries: {
+                direction: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "uniform" } },
+                source: { binding: 1, visibility: ["COMPUTE"], texture: { sampleType: "float" } },
+                target: { binding: 2, visibility: ["COMPUTE"], storageTexture: { format: "rgba16float" } },
+            } },
+        universe: { entries: {
+                universeDesc: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } },
+                currentState: { binding: 1, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } },
+                nextState: { binding: 2, visibility: ["COMPUTE"], buffer: { type: "storage" } },
+                uniforms: { binding: 3, visibility: ["COMPUTE"], buffer: { type: "uniform" } },
+            } },
+        visuals: { entries: {
+                uniforms: { binding: 0, visibility: ["VERTEX"], buffer: { type: "uniform" } }
+            } }
+    });
+    const pipelineLayouts = device.pipelineLayouts({
+        texturePasting: { bindGroupLayouts: {
+                group: groupLayouts.sampledTexture.asEntry(0)
+            } },
+        filtering: { bindGroupLayouts: {
+                filter: groupLayouts.filter1D.asEntry(0),
+                io: groupLayouts.filter1DIO.asEntry(1)
+            } },
+        physics: { bindGroupLayouts: {
+                universe: groupLayouts.universe.asEntry(0)
+            } },
+        renderer: { bindGroupLayouts: {
+                visuals: groupLayouts.visuals.asEntry(0)
+            } }
+    });
+    return {
+        device,
+        shaders: await shaders(device, workgroupSize, workgroupSizeX, workgroupSizeY),
         layout: {
             groupLayouts, pipelineLayouts
         }
-    });
+    };
 }
-function shaders(workgroupSize, workgroupSizeX, workgroupSizeY) {
+async function shaders(device, workgroupSize, workgroupSizeX, workgroupSizeY) {
     const templateFunction = code => code
         .replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`)
         .replace(/\[\[workgroup_size_x\]\]/g, `${workgroupSizeX}`)
         .replace(/\[\[workgroup_size_y\]\]/g, `${workgroupSizeY}`);
-    const shaderDef = gpu.ShaderModule.from;
-    return {
-        baseTexture: shaderDef({ code: BaseTexture.shaderCode }),
-        bloom: shaderDef({ path: "filter-1d.wgsl", templateFunction }),
-        physics: shaderDef({ path: "gravity-compute.wgsl", templateFunction }),
-        meshRenderer: shaderDef({ path: "gravity-render.wgsl", templateFunction }),
-        pointsRenderer: shaderDef({ path: "gravity-render.points.wgsl", templateFunction }),
-    };
+    return await device.shaderModules({
+        baseTexture: { code: BaseTexture.shaderCode },
+        bloom: { path: "filter-1d.wgsl", templateFunction },
+        physics: { path: "gravity-compute.wgsl", templateFunction },
+        meshRenderer: { path: "gravity-render.wgsl", templateFunction },
+        pointsRenderer: { path: "gravity-render.points.wgsl", templateFunction },
+    });
 }
 //# sourceMappingURL=meta.js.map

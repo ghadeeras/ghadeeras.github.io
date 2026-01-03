@@ -39,7 +39,13 @@ export class GPUView {
             },
             layout: "auto"
         });
-        this.uniformsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource()
+                }]
+        });
     }
     async picker() {
         return await picker(this.gpuCanvas, () => this.vertices);

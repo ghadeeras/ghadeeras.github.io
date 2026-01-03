@@ -152,7 +152,7 @@ export type ScalarType = WebGL2RenderingContext[
 export type ElementType = "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4"
 
 export async function fetchBuffers(bufferRefs: BufferRef[], baseUri: string) {
-    const buffers: ArrayBufferLike[] = new Array<ArrayBufferLike>(bufferRefs.length)
+    const buffers: ArrayBuffer[] = new Array<ArrayBuffer>(bufferRefs.length)
     for (let i = 0; i < buffers.length; i++) {
         buffers[i] = await fetchBuffer(bufferRefs[i], baseUri)
     }

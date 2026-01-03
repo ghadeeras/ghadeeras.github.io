@@ -40,9 +40,16 @@ export class FieldSampler {
             scale: Math.SQRT1_2,
             depth: 5
         }]))
-        this.bindGroup = device.bindGroup(fieldComputeBidGroupLayout, [this.fieldTexture.createView({
-            dimension: "3d",
-        }), this.uniformsBuffer])
+        this.bindGroup = device.wrapped.createBindGroup({
+            layout: fieldComputeBidGroupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.fieldTexture.createView({ dimension: "3d" }).asBindingResource(), 
+            }, {
+                binding: 1,
+                resource: this.uniformsBuffer.asBindingResource()
+            }]
+        })
     }
 
     get matrix() {

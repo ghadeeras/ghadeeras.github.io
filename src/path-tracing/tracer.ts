@@ -96,14 +96,20 @@ export class Tracer {
 
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer()
 
-        this.group = this.device.bindGroup(this.groupLayout, [
-            this.uniformsBuffer,
-            this.materialsBuffer,
-            this.boxesBuffer,
-            this.gridBuffer,
-            this.importantDirectionsBuffer,
-            this.clockBuffer,
-        ])
+        this.group = this.device.wrapped.createBindGroup({
+            layout: this.groupLayout, 
+            entries: [
+                this.uniformsBuffer,
+                this.materialsBuffer,
+                this.boxesBuffer,
+                this.gridBuffer,
+                this.importantDirectionsBuffer,
+                this.clockBuffer,
+            ].map((r, i) => ({
+                binding: i,
+                resource: r.asBindingResource()
+            }))
+        })
     }
 
     static async create(device: gpu.Device, canvas: gpu.Canvas, scene: Scene, colorFormat: GPUTextureFormat | null, normalsFormat: GPUTextureFormat | null) {

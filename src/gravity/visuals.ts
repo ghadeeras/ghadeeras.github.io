@@ -25,9 +25,9 @@ export class Visuals {
         }]))
 
         /* Bind Groups */
-        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", {
+        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", { entries: {
             uniforms: this.buffer
-        })
+        }})
     }
 
     get zoom() {

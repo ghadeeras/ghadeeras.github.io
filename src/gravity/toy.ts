@@ -210,7 +210,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const device = await gpuDevice()
         const [ [workgroupSize], [workgroupSizeX, workgroupSizeY], _ ] = device.suggestedGroupSizes()
         const canvas = device.canvas(Toy.descriptor.input.pointers.canvas.element)
-        const app: meta.App = await meta.appDefinition(workgroupSize, workgroupSizeX, workgroupSizeY).create(device, "Gravity")
+        const app = await meta.appDefinition(device, workgroupSize, workgroupSizeX, workgroupSizeY)
         const universe = new Universe(app, ...createUniverse(64 * workgroupSize))
         const visuals = new Visuals(app)
         const physics = new Physics(app, workgroupSize)

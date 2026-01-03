@@ -41,20 +41,32 @@ export class NormalsFilter {
                 bindGroupLayouts: [this.groupLayout]
             })
         });
-        this.group = device.bindGroup(this.groupLayout, [
-            this.uniforms,
-            this.normalsTexture.createView()
-        ]);
+        this.group = device.wrapped.createBindGroup({
+            layout: this.groupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource()
+                }, {
+                    binding: 1,
+                    resource: this.normalsTexture.createView().asBindingResource()
+                }]
+        });
     }
     attachment() {
         return this.normalsTexture.createView().colorAttachment({ r: 0.0, g: 0.0, b: 1.0, a: 256.0 });
     }
     resize(width, height) {
         this.normalsTexture.resize({ width, height });
-        this.group = this.normalsTexture.device.bindGroup(this.groupLayout, [
-            this.uniforms,
-            this.normalsTexture.createView()
-        ]);
+        this.group = this.normalsTexture.device.wrapped.createBindGroup({
+            layout: this.groupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource()
+                }, {
+                    binding: 1,
+                    resource: this.normalsTexture.createView().asBindingResource()
+                }]
+        });
     }
     render(encoder, colorAttachment) {
         encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {

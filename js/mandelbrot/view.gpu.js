@@ -32,7 +32,13 @@ export class ViewGPU {
             },
             layout: "auto"
         });
-        this.paramsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.paramsGroup = device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource()
+                }]
+        });
     }
     get canvas() {
         return this.gpuCanvas.element;
@@ -101,7 +107,7 @@ export class ViewGPU {
 export async function viewGPU(canvasId, center, scale) {
     const device = await gpu.Device.instance();
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl");
-    const shaderModule = await device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
+    const shaderModule = await device.inMemoryShaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
     return new ViewGPU(device, canvasId, shaderModule, center, scale);
 }
 export function required(value) {

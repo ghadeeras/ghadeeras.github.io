@@ -72,16 +72,26 @@ export class Stacker {
         this._layer = this.layersCount - 1;
     }
     newGroup(layersCount) {
-        return this.device.bindGroup(this.groupLayout, [
-            this.frameViews,
-            this.texture.createView({
-                dimension: "2d-array",
-                baseArrayLayer: 0,
-                arrayLayerCount: layersCount
-            }),
-            this.normalsTexture.createView(),
-            this.sampler
-        ]);
+        return this.device.wrapped.createBindGroup({
+            layout: this.groupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: this.frameViews.asBindingResource(),
+                }, {
+                    binding: 1,
+                    resource: this.texture.createView({
+                        dimension: "2d-array",
+                        baseArrayLayer: 0,
+                        arrayLayerCount: layersCount
+                    }).asBindingResource(),
+                }, {
+                    binding: 2,
+                    resource: this.normalsTexture.createView().asBindingResource(),
+                }, {
+                    binding: 3,
+                    resource: this.sampler.asBindingResource(),
+                }]
+        });
     }
     get layer() {
         return this._layer;

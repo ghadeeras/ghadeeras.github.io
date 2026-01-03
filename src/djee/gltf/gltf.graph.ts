@@ -32,7 +32,7 @@ export class Model {
     static async create(modelUri: string, legacyPerspective = false) {
         const response = await fetch(modelUri, {mode : "cors"})
         const model = await response.json() as gltf.Model
-        const buffers: ArrayBufferLike[] = await gltf.fetchBuffers(model.buffers, modelUri)
+        const buffers = await gltf.fetchBuffers(model.buffers, modelUri)
         return new Model(model, buffers, legacyPerspective)
     }
 

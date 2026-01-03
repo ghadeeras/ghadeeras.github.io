@@ -50,7 +50,13 @@ export class GPUPicker implements Picker {
             layout: "auto"
         })
 
-        this.uniformsGroup = this.device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = this.device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0), 
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.asBindingResource()
+            }]
+        });
     }
 
     async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {

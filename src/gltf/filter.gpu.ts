@@ -51,10 +51,16 @@ export class NormalsFilter {
             })
         })
 
-        this.group = device.bindGroup(this.groupLayout, [
-            this.uniforms,
-            this.normalsTexture.createView()
-        ])
+        this.group = device.wrapped.createBindGroup({
+            layout: this.groupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.asBindingResource()
+            }, {
+                binding: 1,
+                resource: this.normalsTexture.createView().asBindingResource()
+            }]
+        })
     }
 
     attachment() {
@@ -63,10 +69,16 @@ export class NormalsFilter {
 
     resize(width: number, height: number): void {
         this.normalsTexture.resize({ width, height })
-        this.group = this.normalsTexture.device.bindGroup(this.groupLayout, [
-            this.uniforms,
-            this.normalsTexture.createView()
-        ])
+        this.group = this.normalsTexture.device.wrapped.createBindGroup({
+            layout: this.groupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.asBindingResource()
+            }, {
+                binding: 1,
+                resource: this.normalsTexture.createView().asBindingResource()
+            }]
+        })
     }
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment) {

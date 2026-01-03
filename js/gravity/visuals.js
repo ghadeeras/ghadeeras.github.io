@@ -16,9 +16,9 @@ export class Visuals {
                 radiusScale: 0.06
             }]));
         /* Bind Groups */
-        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", {
-            uniforms: this.buffer
-        });
+        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", { entries: {
+                uniforms: this.buffer
+            } });
     }
     get zoom() {
         return this._zoom;

@@ -33,7 +33,13 @@ export class GPUView {
                     },
                 }],
         });
-        this.uniformsGroup = device.bindGroup(this.uniformsGroupLayout, [this.uniforms]);
+        this.uniformsGroup = device.wrapped.createBindGroup({
+            layout: this.uniformsGroupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.gpuBuffer
+                }]
+        });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         this.pipelineLayout = this.device.device.createPipelineLayout({
             bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],

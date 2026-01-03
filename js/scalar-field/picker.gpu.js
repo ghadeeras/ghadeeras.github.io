@@ -31,7 +31,13 @@ export class GPUPicker {
             },
             layout: "auto"
         });
-        this.uniformsGroup = this.device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms]);
+        this.uniformsGroup = this.device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource()
+                }]
+        });
     }
     async pick(matModelViewProjection, x, y) {
         this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));

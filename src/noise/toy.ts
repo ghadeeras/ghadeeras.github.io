@@ -29,7 +29,16 @@ async function doInit() {
 
     const uniformsBuffer = createUniformsBuffer(device)
     const clockBuffer = createClockBuffer(device)
-    const bindGroup = device.bindGroup(pipeline.getBindGroupLayout(0), [uniformsBuffer, clockBuffer])
+    const bindGroup = device.wrapped.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0), 
+        entries: [{
+            binding: 0,
+            resource: uniformsBuffer.asBindingResource(), 
+        }, {
+            binding: 1,
+            resource: clockBuffer.asBindingResource()
+        }]
+    })
 
     const samplesPerPixelElement = gear.required(document.getElementById("spp"))
     window.onkeyup = e => {

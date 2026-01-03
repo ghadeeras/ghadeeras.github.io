@@ -50,7 +50,13 @@ export class ViewGPU implements View {
             layout: "auto"
         })
 
-        this.paramsGroup = device.bindGroup(this.pipeline.getBindGroupLayout(0), [this.uniforms])
+        this.paramsGroup = device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0), 
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.asBindingResource()
+            }]
+        })
     }
 
     get canvas() {
@@ -139,7 +145,7 @@ export class ViewGPU implements View {
 export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl")
-    const shaderModule = await device.shaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code))
+    const shaderModule = await device.inMemoryShaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code))
     return new ViewGPU(device, canvasId, shaderModule, center, scale)
 }
 

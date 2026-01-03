@@ -59,13 +59,16 @@ export class Denoiser {
             })
         })
 
-        this._group = this.device.bindGroup(
-            this.groupLayout, 
-            [
-                this.colorsTexture.createView(),
-                this.normalsTexture.createView(),
-            ]
-        )
+        this._group = this.device.wrapped.createBindGroup({
+            layout: this.groupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.colorsTexture.createView().asBindingResource(),
+            }, {
+                binding: 1,
+                resource: this.normalsTexture.createView().asBindingResource(),
+            }]
+        })
     }
 
     attachments(clearColor: GPUColor, clearNormal: GPUColor) {

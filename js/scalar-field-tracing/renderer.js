@@ -63,9 +63,19 @@ export class FieldRenderer {
         this.bindGroup = this.newBindGroup();
     }
     newBindGroup() {
-        return this.device.bindGroup(this.bindGroupLayout, [this.uniforms, this.field.createView({
-                dimension: "3d",
-            }), this.sampler]);
+        return this.device.wrapped.createBindGroup({
+            layout: this.bindGroupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: this.uniforms.asBindingResource(),
+                }, {
+                    binding: 1,
+                    resource: this.field.createView({ dimension: "3d" }).asBindingResource(),
+                }, {
+                    binding: 2,
+                    resource: this.sampler.asBindingResource()
+                }]
+        });
     }
     get device() {
         return this.shader.device;
@@ -150,7 +160,7 @@ export class FieldRenderer {
     }
     static async create(field, targetFormat) {
         const shaderCode = await gear.fetchTextFile("/shaders/field-renderer.wgsl");
-        const shader = await field.device.shaderModule("field-renderer", gpu.renderingShaders.fullScreenPass(shaderCode));
+        const shader = await field.device.inMemoryShaderModule("field-renderer", gpu.renderingShaders.fullScreenPass(shaderCode));
         return new FieldRenderer(shader, field, targetFormat);
     }
 }

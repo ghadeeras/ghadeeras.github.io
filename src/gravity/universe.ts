@@ -30,18 +30,18 @@ export class Universe {
 
         /* Bind Groups */
         this.bindGroups = [
-            app.layout.groupLayouts.universe.instance("universeGroup0", {
+            app.layout.groupLayouts.universe.instance("universeGroup0", { entries: {
                 universeDesc: this.bodyDescriptionsBuffer, 
                 currentState: this.buffers[0], 
                 nextState: this.buffers[1],
                 uniforms: this.uniformsBuffer,
-            }),
-            app.layout.groupLayouts.universe.instance("universeGroup1", {
+            }}),
+            app.layout.groupLayouts.universe.instance("universeGroup1", { entries: {
                 universeDesc: this.bodyDescriptionsBuffer, 
                 currentState: this.buffers[1], 
                 nextState: this.buffers[0], 
                 uniforms: this.uniformsBuffer,
-            }),
+            }}),
         ]
         
         this.currentBuffer = 0

@@ -45,7 +45,13 @@ export class NormalsRenderer {
                 },
             }],
         })
-        this.uniformsGroup = this.device.bindGroup(uniformsGroupLayout, [this.uniforms]);
+        this.uniformsGroup = this.device.wrapped.createBindGroup({
+            layout: uniformsGroupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.uniforms.asBindingResource()
+            }]
+        });
 
         this.rendererFactory = new gltf_gpu.GPURendererFactory(
             this.device,

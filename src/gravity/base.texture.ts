@@ -36,10 +36,10 @@ export class BaseTexture {
     }
 
     rendererFor(texture: gpu.Texture): BaseTextureRenderer {
-        const group = this.app.layout.groupLayouts.sampledTexture.instance("BaseTextureGroup", {
+        const group = this.app.layout.groupLayouts.sampledTexture.instance("BaseTextureGroup", { entries: {
             textureSampler: this.sampler,
             baseTexture: texture.createView()
-        })
+        }})
         return new BaseTextureRenderer((encoder, attachment) => {
             const descriptor = { colorAttachments: [attachment] };
             encoder.renderPass(descriptor, pass => {

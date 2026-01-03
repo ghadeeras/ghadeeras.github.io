@@ -93,19 +93,26 @@ export class Stacker {
     }
 
     private newGroup(layersCount: number): GPUBindGroup {
-        return this.device.bindGroup(
-            this.groupLayout, 
-            [
-                this.frameViews,
-                this.texture.createView({
+        return this.device.wrapped.createBindGroup({
+            layout: this.groupLayout, 
+            entries: [{
+                binding: 0,
+                resource: this.frameViews.asBindingResource(),
+            }, {
+                binding: 1,
+                resource: this.texture.createView({
                     dimension: "2d-array",
                     baseArrayLayer: 0,
                     arrayLayerCount: layersCount
-                }),
-                this.normalsTexture.createView(),
-                this.sampler
-            ]
-        )
+                }).asBindingResource(),
+            }, {
+                binding: 2,
+                resource: this.normalsTexture.createView().asBindingResource(),
+            }, {
+                binding: 3,
+                resource: this.sampler.asBindingResource(),
+            }]
+        })
     }
 
     get layer() {
