@@ -196,13 +196,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
-    animate(): void {
+    animate(t: number, deltaT: number): void {
         let v: aether.Vec3 = [
             this.speeds[0][0] - this.speeds[0][1],
             this.speeds[1][0] - this.speeds[1][1],
             this.speeds[2][1] - this.speeds[2][0],
         ]
-        const velocity = aether.vec3.prod(v, this.tracer.matrix)
+        const velocity = aether.vec3.scale(aether.vec3.prod(v, this.tracer.matrix), deltaT * 0.025)
         const speed = aether.vec3.length(velocity)
         this.wasAnimating = this.animating
         this.animating = this.minLayersOnly || this.changingView || speed !== 0
