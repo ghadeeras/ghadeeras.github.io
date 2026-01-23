@@ -26,6 +26,15 @@ export class MatricesResource {
         this.buffer.destroy();
     }
 }
+export class VertexBuffer {
+    constructor(data, stride) {
+        this.data = data;
+        this.stride = stride;
+    }
+    destroy() {
+        this.data.destroy();
+    }
+}
 export class GPURendererFactory {
     constructor(device, matricesGroupIndex, attributeLocations, pipelineSupplier) {
         this.adapter = new GPUAdapter(device, device.device.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
@@ -47,13 +56,16 @@ class GPUAdapter {
     }
     matricesBuffer(matrices) {
         const dataView = gltfMatricesStruct.view(matrices);
-        const buffer = this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, gltfMatricesStruct.stride);
+        const buffer = this.device.dataBuffer("matrices", {
+            usage: ["UNIFORM"],
+            data: dataView
+        });
         const group = this.device.device.createBindGroup({
             layout: this.matricesGroupLayout,
             entries: [{
                     binding: 0,
                     resource: {
-                        buffer: buffer.buffer,
+                        buffer: buffer.wrapped,
                         size: gltfMatricesStruct.paddedSize,
                     }
                 }]
@@ -61,10 +73,16 @@ class GPUAdapter {
         return new MatricesResource(group, buffer);
     }
     vertexBuffer(dataView, stride) {
-        return this.device.buffer("vertex", GPUBufferUsage.VERTEX, dataView, stride);
+        return new VertexBuffer(this.device.dataBuffer("vertex", {
+            usage: ["VERTEX"],
+            data: dataView
+        }), stride);
     }
     indexBuffer(dataView, stride) {
-        return this.device.buffer("index", GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride);
+        return this.device.dataBuffer("index", {
+            usage: ["INDEX", "VERTEX"],
+            data: this.adapt(dataView, stride)
+        });
     }
     matrixBinder(matrixBuffer, index) {
         return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, [index * gltfMatricesStruct.stride]);
@@ -83,7 +101,7 @@ class GPUAdapter {
             pass => {
                 pass.setPipeline(pipeline);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
-                pass.setIndexBuffer(index.buffer.buffer, indexFormat, index.offset);
+                pass.setIndexBuffer(index.buffer.wrapped, indexFormat, index.offset);
                 pass.drawIndexed(count);
             } :
             pass => {
@@ -142,7 +160,7 @@ function interleavedBuffer(buffer, baseOffset, attributesByLocation) {
         });
     }
     const vertexBuffer = {
-        gpuBuffer: buffer.buffer,
+        gpuBuffer: buffer.data.wrapped,
         offset: baseOffset,
         gpuLayout: {
             arrayStride: buffer.stride,
@@ -157,7 +175,7 @@ function baseOffsetOf(attributesByLocation) {
 }
 function nonInterleavedBuffer(buffer, attribute, location) {
     return {
-        gpuBuffer: buffer.buffer,
+        gpuBuffer: buffer.data.wrapped,
         offset: attribute.offset,
         gpuLayout: {
             arrayStride: buffer.stride,

@@ -3,9 +3,9 @@ import * as meta from './meta.js'
 
 export class Universe {
 
-    readonly bodyDescriptionsBuffer: gpu.Buffer
+    readonly bodyDescriptionsBuffer: gpu.DataBuffer
     private readonly uniformsBuffer: gpu.SyncBuffer
-    private readonly buffers: [gpu.Buffer, gpu.Buffer]
+    private readonly buffers: [gpu.DataBuffer, gpu.DataBuffer]
 
     private readonly bindGroups
 
@@ -16,16 +16,21 @@ export class Universe {
         const device = app.device
 
         /* Buffers */
-        this.bodyDescriptionsBuffer = device.buffer("bodyDescriptions", GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, meta.bodyDescription.view(bodyDescriptions))
-        this.uniformsBuffer = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.physicsUniforms.view([{
-            bodyFluffiness: 1.0 / 0.1,
-            gravityConstant: 1000,
-            dT: 0.0001
-        }]))
-        const stateBufferUsage = GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST
+        this.bodyDescriptionsBuffer = device.dataBuffer("bodyDescriptions", {
+            usage: ["VERTEX", "STORAGE"],
+            data: meta.bodyDescription.view(bodyDescriptions)
+        })
+        this.uniformsBuffer = device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"], 
+            data: meta.physicsUniforms.view([{
+                bodyFluffiness: 1.0 / 0.1,
+                gravityConstant: 1000,
+                dT: 0.0001
+            }])
+        })
         this.buffers = [
-            device.buffer("state0", stateBufferUsage, initialStateView),
-            device.buffer("state1", stateBufferUsage, initialStateView.byteLength),
+            device.dataBuffer("state0", { usage: ["VERTEX", "STORAGE"], data: initialStateView }),
+            device.dataBuffer("state1", { usage: ["VERTEX", "STORAGE"], size: initialStateView.byteLength }),
         ]
 
         /* Bind Groups */
@@ -83,13 +88,13 @@ export class Universe {
 
     set state(state: meta.BodyStateStruct[]) {
         const initialStateView = meta.bodyState.view(state)
-        this.buffers[0].writeAt(0, initialStateView)
-        this.buffers[1].writeAt(0, initialStateView)
+        this.buffers[0].set().fromData(initialStateView)
+        this.buffers[1].set().fromData(initialStateView)
     }
 
     set bodyDescriptions(bodyDescriptions: meta.BodyDescriptionStruct[]) {
         const bodyDescriptionsView = meta.bodyDescription.view(bodyDescriptions)
-        this.bodyDescriptionsBuffer.writeAt(0, bodyDescriptionsView)
+        this.bodyDescriptionsBuffer.set().fromData(bodyDescriptionsView)
     }
 
 }

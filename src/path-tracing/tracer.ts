@@ -55,14 +55,14 @@ export class Tracer {
     private readonly pipeline: GPURenderPipeline
     private readonly groupLayout: GPUBindGroupLayout
 
-    readonly materialsBuffer: gpu.Buffer
-    readonly boxesBuffer: gpu.Buffer
+    readonly materialsBuffer: gpu.DataBuffer
+    readonly boxesBuffer: gpu.DataBuffer
 
-    readonly uniformsBuffer: gpu.Buffer 
-    private readonly gridBuffer: gpu.Buffer
-    private readonly clockBuffer: gpu.Buffer
+    readonly uniformsBuffer: gpu.DataBuffer 
+    private readonly gridBuffer: gpu.DataBuffer
+    private readonly clockBuffer: gpu.DataBuffer
 
-    private readonly importantDirectionsBuffer: gpu.Buffer
+    private readonly importantDirectionsBuffer: gpu.DataBuffer
 
     private readonly group: GPUBindGroup
 
@@ -134,7 +134,7 @@ export class Tracer {
     set matrix(m: aether.Mat3) {
         this._matrix = m
         const v = gpu.mat3x3.view([m])
-        this.uniformsBuffer.writeAt(uniformsStruct.members.matrix.offset, v)
+        this.uniformsBuffer.set(uniformsStruct.members.matrix).fromData(v)
     }
 
     get position() {
@@ -145,7 +145,7 @@ export class Tracer {
         const position = this.clamp(p)
         this._position = position
         const v = gpu.f32.x3.view([position])
-        this.uniformsBuffer.writeAt(uniformsStruct.members.position.offset, v)
+        this.uniformsBuffer.set(uniformsStruct.members.position).fromData(v)
     }
 
     get samplesPerPixel() {
@@ -155,7 +155,7 @@ export class Tracer {
     set samplesPerPixel(spp: number) {
         this._samplesPerPixel = spp
         const v = gpu.u32.view([spp])
-        this.uniformsBuffer.writeAt(uniformsStruct.members.samplesPerPixel.offset, v)
+        this.uniformsBuffer.set(uniformsStruct.members.samplesPerPixel).fromData(v)
     }
 
     get focalRatio() {
@@ -165,7 +165,7 @@ export class Tracer {
     set focalRatio(f: number) {
         this._focalLength = f
         const v = gpu.f32.view([f])
-        this.uniformsBuffer.writeAt(uniformsStruct.members.focalLength.offset, v)
+        this.uniformsBuffer.set(uniformsStruct.members.focalLength).fromData(v)
     }
 
     private createUniformsBuffer() {
@@ -178,22 +178,34 @@ export class Tracer {
             aspectRatio: width / height,
             samplesPerPixel: this._samplesPerPixel,
         }])
-        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, dataView)
+        return this.canvas.device.dataBuffer("uniforms", {
+            usage: ["UNIFORM"], 
+            data: dataView
+        })
     }
     
     private createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials)
-        return this.device.buffer("materials", GPUBufferUsage.STORAGE, dataView)
+        return this.device.dataBuffer("materials", {
+            usage: ["STORAGE"], 
+            data: dataView
+        })
     }
     
     private createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes)
-        return this.device.buffer("boxes", GPUBufferUsage.STORAGE, dataView)
+        return this.device.dataBuffer("boxes", {
+            usage: ["STORAGE"], 
+            data: dataView
+        })
     }
     
     private createGridBuffer() {
         const dataView = cellStruct.view(this.scene.grid)
-        return this.device.buffer("grid", GPUBufferUsage.STORAGE, dataView)
+        return this.device.dataBuffer("grid", {
+            usage: ["STORAGE"], 
+            data: dataView
+        })
     }
 
     private createImportantDirectionsBuffer() {
@@ -215,12 +227,18 @@ export class Tracer {
                 }]
             })
         } 
-        return this.device.buffer("importantDirections", GPUBufferUsage.STORAGE, dataView)
+        return this.device.dataBuffer("importantDirections", {
+            usage: ["STORAGE"], 
+            data: dataView
+        })
     }
     
     private createClockBuffer() {
         const dataView = gpu.u32.view([0])
-        return this.device.buffer("clock", GPUBufferUsage.STORAGE, dataView)
+        return this.device.dataBuffer("clock", {
+            usage: ["STORAGE"], 
+            data: dataView
+        })
     }
     
     private clamp(p: aether.Vec3) {

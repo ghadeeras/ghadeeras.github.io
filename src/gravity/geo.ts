@@ -9,18 +9,24 @@ export class ShaderMesh {
     readonly indexFormat: GPUIndexFormat
     readonly vertexLayout: GPUVertexBufferLayout
 
-    readonly indicesBuffer: gpu.Buffer
-    readonly verticesBuffer: gpu.Buffer
+    readonly indicesBuffer: gpu.DataBuffer
+    readonly verticesBuffer: gpu.DataBuffer
 
     constructor(device: gpu.Device, readonly mesh: Mesh) {
         this.indexFormat = mesh.positions.length > 0xFFFF ? "uint32" : "uint16"
         this.vertexLayout = ShaderMesh.bodySurfaceVertex.asBufferLayout("vertex")
 
-        this.indicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(this.indexFormat == "uint32" 
-            ? new Uint32Array(mesh.indices)
-            : new Uint16Array(mesh.indices)
-        ))
-        this.verticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)))
+        this.indicesBuffer = device.dataBuffer("indices", {
+            usage: ["INDEX"], 
+            data: gpu.dataView(this.indexFormat == "uint32" 
+                    ? new Uint32Array(mesh.indices)
+                    : new Uint16Array(mesh.indices)
+            )
+        })
+        this.verticesBuffer = device.dataBuffer("vertices", {
+            usage: ["VERTEX"], 
+            data: gpu.dataView(new Float32Array(mesh.positions))
+        })
     }
 
 }

@@ -18,7 +18,7 @@
   "homepage": "https://github.com/ghadeeras/ghadeeras.github.io#readme",
   "devDependencies": {
     "@types/webxr": "^0.5.24",
-    "@webgpu/types": "^0.1.68",
+    "@webgpu/types": "^0.1.69",
     "http-server": "^14.1.1",
     "typescript": "^5.9.3"
   },

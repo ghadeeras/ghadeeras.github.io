@@ -23,7 +23,10 @@ export class GPUView {
         this.perspective = gltf.graph.defaultPerspective();
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
-        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
+        this.uniforms = device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"],
+            size: uniformsStruct.paddedSize
+        });
         this.uniformsGroupLayout = device.device.createBindGroupLayout({
             entries: [{
                     binding: 0,
@@ -37,7 +40,7 @@ export class GPUView {
             layout: this.uniformsGroupLayout,
             entries: [{
                     binding: 0,
-                    resource: this.uniforms.gpuBuffer
+                    resource: this.uniforms.gpuBuffer.wrapped
                 }]
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));

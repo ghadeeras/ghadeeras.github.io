@@ -12,14 +12,14 @@ export class Stacker {
     private readonly texture: gpu.Texture
     private readonly sampler: gpu.Sampler
 
-    readonly frameViews: gpu.Buffer
+    readonly frameViews: gpu.DataBuffer
 
     private _group: GPUBindGroup
     private _layersCount: number
 
     private _layer: number
 
-    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly uniforms: gpu.Buffer, readonly normalsTexture: gpu.Texture, readonly inputFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
+    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly uniforms: gpu.DataBuffer, readonly normalsTexture: gpu.Texture, readonly inputFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
         this.device = shaderModule.device
         this.maxLayersCount = size.depthOrArrayLayers ?? this.device.device.limits.maxTextureArrayLayers
 
@@ -38,7 +38,10 @@ export class Stacker {
             minFilter: "linear",
         })
 
-        this.frameViews =  this.device.buffer("frameViews", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize * 256, uniformsStruct.paddedSize)
+        this.frameViews =  this.device.dataBuffer("frameViews", {
+            usage: ["STORAGE"], 
+            size: uniformsStruct.paddedSize * 256
+        })
 
         this.groupLayout = this.device.device.createBindGroupLayout({
             label: "stacker-bind-group",
@@ -132,7 +135,7 @@ export class Stacker {
 
     colorAttachment(clearColor: GPUColor, colorAttachment: GPURenderPassColorAttachment | null = null) {
         this._layer = (this._layer + 1) % this.layersCount
-        this.frameViews.copyAt(uniformsStruct.paddedSize * this.layer, this.uniforms, 0, uniformsStruct.paddedSize)
+        this.frameViews.copy(uniformsStruct.segment(this.layer)).from(this.uniforms, 0)
         return this.layersCount < 2 && colorAttachment !== null
             ? colorAttachment
             : this.texture.createView({
@@ -150,7 +153,7 @@ export class Stacker {
         })
     }
 
-    static async create(device: gpu.Device, size: GPUExtent3DDictStrict, uniforms: gpu.Buffer, normalsTexture: gpu.Texture, inputFormat: GPUTextureFormat, outputFormat: GPUTextureFormat): Promise<Stacker> {
+    static async create(device: gpu.Device, size: GPUExtent3DDictStrict, uniforms: gpu.DataBuffer, normalsTexture: gpu.Texture, inputFormat: GPUTextureFormat, outputFormat: GPUTextureFormat): Promise<Stacker> {
         return new Stacker(await device.loadShaderModule("stacker.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat)
     }
 

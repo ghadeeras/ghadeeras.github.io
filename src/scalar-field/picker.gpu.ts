@@ -9,8 +9,8 @@ export class GPUPicker implements Picker {
     private device: gpu.Device
     private colorTexture: gpu.Texture
     private depthTexture: gpu.Texture
-    private uniforms: gpu.Buffer
-    private pickDestination: gpu.Buffer
+    private uniforms: gpu.DataBuffer
+    private pickDestination: gpu.ReadBuffer
     private pipeline: GPURenderPipeline
     private uniformsGroup: GPUBindGroup
 
@@ -23,11 +23,14 @@ export class GPUPicker implements Picker {
     constructor(
         readonly canvas: gpu.Canvas,
         shaderModule: gpu.ShaderModule,
-        private vertices: () => gpu.Buffer,
+        private vertices: () => gpu.DataBuffer
     ) {
         this.device = canvas.device
-        this.uniforms = this.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
-        this.pickDestination = this.device.buffer("pickDestination", GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16)
+        this.uniforms = this.device.dataBuffer("uniforms", {
+            usage: ["UNIFORM"], 
+            size: this.uniformsStruct.paddedSize
+        });
+        this.pickDestination = this.device.readBuffer("pickDestination", 16)
 
         this.colorTexture = this.device.texture({
             format: "rgba32float",
@@ -60,7 +63,7 @@ export class GPUPicker implements Picker {
     }
 
     async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
-        this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
+        this.uniforms.set().fromData(this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
 
         this.device.enqueueCommand("pick", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
@@ -70,9 +73,9 @@ export class GPUPicker implements Picker {
             encoder.renderPass(passDescriptor, pass => {
                 const vertices = this.vertices()
                 pass.setPipeline(this.pipeline)
-                pass.setVertexBuffer(0, vertices.buffer)
+                pass.setVertexBuffer(0, vertices.wrapped)
                 pass.setBindGroup(0, this.uniformsGroup)
-                pass.draw(vertices.stridesCount)
+                pass.draw(vertices.size / GPUView.vertex.struct.stride)
             })
             encoder.encoder.copyTextureToBuffer(
                 {
@@ -82,7 +85,7 @@ export class GPUPicker implements Picker {
                         y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2),
                     }
                 }, {
-                    buffer: this.pickDestination.buffer,
+                    buffer: this.pickDestination.wrapped,
                     bytesPerRow: 256,
                 }, {
                     width: 1,
@@ -91,7 +94,7 @@ export class GPUPicker implements Picker {
             )
         })
 
-        const view = await this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view())
+        const view = await this.pickDestination.get(gpu.f32.x4).asData()
         return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1])
     }
 
@@ -102,7 +105,7 @@ export class GPUPicker implements Picker {
 
 }
 
-export async function picker(canvas: gpu.Canvas, vertices: () => gpu.Buffer): Promise<Picker> {
+export async function picker(canvas: gpu.Canvas, vertices: () => gpu.DataBuffer): Promise<Picker> {
     const shaderModule = await canvas.device.loadShaderModule("picker.wgsl")
     return new GPUPicker(canvas, shaderModule, vertices)
 }

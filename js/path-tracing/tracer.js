@@ -94,7 +94,7 @@ export class Tracer {
     set matrix(m) {
         this._matrix = m;
         const v = gpu.mat3x3.view([m]);
-        this.uniformsBuffer.writeAt(uniformsStruct.members.matrix.offset, v);
+        this.uniformsBuffer.set(uniformsStruct.members.matrix).fromData(v);
     }
     get position() {
         return this._position;
@@ -103,7 +103,7 @@ export class Tracer {
         const position = this.clamp(p);
         this._position = position;
         const v = gpu.f32.x3.view([position]);
-        this.uniformsBuffer.writeAt(uniformsStruct.members.position.offset, v);
+        this.uniformsBuffer.set(uniformsStruct.members.position).fromData(v);
     }
     get samplesPerPixel() {
         return this._samplesPerPixel;
@@ -111,7 +111,7 @@ export class Tracer {
     set samplesPerPixel(spp) {
         this._samplesPerPixel = spp;
         const v = gpu.u32.view([spp]);
-        this.uniformsBuffer.writeAt(uniformsStruct.members.samplesPerPixel.offset, v);
+        this.uniformsBuffer.set(uniformsStruct.members.samplesPerPixel).fromData(v);
     }
     get focalRatio() {
         return this._focalLength;
@@ -119,7 +119,7 @@ export class Tracer {
     set focalRatio(f) {
         this._focalLength = f;
         const v = gpu.f32.view([f]);
-        this.uniformsBuffer.writeAt(uniformsStruct.members.focalLength.offset, v);
+        this.uniformsBuffer.set(uniformsStruct.members.focalLength).fromData(v);
     }
     createUniformsBuffer() {
         const width = this.canvas.size.width;
@@ -131,19 +131,31 @@ export class Tracer {
                 aspectRatio: width / height,
                 samplesPerPixel: this._samplesPerPixel,
             }]);
-        return this.canvas.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC, dataView);
+        return this.canvas.device.dataBuffer("uniforms", {
+            usage: ["UNIFORM"],
+            data: dataView
+        });
     }
     createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials);
-        return this.device.buffer("materials", GPUBufferUsage.STORAGE, dataView);
+        return this.device.dataBuffer("materials", {
+            usage: ["STORAGE"],
+            data: dataView
+        });
     }
     createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes);
-        return this.device.buffer("boxes", GPUBufferUsage.STORAGE, dataView);
+        return this.device.dataBuffer("boxes", {
+            usage: ["STORAGE"],
+            data: dataView
+        });
     }
     createGridBuffer() {
         const dataView = cellStruct.view(this.scene.grid);
-        return this.device.buffer("grid", GPUBufferUsage.STORAGE, dataView);
+        return this.device.dataBuffer("grid", {
+            usage: ["STORAGE"],
+            data: dataView
+        });
     }
     createImportantDirectionsBuffer() {
         const dataView = boxDirectionsStruct.view(this.scene.boxes.length);
@@ -164,11 +176,17 @@ export class Tracer {
                     }]
             });
         }
-        return this.device.buffer("importantDirections", GPUBufferUsage.STORAGE, dataView);
+        return this.device.dataBuffer("importantDirections", {
+            usage: ["STORAGE"],
+            data: dataView
+        });
     }
     createClockBuffer() {
         const dataView = gpu.u32.view([0]);
-        return this.device.buffer("clock", GPUBufferUsage.STORAGE, dataView);
+        return this.device.dataBuffer("clock", {
+            usage: ["STORAGE"],
+            data: dataView
+        });
     }
     clamp(p) {
         const min = 0.5;

@@ -10,8 +10,11 @@ export class GPUPicker {
             mvpMat: gpu.mat4x4
         });
         this.device = canvas.device;
-        this.uniforms = this.device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.paddedSize);
-        this.pickDestination = this.device.buffer("pickDestination", GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ, 16);
+        this.uniforms = this.device.dataBuffer("uniforms", {
+            usage: ["UNIFORM"],
+            size: this.uniformsStruct.paddedSize
+        });
+        this.pickDestination = this.device.readBuffer("pickDestination", 16);
         this.colorTexture = this.device.texture({
             format: "rgba32float",
             size: canvas.size,
@@ -40,7 +43,7 @@ export class GPUPicker {
         });
     }
     async pick(matModelViewProjection, x, y) {
-        this.uniforms.writeAt(0, this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));
+        this.uniforms.set().fromData(this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));
         this.device.enqueueCommand("pick", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
@@ -49,9 +52,9 @@ export class GPUPicker {
             encoder.renderPass(passDescriptor, pass => {
                 const vertices = this.vertices();
                 pass.setPipeline(this.pipeline);
-                pass.setVertexBuffer(0, vertices.buffer);
+                pass.setVertexBuffer(0, vertices.wrapped);
                 pass.setBindGroup(0, this.uniformsGroup);
-                pass.draw(vertices.stridesCount);
+                pass.draw(vertices.size / GPUView.vertex.struct.stride);
             });
             encoder.encoder.copyTextureToBuffer({
                 texture: this.colorTexture.texture,
@@ -60,14 +63,14 @@ export class GPUPicker {
                     y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2),
                 }
             }, {
-                buffer: this.pickDestination.buffer,
+                buffer: this.pickDestination.wrapped,
                 bytesPerRow: 256,
             }, {
                 width: 1,
                 height: 1,
             });
         });
-        const view = await this.pickDestination.readAt(0, gpu.vec4(gpu.f32).view());
+        const view = await this.pickDestination.get(gpu.f32.x4).asData();
         return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
     }
     resize() {

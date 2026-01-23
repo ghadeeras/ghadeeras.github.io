@@ -26,6 +26,6 @@
   ],
   "devDependencies": {
     "typescript": "^5.9.3",
-    "@webgpu/types": "^0.1.68"
+    "@webgpu/types": "^0.1.69"
   }
 }

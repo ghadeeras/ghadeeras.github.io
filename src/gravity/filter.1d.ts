@@ -7,15 +7,24 @@ export class Filter1D {
     private pipeline
     private filterGroup
 
-    private horizontal: gpu.Buffer
-    private vertical: gpu.Buffer
+    private horizontal: gpu.DataBuffer
+    private vertical: gpu.DataBuffer
 
     constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number]) {
         this.pipeline = app.layout.pipelineLayouts.filtering.computeInstance(app.shaders.bloom, "c_main")
-        this.horizontal = app.device.buffer(`ioGroup0.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([0]))
-        this.vertical = app.device.buffer(`ioGroup1.direction`, GPUBufferUsage.UNIFORM, gpu.u32.view([1]))
+        this.horizontal = app.device.dataBuffer(`ioGroup0.direction`, {
+            usage: ["UNIFORM"], 
+            data: gpu.u32.view([0])
+        })
+        this.vertical = app.device.dataBuffer(`ioGroup1.direction`, {
+            usage: ["UNIFORM"], 
+            data: gpu.u32.view([1])
+        })
         this.filterGroup = app.layout.groupLayouts.filter1D.instance(`filterWeightsGroup`, { entries: {
-            weights: app.device.buffer(`filterWeightsBuffer`, GPUBufferUsage.STORAGE, gpu.f32.view(this.weights))
+            weights: app.device.dataBuffer(`filterWeightsBuffer`, {
+                usage: ["STORAGE"], 
+                data: gpu.f32.view(this.weights)
+            })
         }})
     }
 

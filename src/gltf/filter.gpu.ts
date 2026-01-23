@@ -8,7 +8,7 @@ export class NormalsFilter {
 
     readonly normalsTexture: gpu.Texture
 
-    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly outputFormat: GPUTextureFormat, readonly uniforms: gpu.Buffer) {
+    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly outputFormat: GPUTextureFormat, readonly uniforms: gpu.DataBuffer) {
         const device = shaderModule.device
 
         this.normalsTexture = device.texture({

@@ -40,7 +40,7 @@ async function doInit() {
         if ('0' <= key && key <= '9') {
             const power = Number.parseInt(key);
             const spp = 2 ** power;
-            uniformsBuffer.writeAt(uniformsStruct.members.samplesPerPixel.offset, gpu.u32.view([spp]));
+            uniformsBuffer.set(uniformsStruct.members.samplesPerPixel).fromData(gpu.u32.view([spp]));
             samplesPerPixelElement.innerText = spp.toString();
         }
     };
@@ -78,10 +78,16 @@ function createUniformsBuffer(device) {
     const dataView = uniformsStruct.view([{
             samplesPerPixel: 1,
         }]);
-    return device.buffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, dataView);
+    return device.dataBuffer("uniforms", {
+        usage: ["UNIFORM"],
+        data: dataView
+    });
 }
 function createClockBuffer(device) {
     const dataView = gpu.u32.view([0]);
-    return device.buffer("clock", GPUBufferUsage.STORAGE, dataView);
+    return device.dataBuffer("clock", {
+        usage: ["STORAGE"],
+        data: dataView
+    });
 }
 //# sourceMappingURL=toy.js.map

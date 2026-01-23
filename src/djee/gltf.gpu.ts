@@ -25,10 +25,19 @@ export function gltfMatrixGroupLayout() {
 
 export class MatricesResource implements Resource {
     
-    constructor(readonly group: GPUBindGroup, readonly buffer: gpu.Buffer) {}
+    constructor(readonly group: GPUBindGroup, readonly buffer: gpu.DataBuffer) {}
 
     destroy(): void {
         this.buffer.destroy()
+    }
+
+}
+export class VertexBuffer implements Resource {
+
+    constructor(readonly data: gpu.DataBuffer, readonly stride: number) {}
+
+    destroy(): void {
+        this.data.destroy();
     }
 
 }
@@ -52,7 +61,7 @@ export class GPURendererFactory {
         )
     }
 
-    newInstance(model: graph.Model): renderer.GLTFRenderer<MatricesResource, gpu.Buffer, gpu.Buffer, GPURenderPassEncoder> {
+    newInstance(model: graph.Model): renderer.GLTFRenderer<MatricesResource, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
         return new renderer.GLTFRenderer(model, this.adapter)
     }
 
@@ -62,7 +71,7 @@ export class GPURendererFactory {
 
 }
 
-class GPUAdapter implements renderer.APIAdapter<MatricesResource, gpu.Buffer, gpu.Buffer, GPURenderPassEncoder> {
+class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
 
     constructor(
         private device: gpu.Device, 
@@ -74,13 +83,16 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, gpu.Buffer, gp
 
     matricesBuffer(matrices: renderer.Matrix[]): MatricesResource {
         const dataView = gltfMatricesStruct.view(matrices)
-        const buffer = this.device.buffer("matrices", GPUBufferUsage.UNIFORM, dataView, gltfMatricesStruct.stride);
+        const buffer = this.device.dataBuffer("matrices", {
+            usage: ["UNIFORM"],
+            data: dataView
+        });
         const group = this.device.device.createBindGroup({
             layout: this.matricesGroupLayout,
             entries: [{
                 binding: 0,
                 resource: {
-                    buffer: buffer.buffer,
+                    buffer: buffer.wrapped,
                     size: gltfMatricesStruct.paddedSize,
                 }
             }]
@@ -88,19 +100,25 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, gpu.Buffer, gp
         return new MatricesResource(group, buffer)
     }
 
-    vertexBuffer(dataView: DataView, stride: number): gpu.Buffer {
-        return this.device.buffer("vertex", GPUBufferUsage.VERTEX, dataView, stride)
+    vertexBuffer(dataView: DataView, stride: number): VertexBuffer {
+        return new VertexBuffer(this.device.dataBuffer("vertex", {
+            usage: ["VERTEX"],
+            data: dataView
+        }), stride)
     }
 
-    indexBuffer(dataView: DataView, stride: number): gpu.Buffer {
-        return this.device.buffer("index", GPUBufferUsage.INDEX | GPUBufferUsage.VERTEX, this.adapt(dataView, stride), stride)
+    indexBuffer(dataView: DataView, stride: number): gpu.DataBuffer {
+        return this.device.dataBuffer("index", {
+            usage: ["INDEX", "VERTEX"], 
+            data: this.adapt(dataView, stride)
+        })
     }
 
     matrixBinder(matrixBuffer: MatricesResource, index: number): renderer.Binder<GPURenderPassEncoder> {
         return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, [index * gltfMatricesStruct.stride])
     }
 
-    primitiveBinder(count: number, mode: gltf.PrimitiveMode, attributes: renderer.VertexAttribute<gpu.Buffer>[], index: renderer.Index<gpu.Buffer> | null = null): renderer.Binder<GPURenderPassEncoder> {
+    primitiveBinder(count: number, mode: gltf.PrimitiveMode, attributes: renderer.VertexAttribute<VertexBuffer>[], index: renderer.Index<gpu.DataBuffer> | null = null): renderer.Binder<GPURenderPassEncoder> {
         const topology = toGpuTopology(mode)
         const indexFormat: GPUIndexFormat = index !== null ? toGpuIndexFormat(index.componentType) : "uint32"
         const vertexBufferSlots = asVertexBufferSlots(attributes, this.attributeLocations);
@@ -116,7 +134,7 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, gpu.Buffer, gp
             pass => {
                 pass.setPipeline(pipeline);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
-                pass.setIndexBuffer(index.buffer.buffer, indexFormat, index.offset);
+                pass.setIndexBuffer(index.buffer.wrapped, indexFormat, index.offset);
                 pass.drawIndexed(count);
             } :
             pass => {
@@ -144,7 +162,7 @@ type VertexBufferSlot = {
     offset: number,
 }
 
-function asVertexBufferSlots(attributes: renderer.VertexAttribute<gpu.Buffer>[], attributeLocations: Partial<Record<string, number>>): VertexBufferSlot[] {
+function asVertexBufferSlots(attributes: renderer.VertexAttribute<VertexBuffer>[], attributeLocations: Partial<Record<string, number>>): VertexBufferSlot[] {
     const attributesByBuffersThenLocations = groupAttributesByBuffersThenLocations(attributes, attributeLocations);
 
     const vertexBufferSlots: VertexBufferSlot[] = [];
@@ -159,8 +177,8 @@ function asVertexBufferSlots(attributes: renderer.VertexAttribute<gpu.Buffer>[],
     return sortedVertexBuffers(vertexBufferSlots);
 }
 
-function groupAttributesByBuffersThenLocations(attributes: renderer.VertexAttribute<gpu.Buffer>[], attributeLocations: Partial<Record<string, number>>): Map<gpu.Buffer, Map<number, renderer.VertexAttribute<gpu.Buffer>>> {
-    const accessorsByBuffersThenLocations: Map<gpu.Buffer, Map<number, renderer.VertexAttribute<gpu.Buffer>>> = new Map();
+function groupAttributesByBuffersThenLocations(attributes: renderer.VertexAttribute<VertexBuffer>[], attributeLocations: Partial<Record<string, number>>): Map<VertexBuffer, Map<number, renderer.VertexAttribute<VertexBuffer>>> {
+    const accessorsByBuffersThenLocations: Map<VertexBuffer, Map<number, renderer.VertexAttribute<VertexBuffer>>> = new Map();
     for (const attribute of attributes) {
         const location = attributeLocations[attribute.name];
         if (location !== undefined) {
@@ -171,12 +189,12 @@ function groupAttributesByBuffersThenLocations(attributes: renderer.VertexAttrib
     return accessorsByBuffersThenLocations;
 }
 
-function areInterleaved(stride: number, baseOffset: number, bufferAttributesByLocation: Map<number, renderer.VertexAttribute<gpu.Buffer>>) {
+function areInterleaved(stride: number, baseOffset: number, bufferAttributesByLocation: Map<number, renderer.VertexAttribute<VertexBuffer>>) {
     const attributes = [...bufferAttributesByLocation.values()];
     return attributes.every(attribute => (attribute.offset - baseOffset) < stride);
 }
 
-function interleavedBuffer(buffer: gpu.Buffer, baseOffset: number, attributesByLocation: Map<number, renderer.VertexAttribute<gpu.Buffer>>) {
+function interleavedBuffer(buffer: VertexBuffer, baseOffset: number, attributesByLocation: Map<number, renderer.VertexAttribute<VertexBuffer>>) {
     const attributes: GPUVertexAttribute[] = [];
     for (const [location, attribute] of attributesByLocation.entries()) {
         attributes.push({
@@ -187,7 +205,7 @@ function interleavedBuffer(buffer: gpu.Buffer, baseOffset: number, attributesByL
     }
 
     const vertexBuffer: VertexBufferSlot = {
-        gpuBuffer: buffer.buffer,
+        gpuBuffer: buffer.data.wrapped,
         offset: baseOffset,
         gpuLayout: {
             arrayStride: buffer.stride,
@@ -198,13 +216,13 @@ function interleavedBuffer(buffer: gpu.Buffer, baseOffset: number, attributesByL
     return vertexBuffer;
 }
 
-function baseOffsetOf(attributesByLocation: Map<number, renderer.VertexAttribute<gpu.Buffer>>) {
+function baseOffsetOf(attributesByLocation: Map<number, renderer.VertexAttribute<VertexBuffer>>) {
     return Math.min(...[...attributesByLocation.values()].map(attribute => attribute.offset));
 }
 
-function nonInterleavedBuffer(buffer: gpu.Buffer, attribute: renderer.VertexAttribute<gpu.Buffer>, location: number): VertexBufferSlot {
+function nonInterleavedBuffer(buffer: VertexBuffer, attribute: renderer.VertexAttribute<VertexBuffer>, location: number): VertexBufferSlot {
     return {
-        gpuBuffer: buffer.buffer,
+        gpuBuffer: buffer.data.wrapped,
         offset: attribute.offset,
         gpuLayout: {
             arrayStride: buffer.stride,
@@ -229,7 +247,7 @@ function sortedVertexBuffers(vertexBuffers: VertexBufferSlot[]) {
     });
 }
 
-function gpuVertexFormatOf(attribute: renderer.VertexAttribute<gpu.Buffer>): GPUVertexFormat {
+function gpuVertexFormatOf(attribute: renderer.VertexAttribute<VertexBuffer>): GPUVertexFormat {
     switch (attribute.type) {
         case "SCALAR": switch (attribute.componentType) {
             case WebGL2RenderingContext.FLOAT: return "float32"

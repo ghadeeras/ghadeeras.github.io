@@ -17,7 +17,10 @@ export class NormalsRenderer {
         this._modelMatrix = aether.mat4.identity();
         this.perspective = gltf.graph.defaultPerspective();
         this.device = shaderModule.device;
-        this.uniforms = this.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
+        this.uniforms = this.device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"],
+            size: uniformsStruct.paddedSize
+        });
         const uniformsGroupLayout = this.device.device.createBindGroupLayout({
             entries: [{
                     binding: 0,

@@ -4,10 +4,16 @@ export class ShaderMesh {
         this.mesh = mesh;
         this.indexFormat = mesh.positions.length > 0xFFFF ? "uint32" : "uint16";
         this.vertexLayout = ShaderMesh.bodySurfaceVertex.asBufferLayout("vertex");
-        this.indicesBuffer = device.buffer("indices", GPUBufferUsage.INDEX, gpu.dataView(this.indexFormat == "uint32"
-            ? new Uint32Array(mesh.indices)
-            : new Uint16Array(mesh.indices)));
-        this.verticesBuffer = device.buffer("vertices", GPUBufferUsage.VERTEX, gpu.dataView(new Float32Array(mesh.positions)));
+        this.indicesBuffer = device.dataBuffer("indices", {
+            usage: ["INDEX"],
+            data: gpu.dataView(this.indexFormat == "uint32"
+                ? new Uint32Array(mesh.indices)
+                : new Uint16Array(mesh.indices))
+        });
+        this.verticesBuffer = device.dataBuffer("vertices", {
+            usage: ["VERTEX"],
+            data: gpu.dataView(new Float32Array(mesh.positions))
+        });
     }
 }
 ShaderMesh.bodySurfaceVertex = gpu.vertex({

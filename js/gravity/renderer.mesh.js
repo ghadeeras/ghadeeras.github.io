@@ -44,10 +44,10 @@ export class Renderer {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped);
-                pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
-                pass.setVertexBuffer(1, universe.currentState.buffer);
-                pass.setVertexBuffer(2, this.mesh.verticesBuffer.buffer);
-                pass.setIndexBuffer(this.mesh.indicesBuffer.buffer, this.mesh.indexFormat);
+                pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.wrapped);
+                pass.setVertexBuffer(1, universe.currentState.wrapped);
+                pass.setVertexBuffer(2, this.mesh.verticesBuffer.wrapped);
+                pass.setIndexBuffer(this.mesh.indicesBuffer.wrapped, this.mesh.indexFormat);
                 pass.drawIndexed(this.mesh.mesh.indices.length, universe.bodiesCount, 0, 0);
             });
         });

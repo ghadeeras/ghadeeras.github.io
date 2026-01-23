@@ -62,16 +62,19 @@ export class FieldRenderer {
                 topology: "triangle-list"
             },
         })
-        this.uniforms = device.syncBuffer("renderer-uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, FieldRenderer.uniformsStruct.view([{
-            modelMatrix: aether.mat3.identity(),
-            orientation: aether.mat3.transpose(aether.mat3.lookTowards(aether.vec3.unit([0, 0, -1]))),
-            position: aether.vec3.of(0.0, 0.0, 4),
-            lightDirection: aether.vec3.unit(aether.vec3.of(-1, 1, 1)),
-            lightNarrowness: 1024,
-            contourValue: 0.05,
-            focalLength: Math.sqrt(5),
-            step: 1 / 16, 
-        }]))
+        this.uniforms = device.syncBuffer("renderer-uniforms", {
+            usage: ["UNIFORM"], 
+            data: FieldRenderer.uniformsStruct.view([{
+                modelMatrix: aether.mat3.identity(),
+                orientation: aether.mat3.transpose(aether.mat3.lookTowards(aether.vec3.unit([0, 0, -1]))),
+                position: aether.vec3.of(0.0, 0.0, 4),
+                lightDirection: aether.vec3.unit(aether.vec3.of(-1, 1, 1)),
+                lightNarrowness: 1024,
+                contourValue: 0.05,
+                focalLength: Math.sqrt(5),
+                step: 1 / 16, 
+            }])
+        })
         this.sampler = device.sampler({
             label: "renderer-sampler",
             addressModeU: "clamp-to-edge",

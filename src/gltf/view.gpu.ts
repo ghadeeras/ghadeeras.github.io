@@ -58,7 +58,10 @@ export class GPUView implements View {
         this.gpuCanvas = device.canvas(canvasId, 4)
         this.depthTexture = this.gpuCanvas.depthTexture()
 
-        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize);
+        this.uniforms = device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"], 
+            size: uniformsStruct.paddedSize
+        });
         this.uniformsGroupLayout = device.device.createBindGroupLayout({
             entries: [{
                 binding: 0,
@@ -72,7 +75,7 @@ export class GPUView implements View {
             layout: this.uniformsGroupLayout,
             entries: [{
                 binding: 0,
-                resource: this.uniforms.gpuBuffer
+                resource: this.uniforms.gpuBuffer.wrapped
             }]
         });
 

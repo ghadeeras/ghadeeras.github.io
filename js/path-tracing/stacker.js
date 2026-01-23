@@ -22,7 +22,10 @@ export class Stacker {
             magFilter: "linear",
             minFilter: "linear",
         });
-        this.frameViews = this.device.buffer("frameViews", GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, uniformsStruct.paddedSize * 256, uniformsStruct.paddedSize);
+        this.frameViews = this.device.dataBuffer("frameViews", {
+            usage: ["STORAGE"],
+            size: uniformsStruct.paddedSize * 256
+        });
         this.groupLayout = this.device.device.createBindGroupLayout({
             label: "stacker-bind-group",
             entries: [{
@@ -107,7 +110,7 @@ export class Stacker {
     }
     colorAttachment(clearColor, colorAttachment = null) {
         this._layer = (this._layer + 1) % this.layersCount;
-        this.frameViews.copyAt(uniformsStruct.paddedSize * this.layer, this.uniforms, 0, uniformsStruct.paddedSize);
+        this.frameViews.copy(uniformsStruct.segment(this.layer)).from(this.uniforms, 0);
         return this.layersCount < 2 && colorAttachment !== null
             ? colorAttachment
             : this.texture.createView({

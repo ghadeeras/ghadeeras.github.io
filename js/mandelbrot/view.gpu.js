@@ -11,14 +11,17 @@ export class ViewGPU {
             xray: gpu.u32,
             crosshairs: gpu.u32
         });
-        this.uniforms = device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, this.uniformsStruct.view([{
-                center: center,
-                color: [5 / 4, Math.sqrt(2) / 2],
-                scale: scale,
-                intensity: 0.5,
-                xray: 0,
-                crosshairs: 1,
-            }]));
+        this.uniforms = device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"],
+            data: this.uniformsStruct.view([{
+                    center: center,
+                    color: [5 / 4, Math.sqrt(2) / 2],
+                    scale: scale,
+                    intensity: 0.5,
+                    xray: 0,
+                    crosshairs: 1,
+                }])
+        });
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.pipeline = device.device.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),

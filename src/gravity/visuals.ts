@@ -17,12 +17,15 @@ export class Visuals {
 
     constructor(readonly app: meta.App) {
         /* Buffers */
-        this.buffer = app.device.syncBuffer("uniforms", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, meta.visualsUniforms.view([{
-            mvpMatrix: this.mvpMatrix,
-            mvMatrix: this.modelMatrix,
-            mMatrix: this.modelMatrix,
-            radiusScale: 0.06
-        }]))
+        this.buffer = app.device.syncBuffer("uniforms", {
+            usage: ["UNIFORM"], 
+            data: meta.visualsUniforms.view([{
+                mvpMatrix: this.mvpMatrix,
+                mvMatrix: this.modelMatrix,
+                mMatrix: this.modelMatrix,
+                radiusScale: 0.06
+            }])
+        })
 
         /* Bind Groups */
         this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", { entries: {

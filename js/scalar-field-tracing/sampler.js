@@ -17,12 +17,15 @@ export class FieldSampler {
             },
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
         });
-        this.uniformsBuffer = device.syncBuffer("uniforms-buffer", GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, FieldSampler.uniformsStruct.view([{
-                matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
-                displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
-                scale: Math.SQRT1_2,
-                depth: 5
-            }]));
+        this.uniformsBuffer = device.syncBuffer("uniforms-buffer", {
+            usage: ["UNIFORM"],
+            data: FieldSampler.uniformsStruct.view([{
+                    matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
+                    displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
+                    scale: Math.SQRT1_2,
+                    depth: 5
+                }])
+        });
         this.bindGroup = device.wrapped.createBindGroup({
             layout: fieldComputeBidGroupLayout,
             entries: [{

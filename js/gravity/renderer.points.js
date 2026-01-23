@@ -75,8 +75,8 @@ export class Renderer {
     draw(pass, universe) {
         pass.setPipeline(this.pipeline);
         pass.setBindGroup(0, this.visuals.bindGroup.wrapped);
-        pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.buffer);
-        pass.setVertexBuffer(1, universe.currentState.buffer);
+        pass.setVertexBuffer(0, universe.bodyDescriptionsBuffer.wrapped);
+        pass.setVertexBuffer(1, universe.currentState.wrapped);
         pass.draw(universe.bodiesCount);
     }
 }
