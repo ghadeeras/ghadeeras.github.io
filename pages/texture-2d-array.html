@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Texture 3D</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js"
+              }
+            }
+        </script>          
+        <script type="module">
+            import * as Texture3D from "../js/texture-2d-array/toy.js"
+            import init from "../js/initializer.js"
+            init(Texture3D);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+            </div>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
+            </div>
+        </div>
+        <div class="tiles">
+            <div style="width: 96.875%; height: 96.875%;">
+                <canvas id="canvas" style="cursor: all-scroll; width: 100%; height: 100%;">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+            </div>
+        </div>
+    </body>
+</html>
