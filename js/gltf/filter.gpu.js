@@ -56,7 +56,7 @@ export class NormalsFilter {
         return this.normalsTexture.createView().colorAttachment({ r: 0.0, g: 0.0, b: 1.0, a: 256.0 });
     }
     resize(width, height) {
-        this.normalsTexture.resize({ width, height });
+        this.normalsTexture.size = { width, height };
         this.group = this.normalsTexture.device.wrapped.createBindGroup({
             layout: this.groupLayout,
             entries: [{

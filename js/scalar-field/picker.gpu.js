@@ -10,11 +10,12 @@ export class GPUPicker {
             mvpMat: gpu.mat4x4
         });
         this.device = canvas.device;
-        this.uniforms = this.device.dataBuffer("uniforms", {
+        this.uniforms = this.device.dataBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             size: this.uniformsStruct.paddedSize
         });
-        this.pickDestination = this.device.readBuffer("pickDestination", 16);
+        this.pickDestination = this.device.readBuffer(16, "pickDestination");
         this.colorTexture = this.device.texture({
             format: "rgba32float",
             size: canvas.size,
@@ -44,7 +45,7 @@ export class GPUPicker {
     }
     async pick(matModelViewProjection, x, y) {
         this.uniforms.set().fromData(this.uniformsStruct.members.mvpMat.view([matModelViewProjection]));
-        this.device.enqueueCommand("pick", encoder => {
+        this.device.enqueueCommands("pick", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()
@@ -57,7 +58,7 @@ export class GPUPicker {
                 pass.draw(vertices.size / GPUView.vertex.struct.stride);
             });
             encoder.encoder.copyTextureToBuffer({
-                texture: this.colorTexture.texture,
+                texture: this.colorTexture.wrapped,
                 origin: {
                     x: Math.round(this.colorTexture.size.width * (x + 1) / 2),
                     y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2),
@@ -74,8 +75,7 @@ export class GPUPicker {
         return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1]);
     }
     resize() {
-        this.colorTexture.resize(this.canvas.size);
-        this.depthTexture.resize(this.canvas.size);
+        this.depthTexture.size = this.colorTexture.size = this.canvas.size;
     }
 }
 export async function picker(canvas, vertices) {

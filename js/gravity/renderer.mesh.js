@@ -32,7 +32,7 @@ export class Renderer {
     }
     resize() {
         this.canvas.resize();
-        this.depthTexture.resize(this.canvas.size);
+        this.depthTexture.size = this.canvas.size;
         this.visuals.aspectRatio = this.canvas.element.width / this.canvas.element.height;
     }
     render(universe) {
@@ -40,7 +40,7 @@ export class Renderer {
             colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
             depthStencilAttachment: this.depthTexture.createView().depthAttachment()
         };
-        this.app.device.enqueueCommand("render", encoder => {
+        this.app.device.enqueueCommands("render", encoder => {
             encoder.renderPass(descriptor, pass => {
                 pass.setPipeline(this.pipeline);
                 pass.setBindGroup(0, this.visuals.bindGroup.wrapped);

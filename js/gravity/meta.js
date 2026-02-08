@@ -25,42 +25,42 @@ export const bodyDescriptionAsVertex = gpu.vertex({
 export const bodyPosition = bodyState.asVertex(['position']);
 export async function appDefinition(device, workgroupSize, workgroupSizeX, workgroupSizeY) {
     const groupLayouts = device.groupLayouts({
-        sampledTexture: { entries: {
-                textureSampler: { binding: 0, visibility: ["FRAGMENT"], sampler: { type: "non-filtering" } },
-                baseTexture: { binding: 1, visibility: ["FRAGMENT"], texture: { sampleType: "float" } },
-            } },
-        filter1D: { entries: {
-                weights: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } }
-            } },
-        filter1DIO: { entries: {
-                direction: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "uniform" } },
-                source: { binding: 1, visibility: ["COMPUTE"], texture: { sampleType: "float" } },
-                target: { binding: 2, visibility: ["COMPUTE"], storageTexture: { format: "rgba16float" } },
-            } },
-        universe: { entries: {
-                universeDesc: { binding: 0, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } },
-                currentState: { binding: 1, visibility: ["COMPUTE"], buffer: { type: "read-only-storage" } },
-                nextState: { binding: 2, visibility: ["COMPUTE"], buffer: { type: "storage" } },
-                uniforms: { binding: 3, visibility: ["COMPUTE"], buffer: { type: "uniform" } },
-            } },
-        visuals: { entries: {
-                uniforms: { binding: 0, visibility: ["VERTEX"], buffer: { type: "uniform" } }
-            } }
+        sampledTexture: {
+            textureSampler: gpu.sampler("non-filtering").asEntry(0, "FRAGMENT"),
+            baseTexture: gpu.texture_2d("float").asEntry(1, "FRAGMENT"),
+        },
+        filter1D: {
+            weights: gpu.storage("read", gpu.f32).asEntry(0, "COMPUTE")
+        },
+        filter1DIO: {
+            direction: gpu.uniform(gpu.f32).asEntry(0, "COMPUTE"),
+            source: gpu.texture_2d("float").asEntry(1, "COMPUTE"),
+            target: gpu.texture_storage_2d("rgba16float").asEntry(2, "COMPUTE"),
+        },
+        universe: {
+            universeDesc: gpu.storage("read", bodyDescription).asEntry(0, "COMPUTE"),
+            currentState: gpu.storage("read", bodyState).asEntry(1, "COMPUTE"),
+            nextState: gpu.storage("write", bodyState).asEntry(2, "COMPUTE"),
+            uniforms: gpu.uniform(physicsUniforms).asEntry(3, "COMPUTE"),
+        },
+        visuals: {
+            uniforms: gpu.uniform(visualsUniforms).asEntry(0, "VERTEX")
+        }
     });
     const pipelineLayouts = device.pipelineLayouts({
-        texturePasting: { bindGroupLayouts: {
-                group: groupLayouts.sampledTexture.asEntry(0)
-            } },
-        filtering: { bindGroupLayouts: {
-                filter: groupLayouts.filter1D.asEntry(0),
-                io: groupLayouts.filter1DIO.asEntry(1)
-            } },
-        physics: { bindGroupLayouts: {
-                universe: groupLayouts.universe.asEntry(0)
-            } },
-        renderer: { bindGroupLayouts: {
-                visuals: groupLayouts.visuals.asEntry(0)
-            } }
+        texturePasting: {
+            group: groupLayouts.sampledTexture.asEntry(0)
+        },
+        filtering: {
+            filter: groupLayouts.filter1D.asEntry(0),
+            io: groupLayouts.filter1DIO.asEntry(1)
+        },
+        physics: {
+            universe: groupLayouts.universe.asEntry(0)
+        },
+        renderer: {
+            visuals: groupLayouts.visuals.asEntry(0)
+        }
     });
     return {
         device,

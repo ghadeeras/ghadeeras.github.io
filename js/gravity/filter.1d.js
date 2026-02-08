@@ -5,21 +5,26 @@ export class Filter1D {
         this.app = app;
         this.weights = weights;
         this.workgroupSize = workgroupSize;
-        this.pipeline = app.layout.pipelineLayouts.filtering.computeInstance(app.shaders.bloom, "c_main");
-        this.horizontal = app.device.dataBuffer(`ioGroup0.direction`, {
-            usage: ["UNIFORM"],
-            data: gpu.u32.view([0])
+        this.pipeline = app.layout.pipelineLayouts.filtering.computePipeline(app.shaders.bloom, "c_main");
+        const buffers = app.device.dataBuffers({
+            horizontal: {
+                usage: ["UNIFORM"],
+                data: gpu.u32.view([0])
+            },
+            vertical: {
+                usage: ["UNIFORM"],
+                data: gpu.u32.view([1])
+            },
+            weights: {
+                usage: ["STORAGE"],
+                data: gpu.f32.view(this.weights)
+            }
         });
-        this.vertical = app.device.dataBuffer(`ioGroup1.direction`, {
-            usage: ["UNIFORM"],
-            data: gpu.u32.view([1])
-        });
-        this.filterGroup = app.layout.groupLayouts.filter1D.instance(`filterWeightsGroup`, { entries: {
-                weights: app.device.dataBuffer(`filterWeightsBuffer`, {
-                    usage: ["STORAGE"],
-                    data: gpu.f32.view(this.weights)
-                })
-            } });
+        this.horizontal = buffers.horizontal;
+        this.vertical = buffers.vertical;
+        this.filterGroup = app.layout.groupLayouts.filter1D.bindGroup({
+            weights: buffers.weights
+        }, "filterWeightsGroup");
     }
     forTexture(texture) {
         const device = this.app.device;
@@ -27,16 +32,18 @@ export class Filter1D {
             ...texture.descriptor,
             label: `${texture.descriptor.label}_temp`
         });
-        const ioGroup1 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup1`, { entries: {
+        const { ioGroup1, ioGroup2 } = this.app.layout.groupLayouts.filter1DIO.bindGroups({
+            ioGroup1: {
                 direction: this.horizontal,
                 source: texture.createView(),
                 target: temp.createView()
-            } });
-        const ioGroup2 = this.app.layout.groupLayouts.filter1DIO.instance(`${texture.descriptor.label}_ioGroup2`, { entries: {
+            },
+            ioGroup2: {
                 direction: this.vertical,
                 source: temp.createView(),
                 target: texture.createView()
-            } });
+            }
+        });
         const wgCountX = Math.ceil(texture.size.width / this.workgroupSize[0]);
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1]);
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`);

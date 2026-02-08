@@ -5,11 +5,13 @@ export class Universe {
         const initialStateView = meta.bodyState.view(initialState);
         const device = app.device;
         /* Buffers */
-        this.bodyDescriptionsBuffer = device.dataBuffer("bodyDescriptions", {
+        this.bodyDescriptionsBuffer = device.dataBuffer({
+            label: "bodyDescriptions",
             usage: ["VERTEX", "STORAGE"],
             data: meta.bodyDescription.view(bodyDescriptions)
         });
-        this.uniformsBuffer = device.syncBuffer("uniforms", {
+        this.uniformsBuffer = device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             data: meta.physicsUniforms.view([{
                     bodyFluffiness: 1.0 / 0.1,
@@ -17,25 +19,27 @@ export class Universe {
                     dT: 0.0001
                 }])
         });
-        this.buffers = [
-            device.dataBuffer("state0", { usage: ["VERTEX", "STORAGE"], data: initialStateView }),
-            device.dataBuffer("state1", { usage: ["VERTEX", "STORAGE"], size: initialStateView.byteLength }),
-        ];
+        const buffers = device.dataBuffers({
+            state0: { usage: ["VERTEX", "STORAGE"], data: initialStateView },
+            state1: { usage: ["VERTEX", "STORAGE"], size: initialStateView.byteLength }
+        });
+        this.buffers = [buffers.state0, buffers.state1];
         /* Bind Groups */
-        this.bindGroups = [
-            app.layout.groupLayouts.universe.instance("universeGroup0", { entries: {
-                    universeDesc: this.bodyDescriptionsBuffer,
-                    currentState: this.buffers[0],
-                    nextState: this.buffers[1],
-                    uniforms: this.uniformsBuffer,
-                } }),
-            app.layout.groupLayouts.universe.instance("universeGroup1", { entries: {
-                    universeDesc: this.bodyDescriptionsBuffer,
-                    currentState: this.buffers[1],
-                    nextState: this.buffers[0],
-                    uniforms: this.uniformsBuffer,
-                } }),
-        ];
+        const bindGroups = app.layout.groupLayouts.universe.bindGroups({
+            universeGroup0: {
+                universeDesc: this.bodyDescriptionsBuffer,
+                currentState: this.buffers[0],
+                nextState: this.buffers[1],
+                uniforms: this.uniformsBuffer,
+            },
+            universeGroup1: {
+                universeDesc: this.bodyDescriptionsBuffer,
+                currentState: this.buffers[1],
+                nextState: this.buffers[0],
+                uniforms: this.uniformsBuffer,
+            }
+        });
+        this.bindGroups = [bindGroups.universeGroup0, bindGroups.universeGroup1];
         this.currentBuffer = 0;
     }
     next() {

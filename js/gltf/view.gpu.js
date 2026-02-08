@@ -23,7 +23,8 @@ export class GPUView {
         this.perspective = gltf.graph.defaultPerspective();
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
-        this.uniforms = device.syncBuffer("uniforms", {
+        this.uniforms = device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             size: uniformsStruct.paddedSize
         });
@@ -129,11 +130,11 @@ export class GPUView {
     }
     resize() {
         this.gpuCanvas.resize();
-        this.depthTexture.resize(this.gpuCanvas.size);
+        this.depthTexture.size = this.gpuCanvas.size;
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
     }
     draw() {
-        this.device.enqueueCommand("render", encoder => {
+        this.device.enqueueCommands("render", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)

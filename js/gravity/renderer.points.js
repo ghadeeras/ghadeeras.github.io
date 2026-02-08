@@ -52,7 +52,7 @@ export class Renderer {
     }
     resize() {
         this.canvas.resize();
-        this.texture.resize(this.canvas.size);
+        this.texture.size = this.canvas.size;
         this.filtering.destroy();
         this.filtering = this.filter.forTexture(this.texture);
         this.baseTextureRenderer = this.baseTexture.rendererFor(this.texture);
@@ -65,7 +65,7 @@ export class Renderer {
         const descriptor2 = {
             colorAttachments: [this.texture.createView().colorAttachment()],
         };
-        this.app.device.enqueueCommand("render", encoder => {
+        this.app.device.enqueueCommands("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe));
             this.filtering.apply(encoder, 4);
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe));

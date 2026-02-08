@@ -38,7 +38,8 @@ export class Stacker {
             minFilter: "linear",
         })
 
-        this.frameViews =  this.device.dataBuffer("frameViews", {
+        this.frameViews =  this.device.dataBuffer({
+            label: "frameViews",
             usage: ["STORAGE"], 
             size: uniformsStruct.paddedSize * 256
         })

@@ -23,14 +23,18 @@ export class GPUView {
         this._lightPosition = [2, 2, 2, 1];
         this._focalLength = 2;
         this._aspectRatio = 1;
-        this.uniforms = device.syncBuffer("uniforms", {
+        this._size = 0;
+        this.uniforms = device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             size: this.uniformsStruct.paddedSize
         });
-        this.vertices = device.dataBuffer("vertices", {
+        this.vertices = device.dataBuffer({
+            label: "vertices",
             usage: ["VERTEX"],
             size: GPUView.vertex.struct.stride
         });
+        this._size = this.vertices.size / GPUView.vertex.struct.stride;
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
         this.pipeline = device.device.createRenderPipeline({
@@ -60,10 +64,10 @@ export class GPUView {
         this._aspectRatio = this.gpuCanvas.element.width / this.gpuCanvas.element.height;
         this.matProjection = projection.matrix(this._focalLength, this._aspectRatio);
         this.gpuCanvas.resize();
-        this.depthTexture.resize(this.gpuCanvas.size);
+        this.depthTexture.size = this.gpuCanvas.size;
     }
     render() {
-        this.device.enqueueCommand("render", encoder => {
+        this.device.enqueueCommands("render", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()
@@ -72,7 +76,7 @@ export class GPUView {
                 pass.setPipeline(this.pipeline);
                 pass.setVertexBuffer(0, this.vertices.wrapped);
                 pass.setBindGroup(0, this.uniformsGroup);
-                pass.draw(this.vertices.size / GPUView.vertex.struct.stride);
+                pass.draw(this._size);
             });
         });
     }
@@ -90,6 +94,7 @@ export class GPUView {
     }
     setMesh(_primitives, vertices) {
         this.vertices.setData(gpu.dataView(vertices));
+        this._size = vertices.length / 6;
     }
     get canvas() {
         return this.gpuCanvas.element;

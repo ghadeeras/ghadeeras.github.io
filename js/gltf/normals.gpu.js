@@ -17,7 +17,8 @@ export class NormalsRenderer {
         this._modelMatrix = aether.mat4.identity();
         this.perspective = gltf.graph.defaultPerspective();
         this.device = shaderModule.device;
-        this.uniforms = this.device.syncBuffer("uniforms", {
+        this.uniforms = this.device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             size: uniformsStruct.paddedSize
         });
@@ -102,7 +103,7 @@ export class NormalsRenderer {
         });
     }
     resize(width, height) {
-        this.depthTexture.resize({ width, height });
+        this.depthTexture.size = { width, height };
         this.projectionMatrix = this.perspective.camera.matrix(width / height, this.focalLength);
     }
     render(encoder, attachment) {

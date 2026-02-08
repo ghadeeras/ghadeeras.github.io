@@ -131,28 +131,32 @@ export class Tracer {
                 aspectRatio: width / height,
                 samplesPerPixel: this._samplesPerPixel,
             }]);
-        return this.canvas.device.dataBuffer("uniforms", {
+        return this.canvas.device.dataBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             data: dataView
         });
     }
     createMaterialsBuffer() {
         const dataView = gpu.f32.x4.view(this.scene.materials);
-        return this.device.dataBuffer("materials", {
+        return this.device.dataBuffer({
+            label: "materials",
             usage: ["STORAGE"],
             data: dataView
         });
     }
     createBoxesBuffer() {
         const dataView = boxStruct.view(this.scene.boxes);
-        return this.device.dataBuffer("boxes", {
+        return this.device.dataBuffer({
+            label: "boxes",
             usage: ["STORAGE"],
             data: dataView
         });
     }
     createGridBuffer() {
         const dataView = cellStruct.view(this.scene.grid);
-        return this.device.dataBuffer("grid", {
+        return this.device.dataBuffer({
+            label: "grid",
             usage: ["STORAGE"],
             data: dataView
         });
@@ -176,14 +180,16 @@ export class Tracer {
                     }]
             });
         }
-        return this.device.dataBuffer("importantDirections", {
+        return this.device.dataBuffer({
+            label: "importantDirections",
             usage: ["STORAGE"],
             data: dataView
         });
     }
     createClockBuffer() {
         const dataView = gpu.u32.view([0]);
-        return this.device.dataBuffer("clock", {
+        return this.device.dataBuffer({
+            label: "clock",
             usage: ["STORAGE"],
             data: dataView
         });

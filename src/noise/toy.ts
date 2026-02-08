@@ -52,7 +52,7 @@ async function doInit() {
     }
 
     const draw = () => {
-        device.enqueueCommand("render", encoding => {
+        device.enqueueCommands("render", encoding => {
             encoding.renderPass({ colorAttachments: [canvas.attachment({r: 1, g: 1, b: 1, a: 1})] }, pass => {
                 pass.setBindGroup(0, bindGroup)
                 pass.setPipeline(pipeline)
@@ -90,7 +90,8 @@ function createUniformsBuffer(device: gpu.Device) {
         samplesPerPixel: 1,
     }])
 
-    return device.dataBuffer("uniforms", {
+    return device.dataBuffer({
+        label: "uniforms",
         usage: ["UNIFORM"],
         data: dataView
     })
@@ -98,7 +99,8 @@ function createUniformsBuffer(device: gpu.Device) {
 
 function createClockBuffer(device: gpu.Device) {
     const dataView = gpu.u32.view([0])
-    return device.dataBuffer("clock", {
+    return device.dataBuffer({
+        label: "clock",
         usage: ["STORAGE"], 
         data: dataView
     })

@@ -56,7 +56,8 @@ class GPUAdapter {
     }
     matricesBuffer(matrices) {
         const dataView = gltfMatricesStruct.view(matrices);
-        const buffer = this.device.dataBuffer("matrices", {
+        const buffer = this.device.dataBuffer({
+            label: "matrices",
             usage: ["UNIFORM"],
             data: dataView
         });
@@ -73,13 +74,15 @@ class GPUAdapter {
         return new MatricesResource(group, buffer);
     }
     vertexBuffer(dataView, stride) {
-        return new VertexBuffer(this.device.dataBuffer("vertex", {
+        return new VertexBuffer(this.device.dataBuffer({
+            label: "vertex",
             usage: ["VERTEX"],
             data: dataView
         }), stride);
     }
     indexBuffer(dataView, stride) {
-        return this.device.dataBuffer("index", {
+        return this.device.dataBuffer({
+            label: "index",
             usage: ["INDEX", "VERTEX"],
             data: this.adapt(dataView, stride)
         });

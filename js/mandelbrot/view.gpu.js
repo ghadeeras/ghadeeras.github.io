@@ -11,7 +11,8 @@ export class ViewGPU {
             xray: gpu.u32,
             crosshairs: gpu.u32
         });
-        this.uniforms = device.syncBuffer("uniforms", {
+        this.uniforms = device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             data: this.uniformsStruct.view([{
                     center: center,
@@ -95,7 +96,7 @@ export class ViewGPU {
         return this.gpuCanvas.resize();
     }
     render() {
-        this.device.enqueueCommand("render", encoder => {
+        this.device.enqueueCommands("render", encoder => {
             const passDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
             };

@@ -9,7 +9,8 @@ export class Visuals {
         this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
         this._modelMatrix = aether.mat4.identity();
         /* Buffers */
-        this.buffer = app.device.syncBuffer("uniforms", {
+        this.buffer = app.device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"],
             data: meta.visualsUniforms.view([{
                     mvpMatrix: this.mvpMatrix,
@@ -19,9 +20,9 @@ export class Visuals {
                 }])
         });
         /* Bind Groups */
-        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", { entries: {
-                uniforms: this.buffer
-            } });
+        this.bindGroup = app.layout.groupLayouts.visuals.bindGroup({
+            uniforms: this.buffer
+        }, "visualsGroup");
     }
     get zoom() {
         return this._zoom;

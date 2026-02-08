@@ -26,11 +26,12 @@ export class GPUPicker implements Picker {
         private vertices: () => gpu.DataBuffer
     ) {
         this.device = canvas.device
-        this.uniforms = this.device.dataBuffer("uniforms", {
+        this.uniforms = this.device.dataBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"], 
             size: this.uniformsStruct.paddedSize
         });
-        this.pickDestination = this.device.readBuffer("pickDestination", 16)
+        this.pickDestination = this.device.readBuffer(16, "pickDestination")
 
         this.colorTexture = this.device.texture({
             format: "rgba32float",
@@ -65,7 +66,7 @@ export class GPUPicker implements Picker {
     async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
         this.uniforms.set().fromData(this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
 
-        this.device.enqueueCommand("pick", encoder => {
+        this.device.enqueueCommands("pick", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.colorTexture.createView().colorAttachment({ r: 0, g: 0, b: 0, a: 0 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()
@@ -79,7 +80,7 @@ export class GPUPicker implements Picker {
             })
             encoder.encoder.copyTextureToBuffer(
                 {
-                    texture: this.colorTexture.texture,
+                    texture: this.colorTexture.wrapped,
                     origin : { 
                         x: Math.round(this.colorTexture.size.width * (x + 1) / 2), 
                         y: Math.round((this.colorTexture.size.height ?? 1) * (1 - y) / 2),
@@ -99,8 +100,7 @@ export class GPUPicker implements Picker {
     }
 
     resize(): void {
-        this.colorTexture.resize(this.canvas.size)
-        this.depthTexture.resize(this.canvas.size)
+        this.depthTexture.size = this.colorTexture.size = this.canvas.size
     }
 
 }

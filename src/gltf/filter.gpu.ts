@@ -68,7 +68,7 @@ export class NormalsFilter {
     }
 
     resize(width: number, height: number): void {
-        this.normalsTexture.resize({ width, height })
+        this.normalsTexture.size = { width, height }
         this.group = this.normalsTexture.device.wrapped.createBindGroup({
             layout: this.groupLayout, 
             entries: [{

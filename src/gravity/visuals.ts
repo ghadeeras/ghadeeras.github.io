@@ -17,7 +17,8 @@ export class Visuals {
 
     constructor(readonly app: meta.App) {
         /* Buffers */
-        this.buffer = app.device.syncBuffer("uniforms", {
+        this.buffer = app.device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"], 
             data: meta.visualsUniforms.view([{
                 mvpMatrix: this.mvpMatrix,
@@ -28,9 +29,9 @@ export class Visuals {
         })
 
         /* Bind Groups */
-        this.bindGroup = app.layout.groupLayouts.visuals.instance("visualsGroup", { entries: {
+        this.bindGroup = app.layout.groupLayouts.visuals.bindGroup({ 
             uniforms: this.buffer
-        }})
+        }, "visualsGroup")
     }
 
     get zoom() {

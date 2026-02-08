@@ -26,7 +26,8 @@ export class ViewGPU implements View {
         center: aether.Vec<2>,
         scale: number
     ) {
-        this.uniforms = device.syncBuffer("uniforms", {
+        this.uniforms = device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"], 
             data: this.uniformsStruct.view([{
                 center: center,
@@ -131,7 +132,7 @@ export class ViewGPU implements View {
     }
 
     render() {
-        this.device.enqueueCommand("render", encoder => {
+        this.device.enqueueCommands("render", encoder => {
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 })]
             };
