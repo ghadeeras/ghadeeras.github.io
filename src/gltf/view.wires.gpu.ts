@@ -76,7 +76,7 @@ export class GPUView implements View {
     }
 
     draw() {
-        this.gpuCanvas.device.enqueueCommand("Draw", encoder => {
+        this.gpuCanvas.device.enqueueCommands("Draw", encoder => {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment())
             this.normalsFilter.render(encoder, this.gpuCanvas.attachment({r: 0, g: 0, b: 0, a: 0}))    
         })

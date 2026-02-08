@@ -34,7 +34,8 @@ export class FieldSampler {
             },
             usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
         })
-        this.uniformsBuffer = device.syncBuffer("uniforms-buffer", {
+        this.uniformsBuffer = device.syncBuffer({
+            label: "uniforms-buffer",
             usage: ["UNIFORM"], 
             data: FieldSampler.uniformsStruct.view([{
                 matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
@@ -85,7 +86,7 @@ export class FieldSampler {
 
     sample() {
         const device = this.shader.device
-        device.enqueueCommand("field-sampler-command", encoder => {
+        device.enqueueCommands("field-sampler-command", encoder => {
             encoder.computePass(pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.bindGroup)

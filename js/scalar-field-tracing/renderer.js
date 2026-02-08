@@ -42,7 +42,8 @@ export class FieldRenderer {
                 topology: "triangle-list"
             },
         });
-        this.uniforms = device.syncBuffer("renderer-uniforms", {
+        this.uniforms = device.syncBuffer({
+            label: "renderer-uniforms",
             usage: ["UNIFORM"],
             data: FieldRenderer.uniformsStruct.view([{
                     modelMatrix: aether.mat3.identity(),
@@ -151,7 +152,7 @@ export class FieldRenderer {
     }
     render(attachment) {
         const device = this.shader.device;
-        device.enqueueCommand("renderer-command", encoder => {
+        device.enqueueCommands("renderer-command", encoder => {
             encoder.renderPass({
                 colorAttachments: [attachment]
             }, pass => {

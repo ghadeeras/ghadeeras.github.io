@@ -35,7 +35,8 @@ export class NormalsRenderer {
         private depthTexture: gpu.Texture,
     ) {
         this.device = shaderModule.device;
-        this.uniforms = this.device.syncBuffer("uniforms", {
+        this.uniforms = this.device.syncBuffer({
+            label: "uniforms",
             usage: ["UNIFORM"], 
             size: uniformsStruct.paddedSize
         });
@@ -140,7 +141,7 @@ export class NormalsRenderer {
     }
 
     resize(width: number, height: number): void {
-        this.depthTexture.resize({ width, height })
+        this.depthTexture.size = { width, height }
         this.projectionMatrix = this.perspective.camera.matrix(width / height, this.focalLength)
     }
 

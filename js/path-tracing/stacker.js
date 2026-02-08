@@ -22,7 +22,8 @@ export class Stacker {
             magFilter: "linear",
             minFilter: "linear",
         });
-        this.frameViews = this.device.dataBuffer("frameViews", {
+        this.frameViews = this.device.dataBuffer({
+            label: "frameViews",
             usage: ["STORAGE"],
             size: uniformsStruct.paddedSize * 256
         });

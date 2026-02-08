@@ -4,6 +4,7 @@ import * as renderer from "./gltf/gltf.renderer.js";
 import { gpu } from "lumen";
 import { Resource } from "lumen";
 import { failure } from "./utils.js";
+import { label } from "node_modules/lumen/lib/gpu/utils.js";
 
 export const gltfMatricesStruct = gpu.struct({
     matrix: gpu.mat4x4,
@@ -83,7 +84,8 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
 
     matricesBuffer(matrices: renderer.Matrix[]): MatricesResource {
         const dataView = gltfMatricesStruct.view(matrices)
-        const buffer = this.device.dataBuffer("matrices", {
+        const buffer = this.device.dataBuffer({
+            label: "matrices",
             usage: ["UNIFORM"],
             data: dataView
         });
@@ -101,14 +103,16 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
     }
 
     vertexBuffer(dataView: DataView, stride: number): VertexBuffer {
-        return new VertexBuffer(this.device.dataBuffer("vertex", {
+        return new VertexBuffer(this.device.dataBuffer({
+            label: "vertex",
             usage: ["VERTEX"],
             data: dataView
         }), stride)
     }
 
     indexBuffer(dataView: DataView, stride: number): gpu.DataBuffer {
-        return this.device.dataBuffer("index", {
+        return this.device.dataBuffer({
+            label: "index",
             usage: ["INDEX", "VERTEX"], 
             data: this.adapt(dataView, stride)
         })

@@ -221,7 +221,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 : this.wasAnimating 
                     ? 1 
                     : this.stacker.layersCount + 1
-        device.enqueueCommand("render", encoder => {
+        device.enqueueCommands("render", encoder => {
             const [colorsAttachment, normalsAttachment] = this.denoiser.attachments(clearColor, clearColor)
             if (this.stacker.layersCount > 64 || !this._denoising) {
                 this.tracer.render(encoder, this.stacker.colorAttachment(clearColor), normalsAttachment)

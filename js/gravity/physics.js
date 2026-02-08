@@ -6,7 +6,7 @@ export class Physics {
     }
     apply(universe) {
         const workGroupsCount = Math.ceil(universe.bodiesCount / this.workgroupSize);
-        this.app.device.enqueueCommand("compute", encoder => {
+        this.app.device.enqueueCommands("compute", encoder => {
             encoder.computePass(pass => {
                 this.pipeline.addTo(pass, {
                     universe: universe.next()
