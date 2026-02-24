@@ -35,16 +35,16 @@
     "lib"
   ],
   "devDependencies": {
-    "@types/node": "^22.13.11",
+    "@types/node": "^24.0.0",
     "@types/chai": "^5.2.0",
     "@types/mocha": "^10.0.10",
     "@types/seedrandom": "^3.0.8",
-    "chai": "^5.2.0",
-    "mocha": "^11.1.0",
-    "nyc": "^17.1.0",
+    "chai": "^6.2.2",
+    "mocha": "^11.3.0",
+    "nyc": "^18.0.0",
     "seedrandom": "^3.0.5",
     "source-map-support": "^0.5.21",
-    "binaryen": "120.0.0",
-    "typescript": "5.8.2"
+    "binaryen": "^125.0.0",
+    "typescript": "5.9.3"
   }
 }
