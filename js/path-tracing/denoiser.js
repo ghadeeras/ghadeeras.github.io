@@ -15,7 +15,7 @@ export class Denoiser {
             size: size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
-        this.groupLayout = this.device.device.createBindGroupLayout({
+        this.groupLayout = this.device.wrapped.createBindGroupLayout({
             label: "denoiser-bind-group",
             entries: [{
                     binding: 0,
@@ -33,7 +33,7 @@ export class Denoiser {
                     }
                 }]
         });
-        this.pipeline = this.device.device.createRenderPipeline({
+        this.pipeline = this.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [
                 outputFormat
@@ -42,7 +42,7 @@ export class Denoiser {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: this.device.device.createPipelineLayout({
+            layout: this.device.wrapped.createPipelineLayout({
                 bindGroupLayouts: [this.groupLayout]
             })
         });
@@ -71,7 +71,7 @@ export class Denoiser {
         });
     }
     static async create(device, size, inputColorsFormat, inputNormalsFormat, outputFormat) {
-        return new Denoiser(await device.loadShaderModule("denoiser.wgsl"), size, inputColorsFormat, inputNormalsFormat, outputFormat);
+        return new Denoiser(await device.shaderModule({ path: "shaders/denoiser.wgsl" }), size, inputColorsFormat, inputNormalsFormat, outputFormat);
     }
 }
 //# sourceMappingURL=denoiser.js.map

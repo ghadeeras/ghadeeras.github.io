@@ -24,7 +24,7 @@ export class Renderer implements r.Renderer {
     }
 
     private createPipeline(shaderModule: gpu.ShaderModule): GPURenderPipeline {
-        return shaderModule.device.device.createRenderPipeline({
+        return shaderModule.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
                 meta.bodyDescriptionAsVertex.asBufferLayout('instance'),
                 meta.bodyPosition.asBufferLayout('instance'),

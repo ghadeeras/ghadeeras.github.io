@@ -22,7 +22,7 @@ export class NormalsRenderer {
             usage: ["UNIFORM"],
             size: uniformsStruct.paddedSize
         });
-        const uniformsGroupLayout = this.device.device.createBindGroupLayout({
+        const uniformsGroupLayout = this.device.wrapped.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -39,7 +39,7 @@ export class NormalsRenderer {
                 }]
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
-        this.pipelineLayout = this.device.device.createPipelineLayout({
+        this.pipelineLayout = this.device.wrapped.createPipelineLayout({
             bindGroupLayouts: [uniformsGroupLayout, this.rendererFactory.matricesGroupLayout]
         });
         this.fragmentState = this.shaderModule.fragmentState("f_main", ["rgba32float"]);
@@ -94,7 +94,7 @@ export class NormalsRenderer {
         return model;
     }
     primitivePipeline(vertexLayouts, primitiveState) {
-        return this.device.device.createRenderPipeline({
+        return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
             fragment: this.fragmentState,
             depthStencil: this.depthState,

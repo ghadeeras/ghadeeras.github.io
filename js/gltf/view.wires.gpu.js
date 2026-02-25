@@ -67,11 +67,13 @@ export class GPUView {
 export async function newViewFactory(canvasId) {
     const device = await gpu.Device.instance();
     const canvas = device.canvas(canvasId, 1);
-    const normalsShaderModule = await device.loadShaderModule("gltf-wires-normals.wgsl");
-    const filterShaderModule = await device.loadShaderModule("gltf-wires-filter.wgsl");
+    const modules = await device.shaderModules({
+        normalsShaderModule: { path: "shaders/gltf-wires-normals.wgsl" },
+        filterShaderModule: { path: "shaders/gltf-wires-filter.wgsl" }
+    });
     return () => {
-        const normalsRenderer = new NormalsRenderer(normalsShaderModule, canvas.depthTexture());
-        const normalsFilter = new NormalsFilter(filterShaderModule, canvas.size, canvas.format, normalsRenderer.uniforms.gpuBuffer);
+        const normalsRenderer = new NormalsRenderer(modules.normalsShaderModule, canvas.depthTexture());
+        const normalsFilter = new NormalsFilter(modules.filterShaderModule, canvas.size, canvas.format, normalsRenderer.uniforms.gpuBuffer);
         return new GPUView(normalsRenderer, normalsFilter, canvas);
     };
 }

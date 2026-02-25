@@ -41,7 +41,7 @@ export class ViewGPU implements View {
 
         this.gpuCanvas = device.canvas(canvasId, 4)
 
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             primitive: {
@@ -149,7 +149,10 @@ export class ViewGPU implements View {
 export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl")
-    const shaderModule = await device.inMemoryShaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code))
+    const shaderModule = await device.shaderModule( { 
+        code: gpu.renderingShaders.fullScreenPass(code), 
+        label: "mandelbrot" 
+    })
     return new ViewGPU(device, canvasId, shaderModule, center, scale)
 }
 

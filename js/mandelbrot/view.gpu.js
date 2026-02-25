@@ -24,7 +24,7 @@ export class ViewGPU {
                 }])
         });
         this.gpuCanvas = device.canvas(canvasId, 4);
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             primitive: {
@@ -111,7 +111,10 @@ export class ViewGPU {
 export async function viewGPU(canvasId, center, scale) {
     const device = await gpu.Device.instance();
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl");
-    const shaderModule = await device.inMemoryShaderModule("mandelbrot", gpu.renderingShaders.fullScreenPass(code));
+    const shaderModule = await device.shaderModule({
+        code: gpu.renderingShaders.fullScreenPass(code),
+        label: "mandelbrot"
+    });
     return new ViewGPU(device, canvasId, shaderModule, center, scale);
 }
 export function required(value) {

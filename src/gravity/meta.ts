@@ -73,11 +73,16 @@ export async function appDefinition(device: gpu.Device, workgroupSize: number, w
             visuals: groupLayouts.visuals.asEntry(0)
         }
     })
+    const modules = await shaders(device, workgroupSize, workgroupSizeX, workgroupSizeY)
     return {
         device,
-        shaders: await shaders(device, workgroupSize, workgroupSizeX, workgroupSizeY), 
+        shaders: modules, 
         layout: {
             groupLayouts, pipelineLayouts
+        },
+        pipelines: {
+            filter1D: await pipelineLayouts.filtering.computePipeline({ module: modules.bloom }),
+            physics: await pipelineLayouts.physics.computePipeline({ module: modules.physics }),
         }
     }
 }
@@ -89,10 +94,10 @@ async function shaders(device: gpu.Device, workgroupSize: number, workgroupSizeX
         .replace(/\[\[workgroup_size_y\]\]/g, `${workgroupSizeY}`)
     return await device.shaderModules({
         baseTexture: { code: BaseTexture.shaderCode },
-        bloom: { path: "filter-1d.wgsl", templateFunction },
-        physics: { path: "gravity-compute.wgsl", templateFunction },
-        meshRenderer: { path: "gravity-render.wgsl", templateFunction },
-        pointsRenderer: { path: "gravity-render.points.wgsl", templateFunction },
+        bloom: { path: "shaders/filter-1d.wgsl", templateFunction },
+        physics: { path: "shaders/gravity-compute.wgsl", templateFunction },
+        meshRenderer: { path: "shaders/gravity-render.wgsl", templateFunction },
+        pointsRenderer: { path: "shaders/gravity-render.points.wgsl", templateFunction },
     })
 }
 

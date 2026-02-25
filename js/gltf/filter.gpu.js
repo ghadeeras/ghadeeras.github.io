@@ -9,7 +9,7 @@ export class NormalsFilter {
             size: size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
-        this.groupLayout = device.device.createBindGroupLayout({
+        this.groupLayout = device.wrapped.createBindGroupLayout({
             entries: [
                 {
                     binding: 0,
@@ -28,7 +28,7 @@ export class NormalsFilter {
                 }
             ]
         });
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [
                 outputFormat
@@ -37,7 +37,7 @@ export class NormalsFilter {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: device.device.createPipelineLayout({
+            layout: device.wrapped.createPipelineLayout({
                 bindGroupLayouts: [this.groupLayout]
             })
         });

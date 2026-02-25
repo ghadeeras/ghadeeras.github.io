@@ -37,7 +37,7 @@ export class VertexBuffer {
 }
 export class GPURendererFactory {
     constructor(device, matricesGroupIndex, attributeLocations, pipelineSupplier) {
-        this.adapter = new GPUAdapter(device, device.device.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
+        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
     }
     newInstance(model) {
         return new renderer.GLTFRenderer(model, this.adapter);
@@ -61,7 +61,7 @@ class GPUAdapter {
             usage: ["UNIFORM"],
             data: dataView
         });
-        const group = this.device.device.createBindGroup({
+        const group = this.device.wrapped.createBindGroup({
             layout: this.matricesGroupLayout,
             entries: [{
                     binding: 0,

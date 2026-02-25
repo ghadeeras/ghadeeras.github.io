@@ -55,7 +55,7 @@ export class GPURendererFactory {
     ) {
         this.adapter = new GPUAdapter(
             device, 
-            device.device.createBindGroupLayout(gltfMatrixGroupLayout()), 
+            device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), 
             matricesGroupIndex, 
             attributeLocations, 
             caching(pipelineSupplier)
@@ -89,7 +89,7 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
             usage: ["UNIFORM"],
             data: dataView
         });
-        const group = this.device.device.createBindGroup({
+        const group = this.device.wrapped.createBindGroup({
             layout: this.matricesGroupLayout,
             entries: [{
                 binding: 0,

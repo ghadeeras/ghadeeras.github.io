@@ -37,7 +37,7 @@ export class GPUView {
         this._size = this.vertices.size / GPUView.vertex.struct.stride;
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil: this.depthTexture.depthState(),
@@ -163,7 +163,7 @@ GPUView.vertex = gpu.vertex({
 });
 export async function newView(canvasId) {
     const device = await gpu.Device.instance();
-    const shaderModule = await device.loadShaderModule("generic.wgsl");
+    const shaderModule = await device.shaderModule({ path: "shaders/generic.wgsl" });
     return new GPUView(device, canvasId, shaderModule);
 }
 //# sourceMappingURL=view.gpu.js.map

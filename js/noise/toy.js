@@ -9,8 +9,8 @@ const uniformsStruct = gpu.struct({
 async function doInit() {
     const device = await gpuDevice();
     const canvas = device.canvas("canvas");
-    const shaderModule = await device.loadShaderModule("noise.wgsl");
-    const pipeline = device.device.createRenderPipeline({
+    const shaderModule = await device.shaderModule({ path: "shaders/noise.wgsl" });
+    const pipeline = device.wrapped.createRenderPipeline({
         vertex: shaderModule.vertexState("v_main", []),
         fragment: shaderModule.fragmentState("f_main", [
             canvas
