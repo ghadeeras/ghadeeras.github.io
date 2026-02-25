@@ -61,7 +61,7 @@ export class GPUView implements v.View {
         this.gpuCanvas = device.canvas(canvasId, 4)
         this.depthTexture = this.gpuCanvas.depthTexture()
 
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil : this.depthTexture.depthState(),
@@ -212,6 +212,6 @@ export class GPUView implements v.View {
 
 export async function newView(canvasId: string): Promise<v.View> {
     const device = await gpu.Device.instance()
-    const shaderModule = await device.loadShaderModule("generic.wgsl")
+    const shaderModule = await device.shaderModule({ path: "shaders/generic.wgsl" })
     return new GPUView(device, canvasId, shaderModule)
 }

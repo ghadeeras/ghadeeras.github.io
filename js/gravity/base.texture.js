@@ -2,7 +2,7 @@ import { gpu } from 'lumen';
 export class BaseTexture {
     constructor(app, target) {
         this.app = app;
-        this.pipeline = app.device.device.createRenderPipeline({
+        this.pipeline = app.device.wrapped.createRenderPipeline({
             layout: app.layout.pipelineLayouts.texturePasting.wrapped,
             vertex: app.shaders.baseTexture.vertexState("v_main", []),
             fragment: app.shaders.baseTexture.fragmentState("f_main", [target]),

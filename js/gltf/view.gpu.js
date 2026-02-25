@@ -28,7 +28,7 @@ export class GPUView {
             usage: ["UNIFORM"],
             size: uniformsStruct.paddedSize
         });
-        this.uniformsGroupLayout = device.device.createBindGroupLayout({
+        this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -45,7 +45,7 @@ export class GPUView {
                 }]
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
-        this.pipelineLayout = this.device.device.createPipelineLayout({
+        this.pipelineLayout = this.device.wrapped.createPipelineLayout({
             bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],
         });
         this.fragmentState = this.shaderModule.fragmentState("f_main", [this.gpuCanvas]);
@@ -117,7 +117,7 @@ export class GPUView {
     }
     primitivePipeline(vertexLayouts, primitiveState) {
         const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
-        return this.device.device.createRenderPipeline({
+        return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
             fragment: this.fragmentState,
             depthStencil: this.depthState,
@@ -157,7 +157,7 @@ export async function newViewFactory(canvasId) {
         throw new Error("Unsupported by choice");
     }
     const device = await gpu.Device.instance();
-    const shaderModule = await device.loadShaderModule("gltf.wgsl");
+    const shaderModule = await device.shaderModule({ path: "shaders/gltf.wgsl" });
     return () => new GPUView(device, shaderModule, canvasId);
 }
 //# sourceMappingURL=view.gpu.js.map

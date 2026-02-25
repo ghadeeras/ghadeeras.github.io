@@ -96,7 +96,7 @@ export class FieldSampler {
     }
 
     static async create(device: gpu.Device): Promise<FieldSampler> {
-        const shader = await device.loadShaderModule("field-sampler.wgsl")
+        const shader = await device.shaderModule({ path: "shaders/field-sampler.wgsl" })
         return new FieldSampler(shader)
     }
 

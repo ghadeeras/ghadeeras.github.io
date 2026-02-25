@@ -26,7 +26,7 @@ export class FieldRenderer {
     constructor(private shader: gpu.ShaderModule, private field: gpu.Texture, targetFormat: gpu.TextureFormatSource) {
         const device = shader.device
         
-        this.bindGroupLayout = device.device.createBindGroupLayout({
+        this.bindGroupLayout = device.wrapped.createBindGroupLayout({
             label: "renderer-group-layout",
             entries: [{
                 binding: 0,
@@ -49,11 +49,11 @@ export class FieldRenderer {
                 }
             }]
         })
-        const pipelineLayout = device.device.createPipelineLayout({
+        const pipelineLayout = device.wrapped.createPipelineLayout({
             label: "renderer-pipeline-layout",
             bindGroupLayouts: [this.bindGroupLayout]
         })
-        this.pipeline = device.device.createRenderPipeline({
+        this.pipeline = device.wrapped.createRenderPipeline({
             label: "renderer-pipeline",
             layout: pipelineLayout,
             vertex: shader.vertexState("v_main", []),
@@ -204,7 +204,7 @@ export class FieldRenderer {
 
     static async create(field: gpu.Texture, targetFormat: gpu.TextureFormatSource): Promise<FieldRenderer> {
         const shaderCode = await gear.fetchTextFile("/shaders/field-renderer.wgsl")
-        const shader = await field.device.inMemoryShaderModule("field-renderer", gpu.renderingShaders.fullScreenPass(shaderCode))
+        const shader = await field.device.shaderModule({ code: gpu.renderingShaders.fullScreenPass(shaderCode) })
         return new FieldRenderer(shader, field, targetFormat)
     }
 

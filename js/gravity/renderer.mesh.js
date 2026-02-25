@@ -12,7 +12,7 @@ export class Renderer {
         this.pipeline = this.createPipeline(app.shaders.meshRenderer);
     }
     createPipeline(shaderModule) {
-        return shaderModule.device.device.createRenderPipeline({
+        return shaderModule.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [
                 meta.bodyDescriptionAsVertex.asBufferLayout('instance'),
                 meta.bodyPosition.asBufferLayout('instance'),

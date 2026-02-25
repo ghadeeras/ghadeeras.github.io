@@ -7,7 +7,7 @@ export class Stacker {
         this.inputFormat = inputFormat;
         this.outputFormat = outputFormat;
         this.device = shaderModule.device;
-        this.maxLayersCount = size.depthOrArrayLayers ?? this.device.device.limits.maxTextureArrayLayers;
+        this.maxLayersCount = size.depthOrArrayLayers ?? this.device.wrapped.limits.maxTextureArrayLayers;
         this.texture = this.device.texture({
             format: inputFormat,
             size: {
@@ -27,7 +27,7 @@ export class Stacker {
             usage: ["STORAGE"],
             size: uniformsStruct.paddedSize * 256
         });
-        this.groupLayout = this.device.device.createBindGroupLayout({
+        this.groupLayout = this.device.wrapped.createBindGroupLayout({
             label: "stacker-bind-group",
             entries: [{
                     binding: 0,
@@ -58,7 +58,7 @@ export class Stacker {
                     }
                 }]
         });
-        this.pipeline = this.device.device.createRenderPipeline({
+        this.pipeline = this.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [
                 outputFormat
@@ -67,7 +67,7 @@ export class Stacker {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: this.device.device.createPipelineLayout({
+            layout: this.device.wrapped.createPipelineLayout({
                 bindGroupLayouts: [this.groupLayout]
             })
         });
@@ -128,7 +128,7 @@ export class Stacker {
         });
     }
     static async create(device, size, uniforms, normalsTexture, inputFormat, outputFormat) {
-        return new Stacker(await device.loadShaderModule("stacker.wgsl"), size, uniforms, normalsTexture, inputFormat, outputFormat);
+        return new Stacker(await device.shaderModule({ path: "shaders/stacker.wgsl" }), size, uniforms, normalsTexture, inputFormat, outputFormat);
     }
 }
 //# sourceMappingURL=stacker.js.map

@@ -44,7 +44,7 @@ export class Tracer {
         this._samplesPerPixel = 1;
         this._focalLength = Math.SQRT2;
         this.device = shaderModule.device;
-        this.pipeline = this.device.device.createRenderPipeline({
+        this.pipeline = this.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", []),
             fragment: shaderModule.fragmentState("f_main", [
                 colorFormat,
@@ -79,7 +79,7 @@ export class Tracer {
         });
     }
     static async create(device, canvas, scene, colorFormat, normalsFormat) {
-        return new Tracer(await device.loadShaderModule("path-tracing.wgsl"), canvas, scene, colorFormat, normalsFormat);
+        return new Tracer(await device.shaderModule({ path: "shaders/path-tracing.wgsl" }), canvas, scene, colorFormat, normalsFormat);
     }
     render(encoder, colorAttachment, normalsAttachment) {
         encoder.renderPass({ colorAttachments: [colorAttachment, normalsAttachment] }, pass => {

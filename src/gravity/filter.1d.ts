@@ -4,14 +4,12 @@ import * as gear from "gear"
 
 export class Filter1D {
 
-    private pipeline
     private filterGroup
 
     private horizontal: gpu.DataBuffer
     private vertical: gpu.DataBuffer
 
     constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number]) {
-        this.pipeline = app.layout.pipelineLayouts.filtering.computePipeline(app.shaders.bloom, "c_main")
         const buffers = app.device.dataBuffers({
             horizontal: {
                 usage: ["UNIFORM"], 
@@ -54,20 +52,23 @@ export class Filter1D {
         const wgCountX =  Math.ceil(texture.size.width / this.workgroupSize[0])
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1])
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`)
+        const passWith = (ioGroup: typeof ioGroup1) => this.app.pipelines.filter1D
+            .withGroups({ filter: this.filterGroup, io: ioGroup })
+            .dispatchWorkGroups(wgCountX, wgCountY)
+        const pass1 = passWith(ioGroup1)
+        const pass2 = passWith(ioGroup2)
         return new Filtering1D(
             (encoder, count = 1) => {
-                encoder.computePass(pass => {
-                    this.pipeline.addTo(pass, { filter: this.filterGroup })
+                encoder.computePass(passEncoder => {
                     for (let i = 0; i < count; i++) {
-                        this.pipeline.addGroupsTo(pass, { io: ioGroup1 })
-                        pass.dispatchWorkgroups(wgCountX, wgCountY)
-                        this.pipeline.addGroupsTo(pass, { io: ioGroup2 })
-                        pass.dispatchWorkgroups(wgCountX, wgCountY)
+                        pass1.inlineIn(passEncoder)
+                        pass2.inlineIn(passEncoder)
                     }
                 })
-                    },
+            },
             () => temp.destroy()
         )
+
     }
 
 }

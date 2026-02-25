@@ -63,7 +63,7 @@ export class GPUView implements View {
             usage: ["UNIFORM"], 
             size: uniformsStruct.paddedSize
         });
-        this.uniformsGroupLayout = device.device.createBindGroupLayout({
+        this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
             entries: [{
                 binding: 0,
                 visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -87,7 +87,7 @@ export class GPUView implements View {
             (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
         )
 
-        this.pipelineLayout = this.device.device.createPipelineLayout({
+        this.pipelineLayout = this.device.wrapped.createPipelineLayout({
             bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],
         });
 
@@ -177,7 +177,7 @@ export class GPUView implements View {
 
     private primitivePipeline(vertexLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState): GPURenderPipeline {
         const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
-        return this.device.device.createRenderPipeline({
+        return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
             fragment: this.fragmentState,
             depthStencil: this.depthState,
@@ -222,6 +222,6 @@ export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
         throw new Error("Unsupported by choice")
     }
     const device = await gpu.Device.instance()
-    const shaderModule = await device.loadShaderModule("gltf.wgsl")
+    const shaderModule = await device.shaderModule({ path: "shaders/gltf.wgsl" })
     return () => new GPUView(device, shaderModule, canvasId)
 }

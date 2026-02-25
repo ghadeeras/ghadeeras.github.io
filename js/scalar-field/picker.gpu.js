@@ -26,7 +26,7 @@ export class GPUPicker {
             size: canvas.size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT
         });
-        this.pipeline = this.device.device.createRenderPipeline({
+        this.pipeline = this.device.wrapped.createRenderPipeline({
             vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
             fragment: shaderModule.fragmentState("f_main", [this.colorTexture]),
             depthStencil: this.depthTexture.depthState(),
@@ -57,7 +57,7 @@ export class GPUPicker {
                 pass.setBindGroup(0, this.uniformsGroup);
                 pass.draw(vertices.size / GPUView.vertex.struct.stride);
             });
-            encoder.encoder.copyTextureToBuffer({
+            encoder.wrapped.copyTextureToBuffer({
                 texture: this.colorTexture.wrapped,
                 origin: {
                     x: Math.round(this.colorTexture.size.width * (x + 1) / 2),
@@ -79,7 +79,7 @@ export class GPUPicker {
     }
 }
 export async function picker(canvas, vertices) {
-    const shaderModule = await canvas.device.loadShaderModule("picker.wgsl");
+    const shaderModule = await canvas.device.shaderModule({ path: "shaders/picker.wgsl" });
     return new GPUPicker(canvas, shaderModule, vertices);
 }
 //# sourceMappingURL=picker.gpu.js.map
