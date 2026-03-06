@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Sketch</title>
+        <link type="text/css" rel="stylesheet" href="/index.css" />
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js"
+              }
+            }
+        </script>          
+        <script type="module">
+            import * as toy from "../js/sketch/toy.js"
+            import init from "../js/initializer.js"
+            init(toy);
+        </script>
+    </head>
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="about-button" title="About / Info"></div>
+                <div id="monitor-button" title="Monitor"></div>
+            </div>
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
+            </div>
+        </div>
+        <div class="tiles">
+            <div style="width: 96.875%; height: 96.875%; overflow: hidden;">
+                <canvas id="canvas" style="width: 100%; height: 100%; cursor: none">
+                    Your browser seems not to support HTML 5 Canvas!
+                </canvas>
+                <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top:0px; left:0px; z-index: 8; pointer-events: none; display: none;">
+                    <circle cx="64" cy="64" r="0" stroke="red" fill="transparent" stroke-width="0"/>
+                </svg>
+                <div id="monitor" class="hud top-right">
+                    <div>
+                        <table>
+                            <tr><th>FPS</th><td><span id="freq-watch">0</span></td></tr>
+                            <tr><th>WebGPU Status</th><td><span id="gpu-status">&#x1F630; ...</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="about" class="hud">
+            <div>
+                <h1>Sketch</h1>
+                <p>
+                </p>
+            </div>
+        </div>
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys change the function of mouse-dragging:</p>
+                <table>
+                    <tr><td width="48px"><kbd id="control-p">P</kbd></td><td>Paint</td></tr>
+                    <tr><td><kbd id="control-b">B</kbd></td><td>Brush Size</td></tr>
+                </table>
+                <p>The following keys perform the specified actions:</p>
+                <table>
+                    <tr><td width="48px"><kbd id="control-c">C</kbd></td><td>Clear</td></tr>
+                    <tr><td><kbd id="control-u">U</kbd></td><td>Undo Stroke</td></tr>
+                    <tr><td><kbd id="control-v">V</kbd></td><td>Start/Stop Video Recording</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>
