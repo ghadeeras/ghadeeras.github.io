@@ -62,22 +62,21 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
 
+    private context: CanvasRenderingContext2D
     private strokes: Stroke[] = []
-    private pointerPosition: aether.Vec2 = [0, 0]
-    
-    private _brushSize = 4;
+    private brush = new Brush();
 
     private strokeTarget = gear.loops.draggingTarget(
-        { getter: () => this.stroke, setter: () => {} }, 
-        new StrokeSampler()
+        gear.property(this, "stroke"),
+        new StrokeSampler(p => this.canvasSpacePos(p))
     )
     private brushSizeTarget = gear.loops.draggingTarget(
-        gear.property(this, "brushSize"), 
-        new LinearDragging(() => this.brushSize, 1, 40, 20)
+        gear.property(this.brush, "size"), 
+        new LinearDragging(() => 0, 1, 40, 20)
     )
 
     constructor(private canvas: HTMLCanvasElement) {
-        this.brushSize = this._brushSize
+        this.context = gear.required(this.canvas.getContext("2d"))
     }
 
     static async create(): Promise<Toy> {
@@ -90,28 +89,22 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return new Toy(canvas)
     }
 
+    private canvasSpacePos(position: [number, number]) {
+        return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.width, this.canvas.height])
+    }
+
     get stroke(): Stroke {
-        return this.strokes.length == 0 || this.strokes[this.strokes.length - 1].finalized 
-            ? this.newStroke() 
-            : this.strokes[this.strokes.length - 1]
+        const lastIndex = this.strokes.length - 1
+        return lastIndex < 0 || this.strokes[lastIndex].finalized 
+            ? new Stroke(this.brush.size)
+            : this.strokes[lastIndex]
     }
 
-    get brushSize() {
-        return this._brushSize
-    }
-
-    set brushSize(size: number) {
-        this._brushSize = Math.round(size)
-        const cursor = gear.required(document.getElementById("cursor"))
-        const circle = gear.required(cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
-        circle.setAttribute("r", `${this._brushSize / window.devicePixelRatio}`)
-        circle.setAttribute("stroke-width", `${this._brushSize / window.devicePixelRatio}`)
-    }
-
-    private newStroke(): Stroke {
-        const stroke = new Stroke(this._brushSize, () => [this.canvas.width, this.canvas.height])
-        this.strokes.push(stroke)
-        return stroke
+    set stroke(stroke: Stroke) {
+        const lastIndex = this.strokes.length - 1
+        if (lastIndex < 0 || this.strokes[lastIndex] !== stroke) {
+            this.strokes.push(stroke)
+        }
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -127,13 +120,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             pointers: {
                 primary: {
                     defaultDraggingTarget: this.strokeTarget,
-                    onMoved: () => {
-                        this.pointerPosition = canvasSpacePos(inputs.pointers.primary.position, [this.canvas.width, this.canvas.height])
-                        const cursor = gear.required(document.getElementById("cursor"))
-                        cursor.style.left = `${this.pointerPosition[0] / window.devicePixelRatio - 64}px`
-                        cursor.style.top = `${this.pointerPosition[1] / window.devicePixelRatio - 64}px`
-                        cursor.style.display = "block"
-                    }
+                    onMoved: () => this.brush.position = this.canvasSpacePos(inputs.pointers.primary.position)
                 }
             }
         }
@@ -154,25 +141,24 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     render() {
-        const ctx = gear.required(this.canvas.getContext("2d"))
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        const ctx = this.context
+        ctx.fillStyle = "white"
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
         ctx.lineJoin = "round"
         ctx.lineCap = "round"
         ctx.strokeStyle = "black"
         for (const stroke of this.strokes) {
             ctx.lineWidth = stroke.brushSize
-            if (stroke.points.length == 0) {
-                continue
-            }
             ctx.beginPath()
-            ctx.moveTo(stroke.points[0].position[0], stroke.points[0].position[1])
+            const pos0 = stroke.points[0].position
             if (stroke.points.length == 1) {
-                ctx.ellipse(stroke.points[0].position[0], stroke.points[0].position[1], 2, 2, 0, 0, 2 * Math.PI)
-                ctx.stroke()
-                continue
-            }
-            for (const point of stroke.points.slice(1)) {
-                ctx.lineTo(point.position[0], point.position[1])
+                ctx.ellipse(pos0[0], pos0[1], 2, 2, 0, 0, 2 * Math.PI)
+            } else {
+                ctx.moveTo(pos0[0], pos0[1])
+                for (let i = 1; i < stroke.points.length; i++) {
+                    const pos = stroke.points[i].position
+                    ctx.lineTo(pos[0], pos[1])
+                }
             }
             ctx.stroke()
         }
@@ -195,7 +181,7 @@ class Stroke {
     private _length = 0
     private _finalized = false
 
-    constructor(readonly brushSize: number, private canvasSize: () => aether.Vec2) {
+    constructor(readonly brushSize: number) {
     }
 
     get duration() {
@@ -207,7 +193,7 @@ class Stroke {
     }
 
     get finalized() {
-        return this._finalized || this.points.length == 0
+        return this._finalized
     }
 
     finalize() {
@@ -215,36 +201,36 @@ class Stroke {
     }
 
     addPoint(position: aether.Vec2) {
-        const canvasSize = this.canvasSize()
-        const p = canvasSpacePos(position, canvasSize)
         if (this._finalized) {
             throw new Error("Cannot add point to a finalized stroke")
         }
         this._endTime = performance.now()
         if (this.points.length > 0) {
             const lastPoint = this.points[this.points.length - 1]
-            const deltaTime = this._endTime - lastPoint.time
             const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint
             const lastDistance = aether.vec2.length(aether.vec2.sub(lastPoint.position, beforeLastPoint.position))
-            const prevPoint = lastDistance < this.brushSize && deltaTime < 500 ? beforeLastPoint : lastPoint
+            const lastDeltaTime = lastPoint.time - beforeLastPoint.time
+            const prevPoint = lastDistance < this.brushSize / (1 + 0.01 * lastDeltaTime) ? beforeLastPoint : lastPoint
             if (prevPoint !== lastPoint) {
                 this.points.pop()
                 this._length -= lastDistance
             }
-            const distance = aether.vec2.length(aether.vec2.sub(p, prevPoint.position))
+            const distance = aether.vec2.length(aether.vec2.sub(position, prevPoint.position))
             this._length += distance
         }
-        this.points.push({ position: p, time: performance.now(), distance: this._length })
+        this.points.push({ position: position, time: this._endTime, distance: this._length })
     }
 
 }
 
-class StrokeSampler implements gear.loops.Dragger<Stroke>{
+class StrokeSampler implements gear.loops.Dragger<Stroke> {
 
-    begin(stroke: Stroke, position: gear.loops.PointerPosition): gear.loops.DraggingFunction<Stroke> {
-        stroke.addPoint(position)
+    constructor(private canvasSpacePos: (p: aether.Vec2) => aether.Vec2) {
+    }
+
+    begin(stroke: Stroke): gear.loops.DraggingFunction<Stroke> {
         return position => {
-            stroke.addPoint(position)
+            stroke.addPoint(this.canvasSpacePos(position))
             return stroke
         }
     }
@@ -256,8 +242,40 @@ class StrokeSampler implements gear.loops.Dragger<Stroke>{
 
 }
 
-function canvasSpacePos(position: [number, number], canvasSize: [number, number]) {
-    return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), canvasSize)
+class Brush {
+
+    private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
+    private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
+
+    private _size: number = 4
+    private _position: aether.Vec2 = [0, 0]
+
+    constructor() {
+        this.size = this._size
+    }
+
+    get size() {
+        return this._size
+    }
+
+    set size(size: number) {
+        this._size = size
+        const radius = this._size / window.devicePixelRatio
+        this.circle.setAttribute("r", `${radius}`)
+        this.circle.setAttribute("stroke-width", `${radius}`)
+    }
+
+    get position() {
+        return this._position
+    }
+
+    set position(pos: aether.Vec2) {
+        this._position = pos
+        this.cursor.style.left = `${this._position[0] / window.devicePixelRatio - this.cursor.clientWidth / 2}px`
+        this.cursor.style.top = `${this._position[1] / window.devicePixelRatio - this.cursor.clientHeight / 2}px`
+        this.cursor.style.display = "block"
+    }
+
 }
 
 async function gpuDevice() {
