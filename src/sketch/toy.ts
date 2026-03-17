@@ -2,6 +2,7 @@ import { gpu } from "lumen"
 import * as gear from "gear"
 import * as aether from "aether"
 import { LinearDragging } from "../utils/dragging.js"
+import { Renderer, StrokeBindGroup, ViewBindGroup } from "./stroke.renderer.js"
 
 export const huds = {
     "monitor": "monitor-button"
@@ -62,8 +63,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
 
-    private context: CanvasRenderingContext2D
+    private viewGroup: ViewBindGroup
     private strokes: Stroke[] = []
+    private strokeGroups: StrokeBindGroup[] = []
     private brush = new Brush();
 
     private strokeTarget = gear.loops.draggingTarget(
@@ -72,25 +74,27 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     )
     private brushSizeTarget = gear.loops.draggingTarget(
         gear.property(this.brush, "size"), 
-        new LinearDragging(() => 0, 1, 40, 20)
+        new LinearDragging(() => 0, 8, 40, 20)
     )
 
-    constructor(private canvas: HTMLCanvasElement) {
-        this.context = gear.required(this.canvas.getContext("2d"))
+    constructor(private canvas: gpu.Canvas, private renderer: Renderer) {
+        this.viewGroup = renderer.view(canvas.element)
     }
 
     static async create(): Promise<Toy> {
         try {
             const device = await gpuDevice()
+            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
+            const renderer = await Renderer.create(device)
+            return new Toy(canvas, renderer)
         } catch (e) {
             console.warn("WebGPU not supported, falling back to CPU rendering")
+            throw e
         }
-        const canvas = document.getElementById(Toy.descriptor.output.canvases.scene.element) as HTMLCanvasElement
-        return new Toy(canvas)
     }
 
     private canvasSpacePos(position: [number, number]) {
-        return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.width, this.canvas.height])
+        return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height])
     }
 
     get stroke(): Stroke {
@@ -104,7 +108,23 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const lastIndex = this.strokes.length - 1
         if (lastIndex < 0 || this.strokes[lastIndex] !== stroke) {
             this.strokes.push(stroke)
+            this.strokeGroups.push(this.strokeGroup(stroke))
+        } else if (lastIndex >= 0) {
+            const oldGroup = this.strokeGroups[lastIndex] 
+            this.strokeGroups[lastIndex] = this.strokeGroup(stroke)
+            this.destroy(oldGroup)
         }
+    }
+
+    private strokeGroup(stroke: Stroke): StrokeBindGroup {
+        return this.renderer.stroke(
+            stroke.points.map(p => ({ control_point: p.position })),
+            {
+                brush_size: this.brush.size,
+                locality: 0.125 * Math.ceil(this.brush.size / 40),
+                resolution: Math.ceil(400 / this.brush.size)
+            }
+        )
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -113,8 +133,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             keys: {
                 paint: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
-                clear: { onPressed: () => this.strokes = [] },
-                undo: { onPressed: () => this.strokes.pop() },
+                clear: { onPressed: () => this.clearStrokes() },
+                undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
@@ -126,11 +146,30 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
+    private undo(): void {
+        this.strokes.pop()
+        const group = this.strokeGroups.pop()
+        if (group !== undefined) {
+            this.destroy(group)
+        }
+    }
+
+    private clearStrokes(): void {
+        this.strokes = []
+        this.strokeGroups.forEach(g => this.destroy(g))
+        this.strokeGroups = []
+    }
+
+    private destroy(group: StrokeBindGroup) {
+        group.entries.stroke.baseResource().destroy()
+        group.entries.strokeAttributes.baseResource().destroy()
+    }
+
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             canvases: {
                 scene: {
-                    onResize: () => {}
+                    onResize: () => this.renderer.resize(this.viewGroup, this.canvas.element)
                 }
             },
             onRender: () => this.render()
@@ -141,27 +180,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     render() {
-        const ctx = this.context
-        ctx.fillStyle = "white"
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-        ctx.lineJoin = "round"
-        ctx.lineCap = "round"
-        ctx.strokeStyle = "black"
-        for (const stroke of this.strokes) {
-            ctx.lineWidth = stroke.brushSize
-            ctx.beginPath()
-            const pos0 = stroke.points[0].position
-            if (stroke.points.length == 1) {
-                ctx.ellipse(pos0[0], pos0[1], 2, 2, 0, 0, 2 * Math.PI)
-            } else {
-                ctx.moveTo(pos0[0], pos0[1])
-                for (let i = 1; i < stroke.points.length; i++) {
-                    const pos = stroke.points[i].position
-                    ctx.lineTo(pos[0], pos[1])
-                }
-            }
-            ctx.stroke()
-        }
+        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokeGroups, this.viewGroup)
     }
 
 }
@@ -247,7 +266,7 @@ class Brush {
     private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
     private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
 
-    private _size: number = 4
+    private _size: number = 8
     private _position: aether.Vec2 = [0, 0]
 
     constructor() {
