@@ -6,9 +6,7 @@ export class Renderer {
     }
     static async create(device, format = navigator.gpu.getPreferredCanvasFormat()) {
         const layout = pipelineLayout(groupLayouts(device));
-        const module = await device.shaderModule({
-            code: shader
-        });
+        const module = await device.shaderModule({ code: shader });
         const pipeline = await device.wrapped.createRenderPipelineAsync({
             layout: layout.wrapped,
             vertex: {
@@ -134,17 +132,7 @@ const shader = /* wgsl */ `
     struct Vertex {
         @builtin(position) stage_space_position: vec4f,
         @location(0) position: vec2f,
-        @interpolate(flat) @location(1) start_position: vec2f,
-        @interpolate(flat) @location(2) start_tangent: vec2f,
-        @interpolate(flat) @location(3) end_position: vec2f,
-        @interpolate(flat) @location(4) end_tangent: vec2f
-    }
-
-    struct MiniSegment {
-        start_position: vec2f,
-        start_tangent: vec2f,
-        end_position: vec2f,
-        end_tangent: vec2f
+        @interpolate(flat) @location(1) mini_segment: vec4f,
     }
 
     struct Fragment {
@@ -172,20 +160,19 @@ const shader = /* wgsl */ `
         return Vertex(
             clip_position, 
             position, 
-            mini_segment.start_position, 
-            mini_segment.start_tangent, 
-            mini_segment.end_position, 
-            mini_segment.end_tangent
+            mini_segment
         );
     }
 
     @fragment
     fn fragment_main(input: Vertex) -> Fragment {
+        let pixel_width = dpdxFine(input.position);
+        let pixel_height = dpdyFine(input.position);
         let color = 0.25 * (
-            fragment_color(input.start_position, input.end_position, input.position) +
-            fragment_color(input.start_position, input.end_position, input.position + vec2f(0.5, 0.0)) +
-            fragment_color(input.start_position, input.end_position, input.position + vec2f(0.0, 0.5)) +
-            fragment_color(input.start_position, input.end_position, input.position + vec2f(0.5, 0.5))
+            fragment_color(input.mini_segment.xy, input.mini_segment.zw, input.position) +
+            fragment_color(input.mini_segment.xy, input.mini_segment.zw, input.position + 0.5 * pixel_width) +
+            fragment_color(input.mini_segment.xy, input.mini_segment.zw, input.position + 0.5 * pixel_height) +
+            fragment_color(input.mini_segment.xy, input.mini_segment.zw, input.position + 0.5 * (pixel_width + pixel_height))
         );
         if (color.a <= 0.0) {
             discard;
@@ -199,28 +186,11 @@ const shader = /* wgsl */ `
         return vec4(vec3(0.0), alpha);
     }
 
-    const red_axis   = vec2(cos(0.0 * PI / 3.0), sin(0.0 * PI / 3.0));
-    const green_axis = vec2(cos(2.0 * PI / 3.0), sin(2.0 * PI / 3.0));
-    const blue_axis  = vec2(cos(4.0 * PI / 3.0), sin(4.0 * PI / 3.0));
-
-    fn color(start_position: vec2f, end_position: vec2f, position: vec2f) -> vec3f {
-        let segment = end_position - start_position;
-        let w_1 = dot(position - start_position, segment);
-        let w_2 = dot(end_position - position, segment);
-        return clamp(vec3(w_1 / (w_1 + w_2), 0.0, w_2 / (w_1 + w_2)), vec3(0.0), vec3(1.0));
-    }
-
-    fn compute_mini_segment(curve_segment_index: u32, tiny_segment_index: u32) -> MiniSegment {
+    fn compute_mini_segment(curve_segment_index: u32, tiny_segment_index: u32) -> vec4f {
         let density = 1.0 / f32(stroke_attributes.resolution);
         let t_0 = f32(curve_segment_index) + f32(tiny_segment_index) * density;
-        let t_minus_1 = t_0 - density;
         let t_1 = t_0 + density;
-        let t_2 = t_1 + density;
-        let position_0 = spline(t_0);
-        let position_1 = spline(t_1);
-        let tangent_0 = normalize(position_1 - spline(t_minus_1));
-        let tangent_1 = normalize(spline(t_2) - position_0);
-        return MiniSegment(position_0, tangent_0, position_1, tangent_1);
+        return vec4(spline(t_0), spline(t_1));
     }
 
     const quad_vertex_ids: array<u32, 6> = array<u32, 6>(
@@ -228,13 +198,12 @@ const shader = /* wgsl */ `
         2u, 1u, 3u
     );
 
-    fn quad_vertex_position(
-        mini_segment: MiniSegment, 
-        quad_vertex_index: u32
-    ) -> vec2f {
+    fn quad_vertex_position(mini_segment: vec4f, quad_vertex_index: u32) -> vec2f {
+        let start_position = mini_segment.xy;
+        let end_position = mini_segment.zw;
         let quad_vertex_id = quad_vertex_ids[quad_vertex_index];
-        let half_brush_size = 0.5 * stroke_attributes.brush_size + 1.0;
-        let segment = mini_segment.end_position - mini_segment.start_position;
+        let half_brush_size = 0.5 * stroke_attributes.brush_size;
+        let segment = end_position - start_position;
         let segment_length = length(segment);
         let along_axis = segment / segment_length;
         let across_axis = vec2(-along_axis.y, along_axis.x);
@@ -250,7 +219,7 @@ const shader = /* wgsl */ `
                 (quad_vertex_id & 1u) == 0u),
             (quad_vertex_id & 2u) == 0u
         );
-        return m * local_position + mini_segment.start_position;
+        return m * local_position + start_position;
     }
 
     fn spline(t: f32) -> vec2f {
@@ -269,9 +238,7 @@ const shader = /* wgsl */ `
                 break;
             }
             w += w_1.x + w_2.x;
-            let control_point_1 = control_point(i_1);
-            let control_point_2 = control_point(i_2);
-            position += control_point_1 * w_1.x + control_point_2 * w_2.x;
+            position += control_point(i_1) * w_1.x + control_point(i_2) * w_2.x;
         }
         return position / w;
     }

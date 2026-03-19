@@ -65,7 +65,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private viewGroup: ViewBindGroup
     private strokes: Stroke[] = []
-    private strokeGroups: StrokeBindGroup[] = []
     private brush = new Brush();
 
     private strokeTarget = gear.loops.draggingTarget(
@@ -82,25 +81,26 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     static async create(): Promise<Toy> {
-        try {
-            const device = await gpuDevice()
-            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
-            const renderer = await Renderer.create(device)
-            return new Toy(canvas, renderer)
-        } catch (e) {
-            console.warn("WebGPU not supported, falling back to CPU rendering")
-            throw e
-        }
+        const device = await gpuDevice()
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
+        const renderer = await Renderer.create(device)
+        return new Toy(canvas, renderer)
     }
 
     private canvasSpacePos(position: [number, number]) {
-        return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height])
+        return aether.vec2.mul(
+            aether.vec2.mul(
+                aether.vec2.add(position, [1, -1]), 
+                [0.5, -0.5]
+            ), 
+            [this.canvas.element.width, this.canvas.element.height]
+        )
     }
 
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.size)
+            ? new Stroke(this.brush.size, this.renderer)
             : this.strokes[lastIndex]
     }
 
@@ -108,23 +108,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const lastIndex = this.strokes.length - 1
         if (lastIndex < 0 || this.strokes[lastIndex] !== stroke) {
             this.strokes.push(stroke)
-            this.strokeGroups.push(this.strokeGroup(stroke))
-        } else if (lastIndex >= 0) {
-            const oldGroup = this.strokeGroups[lastIndex] 
-            this.strokeGroups[lastIndex] = this.strokeGroup(stroke)
-            this.destroy(oldGroup)
         }
-    }
-
-    private strokeGroup(stroke: Stroke): StrokeBindGroup {
-        return this.renderer.stroke(
-            stroke.points.map(p => ({ control_point: p.position })),
-            {
-                brush_size: this.brush.size,
-                locality: 0.125 * Math.ceil(this.brush.size / 40),
-                resolution: Math.ceil(400 / this.brush.size)
-            }
-        )
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -147,22 +131,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private undo(): void {
-        this.strokes.pop()
-        const group = this.strokeGroups.pop()
-        if (group !== undefined) {
-            this.destroy(group)
-        }
+        this.strokes.pop()?.destroy()
     }
 
     private clearStrokes(): void {
+        this.strokes.forEach(s => s.destroy())
         this.strokes = []
-        this.strokeGroups.forEach(g => this.destroy(g))
-        this.strokeGroups = []
-    }
-
-    private destroy(group: StrokeBindGroup) {
-        group.entries.stroke.baseResource().destroy()
-        group.entries.strokeAttributes.baseResource().destroy()
     }
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
@@ -180,7 +154,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     render() {
-        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokeGroups, this.viewGroup)
+        this.renderer.renderTo(
+            this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), 
+            this.strokes.map(s => s.strokeGroup).filter(g => g !== null), 
+            this.viewGroup
+        )
     }
 
 }
@@ -199,8 +177,13 @@ class Stroke {
     private _endTime = this._startTime
     private _length = 0
     private _finalized = false
+    private _strokeGroup: StrokeBindGroup | null = null;
 
-    constructor(readonly brushSize: number) {
+    constructor(readonly brushSize: number, private renderer: Renderer) {
+    }
+
+    destroy() {
+        this.destroyStrokeGroup(this._strokeGroup)
     }
 
     get duration() {
@@ -213,6 +196,10 @@ class Stroke {
 
     get finalized() {
         return this._finalized
+    }
+
+    get strokeGroup() {
+        return this._strokeGroup
     }
 
     finalize() {
@@ -236,8 +223,28 @@ class Stroke {
             }
             const distance = aether.vec2.length(aether.vec2.sub(position, prevPoint.position))
             this._length += distance
+            this.destroyStrokeGroup(this._strokeGroup)
         }
         this.points.push({ position: position, time: this._endTime, distance: this._length })
+        this._strokeGroup = this.createStrokeGroup(this)
+    }
+
+    private createStrokeGroup(stroke: Stroke): StrokeBindGroup {
+        return this.renderer.stroke(
+            stroke.points.map(p => ({ control_point: p.position })),
+            {
+                brush_size: this.brushSize,
+                locality: 0.125 * Math.ceil(this.brushSize / 40),
+                resolution: Math.ceil(400 / this.brushSize)
+            }
+        )
+    }
+
+    private destroyStrokeGroup(group: StrokeBindGroup | null) {
+        if (group !== null) {
+            group.entries.stroke.baseResource().destroy()
+            group.entries.strokeAttributes.baseResource().destroy()
+        }
     }
 
 }

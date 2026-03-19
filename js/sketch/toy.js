@@ -16,23 +16,16 @@ class Toy {
         this.canvas = canvas;
         this.renderer = renderer;
         this.strokes = [];
-        this.strokeGroups = [];
         this.brush = new Brush();
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "size"), new LinearDragging(() => 0, 8, 40, 20));
         this.viewGroup = renderer.view(canvas.element);
     }
     static async create() {
-        try {
-            const device = await gpuDevice();
-            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
-            const renderer = await Renderer.create(device);
-            return new Toy(canvas, renderer);
-        }
-        catch (e) {
-            console.warn("WebGPU not supported, falling back to CPU rendering");
-            throw e;
-        }
+        const device = await gpuDevice();
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
+        const renderer = await Renderer.create(device);
+        return new Toy(canvas, renderer);
     }
     canvasSpacePos(position) {
         return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height]);
@@ -40,27 +33,14 @@ class Toy {
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.size)
+            ? new Stroke(this.brush.size, this.renderer)
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
         const lastIndex = this.strokes.length - 1;
         if (lastIndex < 0 || this.strokes[lastIndex] !== stroke) {
             this.strokes.push(stroke);
-            this.strokeGroups.push(this.strokeGroup(stroke));
         }
-        else if (lastIndex >= 0) {
-            const oldGroup = this.strokeGroups[lastIndex];
-            this.strokeGroups[lastIndex] = this.strokeGroup(stroke);
-            this.destroy(oldGroup);
-        }
-    }
-    strokeGroup(stroke) {
-        return this.renderer.stroke(stroke.points.map(p => ({ control_point: p.position })), {
-            brush_size: this.brush.size,
-            locality: 0.125 * Math.ceil(this.brush.size / 40),
-            resolution: Math.ceil(400 / this.brush.size)
-        });
     }
     inputWiring(inputs, outputs) {
         const v = 0.01;
@@ -81,20 +61,11 @@ class Toy {
         };
     }
     undo() {
-        this.strokes.pop();
-        const group = this.strokeGroups.pop();
-        if (group !== undefined) {
-            this.destroy(group);
-        }
+        this.strokes.pop()?.destroy();
     }
     clearStrokes() {
+        this.strokes.forEach(s => s.destroy());
         this.strokes = [];
-        this.strokeGroups.forEach(g => this.destroy(g));
-        this.strokeGroups = [];
-    }
-    destroy(group) {
-        group.entries.stroke.baseResource().destroy();
-        group.entries.strokeAttributes.baseResource().destroy();
     }
     outputWiring() {
         return {
@@ -109,7 +80,7 @@ class Toy {
     animate() {
     }
     render() {
-        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokeGroups, this.viewGroup);
+        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokes.map(s => s.strokeGroup).filter(g => g !== null), this.viewGroup);
     }
 }
 Toy.descriptor = {
@@ -157,13 +128,18 @@ Toy.descriptor = {
     },
 };
 class Stroke {
-    constructor(brushSize) {
+    constructor(brushSize, renderer) {
         this.brushSize = brushSize;
+        this.renderer = renderer;
         this.points = [];
         this._startTime = performance.now();
         this._endTime = this._startTime;
         this._length = 0;
         this._finalized = false;
+        this._strokeGroup = null;
+    }
+    destroy() {
+        this.destroyStrokeGroup(this._strokeGroup);
     }
     get duration() {
         return this._endTime - this._startTime;
@@ -173,6 +149,9 @@ class Stroke {
     }
     get finalized() {
         return this._finalized;
+    }
+    get strokeGroup() {
+        return this._strokeGroup;
     }
     finalize() {
         this._finalized = true;
@@ -194,8 +173,23 @@ class Stroke {
             }
             const distance = aether.vec2.length(aether.vec2.sub(position, prevPoint.position));
             this._length += distance;
+            this.destroyStrokeGroup(this._strokeGroup);
         }
         this.points.push({ position: position, time: this._endTime, distance: this._length });
+        this._strokeGroup = this.createStrokeGroup(this);
+    }
+    createStrokeGroup(stroke) {
+        return this.renderer.stroke(stroke.points.map(p => ({ control_point: p.position })), {
+            brush_size: this.brushSize,
+            locality: 0.125 * Math.ceil(this.brushSize / 40),
+            resolution: Math.ceil(400 / this.brushSize)
+        });
+    }
+    destroyStrokeGroup(group) {
+        if (group !== null) {
+            group.entries.stroke.baseResource().destroy();
+            group.entries.strokeAttributes.baseResource().destroy();
+        }
     }
 }
 class StrokeSampler {
