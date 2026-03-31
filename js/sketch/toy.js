@@ -3,6 +3,8 @@ import * as gear from "gear";
 import * as aether from "aether";
 import { LinearDragging } from "../utils/dragging.js";
 import { Renderer } from "./stroke.renderer.js";
+import { TessellatedStrokeFactory } from "./stroke.js";
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
 export const huds = {
     "monitor": "monitor-button"
 };
@@ -12,20 +14,22 @@ export async function init() {
     loop.run();
 }
 class Toy {
-    constructor(canvas, renderer) {
+    constructor(canvas, renderer, tessellatedStrokeFactory) {
         this.canvas = canvas;
         this.renderer = renderer;
+        this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.strokes = [];
-        this.brush = new Brush();
+        this.brush = new Brush(this.tessellatedStrokeFactory);
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "size"), new LinearDragging(() => 0, 8, 40, 20));
         this.viewGroup = renderer.view(canvas.element);
     }
     static async create() {
         const device = await gpuDevice();
-        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4);
         const renderer = await Renderer.create(device);
-        return new Toy(canvas, renderer);
+        const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device);
+        return new Toy(canvas, renderer, tessellatedStrokeFactory);
     }
     canvasSpacePos(position) {
         return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height]);
@@ -33,7 +37,7 @@ class Toy {
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.size, this.renderer)
+            ? new Stroke(this.brush.size, this.renderer, this.tessellatedStrokeFactory)
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
@@ -71,7 +75,10 @@ class Toy {
         return {
             canvases: {
                 scene: {
-                    onResize: () => this.renderer.resize(this.viewGroup, this.canvas.element)
+                    onResize: () => {
+                        this.canvas.resize();
+                        this.renderer.resize(this.viewGroup, this.canvas.element);
+                    }
                 }
             },
             onRender: () => this.render()
@@ -128,9 +135,10 @@ Toy.descriptor = {
     },
 };
 class Stroke {
-    constructor(brushSize, renderer) {
+    constructor(brushSize, renderer, tessellatedStrokeFactory) {
         this.brushSize = brushSize;
         this.renderer = renderer;
+        this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.points = [];
         this._startTime = performance.now();
         this._endTime = this._startTime;
@@ -165,8 +173,7 @@ class Stroke {
             const lastPoint = this.points[this.points.length - 1];
             const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint;
             const lastDistance = aether.vec2.length(aether.vec2.sub(lastPoint.position, beforeLastPoint.position));
-            const lastDeltaTime = lastPoint.time - beforeLastPoint.time;
-            const prevPoint = lastDistance < this.brushSize / (1 + 0.01 * lastDeltaTime) ? beforeLastPoint : lastPoint;
+            const prevPoint = lastDistance < 4 ? beforeLastPoint : lastPoint;
             if (prevPoint !== lastPoint) {
                 this.points.pop();
                 this._length -= lastDistance;
@@ -175,20 +182,15 @@ class Stroke {
             this._length += distance;
             this.destroyStrokeGroup(this._strokeGroup);
         }
-        this.points.push({ position: position, time: this._endTime, distance: this._length });
+        this.points.push({ position: position, linear: [this.length, this.duration] });
         this._strokeGroup = this.createStrokeGroup(this);
     }
     createStrokeGroup(stroke) {
-        return this.renderer.stroke(stroke.points.map(p => ({ control_point: p.position })), {
-            brush_size: this.brushSize,
-            locality: 0.125 * Math.ceil(this.brushSize / 40),
-            resolution: Math.ceil(400 / this.brushSize)
-        });
+        return this.renderer.stroke(this.tessellatedStrokeFactory.tesselate(stroke.points));
     }
     destroyStrokeGroup(group) {
         if (group !== null) {
-            group.entries.stroke.baseResource().destroy();
-            group.entries.strokeAttributes.baseResource().destroy();
+            group.entries.strokePoints.baseResource().destroy();
         }
     }
 }
@@ -208,7 +210,8 @@ class StrokeSampler {
     }
 }
 class Brush {
-    constructor() {
+    constructor(tessellatedStrokeFactory) {
+        this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
         this._size = 8;
@@ -220,6 +223,7 @@ class Brush {
     }
     set size(size) {
         this._size = size;
+        this.tessellatedStrokeFactory.strokeThickness = size;
         const radius = this._size / window.devicePixelRatio;
         this.circle.setAttribute("r", `${radius}`);
         this.circle.setAttribute("stroke-width", `${radius}`);

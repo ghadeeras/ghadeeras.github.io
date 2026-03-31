@@ -3,7 +3,9 @@ import * as gear from "gear"
 import * as aether from "aether"
 import { LinearDragging } from "../utils/dragging.js"
 import { Renderer, StrokeBindGroup, ViewBindGroup } from "./stroke.renderer.js"
+import { InputPoint, TessellatedStrokeFactory } from "./stroke.js"
 
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
     "monitor": "monitor-button"
 }
@@ -65,7 +67,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private viewGroup: ViewBindGroup
     private strokes: Stroke[] = []
-    private brush = new Brush();
+    private brush = new Brush(this.tessellatedStrokeFactory);
 
     private strokeTarget = gear.loops.draggingTarget(
         gear.property(this, "stroke"),
@@ -76,15 +78,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         new LinearDragging(() => 0, 8, 40, 20)
     )
 
-    constructor(private canvas: gpu.Canvas, private renderer: Renderer) {
+    constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory) {
         this.viewGroup = renderer.view(canvas.element)
     }
 
     static async create(): Promise<Toy> {
         const device = await gpuDevice()
-        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element)
+        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4)
         const renderer = await Renderer.create(device)
-        return new Toy(canvas, renderer)
+        const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device)
+        return new Toy(canvas, renderer, tessellatedStrokeFactory)
     }
 
     private canvasSpacePos(position: [number, number]) {
@@ -100,7 +103,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.size, this.renderer)
+            ? new Stroke(this.brush.size, this.renderer, this.tessellatedStrokeFactory)
             : this.strokes[lastIndex]
     }
 
@@ -143,7 +146,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return {
             canvases: {
                 scene: {
-                    onResize: () => this.renderer.resize(this.viewGroup, this.canvas.element)
+                    onResize: () => {
+                        this.canvas.resize()
+                        this.renderer.resize(this.viewGroup, this.canvas.element)
+                    }
                 }
             },
             onRender: () => this.render()
@@ -163,15 +169,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 }
 
-type StrokePoint = {
-    position: aether.Vec2
-    time: number
-    distance: number
-}
-
 class Stroke {
 
-    readonly points: StrokePoint[] = []
+    readonly points: InputPoint[] = []
 
     private _startTime = performance.now()
     private _endTime = this._startTime
@@ -179,7 +179,7 @@ class Stroke {
     private _finalized = false
     private _strokeGroup: StrokeBindGroup | null = null;
 
-    constructor(readonly brushSize: number, private renderer: Renderer) {
+    constructor(readonly brushSize: number, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory) {
     }
 
     destroy() {
@@ -215,8 +215,7 @@ class Stroke {
             const lastPoint = this.points[this.points.length - 1]
             const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint
             const lastDistance = aether.vec2.length(aether.vec2.sub(lastPoint.position, beforeLastPoint.position))
-            const lastDeltaTime = lastPoint.time - beforeLastPoint.time
-            const prevPoint = lastDistance < this.brushSize / (1 + 0.01 * lastDeltaTime) ? beforeLastPoint : lastPoint
+            const prevPoint = lastDistance < 4 ? beforeLastPoint : lastPoint
             if (prevPoint !== lastPoint) {
                 this.points.pop()
                 this._length -= lastDistance
@@ -225,25 +224,17 @@ class Stroke {
             this._length += distance
             this.destroyStrokeGroup(this._strokeGroup)
         }
-        this.points.push({ position: position, time: this._endTime, distance: this._length })
+        this.points.push({ position: position, linear: [this.length, this.duration] })
         this._strokeGroup = this.createStrokeGroup(this)
     }
 
     private createStrokeGroup(stroke: Stroke): StrokeBindGroup {
-        return this.renderer.stroke(
-            stroke.points.map(p => ({ control_point: p.position })),
-            {
-                brush_size: this.brushSize,
-                locality: 0.125 * Math.ceil(this.brushSize / 40),
-                resolution: Math.ceil(400 / this.brushSize)
-            }
-        )
+        return this.renderer.stroke(this.tessellatedStrokeFactory.tesselate(stroke.points))
     }
 
     private destroyStrokeGroup(group: StrokeBindGroup | null) {
         if (group !== null) {
-            group.entries.stroke.baseResource().destroy()
-            group.entries.strokeAttributes.baseResource().destroy()
+            group.entries.strokePoints.baseResource().destroy()
         }
     }
 
@@ -276,7 +267,7 @@ class Brush {
     private _size: number = 8
     private _position: aether.Vec2 = [0, 0]
 
-    constructor() {
+    constructor(private tessellatedStrokeFactory: TessellatedStrokeFactory) {
         this.size = this._size
     }
 
@@ -286,6 +277,7 @@ class Brush {
 
     set size(size: number) {
         this._size = size
+        this.tessellatedStrokeFactory.strokeThickness = size
         const radius = this._size / window.devicePixelRatio
         this.circle.setAttribute("r", `${radius}`)
         this.circle.setAttribute("stroke-width", `${radius}`)
