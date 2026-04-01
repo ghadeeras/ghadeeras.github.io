@@ -6,7 +6,7 @@ export class TessellatedStrokeFactory {
     private constructor(private device: gpu.Device, private shader: TesselationShader, private attributes: StrokeAttributes) {
     }
 
-    static async create(device: gpu.Device, attributes: StrokeAttributes = { thickness: 8, tension: 4 }): Promise<TessellatedStrokeFactory> {
+    static async create(device: gpu.Device, attributes: StrokeAttributes = { thickness: 8, tension: 8 }): Promise<TessellatedStrokeFactory> {
         return new TessellatedStrokeFactory(device, await TesselationShader.create(device), { ...attributes })
     }
 
@@ -23,7 +23,7 @@ export class TessellatedStrokeFactory {
     }
 
     set strokeTension(tension: number) {
-        this.attributes.tension = tension
+        this.attributes.tension = Math.round(tension)
     }
 
     tesselate(inputStrokePoints: InputPoint[], segmentsPerUnitLength: number = 0.25): gpu.DataBuffer {
@@ -253,12 +253,12 @@ const tesselationShader = /* wgsl */ `
     }
 
     fn transfer_function(t: f32) -> vec2f {
-        let w = 2.0 * PI * exp2(-stroke_attributes.tension);
+        let w = PI / stroke_attributes.tension;
         let angle = w * t;
         return vec2f(cos(angle) + 1.0, -w * sin(angle));
     }
 
     fn transfer_function_width() -> f32 {
-        return exp2(stroke_attributes.tension);
+        return 2.0 * stroke_attributes.tension;
     }
 `

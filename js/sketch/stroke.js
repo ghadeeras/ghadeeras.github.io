@@ -6,7 +6,7 @@ export class TessellatedStrokeFactory {
         this.shader = shader;
         this.attributes = attributes;
     }
-    static async create(device, attributes = { thickness: 8, tension: 4 }) {
+    static async create(device, attributes = { thickness: 8, tension: 8 }) {
         return new TessellatedStrokeFactory(device, await TesselationShader.create(device), { ...attributes });
     }
     get strokeThickness() {
@@ -19,7 +19,7 @@ export class TessellatedStrokeFactory {
         return this.attributes.tension;
     }
     set strokeTension(tension) {
-        this.attributes.tension = tension;
+        this.attributes.tension = Math.round(tension);
     }
     tesselate(inputStrokePoints, segmentsPerUnitLength = 0.25) {
         const r = 0.5 * this.strokeThickness;
@@ -231,13 +231,13 @@ const tesselationShader = /* wgsl */ `
     }
 
     fn transfer_function(t: f32) -> vec2f {
-        let w = 2.0 * PI * exp2(-stroke_attributes.tension);
+        let w = PI / stroke_attributes.tension;
         let angle = w * t;
         return vec2f(cos(angle) + 1.0, -w * sin(angle));
     }
 
     fn transfer_function_width() -> f32 {
-        return exp2(stroke_attributes.tension);
+        return 2.0 * stroke_attributes.tension;
     }
 `;
 //# sourceMappingURL=stroke.js.map

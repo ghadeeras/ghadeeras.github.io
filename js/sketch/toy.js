@@ -19,9 +19,10 @@ class Toy {
         this.renderer = renderer;
         this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.strokes = [];
-        this.brush = new Brush(this.tessellatedStrokeFactory);
+        this.brush = new Brush();
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "size"), new LinearDragging(() => 0, 8, 40, 20));
+        this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
         this.viewGroup = renderer.view(canvas.element);
     }
     static async create() {
@@ -34,10 +35,20 @@ class Toy {
     canvasSpacePos(position) {
         return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height]);
     }
+    get tension() {
+        return this.tessellatedStrokeFactory.strokeTension;
+    }
+    set tension(tension) {
+        console.log(tension);
+        this.brush.tension = tension;
+        for (const s of this.strokes) {
+            s.tension = tension;
+        }
+    }
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.size, this.renderer, this.tessellatedStrokeFactory)
+            ? new Stroke(this.brush.size, this.brush.tension)
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
@@ -52,6 +63,7 @@ class Toy {
             keys: {
                 paint: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
+                tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -87,7 +99,11 @@ class Toy {
     animate() {
     }
     render() {
-        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokes.map(s => s.strokeGroup).filter(g => g !== null), this.viewGroup);
+        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokes.map(s => {
+            this.tessellatedStrokeFactory.strokeThickness = s.thickness;
+            this.tessellatedStrokeFactory.strokeTension = s.tension;
+            return s.strokeGroup(points => this.renderer.stroke(this.tessellatedStrokeFactory.tesselate(points)));
+        }), this.viewGroup);
     }
 }
 Toy.descriptor = {
@@ -100,6 +116,10 @@ Toy.descriptor = {
             brushSize: {
                 physicalKeys: [["KeyB"]],
                 virtualKeys: "#control-b"
+            },
+            tension: {
+                physicalKeys: [["KeyT"]],
+                virtualKeys: "#control-t"
             },
             clear: {
                 physicalKeys: [["KeyC"]],
@@ -135,10 +155,9 @@ Toy.descriptor = {
     },
 };
 class Stroke {
-    constructor(brushSize, renderer, tessellatedStrokeFactory) {
-        this.brushSize = brushSize;
-        this.renderer = renderer;
-        this.tessellatedStrokeFactory = tessellatedStrokeFactory;
+    constructor(_thickness, _tension) {
+        this._thickness = _thickness;
+        this._tension = _tension;
         this.points = [];
         this._startTime = performance.now();
         this._endTime = this._startTime;
@@ -147,7 +166,10 @@ class Stroke {
         this._strokeGroup = null;
     }
     destroy() {
-        this.destroyStrokeGroup(this._strokeGroup);
+        if (this._strokeGroup !== null) {
+            this._strokeGroup.entries.strokePoints.baseResource().destroy();
+            this._strokeGroup = null;
+        }
     }
     get duration() {
         return this._endTime - this._startTime;
@@ -158,8 +180,19 @@ class Stroke {
     get finalized() {
         return this._finalized;
     }
-    get strokeGroup() {
-        return this._strokeGroup;
+    get thickness() {
+        return this._thickness;
+    }
+    set thickness(thickness) {
+        this._thickness = thickness;
+        this.destroy();
+    }
+    get tension() {
+        return this._tension;
+    }
+    set tension(tension) {
+        this._tension = tension;
+        this.destroy();
     }
     finalize() {
         this._finalized = true;
@@ -180,18 +213,15 @@ class Stroke {
             }
             const distance = aether.vec2.length(aether.vec2.sub(position, prevPoint.position));
             this._length += distance;
-            this.destroyStrokeGroup(this._strokeGroup);
         }
         this.points.push({ position: position, linear: [this.length, this.duration] });
-        this._strokeGroup = this.createStrokeGroup(this);
+        this.destroy();
     }
-    createStrokeGroup(stroke) {
-        return this.renderer.stroke(this.tessellatedStrokeFactory.tesselate(stroke.points));
-    }
-    destroyStrokeGroup(group) {
-        if (group !== null) {
-            group.entries.strokePoints.baseResource().destroy();
+    strokeGroup(factory) {
+        if (this._strokeGroup == null) {
+            this._strokeGroup = factory(this.points);
         }
+        return this._strokeGroup;
     }
 }
 class StrokeSampler {
@@ -210,11 +240,11 @@ class StrokeSampler {
     }
 }
 class Brush {
-    constructor(tessellatedStrokeFactory) {
-        this.tessellatedStrokeFactory = tessellatedStrokeFactory;
+    constructor() {
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
         this._size = 8;
+        this._tension = 8;
         this._position = [0, 0];
         this.size = this._size;
     }
@@ -223,10 +253,15 @@ class Brush {
     }
     set size(size) {
         this._size = size;
-        this.tessellatedStrokeFactory.strokeThickness = size;
         const radius = this._size / window.devicePixelRatio;
         this.circle.setAttribute("r", `${radius}`);
         this.circle.setAttribute("stroke-width", `${radius}`);
+    }
+    get tension() {
+        return this._tension;
+    }
+    set tension(tension) {
+        this._tension = tension;
     }
     get position() {
         return this._position;
