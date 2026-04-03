@@ -2,8 +2,10 @@ import { gpu } from "lumen"
 import * as gear from "gear"
 import * as aether from "aether"
 import { LinearDragging } from "../utils/dragging.js"
-import { Renderer, StrokeBindGroup, ViewBindGroup } from "./stroke.renderer.js"
-import { InputPoint, TessellatedStrokeFactory } from "./stroke.js"
+import { Renderer, ViewBindGroup } from "./stroke.renderer.js"
+import { TessellatedStrokeFactory } from "./stroke.computer.js"
+import { Stroke } from "./stroke.js"
+import { Brush } from "./brush.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
@@ -91,11 +93,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     static async create(): Promise<Toy> {
-        const device = await gpuDevice()
-        const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4)
-        const renderer = await Renderer.create(device)
-        const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device)
-        return new Toy(canvas, renderer, tessellatedStrokeFactory)
+        try {
+            const device = await gpuDevice()
+            const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4)
+            const renderer = await Renderer.create(device)
+            const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device)
+            return new Toy(canvas, renderer, tessellatedStrokeFactory)
+        } catch (e) {
+            gear.required(document.getElementById(Toy.descriptor.output.canvases.scene.element)).style.cursor = "default"
+            throw e
+        }
     }
 
     private canvasSpacePos(position: [number, number]) {
@@ -194,92 +201,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 }
 
-class Stroke {
-
-    readonly points: InputPoint[] = []
-
-    private _startTime = performance.now()
-    private _endTime = this._startTime
-    private _length = 0
-    private _finalized = false
-    private _strokeGroup: StrokeBindGroup | null = null;
-
-    constructor(
-        private _thickness: number, 
-        private _tension: number, 
-    ) {}
-
-    destroy() {
-        if (this._strokeGroup !== null) {
-            this._strokeGroup.entries.strokePoints.baseResource().destroy()
-            this._strokeGroup = null
-        }
-    }
-
-    get duration() {
-        return this._endTime - this._startTime
-    }
-
-    get length() {
-        return this._length
-    }
-
-    get finalized() {
-        return this._finalized
-    }
-
-    get thickness() {
-        return this._thickness
-    }
-
-    set thickness(thickness: number) {
-        this._thickness = thickness
-        this.destroy()
-    } 
-
-    get tension() {
-        return this._tension
-    }
-
-    set tension(tension: number) {
-        this._tension = tension
-        this.destroy()
-    } 
-
-    finalize() {
-        this._finalized = true
-    }
-
-    addPoint(position: aether.Vec2) {
-        if (this._finalized) {
-            throw new Error("Cannot add point to a finalized stroke")
-        }
-        this._endTime = performance.now()
-        if (this.points.length > 0) {
-            const lastPoint = this.points[this.points.length - 1]
-            const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint
-            const lastDistance = aether.vec2.length(aether.vec2.sub(lastPoint.position, beforeLastPoint.position))
-            const prevPoint = lastDistance < 4 ? beforeLastPoint : lastPoint
-            if (prevPoint !== lastPoint) {
-                this.points.pop()
-                this._length -= lastDistance
-            }
-            const distance = aether.vec2.length(aether.vec2.sub(position, prevPoint.position))
-            this._length += distance
-        }
-        this.points.push({ position: position, linear: [this.length, this.duration] })
-        this.destroy()
-    }
-
-    strokeGroup(factory: (points: InputPoint[]) => StrokeBindGroup): StrokeBindGroup {
-        if (this._strokeGroup == null) {
-            this._strokeGroup = factory(this.points)
-        }
-        return this._strokeGroup
-    }
-
-}
-
 class StrokeSampler implements gear.loops.Dragger<Stroke> {
 
     constructor(private canvasSpacePos: (p: aether.Vec2) => aether.Vec2) {
@@ -295,51 +216,6 @@ class StrokeSampler implements gear.loops.Dragger<Stroke> {
     end(stroke: Stroke): Stroke {
         stroke.finalize()
         return stroke
-    }
-
-}
-
-class Brush {
-
-    private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
-    private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
-
-    private _size: number = 8
-    private _tension: number = 8
-    private _position: aether.Vec2 = [0, 0]
-
-    constructor() {
-        this.size = this._size
-    }
-
-    get size() {
-        return this._size
-    }
-
-    set size(size: number) {
-        this._size = size
-        const radius = this._size / window.devicePixelRatio
-        this.circle.setAttribute("r", `${radius}`)
-        this.circle.setAttribute("stroke-width", `${radius}`)
-    }
-
-    get tension() {
-        return this._tension
-    }
-
-    set tension(tension: number) {
-        this._tension = tension
-    }
-
-    get position() {
-        return this._position
-    }
-
-    set position(pos: aether.Vec2) {
-        this._position = pos
-        this.cursor.style.left = `${this._position[0] / window.devicePixelRatio - this.cursor.clientWidth / 2}px`
-        this.cursor.style.top = `${this._position[1] / window.devicePixelRatio - this.cursor.clientHeight / 2}px`
-        this.cursor.style.display = "block"
     }
 
 }

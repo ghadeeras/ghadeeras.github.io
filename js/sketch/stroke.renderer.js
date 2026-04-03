@@ -1,4 +1,5 @@
 import { gpu } from "lumen";
+import { commonWGSL, strokePointsPairStruct } from "./common.js";
 export class Renderer {
     constructor(pipelineLayout, pipeline) {
         this.pipelineLayout = pipelineLayout;
@@ -57,7 +58,7 @@ export class Renderer {
                 this.pipelineLayout.addTo(pass, { view });
                 for (const stroke of strokes) {
                     const strokeBuffer = stroke.entries.strokePoints.baseResource();
-                    const controlPointsCount = Math.ceil(strokeBuffer.size / strokePointStruct.paddedSize) + 2;
+                    const controlPointsCount = Math.ceil(strokeBuffer.size / strokePointsPairStruct.paddedSize) + 2;
                     this.pipelineLayout.addTo(pass, { stroke });
                     pass.draw(controlPointsCount * 2);
                 }
@@ -65,16 +66,11 @@ export class Renderer {
         });
     }
 }
-export const strokePointStruct = gpu.struct({
-    left: gpu.f32.x2,
-    right: gpu.f32.x2,
-    linear: gpu.f32.x2,
-});
 export const viewStruct = gpu.struct({
     width: gpu.f32,
     height: gpu.f32
 });
-export const strokeBinding = gpu.storage("read", strokePointStruct);
+export const strokeBinding = gpu.storage("read", strokePointsPairStruct);
 export const viewBinding = gpu.uniform(viewStruct);
 export function groupLayouts(device, label) {
     return device.groupLayouts({
@@ -95,13 +91,7 @@ export function pipelineLayout(groupLayouts, label) {
 }
 const shader = /* wgsl */ `
 
-    const PI = atan2(0.0, -1.0);
-
-    struct StrokePoint {
-        left: vec2f,
-        right: vec2f,
-        linear: vec2f,
-    }
+    ${commonWGSL}
 
     struct View {
         width: f32,
@@ -123,7 +113,7 @@ const shader = /* wgsl */ `
     }
 
     @group(0) @binding(0)
-    var<storage, read> stroke_points: array<StrokePoint>;
+    var<storage, read> stroke_points: array<StrokePointsPair>;
     
     @group(1) @binding(0)
     var<uniform> view: View;
