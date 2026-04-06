@@ -13,6 +13,7 @@ export class Stroke {
     private _strokeGroup: StrokeBindGroup | null = null;
 
     constructor(
+        private _color: aether.Vec4,
         private _thickness: number, 
         private _tension: number,
         private minDistance = 4,
@@ -21,6 +22,7 @@ export class Stroke {
 
     destroy() {
         if (this._strokeGroup !== null) {
+            this._strokeGroup.entries.strokeAttributes.baseResource().destroy()
             this._strokeGroup.entries.strokePoints.baseResource().destroy()
             this._strokeGroup = null
         }
@@ -36,6 +38,15 @@ export class Stroke {
 
     get finalized() {
         return this._finalized
+    }
+
+    get color() {
+        return this._color
+    }
+
+    set color(color: aether.Vec4) {
+        this._color = color
+        this.destroy()
     }
 
     get thickness() {

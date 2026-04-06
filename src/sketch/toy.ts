@@ -1,7 +1,7 @@
 import { gpu } from "lumen"
 import * as gear from "gear"
 import * as aether from "aether"
-import { LinearDragging } from "../utils/dragging.js"
+import { LinearDragging, positionDragging } from "../utils/dragging.js"
 import { Renderer, ViewBindGroup } from "./stroke.renderer.js"
 import { TessellatedStrokeFactory } from "./stroke.computer.js"
 import { Stroke } from "./stroke.js"
@@ -29,6 +29,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyP"]],
                     virtualKeys: "#control-p"
                 },
+                hue: {
+                    physicalKeys: [["KeyH"]],
+                    virtualKeys: "#control-h"
+                },
+                intensity: {
+                    physicalKeys: [["KeyI"]],
+                    virtualKeys: "#control-i"
+                },
                 brushSize: {
                     physicalKeys: [["KeyB"]],
                     virtualKeys: "#control-b"
@@ -38,12 +46,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     virtualKeys: "#control-t"
                 },
                 clear: {
-                    physicalKeys: [["KeyC"]],
-                    virtualKeys: "#control-c"
+                    physicalKeys: [["ShiftRight", "Delete"], ["ShiftLeft", "Delete"]],
+                    virtualKeys: "#control-clear"
                 },
                 undo: {
-                    physicalKeys: [["KeyU"]],
-                    virtualKeys: "#control-u"
+                    physicalKeys: [["Backspace"]],
+                    virtualKeys: "#control-undo"
                 },
                 record: {
                     physicalKeys: [["KeyV"]],
@@ -75,6 +83,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private strokes: Stroke[] = []
     private brush = new Brush();
 
+    private brushHue = this.toHue2D(this.brush.hue)
+
     private strokeTarget = gear.loops.draggingTarget(
         gear.property(this, "stroke"),
         new StrokeSampler(p => this.canvasSpacePos(p))
@@ -86,6 +96,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private tensionTarget = gear.loops.draggingTarget(
         gear.property(this, "tension"), 
         new LinearDragging(() => 0, 2, 128, 64)
+    )
+    private hueTarget = gear.loops.draggingTarget(
+        gear.property(this, "hue2D"),
+        positionDragging
+    )
+    private intensityTarget = gear.loops.draggingTarget(
+        gear.property(this.brush, "intensity"), 
+        new LinearDragging(() => 0, 0, 1, 1)
     )
 
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory) {
@@ -115,12 +133,26 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         )
     }
 
+    get hue2D() {
+        return this.brushHue
+    }
+
+    set hue2D(hue2D: aether.Vec2) {
+        this.brushHue = hue2D
+        const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.canvas.element.width, this.canvas.element.height]), 1 / Math.min(this.canvas.element.width, this.canvas.element.height))
+        this.brush.hue = toBarycentricCoordinates(p)
+    }
+
+    private toHue2D(hue: aether.Vec3): aether.Vec2 {
+        const p = fromBarycentricCoordinates(hue)
+        return aether.vec2.scale(aether.vec2.mul(p, [this.canvas.element.height, this.canvas.element.width]), 1 / Math.max(this.canvas.element.width, this.canvas.element.height))
+    }
+
     get tension() {
         return this.tessellatedStrokeFactory.strokeTension
     }
 
     set tension(tension: number) {
-        console.log(tension)
         this.brush.tension = tension
         for (const s of this.strokes) {
             s.tension = tension
@@ -130,7 +162,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.size, this.brush.tension)
+            ? new Stroke(this.brush.color, this.brush.size, this.brush.tension)
             : this.strokes[lastIndex]
     }
 
@@ -148,6 +180,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 paint: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
+                hue: { onPressed: () => inputs.pointers.primary.draggingTarget = this.hueTarget },
+                intensity: { onPressed: () => inputs.pointers.primary.draggingTarget = this.intensityTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -193,7 +227,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             this.strokes.map(s => {
                 this.tessellatedStrokeFactory.strokeThickness = s.thickness
                 this.tessellatedStrokeFactory.strokeTension = s.tension
-                return s.strokeGroup(points => this.renderer.stroke(this.tessellatedStrokeFactory.tesselate(points)))
+                return s.strokeGroup(points => this.renderer.stroke(
+                    { color: s.color, thickness: s.thickness, tension: s.tension },
+                    this.tessellatedStrokeFactory.tesselate(points)
+                ))
             }), 
             this.viewGroup
         )
@@ -230,4 +267,27 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!"
         throw e
     }
+}
+
+const c30 = Math.cos(Math.PI / 6)
+const s30 = Math.sin(Math.PI / 6)
+const redLine = aether.vec3.of(-c30, -s30, s30)
+const greenLine = aether.vec3.of(0, 1, s30)
+const blueLine = aether.vec3.of(c30, -s30, s30)
+
+function toBarycentricCoordinates(position: aether.Vec2): aether.Vec3 {
+    const p = aether.vec3.of(...position, 1)
+    return aether.vec3.min(aether.vec3.max(aether.vec3.scale(aether.vec3.of(
+        aether.vec3.dot(p, redLine),
+        aether.vec3.dot(p, greenLine),
+        aether.vec3.dot(p, blueLine)
+    ), 1 / (1 + s30)), [0, 0, 0]), [1, 1, 1])
+}
+
+function fromBarycentricCoordinates(hue: aether.Vec3): aether.Vec2 {
+    const h = aether.vec3.sub(aether.vec3.scale(hue, 1 + s30), [s30, s30, s30])
+    const r = aether.vec2.scale(aether.vec2.from(redLine), h[0])
+    const g = aether.vec2.scale(aether.vec2.from(greenLine), h[1])
+    const b = aether.vec2.scale(aether.vec2.from(blueLine), h[2])
+    return aether.vec2.addAll(r, g, b)
 }

@@ -7,7 +7,7 @@ export class TessellatedStrokeFactory {
         this.shader = shader;
         this.attributes = attributes;
     }
-    static async create(device, attributes = { thickness: 8, tension: 8 }) {
+    static async create(device, attributes = { color: [0, 0, 0, 1], thickness: 8, tension: 8 }) {
         return new TessellatedStrokeFactory(device, await TesselationShader.create(device), { ...attributes });
     }
     get strokeThickness() {
@@ -21,6 +21,12 @@ export class TessellatedStrokeFactory {
     }
     set strokeTension(tension) {
         this.attributes.tension = Math.round(tension);
+    }
+    get strokeColor() {
+        return this.attributes.color;
+    }
+    set strokeColor(color) {
+        this.attributes.color = color;
     }
     tesselate(inputStrokePoints, segmentsPerUnitLength = 0.25) {
         const r = 0.5 * this.strokeThickness;

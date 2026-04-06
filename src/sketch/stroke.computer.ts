@@ -7,7 +7,7 @@ export class TessellatedStrokeFactory {
     private constructor(private device: gpu.Device, private shader: TesselationShader, private attributes: StrokeAttributes) {
     }
 
-    static async create(device: gpu.Device, attributes: StrokeAttributes = { thickness: 8, tension: 8 }): Promise<TessellatedStrokeFactory> {
+    static async create(device: gpu.Device, attributes: StrokeAttributes = { color: [0, 0, 0, 1], thickness: 8, tension: 8 }): Promise<TessellatedStrokeFactory> {
         return new TessellatedStrokeFactory(device, await TesselationShader.create(device), { ...attributes })
     }
 
@@ -25,6 +25,14 @@ export class TessellatedStrokeFactory {
 
     set strokeTension(tension: number) {
         this.attributes.tension = Math.round(tension)
+    }
+
+    get strokeColor() {
+        return this.attributes.color
+    }
+
+    set strokeColor(color: aether.Vec4) {
+        this.attributes.color = color
     }
 
     tesselate(inputStrokePoints: StrokePoint[], segmentsPerUnitLength: number = 0.25): gpu.DataBuffer {

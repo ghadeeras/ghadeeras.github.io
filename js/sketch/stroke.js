@@ -1,6 +1,7 @@
 import * as aether from "aether";
 export class Stroke {
-    constructor(_thickness, _tension, minDistance = 4, time = () => performance.now()) {
+    constructor(_color, _thickness, _tension, minDistance = 4, time = () => performance.now()) {
+        this._color = _color;
         this._thickness = _thickness;
         this._tension = _tension;
         this.minDistance = minDistance;
@@ -14,6 +15,7 @@ export class Stroke {
     }
     destroy() {
         if (this._strokeGroup !== null) {
+            this._strokeGroup.entries.strokeAttributes.baseResource().destroy();
             this._strokeGroup.entries.strokePoints.baseResource().destroy();
             this._strokeGroup = null;
         }
@@ -26,6 +28,13 @@ export class Stroke {
     }
     get finalized() {
         return this._finalized;
+    }
+    get color() {
+        return this._color;
+    }
+    set color(color) {
+        this._color = color;
+        this.destroy();
     }
     get thickness() {
         return this._thickness;

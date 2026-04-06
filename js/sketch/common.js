@@ -1,5 +1,6 @@
 import { gpu } from "lumen";
 export const strokeAttributesStruct = gpu.struct({
+    color: gpu.f32.x4,
     thickness: gpu.f32,
     tension: gpu.f32,
 });
@@ -13,6 +14,7 @@ export const commonWGSL = /* wgsl */ `
     const PI = atan2(0.0, -1.0);
 
     struct StrokeAttributes {
+        color: vec4f,
         thickness: f32,
         tension: f32,
     }
