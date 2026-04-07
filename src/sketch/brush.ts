@@ -11,7 +11,7 @@ export class Brush {
     private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
     private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
 
-    private _color: Color = new Color(() => this.refreshColor())
+    private _color: Color = new Color([0, 0, 0, 1], () => this.refreshColor())
 
     private _thickness: number = 8
     private _tension: number = 8

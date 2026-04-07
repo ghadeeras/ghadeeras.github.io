@@ -3,11 +3,15 @@ import * as gear from "gear"
 
 export class Color {
 
-    private _hue: aether.Vec3 = [0.5, 0.5, 0.5]
-    private _intensity: number = 1
-    private _alpha: number = 1
+    private _hue: aether.Vec3
+    private _intensity: number
+    private _alpha: number
     
-    constructor(private colorChangeCallback: () => void) {
+    constructor(rgba: aether.Vec4, private colorChangeCallback: () => void = () => {}) {
+        const rgb: aether.Vec3 = [rgba[0], rgba[1], rgba[2]]
+        this._hue = hueOf(rgb)
+        this._intensity = Math.max(...rgb)
+        this._alpha = rgba[3]
         gear.invokeLater(() => colorChangeCallback())
     }
 
@@ -33,6 +37,14 @@ export class Color {
         return [...aether.vec3.scale(this._hue, this._intensity), this._alpha]
     }
 
+    set rgba(rgba: aether.Vec4) {
+        const rgb: aether.Vec3 = [rgba[0], rgba[1], rgba[2]]
+        this._hue = hueOf(rgb)
+        this._intensity = Math.max(...rgb)
+        this._alpha = rgba[3]
+        this.colorChangeCallback()
+    }
+
     get hex(): string {
         return toRGB(this.rgba)
     }
@@ -45,7 +57,7 @@ export function toRGB(color: [number, number, number, number]) {
 
 export function hueOf(color3D: aether.Vec3): aether.Vec3 {
     const max = Math.max(...color3D)
-    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [0, 0, 0]
+    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [1, 1, 1]
 }
 
 export class Pallette2D {

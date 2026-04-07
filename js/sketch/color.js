@@ -1,11 +1,12 @@
 import * as aether from "aether";
 import * as gear from "gear";
 export class Color {
-    constructor(colorChangeCallback) {
+    constructor(rgba, colorChangeCallback = () => { }) {
         this.colorChangeCallback = colorChangeCallback;
-        this._hue = [0.5, 0.5, 0.5];
-        this._intensity = 1;
-        this._alpha = 1;
+        const rgb = [rgba[0], rgba[1], rgba[2]];
+        this._hue = hueOf(rgb);
+        this._intensity = Math.max(...rgb);
+        this._alpha = rgba[3];
         gear.invokeLater(() => colorChangeCallback());
     }
     get hue() {
@@ -25,6 +26,13 @@ export class Color {
     get rgba() {
         return [...aether.vec3.scale(this._hue, this._intensity), this._alpha];
     }
+    set rgba(rgba) {
+        const rgb = [rgba[0], rgba[1], rgba[2]];
+        this._hue = hueOf(rgb);
+        this._intensity = Math.max(...rgb);
+        this._alpha = rgba[3];
+        this.colorChangeCallback();
+    }
     get hex() {
         return toRGB(this.rgba);
     }
@@ -34,7 +42,7 @@ export function toRGB(color) {
 }
 export function hueOf(color3D) {
     const max = Math.max(...color3D);
-    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [0, 0, 0];
+    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [1, 1, 1];
 }
 export class Pallette2D {
     constructor(red, green, blue) {

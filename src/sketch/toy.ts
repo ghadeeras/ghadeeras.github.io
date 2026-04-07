@@ -6,7 +6,7 @@ import { Renderer, ViewBindGroup } from "./stroke.renderer.js"
 import { TessellatedStrokeFactory } from "./stroke.computer.js"
 import { Stroke } from "./stroke.js"
 import { Brush } from "./brush.js"
-import { Pallette2D } from "./color.js"
+import { Color, Pallette2D } from "./color.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
@@ -46,9 +46,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyT"]],
                     virtualKeys: "#control-t"
                 },
+                toggleCurrentColor: {
+                    physicalKeys: [["KeyC"]],
+                    virtualKeys: "#control-c"
+                },
                 clear: {
                     physicalKeys: [["ShiftRight", "Delete"], ["ShiftLeft", "Delete"]],
-                    virtualKeys: "#control-clear"
+                    virtualKeys: ".control-clear"
                 },
                 undo: {
                     physicalKeys: [["Backspace"]],
@@ -82,10 +86,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private viewGroup: ViewBindGroup
     private strokes: Stroke[] = []
-    private brush = new Brush(this.canvas.device);
+    private brush = new Brush(this.canvas.device)
+    private backgroundColor = new Color([1, 1, 1, 1])
+    private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
 
-    private brushHue = this.toHue2D(this.brush.color.hue)
+    private hue = this.toHue2D(this.brush.color.hue)
 
     private strokeTarget = gear.loops.draggingTarget(
         gear.property(this, "stroke"),
@@ -104,7 +110,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         positionDragging
     )
     private intensityTarget = gear.loops.draggingTarget(
-        gear.property(this.brush.color, "intensity"), 
+        gear.property(this, "intensity"), 
         new LinearDragging(() => 0, 0, 1, 1)
     )
 
@@ -135,14 +141,26 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         )
     }
 
+    get color() {
+        return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor
+    }
+
     get hue2D() {
-        return this.brushHue
+        return this.hue
     }
 
     set hue2D(hue2D: aether.Vec2) {
-        this.brushHue = hue2D
+        this.hue = hue2D
         const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.canvas.element.width, this.canvas.element.height]), 1 / Math.min(this.canvas.element.width, this.canvas.element.height))
-        this.brush.color.hue = this.pallette2D.toColor(p)
+        this.color.hue = this.pallette2D.toColor(p)
+    }
+
+    get intensity() {
+        return this.color.intensity
+    }
+
+    set intensity(intensity: number) {
+        this.color.intensity = intensity
     }
 
     private toHue2D(hue: aether.Vec3): aether.Vec2 {
@@ -184,6 +202,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
                 hue: { onPressed: () => inputs.pointers.primary.draggingTarget = this.hueTarget },
                 intensity: { onPressed: () => inputs.pointers.primary.draggingTarget = this.intensityTarget },
+                toggleCurrentColor: { onPressed: () => this.currentColor = this.currentColor === "BRUSH" ? "BACKGROUND" : "BRUSH" },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -224,8 +243,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     render() {
+        const c = this.backgroundColor.rgba
         this.renderer.renderTo(
-            this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), 
+            this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), 
             this.strokes.map(s => {
                 this.tessellatedStrokeFactory.strokeThickness = s.thickness
                 this.tessellatedStrokeFactory.strokeTension = s.tension

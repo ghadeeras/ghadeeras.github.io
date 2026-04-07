@@ -7,7 +7,7 @@ export class Brush {
         this.cache = new Map();
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
-        this._color = new Color(() => this.refreshColor());
+        this._color = new Color([0, 0, 0, 1], () => this.refreshColor());
         this._thickness = 8;
         this._tension = 8;
         this._position = [0, 0];

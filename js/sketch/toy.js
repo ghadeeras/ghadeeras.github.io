@@ -6,7 +6,7 @@ import { Renderer } from "./stroke.renderer.js";
 import { TessellatedStrokeFactory } from "./stroke.computer.js";
 import { Stroke } from "./stroke.js";
 import { Brush } from "./brush.js";
-import { Pallette2D } from "./color.js";
+import { Color, Pallette2D } from "./color.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
 export const huds = {
     "monitor": "monitor-button"
@@ -23,13 +23,15 @@ class Toy {
         this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.strokes = [];
         this.brush = new Brush(this.canvas.device);
+        this.backgroundColor = new Color([1, 1, 1, 1]);
+        this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
-        this.brushHue = this.toHue2D(this.brush.color.hue);
+        this.hue = this.toHue2D(this.brush.color.hue);
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
         this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
         this.hueTarget = gear.loops.draggingTarget(gear.property(this, "hue2D"), positionDragging);
-        this.intensityTarget = gear.loops.draggingTarget(gear.property(this.brush.color, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
+        this.intensityTarget = gear.loops.draggingTarget(gear.property(this, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
         this.viewGroup = renderer.view(canvas.element);
     }
     static async create() {
@@ -48,13 +50,22 @@ class Toy {
     canvasSpacePos(position) {
         return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height]);
     }
+    get color() {
+        return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor;
+    }
     get hue2D() {
-        return this.brushHue;
+        return this.hue;
     }
     set hue2D(hue2D) {
-        this.brushHue = hue2D;
+        this.hue = hue2D;
         const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.canvas.element.width, this.canvas.element.height]), 1 / Math.min(this.canvas.element.width, this.canvas.element.height));
-        this.brush.color.hue = this.pallette2D.toColor(p);
+        this.color.hue = this.pallette2D.toColor(p);
+    }
+    get intensity() {
+        return this.color.intensity;
+    }
+    set intensity(intensity) {
+        this.color.intensity = intensity;
     }
     toHue2D(hue) {
         const p = this.pallette2D.fromColor(hue);
@@ -90,6 +101,7 @@ class Toy {
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
                 hue: { onPressed: () => inputs.pointers.primary.draggingTarget = this.hueTarget },
                 intensity: { onPressed: () => inputs.pointers.primary.draggingTarget = this.intensityTarget },
+                toggleCurrentColor: { onPressed: () => this.currentColor = this.currentColor === "BRUSH" ? "BACKGROUND" : "BRUSH" },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -125,7 +137,8 @@ class Toy {
     animate() {
     }
     render() {
-        this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokes.map(s => {
+        const c = this.backgroundColor.rgba;
+        this.renderer.renderTo(this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), this.strokes.map(s => {
             this.tessellatedStrokeFactory.strokeThickness = s.thickness;
             this.tessellatedStrokeFactory.strokeTension = s.tension;
             return s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points)));
@@ -155,9 +168,13 @@ Toy.descriptor = {
                 physicalKeys: [["KeyT"]],
                 virtualKeys: "#control-t"
             },
+            toggleCurrentColor: {
+                physicalKeys: [["KeyC"]],
+                virtualKeys: "#control-c"
+            },
             clear: {
                 physicalKeys: [["ShiftRight", "Delete"], ["ShiftLeft", "Delete"]],
-                virtualKeys: "#control-clear"
+                virtualKeys: ".control-clear"
             },
             undo: {
                 physicalKeys: [["Backspace"]],
