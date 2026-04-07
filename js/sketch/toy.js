@@ -21,10 +21,10 @@ class Toy {
         this.renderer = renderer;
         this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.strokes = [];
-        this.brush = new Brush();
+        this.brush = new Brush(this.canvas.device);
         this.brushHue = this.toHue2D(this.brush.hue);
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
-        this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "size"), new LinearDragging(() => 0, 8, 40, 20));
+        this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
         this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
         this.hueTarget = gear.loops.draggingTarget(gear.property(this, "hue2D"), positionDragging);
         this.intensityTarget = gear.loops.draggingTarget(gear.property(this.brush, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
@@ -70,7 +70,7 @@ class Toy {
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.color, this.brush.size, this.brush.tension)
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes))
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
@@ -126,7 +126,7 @@ class Toy {
         this.renderer.renderTo(this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }), this.strokes.map(s => {
             this.tessellatedStrokeFactory.strokeThickness = s.thickness;
             this.tessellatedStrokeFactory.strokeTension = s.tension;
-            return s.strokeGroup(points => this.renderer.stroke({ color: s.color, thickness: s.thickness, tension: s.tension }, this.tessellatedStrokeFactory.tesselate(points)));
+            return s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points)));
         }), this.viewGroup);
     }
 }

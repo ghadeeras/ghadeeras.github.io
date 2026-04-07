@@ -1,9 +1,8 @@
 import * as aether from "aether";
 export class Stroke {
-    constructor(_color, _thickness, _tension, minDistance = 4, time = () => performance.now()) {
-        this._color = _color;
-        this._thickness = _thickness;
-        this._tension = _tension;
+    constructor(_attributes, attributesDestructor, minDistance = 4, time = () => performance.now()) {
+        this._attributes = _attributes;
+        this.attributesDestructor = attributesDestructor;
         this.minDistance = minDistance;
         this.time = time;
         this.points = [];
@@ -15,10 +14,13 @@ export class Stroke {
     }
     destroy() {
         if (this._strokeGroup !== null) {
-            this._strokeGroup.entries.strokeAttributes.baseResource().destroy();
+            this.attributesDestructor(this._attributes);
             this._strokeGroup.entries.strokePoints.baseResource().destroy();
             this._strokeGroup = null;
         }
+    }
+    get attributes() {
+        return { ...this._attributes };
     }
     get duration() {
         return this._endTime - this._startTime;
@@ -30,25 +32,25 @@ export class Stroke {
         return this._finalized;
     }
     get color() {
-        return this._color;
+        return this._attributes.color;
     }
     set color(color) {
-        this._color = color;
         this.destroy();
+        this._attributes.color = color;
     }
     get thickness() {
-        return this._thickness;
+        return this._attributes.thickness;
     }
     set thickness(thickness) {
-        this._thickness = thickness;
         this.destroy();
+        this._attributes.thickness = thickness;
     }
     get tension() {
-        return this._tension;
+        return this._attributes.tension;
     }
     set tension(tension) {
-        this._tension = tension;
         this.destroy();
+        this._attributes.tension = tension;
     }
     finalize() {
         this._finalized = true;

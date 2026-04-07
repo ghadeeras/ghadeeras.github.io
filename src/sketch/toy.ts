@@ -81,7 +81,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private viewGroup: ViewBindGroup
     private strokes: Stroke[] = []
-    private brush = new Brush();
+    private brush = new Brush(this.canvas.device);
 
     private brushHue = this.toHue2D(this.brush.hue)
 
@@ -90,7 +90,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         new StrokeSampler(p => this.canvasSpacePos(p))
     )
     private brushSizeTarget = gear.loops.draggingTarget(
-        gear.property(this.brush, "size"), 
+        gear.property(this.brush, "thickness"), 
         new LinearDragging(() => 0, 8, 40, 20)
     )
     private tensionTarget = gear.loops.draggingTarget(
@@ -162,7 +162,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.color, this.brush.size, this.brush.tension)
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes))
             : this.strokes[lastIndex]
     }
 
@@ -228,7 +228,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 this.tessellatedStrokeFactory.strokeThickness = s.thickness
                 this.tessellatedStrokeFactory.strokeTension = s.tension
                 return s.strokeGroup(points => this.renderer.stroke(
-                    { color: s.color, thickness: s.thickness, tension: s.tension },
+                    this.brush.dataBuffer(s.attributes),
                     this.tessellatedStrokeFactory.tesselate(points)
                 ))
             }), 

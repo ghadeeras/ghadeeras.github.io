@@ -1,5 +1,5 @@
 import { gpu } from "lumen"
-import { commonWGSL, StrokeAttributes, strokeAttributesStruct, strokePointsPairStruct } from "./common.js"
+import { commonWGSL, strokeAttributesStruct, strokePointsPairStruct } from "./common.js"
 
 export class Renderer {
 
@@ -44,12 +44,9 @@ export class Renderer {
         })
     }
 
-    stroke(strokeAttributes: StrokeAttributes, strokePoints: gpu.DataBuffer): StrokeBindGroup {
+    stroke(strokeAttributes: gpu.DataBuffer, strokePoints: gpu.DataBuffer): StrokeBindGroup {
         return this.pipelineLayout.descriptor.stroke.layout.bindGroup({
-            strokeAttributes: this.pipelineLayout.device.dataBuffer({
-                usage: ["UNIFORM"],
-                data: strokeAttributesStruct.view([strokeAttributes])
-            }),
+            strokeAttributes,
             strokePoints
         })
     }

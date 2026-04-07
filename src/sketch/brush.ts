@@ -1,7 +1,11 @@
 import * as gear from "gear"
 import * as aether from "aether"
+import { gpu } from "lumen"
+import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
 
 export class Brush {
+
+    private cache = new Map<string, [gpu.DataBuffer, number]>()
 
     private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
     private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
@@ -9,13 +13,21 @@ export class Brush {
     private _hue: aether.Vec3 = [0.5, 0.5, 0.5]
     private _intensity: number = 1
     private _alpha: number = 1
-    private _size: number = 8
+    private _thickness: number = 8
     private _tension: number = 8
     private _position: aether.Vec2 = [0, 0]
 
-    constructor() {
-        this.size = this._size
+    constructor(private device: gpu.Device) {
+        this.thickness = this._thickness
         this.refreshColor()
+    }
+
+    get attributes(): StrokeAttributes {
+        return {
+            color: this.color,
+            thickness: this.thickness,
+            tension: this.tension
+        }
     }
 
     get hue(): aether.Vec3 {
@@ -40,18 +52,17 @@ export class Brush {
         return [...aether.vec3.scale(this._hue, this._intensity), this._alpha]
     }
 
-    refreshColor() {
-        const rgb = this.color.map(v => Math.round(v * 255)).join(", ")
-        this.circle.setAttribute("stroke", `rgba(${rgb})`)    
+    get rgb() {
+        return toRGB(this.color)
     }
 
-    get size() {
-        return this._size
+    get thickness() {
+        return this._thickness
     }
 
-    set size(size: number) {
-        this._size = size
-        const radius = this._size / window.devicePixelRatio
+    set thickness(size: number) {
+        this._thickness = size
+        const radius = this._thickness / window.devicePixelRatio
         this.circle.setAttribute("r", `${radius}`)
         this.circle.setAttribute("stroke-width", `${radius}`)
     }
@@ -75,6 +86,46 @@ export class Brush {
         this.cursor.style.display = "block"
     }
 
+    dataBuffer(strokeAttributes: StrokeAttributes = { color: this.color, thickness: this.thickness, tension: this.tension }): gpu.DataBuffer {
+        const key = this.toKey(strokeAttributes)
+        let entry = this.cache.get(key)
+        if (entry === undefined) {
+            entry = [this.device.dataBuffer({
+                usage: ["UNIFORM"],
+                data: strokeAttributesStruct.view([strokeAttributes])
+            }), 1]
+            this.cache.set(key, entry)
+        } else {
+            entry[1]++
+        }
+        return entry[0]
+    }
+
+    destroyDataBuffer(strokeAttributes: StrokeAttributes = { color: this.color, thickness: this.thickness, tension: this.tension }) {
+        const key = this.toKey(strokeAttributes)
+        const entry = this.cache.get(key)
+        if (entry !== undefined && --entry[1] === 0) {
+            entry[0].destroy()
+            this.cache.delete(key)
+        }
+    }
+
+    private toKey(strokeAttributes: StrokeAttributes): string {
+        return JSON.stringify({
+            color: toRGB(strokeAttributes.color),
+            thickness: Math.round(strokeAttributes.thickness).toFixed(0),
+            tension: Math.round(strokeAttributes.tension).toFixed(0),
+        })
+    }
+
+    private refreshColor() {
+        this.circle.setAttribute("stroke", `#${this.rgb}`)    
+    }
+
+}
+
+function toRGB(color: [number, number, number, number]) {
+    return color.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("")
 }
 
 function hueOf(color3D: aether.Vec3): aether.Vec3 {

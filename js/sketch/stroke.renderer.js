@@ -44,10 +44,7 @@ export class Renderer {
     }
     stroke(strokeAttributes, strokePoints) {
         return this.pipelineLayout.descriptor.stroke.layout.bindGroup({
-            strokeAttributes: this.pipelineLayout.device.dataBuffer({
-                usage: ["UNIFORM"],
-                data: strokeAttributesStruct.view([strokeAttributes])
-            }),
+            strokeAttributes,
             strokePoints
         });
     }

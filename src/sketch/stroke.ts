@@ -1,6 +1,7 @@
 import * as aether from "aether"
 import { StrokeBindGroup } from "./stroke.renderer.js"
 import { StrokePoint } from "./stroke.computer.js"
+import { StrokeAttributes } from "./common.js"
 
 export class Stroke {
 
@@ -13,19 +14,22 @@ export class Stroke {
     private _strokeGroup: StrokeBindGroup | null = null;
 
     constructor(
-        private _color: aether.Vec4,
-        private _thickness: number, 
-        private _tension: number,
+        private _attributes: StrokeAttributes,
+        private attributesDestructor: (strokeAttributes: StrokeAttributes) => void,
         private minDistance = 4,
         private time: () => number = () => performance.now()
     ) {}
 
     destroy() {
         if (this._strokeGroup !== null) {
-            this._strokeGroup.entries.strokeAttributes.baseResource().destroy()
+            this.attributesDestructor(this._attributes)
             this._strokeGroup.entries.strokePoints.baseResource().destroy()
             this._strokeGroup = null
         }
+    }
+
+    get attributes(): StrokeAttributes {
+        return { ...this._attributes }
     }
 
     get duration() {
@@ -41,30 +45,30 @@ export class Stroke {
     }
 
     get color() {
-        return this._color
+        return this._attributes.color
     }
 
     set color(color: aether.Vec4) {
-        this._color = color
         this.destroy()
+        this._attributes.color = color
     }
 
     get thickness() {
-        return this._thickness
+        return this._attributes.thickness
     }
 
     set thickness(thickness: number) {
-        this._thickness = thickness
         this.destroy()
+        this._attributes.thickness = thickness
     } 
 
     get tension() {
-        return this._tension
+        return this._attributes.tension
     }
 
     set tension(tension: number) {
-        this._tension = tension
         this.destroy()
+        this._attributes.tension = tension
     } 
 
     finalize() {
