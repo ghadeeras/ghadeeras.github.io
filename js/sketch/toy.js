@@ -6,6 +6,7 @@ import { Renderer } from "./stroke.renderer.js";
 import { TessellatedStrokeFactory } from "./stroke.computer.js";
 import { Stroke } from "./stroke.js";
 import { Brush } from "./brush.js";
+import { Pallette2D } from "./color.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
 export const huds = {
     "monitor": "monitor-button"
@@ -22,12 +23,13 @@ class Toy {
         this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.strokes = [];
         this.brush = new Brush(this.canvas.device);
-        this.brushHue = this.toHue2D(this.brush.hue);
+        this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
+        this.brushHue = this.toHue2D(this.brush.color.hue);
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
         this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
         this.hueTarget = gear.loops.draggingTarget(gear.property(this, "hue2D"), positionDragging);
-        this.intensityTarget = gear.loops.draggingTarget(gear.property(this.brush, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
+        this.intensityTarget = gear.loops.draggingTarget(gear.property(this.brush.color, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
         this.viewGroup = renderer.view(canvas.element);
     }
     static async create() {
@@ -52,10 +54,10 @@ class Toy {
     set hue2D(hue2D) {
         this.brushHue = hue2D;
         const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.canvas.element.width, this.canvas.element.height]), 1 / Math.min(this.canvas.element.width, this.canvas.element.height));
-        this.brush.hue = toBarycentricCoordinates(p);
+        this.brush.color.hue = this.pallette2D.toColor(p);
     }
     toHue2D(hue) {
-        const p = fromBarycentricCoordinates(hue);
+        const p = this.pallette2D.fromColor(hue);
         return aether.vec2.scale(aether.vec2.mul(p, [this.canvas.element.height, this.canvas.element.width]), 1 / Math.max(this.canvas.element.width, this.canvas.element.height));
     }
     get tension() {
@@ -212,21 +214,5 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
         throw e;
     }
-}
-const c30 = Math.cos(Math.PI / 6);
-const s30 = Math.sin(Math.PI / 6);
-const redLine = aether.vec3.of(-c30, -s30, s30);
-const greenLine = aether.vec3.of(0, 1, s30);
-const blueLine = aether.vec3.of(c30, -s30, s30);
-function toBarycentricCoordinates(position) {
-    const p = aether.vec3.of(...position, 1);
-    return aether.vec3.min(aether.vec3.max(aether.vec3.scale(aether.vec3.of(aether.vec3.dot(p, redLine), aether.vec3.dot(p, greenLine), aether.vec3.dot(p, blueLine)), 1 / (1 + s30)), [0, 0, 0]), [1, 1, 1]);
-}
-function fromBarycentricCoordinates(hue) {
-    const h = aether.vec3.sub(aether.vec3.scale(hue, 1 + s30), [s30, s30, s30]);
-    const r = aether.vec2.scale(aether.vec2.from(redLine), h[0]);
-    const g = aether.vec2.scale(aether.vec2.from(greenLine), h[1]);
-    const b = aether.vec2.scale(aether.vec2.from(blueLine), h[2]);
-    return aether.vec2.addAll(r, g, b);
 }
 //# sourceMappingURL=toy.js.map
