@@ -51,9 +51,8 @@ export class Renderer {
         })
     }
 
-    resize(group: ViewBindGroup, view: View) {
-        const b = group.entries.view as gpu.DataBuffer
-        b.set(viewStruct).fromData(viewStruct.view([view]))
+    updateView(group: ViewBindGroup, view: View) {
+        group.entries.view.baseResource().set(viewStruct).fromData(viewStruct.view([view]))
     }
 
     renderTo(attachment: GPURenderPassColorAttachment, strokes: StrokeBindGroup[], view: ViewBindGroup) {
@@ -75,6 +74,7 @@ export class Renderer {
 
 export type View = gpu.DataTypeOf<typeof viewStruct>
 export const viewStruct = gpu.struct({
+    matrix: gpu.mat3x3,
     width: gpu.f32,
     height: gpu.f32
 })
@@ -112,6 +112,7 @@ const shader = /* wgsl */ `
     ${commonWGSL}
 
     struct View {
+        matrix: mat3x3f,
         width: f32,
         height: f32,
     }
@@ -153,7 +154,7 @@ const shader = /* wgsl */ `
         point.left += cap; 
         point.right += cap;
 
-        let position = select(point.left, point.right, side == 1u);
+        let position = view.matrix * vec3(select(point.left, point.right, side == 1u), 1.0);
         let clip_position = vec4(
             2.0 * position.x / view.width - 1.0, 
             1.0 - 2.0 * position.y / view.height,
@@ -161,7 +162,7 @@ const shader = /* wgsl */ `
             1.0
         );
         let uvw = width * vec3(u, select(-0.5, 0.5, side == 1u), 1.0); 
-        return Vertex(clip_position, position, uvw);
+        return Vertex(clip_position, position.xy, uvw);
     }
 
     @fragment

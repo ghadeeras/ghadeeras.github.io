@@ -19,10 +19,9 @@ export class ModelMatrixDragging {
     mapper(matrix, from) {
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix());
         const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...from, 1, 1]));
-        const speed = this.speed * aether.vec3.length(actualFrom);
         return to => {
             const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]));
-            const delta = this.delta(actualFrom, actualTo, speed);
+            const delta = this.delta(actualFrom, actualTo, this.speed);
             const translation = aether.mat4.translation(aether.vec3.from(matrix[3]));
             const rotation = [
                 matrix[0],

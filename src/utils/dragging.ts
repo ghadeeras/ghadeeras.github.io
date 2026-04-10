@@ -23,10 +23,9 @@ export abstract class ModelMatrixDragging implements oldGear.DraggingHandler<aet
     mapper(matrix: aether.Mat<4>, from: oldGear.PointerPosition): oldGear.DraggingPositionMapper<aether.Mat<4>> {
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix())
         const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...from, 1, 1]))
-        const speed = this.speed * aether.vec3.length(actualFrom)
         return to => {
             const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]))
-            const delta = this.delta(actualFrom, actualTo, speed)
+            const delta = this.delta(actualFrom, actualTo, this.speed)
             const translation = aether.mat4.translation(aether.vec3.from(matrix[3]))
             const rotation: aether.Mat4 = [
                 matrix[0],

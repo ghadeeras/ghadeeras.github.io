@@ -1,7 +1,7 @@
 import { gpu } from "lumen";
 import * as gear from "gear";
 import * as aether from "aether";
-import { LinearDragging, positionDragging } from "../utils/dragging.js";
+import { LinearDragging, positionDragging, TranslationDragging } from "../utils/dragging.js";
 import { Renderer } from "./stroke.renderer.js";
 import { TessellatedStrokeFactory } from "./stroke.computer.js";
 import { Stroke } from "./stroke.js";
@@ -26,13 +26,22 @@ class Toy {
         this.backgroundColor = new Color([1, 1, 1, 1]);
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
+        this.inverseViewMatrix = aether.mat3.identity();
+        this.viewMatrix = aether.mat3.identity();
         this.hue = this.toHue2D(this.brush.color.hue);
-        this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.canvasSpacePos(p)));
+        this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.infiniteCanvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
         this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
         this.hueTarget = gear.loops.draggingTarget(gear.property(this, "hue2D"), positionDragging);
         this.intensityTarget = gear.loops.draggingTarget(gear.property(this, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
-        this.viewGroup = renderer.view(canvas.element);
+        this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
+            return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
+        }, 1));
+        this.viewGroup = renderer.view({
+            matrix: this.viewMatrix,
+            width: canvas.element.width,
+            height: canvas.element.height
+        });
     }
     static async create() {
         try {
@@ -47,8 +56,33 @@ class Toy {
             throw e;
         }
     }
+    infiniteCanvasSpacePos(position) {
+        return aether.vec2.from(aether.mat3.apply(this.inverseViewMatrix, [...this.canvasSpacePos(position), 1]));
+    }
     canvasSpacePos(position) {
         return aether.vec2.mul(aether.vec2.mul(aether.vec2.add(position, [1, -1]), [0.5, -0.5]), [this.canvas.element.width, this.canvas.element.height]);
+    }
+    get matrix() {
+        let m = this.inverseViewMatrix;
+        return [
+            [...m[0], 0],
+            [...m[1], 0],
+            [0, 0, 1, 0],
+            [...m[2], 1],
+        ];
+    }
+    set matrix(matrix) {
+        const m = matrix
+            .filter((_, i) => i != 2)
+            .map(r => r.slice(0, 3))
+            .flatMap(r => r);
+        this.inverseViewMatrix = aether.mat3.from(m);
+        this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix);
+        this.renderer.updateView(this.viewGroup, {
+            matrix: this.viewMatrix,
+            width: this.canvas.element.width,
+            height: this.canvas.element.height
+        });
     }
     get color() {
         return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor;
@@ -96,12 +130,14 @@ class Toy {
         const v = 0.01;
         return {
             keys: {
-                paint: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
+                drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
-                hue: { onPressed: () => inputs.pointers.primary.draggingTarget = this.hueTarget },
-                intensity: { onPressed: () => inputs.pointers.primary.draggingTarget = this.intensityTarget },
-                toggleCurrentColor: { onPressed: () => this.currentColor = this.currentColor === "BRUSH" ? "BACKGROUND" : "BRUSH" },
+                hue: { onPressed: () => { this.currentColor = "BRUSH"; inputs.pointers.primary.draggingTarget = this.hueTarget; } },
+                intensity: { onPressed: () => { this.currentColor = "BRUSH"; inputs.pointers.primary.draggingTarget = this.intensityTarget; } },
+                backgroundHue: { onPressed: () => { this.currentColor = "BACKGROUND"; inputs.pointers.primary.draggingTarget = this.hueTarget; } },
+                backgroundIntensity: { onPressed: () => { this.currentColor = "BACKGROUND"; inputs.pointers.primary.draggingTarget = this.intensityTarget; } },
+                sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -127,7 +163,11 @@ class Toy {
                 scene: {
                     onResize: () => {
                         this.canvas.resize();
-                        this.renderer.resize(this.viewGroup, this.canvas.element);
+                        this.renderer.updateView(this.viewGroup, {
+                            matrix: this.viewMatrix,
+                            width: this.canvas.element.width,
+                            height: this.canvas.element.height
+                        });
                     }
                 }
             },
@@ -148,9 +188,9 @@ class Toy {
 Toy.descriptor = {
     input: {
         keys: {
-            paint: {
-                physicalKeys: [["KeyP"]],
-                virtualKeys: "#control-p"
+            drawing: {
+                physicalKeys: [["KeyD"]],
+                virtualKeys: "#control-d"
             },
             hue: {
                 physicalKeys: [["KeyH"]],
@@ -160,6 +200,14 @@ Toy.descriptor = {
                 physicalKeys: [["KeyI"]],
                 virtualKeys: "#control-i"
             },
+            backgroundHue: {
+                physicalKeys: [["ShiftRight", "KeyH"], ["ShiftLeft", "KeyH"]],
+                virtualKeys: ".control-bg-h"
+            },
+            backgroundIntensity: {
+                physicalKeys: [["ShiftRight", "KeyI"], ["ShiftLeft", "KeyI"]],
+                virtualKeys: ".control-bg-i"
+            },
             brushSize: {
                 physicalKeys: [["KeyB"]],
                 virtualKeys: "#control-b"
@@ -168,9 +216,9 @@ Toy.descriptor = {
                 physicalKeys: [["KeyT"]],
                 virtualKeys: "#control-t"
             },
-            toggleCurrentColor: {
-                physicalKeys: [["KeyC"]],
-                virtualKeys: "#control-c"
+            sliding: {
+                physicalKeys: [["KeyS"]],
+                virtualKeys: "#control-s"
             },
             clear: {
                 physicalKeys: [["ShiftRight", "Delete"], ["ShiftLeft", "Delete"]],
