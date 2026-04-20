@@ -4,7 +4,6 @@ import * as renderer from "./gltf/gltf.renderer.js";
 import { gpu } from "lumen";
 import { Resource } from "lumen";
 import { failure } from "./utils.js";
-import { label } from "node_modules/lumen/lib/gpu/utils.js";
 
 export const gltfMatricesStruct = gpu.struct({
     matrix: gpu.mat4x4,

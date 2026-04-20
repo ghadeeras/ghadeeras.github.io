@@ -7,6 +7,7 @@ import { TessellatedStrokeFactory } from "./stroke.computer.js"
 import { Stroke } from "./stroke.js"
 import { Brush } from "./brush.js"
 import { Color, Pallette2D } from "./color.js"
+import { BackgroundGroup, BackgroundRenderer } from "./bg.renderer.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
@@ -66,6 +67,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["Backspace"]],
                     virtualKeys: "#control-undo"
                 },
+                loadBackgroundImage: {
+                    physicalKeys: [["KeyG"]],
+                    virtualKeys: "#control-load-bg"
+                },
                 record: {
                     physicalKeys: [["KeyV"]],
                     virtualKeys: "#control-v"
@@ -93,6 +98,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     } satisfies gear.loops.LoopDescriptor
 
     private viewGroup: ViewBindGroup
+    private backgroundGroup: BackgroundGroup | null = null
     private strokes: Stroke[] = []
     private brush = new Brush(this.canvas.device)
     private backgroundColor = new Color([1, 1, 1, 1])
@@ -131,7 +137,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }, 1)
     )
 
-    constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory) {
+    constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view({
             matrix: this.viewMatrix,
             width: canvas.element.width,
@@ -145,7 +151,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4)
             const renderer = await Renderer.create(device)
             const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device)
-            return new Toy(canvas, renderer, tessellatedStrokeFactory)
+            const backgroundRenderer = await BackgroundRenderer.create(device)
+            return new Toy(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer)
         } catch (e) {
             gear.required(document.getElementById(Toy.descriptor.output.canvases.scene.element)).style.cursor = "default"
             throw e
@@ -256,6 +263,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
+                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
@@ -264,6 +272,23 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     onMoved: () => this.brush.position = this.canvasSpacePos(inputs.pointers.primary.position)
                 }
             }
+        }
+    }
+
+    private async loadNewBackgroundImage() {
+        const file = await selectFile(["image/*"])
+        if (file != null) {
+            const imageBitmap = await createImageBitmap(file)
+            const texture = this.canvas.device.texture({
+                size: [imageBitmap.width, imageBitmap.height],
+                format: this.canvas.format,
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+            })
+            this.canvas.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: texture.wrapped }, [imageBitmap.width, imageBitmap.height])
+            if (this.backgroundGroup !== null) {
+                this.backgroundGroup.entries.background_texture.baseResource().destroy()
+            }
+            this.backgroundGroup = await this.backgroundRenderer.background(texture)
         }
     }
 
@@ -299,8 +324,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     render() {
         const c = this.backgroundColor.rgba
+        const attachment: GPURenderPassColorAttachment = { ...this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), storeOp: "store" }
+        if (this.backgroundGroup !== null) {
+            this.backgroundRenderer.renderTo(attachment,this.backgroundGroup)
+            attachment.loadOp = "load"
+            attachment.storeOp = "discard"
+        }
         this.renderer.renderTo(
-            this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), 
+            attachment, 
             this.strokes.map(s => {
                 this.tessellatedStrokeFactory.strokeThickness = s.thickness
                 this.tessellatedStrokeFactory.strokeTension = s.tension
@@ -344,4 +375,14 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!"
         throw e
     }
+}
+
+async function selectFile(mimeTypes: string[]): Promise<File | null> {
+    return new Promise((resolve, reject) => {
+        const input = document.createElement("input")
+        input.type = "file"
+        input.accept = mimeTypes.join(",")
+        input.onchange = () => resolve(input.files && input.files.length > 0 ? input.files[0] : null)
+        input.click()
+    })
 }
