@@ -1,12 +1,12 @@
-import { gpu } from "lumen";
-import { commonWGSL, strokeAttributesStruct, strokePointsPairStruct } from "./common.js";
+import * as cmn from "./common.js";
 export class Renderer {
     constructor(pipelineLayout, pipeline) {
         this.pipelineLayout = pipelineLayout;
         this.pipeline = pipeline;
     }
-    static async create(device, format = navigator.gpu.getPreferredCanvasFormat()) {
-        const layout = pipelineLayout(groupLayouts(device));
+    static async create(commonLayouts, format = navigator.gpu.getPreferredCanvasFormat()) {
+        const device = commonLayouts.view.device;
+        const layout = pipelineLayout(commonLayouts);
         const module = await device.shaderModule({ code: shader });
         const pipeline = await device.wrapped.createRenderPipelineAsync({
             layout: layout.wrapped,
@@ -35,21 +35,21 @@ export class Renderer {
         return new Renderer(layout, pipeline);
     }
     view(view) {
-        return this.pipelineLayout.descriptor.view.layout.bindGroup({
+        return this.pipelineLayout.bindGroup("view", {
             view: this.pipelineLayout.device.dataBuffer({
                 usage: ["UNIFORM"],
-                data: viewStruct.view([view])
+                data: cmn.viewStruct.view([view])
             })
         });
     }
     stroke(strokeAttributes, strokePoints) {
-        return this.pipelineLayout.descriptor.stroke.layout.bindGroup({
+        return this.pipelineLayout.bindGroup("stroke", {
             strokeAttributes,
             strokePoints
         });
     }
     updateView(group, view) {
-        group.entries.view.baseResource().set(viewStruct).fromData(viewStruct.view([view]));
+        group.entries.view.baseResource().set(cmn.viewStruct).fromData(cmn.viewStruct.view([view]));
     }
     renderTo(attachment, strokes, view) {
         this.pipelineLayout.device.enqueueCommands("rendering", encoder => {
@@ -58,32 +58,13 @@ export class Renderer {
                 this.pipelineLayout.addTo(pass, { view });
                 for (const stroke of strokes) {
                     const strokeBuffer = stroke.entries.strokePoints.baseResource();
-                    const controlPointsCount = Math.ceil(strokeBuffer.size / strokePointsPairStruct.paddedSize) + 2;
+                    const controlPointsCount = Math.ceil(strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize) + 2;
                     this.pipelineLayout.addTo(pass, { stroke });
                     pass.draw(controlPointsCount * 2);
                 }
             });
         });
     }
-}
-export const viewStruct = gpu.struct({
-    matrix: gpu.mat3x3,
-    width: gpu.f32,
-    height: gpu.f32
-});
-export const strokeAttributesBinding = gpu.uniform(strokeAttributesStruct);
-export const strokePointsBinding = gpu.storage("read", strokePointsPairStruct);
-export const viewBinding = gpu.uniform(viewStruct);
-export function groupLayouts(device, label) {
-    return device.groupLayouts({
-        stroke: {
-            strokeAttributes: strokeAttributesBinding.asEntry(0, "FRAGMENT"),
-            strokePoints: strokePointsBinding.asEntry(1, "VERTEX"),
-        },
-        view: {
-            view: viewBinding.asEntry(0, "VERTEX")
-        }
-    }, label);
 }
 export function pipelineLayout(groupLayouts, label) {
     const device = groupLayouts.stroke.device;
@@ -94,13 +75,7 @@ export function pipelineLayout(groupLayouts, label) {
 }
 const shader = /* wgsl */ `
 
-    ${commonWGSL}
-
-    struct View {
-        matrix: mat3x3f,
-        width: f32,
-        height: f32,
-    }
+    ${cmn.commonWGSL}
 
     struct InputVertex {
         @builtin(vertex_index) vertex_index: u32,

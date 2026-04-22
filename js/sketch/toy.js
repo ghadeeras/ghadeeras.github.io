@@ -8,6 +8,7 @@ import { Stroke } from "./stroke.js";
 import { Brush } from "./brush.js";
 import { Color, Pallette2D } from "./color.js";
 import { BackgroundRenderer } from "./bg.renderer.js";
+import * as cmn from "./common.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
 export const huds = {
     "monitor": "monitor-button"
@@ -40,19 +41,16 @@ class Toy {
         this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
-        this.viewGroup = renderer.view({
-            matrix: this.viewMatrix,
-            width: canvas.element.width,
-            height: canvas.element.height
-        });
+        this.viewGroup = renderer.view(this.view);
     }
     static async create() {
         try {
             const device = await gpuDevice();
             const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4);
-            const renderer = await Renderer.create(device);
+            const commonLayouts = cmn.groupLayouts(device);
+            const renderer = await Renderer.create(commonLayouts);
             const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device);
-            const backgroundRenderer = await BackgroundRenderer.create(device);
+            const backgroundRenderer = await BackgroundRenderer.create(commonLayouts.view);
             return new Toy(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer);
         }
         catch (e) {
@@ -78,15 +76,11 @@ class Toy {
     set matrix(matrix) {
         const m = matrix
             .filter((_, i) => i != 2)
-            .map(r => r.slice(0, 3))
+            .map(r => [r[0], r[1], r[3]])
             .flatMap(r => r);
         this.inverseViewMatrix = aether.mat3.from(m);
         this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix);
-        this.renderer.updateView(this.viewGroup, {
-            matrix: this.viewMatrix,
-            width: this.canvas.element.width,
-            height: this.canvas.element.height
-        });
+        this.renderer.updateView(this.viewGroup, this.view);
     }
     get color() {
         return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor;
@@ -137,14 +131,16 @@ class Toy {
                 drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
-                hue: { onPressed: () => { this.currentColor = "BRUSH"; inputs.pointers.primary.draggingTarget = this.hueTarget; } },
-                intensity: { onPressed: () => { this.currentColor = "BRUSH"; inputs.pointers.primary.draggingTarget = this.intensityTarget; } },
-                backgroundHue: { onPressed: () => { this.currentColor = "BACKGROUND"; inputs.pointers.primary.draggingTarget = this.hueTarget; } },
-                backgroundIntensity: { onPressed: () => { this.currentColor = "BACKGROUND"; inputs.pointers.primary.draggingTarget = this.intensityTarget; } },
+                hue: { onPressed: () => { this.setColorDraggingTarget(inputs, "BRUSH", this.hueTarget); } },
+                intensity: { onPressed: () => { this.setColorDraggingTarget(inputs, "BRUSH", this.intensityTarget); } },
+                backgroundHue: { onPressed: () => { this.setColorDraggingTarget(inputs, "BACKGROUND", this.hueTarget); } },
+                backgroundIntensity: { onPressed: () => { this.setColorDraggingTarget(inputs, "BACKGROUND", this.intensityTarget); } },
                 sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
+                clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
+                resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
@@ -154,6 +150,53 @@ class Toy {
                 }
             }
         };
+    }
+    outputWiring() {
+        return {
+            canvases: {
+                scene: {
+                    onResize: () => {
+                        this.canvas.resize();
+                        this.renderer.updateView(this.viewGroup, this.view);
+                    }
+                }
+            },
+            onRender: () => this.render()
+        };
+    }
+    get view() {
+        return {
+            matrix: this.viewMatrix,
+            inverse_matrix: this.inverseViewMatrix,
+            width: this.canvas.element.width,
+            height: this.canvas.element.height
+        };
+    }
+    animate() {
+    }
+    render() {
+        const c = this.backgroundColor.rgba;
+        const attachment = { ...this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), storeOp: "store" };
+        if (this.backgroundGroup !== null) {
+            this.backgroundRenderer.renderTo(attachment, this.backgroundGroup, this.viewGroup);
+            attachment.loadOp = "load";
+            attachment.storeOp = "discard";
+        }
+        this.renderer.renderTo(attachment, this.strokes.map(s => {
+            this.tessellatedStrokeFactory.strokeThickness = s.thickness;
+            this.tessellatedStrokeFactory.strokeTension = s.tension;
+            return s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points)));
+        }), this.viewGroup);
+    }
+    setColorDraggingTarget(inputs, color, draggingTarget) {
+        this.currentColor = color;
+        inputs.pointers.primary.draggingTarget = draggingTarget;
+    }
+    clearBackgroundImage() {
+        if (this.backgroundGroup !== null) {
+            this.backgroundGroup.entries.background_texture.baseResource().destroy();
+            this.backgroundGroup = null;
+        }
     }
     async loadNewBackgroundImage() {
         const file = await selectFile(["image/*"]);
@@ -177,39 +220,6 @@ class Toy {
     clearStrokes() {
         this.strokes.forEach(s => s.destroy());
         this.strokes = [];
-    }
-    outputWiring() {
-        return {
-            canvases: {
-                scene: {
-                    onResize: () => {
-                        this.canvas.resize();
-                        this.renderer.updateView(this.viewGroup, {
-                            matrix: this.viewMatrix,
-                            width: this.canvas.element.width,
-                            height: this.canvas.element.height
-                        });
-                    }
-                }
-            },
-            onRender: () => this.render()
-        };
-    }
-    animate() {
-    }
-    render() {
-        const c = this.backgroundColor.rgba;
-        const attachment = { ...this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), storeOp: "store" };
-        if (this.backgroundGroup !== null) {
-            this.backgroundRenderer.renderTo(attachment, this.backgroundGroup);
-            attachment.loadOp = "load";
-            attachment.storeOp = "discard";
-        }
-        this.renderer.renderTo(attachment, this.strokes.map(s => {
-            this.tessellatedStrokeFactory.strokeThickness = s.thickness;
-            this.tessellatedStrokeFactory.strokeTension = s.tension;
-            return s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points)));
-        }), this.viewGroup);
     }
 }
 Toy.descriptor = {
@@ -258,6 +268,14 @@ Toy.descriptor = {
             loadBackgroundImage: {
                 physicalKeys: [["KeyG"]],
                 virtualKeys: "#control-load-bg"
+            },
+            clearBackgroundImage: {
+                physicalKeys: [["Delete", "KeyG"]],
+                virtualKeys: ".control-clear-bg"
+            },
+            resetViewMatrix: {
+                physicalKeys: [["Delete", "KeyS"]],
+                virtualKeys: ".control-reset-view"
             },
             record: {
                 physicalKeys: [["KeyV"]],

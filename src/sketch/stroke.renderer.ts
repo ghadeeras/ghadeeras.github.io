@@ -1,12 +1,13 @@
 import { gpu } from "lumen"
-import { commonWGSL, strokeAttributesStruct, strokePointsPairStruct } from "./common.js"
+import * as cmn from "./common.js"
 
 export class Renderer {
 
     constructor(private pipelineLayout: PipelineLayout, private pipeline: GPURenderPipeline) {}
 
-    static async create(device: gpu.Device, format = navigator.gpu.getPreferredCanvasFormat()): Promise<Renderer> {
-        const layout = pipelineLayout(groupLayouts(device))
+    static async create(commonLayouts: cmn.GroupLayouts, format = navigator.gpu.getPreferredCanvasFormat()): Promise<Renderer> {
+        const device = commonLayouts.view.device
+        const layout = pipelineLayout(commonLayouts)
         const module = await device.shaderModule({ code: shader })
         const pipeline = await device.wrapped.createRenderPipelineAsync({
             layout: layout.wrapped,
@@ -35,34 +36,34 @@ export class Renderer {
         return new Renderer(layout, pipeline)
     }
 
-    view(view: View): ViewBindGroup {
-        return this.pipelineLayout.descriptor.view.layout.bindGroup({
+    view(view: cmn.View): cmn.ViewBindGroup {
+        return this.pipelineLayout.bindGroup("view", {
             view: this.pipelineLayout.device.dataBuffer({
                 usage: ["UNIFORM"],
-                data: viewStruct.view([view])
+                data: cmn.viewStruct.view([view])
             })
         })
     }
 
-    stroke(strokeAttributes: gpu.DataBuffer, strokePoints: gpu.DataBuffer): StrokeBindGroup {
-        return this.pipelineLayout.descriptor.stroke.layout.bindGroup({
+    stroke(strokeAttributes: gpu.DataBuffer, strokePoints: gpu.DataBuffer): cmn.StrokeBindGroup {
+        return this.pipelineLayout.bindGroup("stroke", {
             strokeAttributes,
             strokePoints
         })
     }
 
-    updateView(group: ViewBindGroup, view: View) {
-        group.entries.view.baseResource().set(viewStruct).fromData(viewStruct.view([view]))
+    updateView(group: cmn.ViewBindGroup, view: cmn.View) {
+        group.entries.view.baseResource().set(cmn.viewStruct).fromData(cmn.viewStruct.view([view]))
     }
 
-    renderTo(attachment: GPURenderPassColorAttachment, strokes: StrokeBindGroup[], view: ViewBindGroup) {
+    renderTo(attachment: GPURenderPassColorAttachment, strokes: cmn.StrokeBindGroup[], view: cmn.ViewBindGroup) {
         this.pipelineLayout.device.enqueueCommands("rendering", encoder => {
             encoder.renderPass({ colorAttachments: [ attachment ] }, pass => {
                 pass.setPipeline(this.pipeline)
                 this.pipelineLayout.addTo(pass, { view })
                 for (const stroke of strokes) {
                     const strokeBuffer = stroke.entries.strokePoints.baseResource()
-                    const controlPointsCount = Math.ceil(strokeBuffer.size / strokePointsPairStruct.paddedSize) + 2
+                    const controlPointsCount = Math.ceil(strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize) + 2
                     this.pipelineLayout.addTo(pass, { stroke })
                     pass.draw(controlPointsCount * 2)
                 }
@@ -72,34 +73,8 @@ export class Renderer {
 
 }
 
-export type View = gpu.DataTypeOf<typeof viewStruct>
-export const viewStruct = gpu.struct({
-    matrix: gpu.mat3x3,
-    width: gpu.f32,
-    height: gpu.f32
-})
-
-export const strokeAttributesBinding = gpu.uniform(strokeAttributesStruct)
-export const strokePointsBinding = gpu.storage("read", strokePointsPairStruct)
-export const viewBinding = gpu.uniform(viewStruct)
-
-export type StrokeBindGroup = gpu.CompatibleBindGroup<GroupLayouts["stroke"]>
-export type ViewBindGroup = gpu.CompatibleBindGroup<GroupLayouts["view"]>
-export type GroupLayouts = ReturnType<typeof groupLayouts>
-export function groupLayouts(device: gpu.Device, label?: string) {
-    return device.groupLayouts({
-        stroke: {
-            strokeAttributes: strokeAttributesBinding.asEntry(0, "FRAGMENT"),
-            strokePoints: strokePointsBinding.asEntry(1, "VERTEX"),
-        },
-        view: {
-            view: viewBinding.asEntry(0, "VERTEX")
-        }
-    }, label)
-}
-
 export type PipelineLayout = ReturnType<typeof pipelineLayout>
-export function pipelineLayout(groupLayouts: GroupLayouts, label?: string) {
+export function pipelineLayout(groupLayouts: cmn.GroupLayouts, label?: string) {
     const device = groupLayouts.stroke.device
     return device.pipelineLayout({
         stroke: groupLayouts.stroke.asEntry(0),
@@ -109,13 +84,7 @@ export function pipelineLayout(groupLayouts: GroupLayouts, label?: string) {
 
 const shader = /* wgsl */ `
 
-    ${commonWGSL}
-
-    struct View {
-        matrix: mat3x3f,
-        width: f32,
-        height: f32,
-    }
+    ${cmn.commonWGSL}
 
     struct InputVertex {
         @builtin(vertex_index) vertex_index: u32,

@@ -1,4 +1,5 @@
 import { gpu } from "lumen"
+import * as cmn from "./common.js"
 
 export class BackgroundRenderer {
 
@@ -14,8 +15,9 @@ export class BackgroundRenderer {
         })
     }
 
-    static async create(device: gpu.Device, format = navigator.gpu.getPreferredCanvasFormat()): Promise<BackgroundRenderer> {
-        const layout = pipelineLayout(device)
+    static async create(viewGroupLayout: cmn.GroupLayouts["view"], format = navigator.gpu.getPreferredCanvasFormat()): Promise<BackgroundRenderer> {
+        const device = viewGroupLayout.device
+        const layout = pipelineLayout(viewGroupLayout)
         const module = await device.shaderModule({ code: shader })
         const pipeline = await device.wrapped.createRenderPipelineAsync({
             layout: layout.wrapped,
@@ -26,6 +28,10 @@ export class BackgroundRenderer {
                 module: module.wrapped,
                 targets: [{ 
                     format,
+                    blend: { 
+                        color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" } ,
+                        alpha: { srcFactor: "zero", dstFactor: "one", operation: "add" } ,
+                    } 
                 }]
             },
             primitive: {
@@ -46,11 +52,11 @@ export class BackgroundRenderer {
         })
     }
 
-    renderTo(attachment: GPURenderPassColorAttachment, background: BackgroundGroup) {
+    renderTo(attachment: GPURenderPassColorAttachment, background: BackgroundGroup, view: cmn.ViewBindGroup) {
         this.pipelineLayout.device.enqueueCommands("background rendering", encoder => {
             encoder.renderPass({ colorAttachments: [ attachment ] }, pass => {
                 pass.setPipeline(this.pipeline)
-                this.pipelineLayout.addTo(pass, { background })
+                this.pipelineLayout.addTo(pass, { background, view })
                 pass.draw(3)
             })
         })
@@ -59,29 +65,44 @@ export class BackgroundRenderer {
 }
 
 type PipelineLayout = ReturnType<typeof pipelineLayout>
-function pipelineLayout(device: gpu.Device) {
+function pipelineLayout(viewGroupLayout: cmn.GroupLayouts["view"]) {
+    const device = viewGroupLayout.device
+    const layouts = groupLayouts(viewGroupLayout)
     return device.pipelineLayout({
-        background: backgroundGroupLayout(device).asEntry(0)
+        background: layouts.background.asEntry(0),
+        view: layouts.view.asEntry(1)
     }, "background pipeline layout")
 }
 
-export type BackgroundGroup = gpu.CompatibleBindGroup<BackgroundGroupLayout>
-type BackgroundGroupLayout = ReturnType<typeof backgroundGroupLayout>
-function backgroundGroupLayout(device: gpu.Device) {
-    return device.groupLayout({
-        background_texture: gpu.texture_2d("float").asEntry(0, "FRAGMENT"),
-        background_sampler: gpu.sampler("filtering").asEntry(1, "FRAGMENT")
-    }, "background group layout")
+export type BackgroundGroup = gpu.CompatibleBindGroup<GroupLayouts["background"]>
+type GroupLayouts = ReturnType<typeof groupLayouts>
+function groupLayouts(viewGroupLayout: cmn.GroupLayouts["view"]) {
+    const device = viewGroupLayout.device
+    return {
+        ...device.groupLayouts({
+            background: {
+                background_texture: gpu.texture_2d("float").asEntry(0, "FRAGMENT"),
+                background_sampler: gpu.sampler("filtering").asEntry(1, "FRAGMENT")
+            }
+        }),
+        view: viewGroupLayout
+    }
 }
 
 const shader = gpu.renderingShaders.fullScreenPassVertex(/* wgsl */ `
 
+    ${cmn.commonWGSL}
+
     @group(0) @binding(0) var background_texture: texture_2d<f32>;
     @group(0) @binding(1) var background_sampler: sampler;
 
+    @group(1) @binding(0)
+    var<uniform> view: View;
+
     @fragment
     fn f_main(varyings: Varyings) -> @location(0) vec4<f32> {
-        let uv = varyings.clipPosition * vec2(0.5, -0.5) + 0.5;
+        let position = view.inverse_matrix * vec3f(varyings.position.xy, 1.0);
+        let uv = position.xy / vec2f(textureDimensions(background_texture));
         return textureSample(background_texture, background_sampler, uv);
     }
 

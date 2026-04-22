@@ -1,7 +1,6 @@
 import * as aether from "aether"
-import { StrokeBindGroup } from "./stroke.renderer.js"
 import { StrokePoint } from "./stroke.computer.js"
-import { StrokeAttributes } from "./common.js"
+import * as cmn from "./common.js"
 
 export class Stroke {
 
@@ -11,11 +10,11 @@ export class Stroke {
     private _endTime = this._startTime
     private _length = 0
     private _finalized = false
-    private _strokeGroup: StrokeBindGroup | null = null;
+    private _strokeGroup: cmn.StrokeBindGroup | null = null;
 
     constructor(
-        private _attributes: StrokeAttributes,
-        private attributesDestructor: (strokeAttributes: StrokeAttributes) => void,
+        private _attributes: cmn.StrokeAttributes,
+        private attributesDestructor: (strokeAttributes: cmn.StrokeAttributes) => void,
         private minDistance = 4,
         private time: () => number = () => performance.now()
     ) {}
@@ -28,7 +27,7 @@ export class Stroke {
         }
     }
 
-    get attributes(): StrokeAttributes {
+    get attributes(): cmn.StrokeAttributes {
         return { ...this._attributes }
     }
 
@@ -96,7 +95,7 @@ export class Stroke {
         this.destroy()
     }
 
-    strokeGroup(factory: (points: StrokePoint[]) => StrokeBindGroup): StrokeBindGroup {
+    strokeGroup(factory: (points: StrokePoint[]) => cmn.StrokeBindGroup): cmn.StrokeBindGroup {
         if (this._strokeGroup == null) {
             this._strokeGroup = factory(this.points)
         }
