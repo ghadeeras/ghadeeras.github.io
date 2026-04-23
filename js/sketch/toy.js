@@ -41,6 +41,7 @@ class Toy {
         this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
+        this.fileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
         this.viewGroup = renderer.view(this.view);
     }
     static async create() {
@@ -124,6 +125,14 @@ class Toy {
             this.strokes.push(stroke);
         }
     }
+    get view() {
+        return {
+            matrix: this.viewMatrix,
+            inverse_matrix: this.inverseViewMatrix,
+            width: this.canvas.element.width,
+            height: this.canvas.element.height
+        };
+    }
     inputWiring(inputs, outputs) {
         const v = 0.01;
         return {
@@ -164,14 +173,6 @@ class Toy {
             onRender: () => this.render()
         };
     }
-    get view() {
-        return {
-            matrix: this.viewMatrix,
-            inverse_matrix: this.inverseViewMatrix,
-            width: this.canvas.element.width,
-            height: this.canvas.element.height
-        };
-    }
     animate() {
     }
     render() {
@@ -199,9 +200,9 @@ class Toy {
         }
     }
     async loadNewBackgroundImage() {
-        const file = await selectFile(["image/*"]);
-        if (file != null) {
-            const imageBitmap = await createImageBitmap(file);
+        const file = await this.fileSelector.select();
+        if (file.length == 1) {
+            const imageBitmap = await createImageBitmap(file[0]);
             const texture = this.canvas.device.texture({
                 size: [imageBitmap.width, imageBitmap.height],
                 format: this.canvas.format,
@@ -328,14 +329,5 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
         throw e;
     }
-}
-async function selectFile(mimeTypes) {
-    return new Promise((resolve, reject) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = mimeTypes.join(",");
-        input.onchange = () => resolve(input.files && input.files.length > 0 ? input.files[0] : null);
-        input.click();
-    });
 }
 //# sourceMappingURL=toy.js.map

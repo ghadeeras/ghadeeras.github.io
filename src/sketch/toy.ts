@@ -146,6 +146,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }, 1)
     )
 
+    private fileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
+
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view(this.view)
     }
@@ -251,6 +253,15 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
+    get view(): cmn.View {
+        return {
+            matrix: this.viewMatrix,
+            inverse_matrix: this.inverseViewMatrix,
+            width: this.canvas.element.width,
+            height: this.canvas.element.height
+        }
+    }
+
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         const v = 0.01
         return {
@@ -293,15 +304,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
     
-    get view(): cmn.View {
-        return {
-            matrix: this.viewMatrix,
-            inverse_matrix: this.inverseViewMatrix,
-            width: this.canvas.element.width,
-            height: this.canvas.element.height
-        }
-    }
-
     animate(): void {
     }
 
@@ -339,9 +341,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private async loadNewBackgroundImage() {
-        const file = await selectFile(["image/*"])
-        if (file != null) {
-            const imageBitmap = await createImageBitmap(file)
+        const file = await this.fileSelector.select()
+        if (file.length == 1) {
+            const imageBitmap = await createImageBitmap(file[0])
             const texture = this.canvas.device.texture({
                 size: [imageBitmap.width, imageBitmap.height],
                 format: this.canvas.format,
@@ -395,14 +397,4 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!"
         throw e
     }
-}
-
-async function selectFile(mimeTypes: string[]): Promise<File | null> {
-    return new Promise((resolve, reject) => {
-        const input = document.createElement("input")
-        input.type = "file"
-        input.accept = mimeTypes.join(",")
-        input.onchange = () => resolve(input.files && input.files.length > 0 ? input.files[0] : null)
-        input.click()
-    })
 }
