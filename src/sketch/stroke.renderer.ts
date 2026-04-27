@@ -56,15 +56,16 @@ export class Renderer {
         group.entries.view.baseResource().set(cmn.viewStruct).fromData(cmn.viewStruct.view([view]))
     }
 
-    renderTo(attachment: GPURenderPassColorAttachment, strokes: cmn.StrokeBindGroup[], view: cmn.ViewBindGroup) {
+    // TODO There might be a way to pass the strokes themselves instead of the bind groups.
+    renderTo(attachment: GPURenderPassColorAttachment, strokes: { group: cmn.StrokeBindGroup, closed: boolean }[], view: cmn.ViewBindGroup) {
         this.pipelineLayout.device.enqueueCommands("rendering", encoder => {
             encoder.renderPass({ colorAttachments: [ attachment ] }, pass => {
                 pass.setPipeline(this.pipeline)
                 this.pipelineLayout.addTo(pass, { view })
                 for (const stroke of strokes) {
-                    const strokeBuffer = stroke.entries.strokePoints.baseResource()
-                    const controlPointsCount = Math.ceil(strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize) + 2
-                    this.pipelineLayout.addTo(pass, { stroke })
+                    const strokeBuffer = stroke.group.entries.strokePoints.baseResource()
+                    const controlPointsCount = Math.ceil(strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize) + (stroke.closed ? 1 : 2)
+                    this.pipelineLayout.addTo(pass, { stroke: stroke.group })
                     pass.draw(controlPointsCount * 2)
                 }
             })
@@ -111,14 +112,16 @@ const shader = /* wgsl */ `
 
     @vertex
     fn vertex_main(input: InputVertex) -> Vertex {
-        let max_point_index = i32(arrayLength(&stroke_points)) - 1;
-        let index = i32(input.vertex_index >> 1u) - 1;
+        let stroke_points_count = i32(arrayLength(&stroke_points));
+        let max_point_index = stroke_points_count - 1;
+        let index = i32(input.vertex_index >> 1u) - 1 + i32(stroke_attributes.closed);
         let side  = input.vertex_index & 1u;
-        var point = stroke_points[clamp(index, 0, max_point_index)];
+        let closed = stroke_attributes.closed == 1u;
+        var point = stroke_points[select(clamp(index, 0, max_point_index), index % stroke_points_count, closed)];
 
         let left_right = point.right - point.left;
         let width = length(left_right);
-        let u = select(select(-0.5, 0.0, index >= 0), 0.5, index >= max_point_index);
+        let u = select(select(select(0.0, -0.5, index < 0), 0.5, index >= max_point_index), 0.0, closed);
         let cap = u * vec2(left_right.y, -left_right.x);
         point.left += cap; 
         point.right += cap;

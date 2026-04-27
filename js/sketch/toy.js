@@ -147,6 +147,7 @@ class Toy {
                 sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
+                toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
@@ -186,7 +187,11 @@ class Toy {
         this.renderer.renderTo(attachment, this.strokes.map(s => {
             this.tessellatedStrokeFactory.strokeThickness = s.thickness;
             this.tessellatedStrokeFactory.strokeTension = s.tension;
-            return s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points)));
+            this.tessellatedStrokeFactory.strokeClosed = s.closed;
+            return {
+                group: s.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(s.attributes), this.tessellatedStrokeFactory.tesselate(points))),
+                closed: s.closed
+            };
         }), this.viewGroup);
     }
     setColorDraggingTarget(inputs, color, draggingTarget) {
@@ -265,6 +270,10 @@ Toy.descriptor = {
             undo: {
                 physicalKeys: [["Backspace"]],
                 virtualKeys: "#control-undo"
+            },
+            toggleClosed: {
+                physicalKeys: [["KeyC"]],
+                virtualKeys: "#control-closed"
             },
             loadBackgroundImage: {
                 physicalKeys: [["KeyG"]],

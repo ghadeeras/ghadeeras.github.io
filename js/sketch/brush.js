@@ -10,14 +10,16 @@ export class Brush {
         this._color = new Color([0, 0, 0, 1], () => this.refreshColor());
         this._thickness = 8;
         this._tension = 8;
+        this._closed = 0;
         this._position = [0, 0];
         this.thickness = this._thickness;
     }
     get attributes() {
         return {
-            color: this.color.rgba,
-            thickness: this.thickness,
-            tension: this.tension
+            color: this._color.rgba,
+            thickness: this._thickness,
+            tension: this._tension,
+            closed: this._closed,
         };
     }
     get color() {
@@ -37,6 +39,12 @@ export class Brush {
     }
     set tension(tension) {
         this._tension = tension;
+    }
+    get closed() {
+        return this._closed == 1;
+    }
+    set closed(closed) {
+        this._closed = closed ? 1 : 0;
     }
     get position() {
         return this._position;
@@ -71,11 +79,15 @@ export class Brush {
         }
     }
     toKey(strokeAttributes) {
-        return JSON.stringify({
+        return JSON.stringify(this.key(strokeAttributes));
+    }
+    key(strokeAttributes) {
+        return {
             color: toRGB(strokeAttributes.color),
             thickness: Math.round(strokeAttributes.thickness).toFixed(0),
             tension: Math.round(strokeAttributes.tension).toFixed(0),
-        });
+            closed: strokeAttributes.closed
+        };
     }
     refreshColor() {
         this.circle.setAttribute("stroke", `#${this.color.hex}`);

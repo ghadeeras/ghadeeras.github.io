@@ -3,6 +3,7 @@ export const strokeAttributesStruct = gpu.struct({
     color: gpu.f32.x4,
     thickness: gpu.f32,
     tension: gpu.f32,
+    closed: gpu.u32,
 });
 export const strokePointsPairStruct = gpu.struct({
     left: gpu.f32.x2,
@@ -21,7 +22,7 @@ export const viewBinding = gpu.uniform(viewStruct);
 export function groupLayouts(device, label) {
     return device.groupLayouts({
         stroke: {
-            strokeAttributes: strokeAttributesBinding.asEntry(0, "FRAGMENT"),
+            strokeAttributes: strokeAttributesBinding.asEntry(0, "VERTEX", "FRAGMENT"),
             strokePoints: strokePointsBinding.asEntry(1, "VERTEX"),
         },
         view: {
@@ -37,6 +38,7 @@ export const commonWGSL = /* wgsl */ `
         color: vec4f,
         thickness: f32,
         tension: f32,
+        closed: u32,
     }
 
     struct StrokePointsPair {

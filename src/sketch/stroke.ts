@@ -21,14 +21,14 @@ export class Stroke {
 
     destroy() {
         if (this._strokeGroup !== null) {
-            this.attributesDestructor(this._attributes)
+            this.attributesDestructor(this.attributes)
             this._strokeGroup.entries.strokePoints.baseResource().destroy()
             this._strokeGroup = null
         }
     }
 
     get attributes(): cmn.StrokeAttributes {
-        return { ...this._attributes }
+        return { ...this._attributes, closed: this.closed ? 1 : 0 }
     }
 
     get duration() {
@@ -68,9 +68,20 @@ export class Stroke {
     set tension(tension: number) {
         this.destroy()
         this._attributes.tension = tension
-    } 
+    }
+
+    get closed() {
+        // TODO It might be better to set the closes attribute only when finalizing the stroke and make it immutable after that.
+        return this.finalized && this.points.length > 1 && this._attributes.closed === 1
+    }
+
+    set closed(closed: boolean) {
+        this.destroy()
+        this._attributes.closed = closed ? 1 : 0
+    }
 
     finalize() {
+        this.destroy()
         this._finalized = true
     }
 
@@ -95,6 +106,7 @@ export class Stroke {
         this.destroy()
     }
 
+    // TODO There might be a way to pass the "factory" function to the constructor.
     strokeGroup(factory: (points: StrokePoint[]) => cmn.StrokeBindGroup): cmn.StrokeBindGroup {
         if (this._strokeGroup == null) {
             this._strokeGroup = factory(this.points)

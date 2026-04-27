@@ -5,6 +5,7 @@ export const strokeAttributesStruct = gpu.struct({
     color: gpu.f32.x4,
     thickness: gpu.f32,
     tension: gpu.f32,
+    closed: gpu.u32,
 }) 
 
 export type StrokePointsPair = gpu.DataTypeOf<typeof strokePointsPairStruct>
@@ -32,7 +33,7 @@ export type GroupLayouts = ReturnType<typeof groupLayouts>
 export function groupLayouts(device: gpu.Device, label?: string) {
     return device.groupLayouts({
         stroke: {
-            strokeAttributes: strokeAttributesBinding.asEntry(0, "FRAGMENT"),
+            strokeAttributes: strokeAttributesBinding.asEntry(0, "VERTEX", "FRAGMENT"),
             strokePoints: strokePointsBinding.asEntry(1, "VERTEX"),
         },
         view: {
@@ -49,6 +50,7 @@ export const commonWGSL = /* wgsl */ `
         color: vec4f,
         thickness: f32,
         tension: f32,
+        closed: u32,
     }
 
     struct StrokePointsPair {

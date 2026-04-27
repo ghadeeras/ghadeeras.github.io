@@ -15,6 +15,8 @@ export class Brush {
 
     private _thickness: number = 8
     private _tension: number = 8
+    private _closed: number = 0
+    
     private _position: aether.Vec2 = [0, 0]
 
     constructor(private device: gpu.Device) {
@@ -23,9 +25,10 @@ export class Brush {
 
     get attributes(): StrokeAttributes {
         return {
-            color: this.color.rgba,
-            thickness: this.thickness,
-            tension: this.tension
+            color: this._color.rgba,
+            thickness: this._thickness,
+            tension: this._tension,
+            closed: this._closed,
         }
     }
 
@@ -50,6 +53,14 @@ export class Brush {
 
     set tension(tension: number) {
         this._tension = tension
+    }
+
+    get closed() {
+        return this._closed == 1
+    }
+
+    set closed(closed: boolean) {
+        this._closed = closed ? 1 : 0
     }
 
     get position() {
@@ -88,11 +99,16 @@ export class Brush {
     }
 
     private toKey(strokeAttributes: StrokeAttributes): string {
-        return JSON.stringify({
+        return JSON.stringify(this.key(strokeAttributes))
+    }
+
+    private key(strokeAttributes: StrokeAttributes): Record<keyof StrokeAttributes, string | number> {
+        return {
             color: toRGB(strokeAttributes.color),
             thickness: Math.round(strokeAttributes.thickness).toFixed(0),
             tension: Math.round(strokeAttributes.tension).toFixed(0),
-        })
+            closed: strokeAttributes.closed
+        }
     }
 
     private refreshColor() {

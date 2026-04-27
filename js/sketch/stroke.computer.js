@@ -1,13 +1,14 @@
 import { gpu } from "lumen";
 import * as aether from "aether";
 import { strokeAttributesStruct, commonWGSL, strokePointsPairStruct } from "./common.js";
+// TODO Make the class stateless and use the attributes cache in the Brush class.
 export class TessellatedStrokeFactory {
     constructor(device, shader, attributes) {
         this.device = device;
         this.shader = shader;
         this.attributes = attributes;
     }
-    static async create(device, attributes = { color: [0, 0, 0, 1], thickness: 8, tension: 8 }) {
+    static async create(device, attributes = { color: [0, 0, 0, 1], thickness: 8, tension: 8, closed: 0 }) {
         return new TessellatedStrokeFactory(device, await TesselationShader.create(device), { ...attributes });
     }
     get strokeThickness() {
@@ -28,6 +29,12 @@ export class TessellatedStrokeFactory {
     set strokeColor(color) {
         this.attributes.color = color;
     }
+    get strokeClosed() {
+        return this.attributes.closed === 1;
+    }
+    set strokeClosed(closed) {
+        this.attributes.closed = closed ? 1 : 0;
+    }
     tesselate(inputStrokePoints, segmentsPerUnitLength = 0.25) {
         const r = 0.5 * this.strokeThickness;
         if (inputStrokePoints[inputStrokePoints.length - 1].linear[0] < r) {
@@ -41,9 +48,13 @@ export class TessellatedStrokeFactory {
                     }])
             });
         }
-        const startDist = inputStrokePoints[0].linear[0];
-        const endDist = inputStrokePoints[inputStrokePoints.length - 1].linear[0];
-        const segmentsCount = Math.max(Math.ceil((endDist - startDist) * segmentsPerUnitLength), 1.0);
+        const start = inputStrokePoints[0];
+        const end = inputStrokePoints[inputStrokePoints.length - 1];
+        const startDist = start.linear[0];
+        const endDist = end.linear[0];
+        const closingSegmentLength = this.attributes.closed === 1 ? aether.vec2.length(aether.vec2.sub(start.position, end.position)) : 0;
+        const strokeLength = endDist - startDist + closingSegmentLength;
+        const segmentsCount = Math.max(Math.ceil(strokeLength * segmentsPerUnitLength), 1.0);
         const group = this.shader.tesselationGroup(this.attributes, inputStrokePoints, segmentsCount);
         this.shader.tesselate(group);
         const buffer = group.entries.outputStrokePoints.baseResource();
@@ -137,12 +148,20 @@ const tesselationShader = /* wgsl */ `
     }
 
     fn compute_point(index: u32, points_count: u32) -> StrokePointsPair {
-        let i_max = arrayLength(&input_stroke_points) - 1u;
-        let dist = input_stroke_points[i_max].linear.x * (f32(index) / f32(points_count));
+        let curve_length = curve_length();
+        let dist = curve_length * (f32(index) / f32(points_count));
         let i = closest_point_index(dist);
-        let t = float_index(i, dist);
-        let p = spline(t);
+        let t = float_index(i, dist, curve_length);
+        let p = spline(t, curve_length);
         return p;
+    }
+
+    fn curve_length() -> f32 {
+        let i_max = arrayLength(&input_stroke_points) - 1u;
+        let first_point = input_stroke_points[0u];
+        let last_point = input_stroke_points[i_max];
+        let closing_segment_length = select(0.0, distance(last_point.position, first_point.position), stroke_attributes.closed == 1u);
+        return last_point.linear.x + closing_segment_length;
     }
 
     fn closest_point_index(dist: f32) -> u32 {
@@ -167,16 +186,19 @@ const tesselationShader = /* wgsl */ `
         }
     }
 
-    fn float_index(index: u32, dist: f32) -> f32 {
-        let i_max = arrayLength(&input_stroke_points) - 1u;
-        let i_0 = min(index   , i_max - 1u);
-        let i_1 = i_0 + 1u;
-        let d_0 = input_stroke_points[i_0].linear.x;
-        let d_1 = input_stroke_points[i_1].linear.x;
+    fn float_index(index: u32, dist: f32, curve_length: f32) -> f32 {
+        let input_stroke_points_count = arrayLength(&input_stroke_points);
+        let i_max = input_stroke_points_count - 1u + stroke_attributes.closed;
+        let i_0 = min(index, i_max - 1u);
+        let i_1 = (i_0 + 1u) % input_stroke_points_count;
+        let p_0 = input_stroke_points[i_0];
+        let p_1 = input_stroke_points[i_1];
+        let d_0 = p_0.linear.x;
+        let d_1 = select(p_1.linear.x, curve_length, i_1 == 0u);
         return select(f32(index), f32(i_0) + (dist - d_0) / (d_1 - d_0), d_0 != d_1);
     }
 
-    fn spline(t: f32) -> StrokePointsPair {
+    fn spline(t: f32, curve_length: f32) -> StrokePointsPair {
         let index_1 = i32(floor(t));
         let index_2 = index_1 + 1;
         var w = vec2(0.0);
@@ -186,8 +208,8 @@ const tesselationShader = /* wgsl */ `
         for (var i = 0; i < iterations_count; i = i + 1) {
             let i_1 = index_1 - i;
             let i_2 = index_2 + i;
-            let p_1 = input_point(i_1);
-            let p_2 = input_point(i_2);
+            let p_1 = input_point(i_1, curve_length);
+            let p_2 = input_point(i_2, curve_length);
             let w_1 = transfer_function(t - f32(i_1));
             let w_2 = transfer_function(t - f32(i_2));
             w += w_1 + w_2;
@@ -212,9 +234,13 @@ const tesselationShader = /* wgsl */ `
         );
     }
 
-    fn input_point(i: i32) -> StrokePoint {
-        let max_point_index = i32(arrayLength(&input_stroke_points)) - 1;
-        return input_stroke_points[clamp(i, 0, max_point_index)];
+    // TODO Replace with incremental approach.
+    fn input_point(i: i32, curve_length: f32) -> StrokePoint {
+        let input_stroke_points_count = i32(arrayLength(&input_stroke_points));
+        let offset = select(0.0, f32(i / input_stroke_points_count) * curve_length, stroke_attributes.closed == 1u);
+        let index = select(clamp(i, 0, input_stroke_points_count - 1), i % input_stroke_points_count, stroke_attributes.closed == 1u);
+        let p = input_stroke_points[select(index, index + input_stroke_points_count, index < 0)];
+        return StrokePoint(p.position, p.linear + vec2(select(offset, offset - curve_length, index < 0), 0.0));
     }
 
     fn transfer_function(t: f32) -> vec2f {
