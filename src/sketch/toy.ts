@@ -84,6 +84,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["Delete", "KeyS"]],
                     virtualKeys: ".control-reset-view"
                 },
+                save: {
+                    physicalKeys: [["ControlLeft", "KeyS"], ["ControlRight", "KeyS"]],
+                    virtualKeys: ".control-save"
+                },
+                load: {
+                    physicalKeys: [["ControlLeft", "KeyL"], ["ControlRight", "KeyL"]],
+                    virtualKeys: ".control-load"
+                },
                 record: {
                     physicalKeys: [["KeyV"]],
                     virtualKeys: "#control-v"
@@ -150,7 +158,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }, 1)
     )
 
-    private fileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
+    private imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
+    private jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("text/json")
 
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view(this.view)
@@ -284,6 +293,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
+                save: { onReleased: () => this.save() },
+                load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
@@ -350,7 +361,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private async loadNewBackgroundImage() {
-        const file = await this.fileSelector.select()
+        const file = await this.imageFileSelector.select()
         if (file.length == 1) {
             const imageBitmap = await createImageBitmap(file[0])
             const texture = this.canvas.device.texture({
@@ -375,6 +386,61 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.strokes = []
     }
 
+    private save(): void {
+        const indices = new Map<gpu.DataBuffer, number>()
+        const strokes: SerializableStroke[] = []
+        const attributres: cmn.StrokeAttributes[] = []
+        for (const s of this.strokes) {
+            let buffer = this.brush.dataBuffer(s.attributes)
+            let index = indices.get(buffer)
+            if (index === undefined) {
+                index = attributres.length
+                attributres.push(s.attributes)
+                indices.set(buffer, index)
+            }
+            strokes.push({
+                attributes: index,
+                points: s.points.map(p => p.position)
+            })
+        }
+        const sketch: Sketch = {
+            strokes,
+            strokesAttributes: attributres,
+            backgroundColor: this.backgroundColor.rgba
+        }
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'text/json', 'Sketch.json')
+    }
+
+    private async load(): Promise<void> {
+        const file = await this.jsonFileSelector.select()
+        if (file.length == 1) {
+            const text = await file[0].text()
+            const sketch: Sketch = JSON.parse(text)
+            this.clearStrokes()
+            this.backgroundColor.rgba = sketch.backgroundColor
+            for (const s of sketch.strokes) {
+                const attributes = sketch.strokesAttributes[s.attributes]
+                const stroke = new Stroke(attributes, attributes => this.brush.destroyDataBuffer(attributes))
+                for (const p of s.points) {
+                    stroke.addPoint(p)
+                }
+                stroke.finalize()
+                this.strokes.push(stroke)
+            }
+        }
+    }
+
+}
+
+type Sketch = {
+    strokes: SerializableStroke[]
+    strokesAttributes: cmn.StrokeAttributes[]
+    backgroundColor: aether.Vec4
+}
+
+type SerializableStroke = {
+    attributes: number
+    points: aether.Vec2[]
 }
 
 class StrokeSampler implements gear.loops.Dragger<Stroke> {

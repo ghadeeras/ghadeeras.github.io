@@ -41,7 +41,8 @@ class Toy {
         this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
-        this.fileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
+        this.imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
+        this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("text/json");
         this.viewGroup = renderer.view(this.view);
     }
     static async create() {
@@ -151,6 +152,8 @@ class Toy {
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
+                save: { onReleased: () => this.save() },
+                load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
             },
             pointers: {
@@ -205,7 +208,7 @@ class Toy {
         }
     }
     async loadNewBackgroundImage() {
-        const file = await this.fileSelector.select();
+        const file = await this.imageFileSelector.select();
         if (file.length == 1) {
             const imageBitmap = await createImageBitmap(file[0]);
             const texture = this.canvas.device.texture({
@@ -226,6 +229,48 @@ class Toy {
     clearStrokes() {
         this.strokes.forEach(s => s.destroy());
         this.strokes = [];
+    }
+    save() {
+        const indices = new Map();
+        const strokes = [];
+        const attributres = [];
+        for (const s of this.strokes) {
+            let buffer = this.brush.dataBuffer(s.attributes);
+            let index = indices.get(buffer);
+            if (index === undefined) {
+                index = attributres.length;
+                attributres.push(s.attributes);
+                indices.set(buffer, index);
+            }
+            strokes.push({
+                attributes: index,
+                points: s.points.map(p => p.position)
+            });
+        }
+        const sketch = {
+            strokes,
+            strokesAttributes: attributres,
+            backgroundColor: this.backgroundColor.rgba
+        };
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'text/json', 'Sketch.json');
+    }
+    async load() {
+        const file = await this.jsonFileSelector.select();
+        if (file.length == 1) {
+            const text = await file[0].text();
+            const sketch = JSON.parse(text);
+            this.clearStrokes();
+            this.backgroundColor.rgba = sketch.backgroundColor;
+            for (const s of sketch.strokes) {
+                const attributes = sketch.strokesAttributes[s.attributes];
+                const stroke = new Stroke(attributes, attributes => this.brush.destroyDataBuffer(attributes));
+                for (const p of s.points) {
+                    stroke.addPoint(p);
+                }
+                stroke.finalize();
+                this.strokes.push(stroke);
+            }
+        }
     }
 }
 Toy.descriptor = {
@@ -286,6 +331,14 @@ Toy.descriptor = {
             resetViewMatrix: {
                 physicalKeys: [["Delete", "KeyS"]],
                 virtualKeys: ".control-reset-view"
+            },
+            save: {
+                physicalKeys: [["ControlLeft", "KeyS"], ["ControlRight", "KeyS"]],
+                virtualKeys: ".control-save"
+            },
+            load: {
+                physicalKeys: [["ControlLeft", "KeyL"], ["ControlRight", "KeyL"]],
+                virtualKeys: ".control-load"
             },
             record: {
                 physicalKeys: [["KeyV"]],
