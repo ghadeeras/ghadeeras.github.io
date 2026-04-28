@@ -159,7 +159,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     )
 
     private imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
-    private jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("text/json")
+    private jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json")
 
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view(this.view)

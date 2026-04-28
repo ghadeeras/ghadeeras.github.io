@@ -42,7 +42,7 @@ class Toy {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
         this.imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
-        this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("text/json");
+        this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json");
         this.viewGroup = renderer.view(this.view);
     }
     static async create() {
