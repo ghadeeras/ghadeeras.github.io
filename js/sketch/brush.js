@@ -1,6 +1,6 @@
 import * as gear from "gear";
 import { strokeAttributesStruct } from "./common.js";
-import { Color, toRGB } from "./color.js";
+import { Color, toHex } from "./color.js";
 export class Brush {
     constructor(device) {
         this.device = device;
@@ -83,7 +83,7 @@ export class Brush {
     }
     key(strokeAttributes) {
         return {
-            color: toRGB(strokeAttributes.color),
+            color: toHex(strokeAttributes.color),
             thickness: Math.round(strokeAttributes.thickness).toFixed(0),
             tension: Math.round(strokeAttributes.tension).toFixed(0),
             closed: strokeAttributes.closed

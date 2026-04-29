@@ -6,7 +6,7 @@ import { Renderer } from "./stroke.renderer.js";
 import { TessellatedStrokeFactory } from "./stroke.computer.js";
 import { Stroke } from "./stroke.js";
 import { Brush } from "./brush.js";
-import { Color, Pallette2D } from "./color.js";
+import { Color, fromHex, Pallette2D, toHex } from "./color.js";
 import { BackgroundRenderer } from "./bg.renderer.js";
 import * as cmn from "./common.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
@@ -233,13 +233,13 @@ class Toy {
     save() {
         const indices = new Map();
         const strokes = [];
-        const attributres = [];
+        const attributes = [];
         for (const s of this.strokes) {
             let buffer = this.brush.dataBuffer(s.attributes);
             let index = indices.get(buffer);
             if (index === undefined) {
-                index = attributres.length;
-                attributres.push(s.attributes);
+                index = attributes.length;
+                attributes.push(s.attributes);
                 indices.set(buffer, index);
             }
             strokes.push({
@@ -249,10 +249,10 @@ class Toy {
         }
         const sketch = {
             strokes,
-            strokesAttributes: attributres,
-            backgroundColor: this.backgroundColor.rgba
+            strokesAttributes: attributes.map(toSerializableAttributes),
+            backgroundColor: toHex(this.backgroundColor.rgba)
         };
-        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'text/json', 'Sketch.json');
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'application/json', 'Sketch.json');
     }
     async load() {
         const file = await this.jsonFileSelector.select();
@@ -260,9 +260,9 @@ class Toy {
             const text = await file[0].text();
             const sketch = JSON.parse(text);
             this.clearStrokes();
-            this.backgroundColor.rgba = sketch.backgroundColor;
+            this.backgroundColor.rgba = typeof sketch.backgroundColor === "string" ? fromHex(sketch.backgroundColor) : sketch.backgroundColor;
             for (const s of sketch.strokes) {
-                const attributes = sketch.strokesAttributes[s.attributes];
+                const attributes = fromSerializableAttributes(sketch.strokesAttributes[s.attributes]);
                 const stroke = new Stroke(attributes, attributes => this.brush.destroyDataBuffer(attributes));
                 for (const p of s.points) {
                     stroke.addPoint(p);
@@ -379,6 +379,22 @@ class StrokeSampler {
         stroke.finalize();
         return stroke;
     }
+}
+function toSerializableAttributes(a) {
+    return {
+        color: toHex(a.color),
+        thickness: Math.round(a.thickness),
+        tension: Math.round(a.tension),
+        closed: a.closed === 1
+    };
+}
+function fromSerializableAttributes(serializableAttributes) {
+    return {
+        color: typeof serializableAttributes.color === "string" ? fromHex(serializableAttributes.color) : serializableAttributes.color,
+        thickness: serializableAttributes.thickness,
+        tension: serializableAttributes.tension,
+        closed: serializableAttributes.closed ? 1 : 0
+    };
 }
 async function gpuDevice() {
     const gpuStatus = gear.required(document.getElementById("gpu-status"));

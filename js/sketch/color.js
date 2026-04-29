@@ -34,11 +34,21 @@ export class Color {
         this.colorChangeCallback();
     }
     get hex() {
-        return toRGB(this.rgba);
+        return toHex(this.rgba);
+    }
+    set hex(hex) {
+        this.rgba = fromHex(hex);
     }
 }
-export function toRGB(color) {
+export function toHex(color) {
     return color.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+}
+export function fromHex(hex) {
+    if (hex.length != 8) {
+        return [0.5, 0.5, 0.5, 1];
+    }
+    const parse = (start) => parseInt(hex.slice(start, start + 2), 16) / 255;
+    return [parse(0), parse(2), parse(4), parse(6)];
 }
 export function hueOf(color3D) {
     const max = Math.max(...color3D);

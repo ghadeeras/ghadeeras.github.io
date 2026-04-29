@@ -6,7 +6,7 @@ import { Renderer } from "./stroke.renderer.js"
 import { TessellatedStrokeFactory } from "./stroke.computer.js"
 import { Stroke } from "./stroke.js"
 import { Brush } from "./brush.js"
-import { Color, Pallette2D } from "./color.js"
+import { Color, fromHex, Pallette2D, toHex } from "./color.js"
 import { BackgroundGroup, BackgroundRenderer } from "./bg.renderer.js"
 import * as cmn from "./common.js"
 
@@ -389,13 +389,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private save(): void {
         const indices = new Map<gpu.DataBuffer, number>()
         const strokes: SerializableStroke[] = []
-        const attributres: cmn.StrokeAttributes[] = []
+        const attributes: cmn.StrokeAttributes[] = []
         for (const s of this.strokes) {
             let buffer = this.brush.dataBuffer(s.attributes)
             let index = indices.get(buffer)
             if (index === undefined) {
-                index = attributres.length
-                attributres.push(s.attributes)
+                index = attributes.length
+                attributes.push(s.attributes)
                 indices.set(buffer, index)
             }
             strokes.push({
@@ -405,10 +405,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
         const sketch: Sketch = {
             strokes,
-            strokesAttributes: attributres,
-            backgroundColor: this.backgroundColor.rgba
+            strokesAttributes: attributes.map(toSerializableAttributes),
+            backgroundColor: toHex(this.backgroundColor.rgba)
         }
-        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'text/json', 'Sketch.json')
+        gear.save(URL.createObjectURL(new Blob([JSON.stringify(sketch)])), 'application/json', 'Sketch.json')
     }
 
     private async load(): Promise<void> {
@@ -417,9 +417,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             const text = await file[0].text()
             const sketch: Sketch = JSON.parse(text)
             this.clearStrokes()
-            this.backgroundColor.rgba = sketch.backgroundColor
+            this.backgroundColor.rgba = typeof sketch.backgroundColor === "string" ? fromHex(sketch.backgroundColor) : sketch.backgroundColor
             for (const s of sketch.strokes) {
-                const attributes = sketch.strokesAttributes[s.attributes]
+                const attributes = fromSerializableAttributes(sketch.strokesAttributes[s.attributes])
                 const stroke = new Stroke(attributes, attributes => this.brush.destroyDataBuffer(attributes))
                 for (const p of s.points) {
                     stroke.addPoint(p)
@@ -434,13 +434,20 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 type Sketch = {
     strokes: SerializableStroke[]
-    strokesAttributes: cmn.StrokeAttributes[]
-    backgroundColor: aether.Vec4
+    strokesAttributes: SerializableStrokeAttributes[]
+    backgroundColor: aether.Vec4 | string
 }
 
 type SerializableStroke = {
     attributes: number
     points: aether.Vec2[]
+}
+
+type SerializableStrokeAttributes = {
+    color: aether.Vec4 | string,
+    thickness: number,
+    tension: number,
+    closed: boolean,
 }
 
 class StrokeSampler implements gear.loops.Dragger<Stroke> {
@@ -460,6 +467,24 @@ class StrokeSampler implements gear.loops.Dragger<Stroke> {
         return stroke
     }
 
+}
+
+function toSerializableAttributes(a: cmn.StrokeAttributes): SerializableStrokeAttributes {
+    return {
+        color: toHex(a.color),
+        thickness: Math.round(a.thickness),
+        tension: Math.round(a.tension),
+        closed: a.closed === 1
+    }
+}
+
+function fromSerializableAttributes(serializableAttributes: SerializableStrokeAttributes): cmn.StrokeAttributes {
+    return {
+        color: typeof serializableAttributes.color === "string" ? fromHex(serializableAttributes.color) : serializableAttributes.color,
+        thickness: serializableAttributes.thickness,
+        tension: serializableAttributes.tension,
+        closed: serializableAttributes.closed ? 1 : 0
+    }
 }
 
 async function gpuDevice() {

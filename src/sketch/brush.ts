@@ -2,7 +2,7 @@ import * as gear from "gear"
 import * as aether from "aether"
 import { gpu } from "lumen"
 import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
-import { Color, toRGB } from "./color.js"
+import { Color, toHex } from "./color.js"
 
 export class Brush {
 
@@ -104,7 +104,7 @@ export class Brush {
 
     private key(strokeAttributes: StrokeAttributes): Record<keyof StrokeAttributes, string | number> {
         return {
-            color: toRGB(strokeAttributes.color),
+            color: toHex(strokeAttributes.color),
             thickness: Math.round(strokeAttributes.thickness).toFixed(0),
             tension: Math.round(strokeAttributes.tension).toFixed(0),
             closed: strokeAttributes.closed
