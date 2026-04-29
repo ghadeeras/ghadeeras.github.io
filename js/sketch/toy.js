@@ -27,6 +27,7 @@ class Toy {
         this.backgroundGroup = null;
         this.strokes = [];
         this.brush = new Brush(this.canvas.device);
+        this.lines = false;
         this.backgroundColor = new Color([1, 1, 1, 1]);
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
@@ -117,7 +118,7 @@ class Toy {
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes))
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), this.lines ? Number.POSITIVE_INFINITY : 4)
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
@@ -149,9 +150,10 @@ class Toy {
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
-                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
+                toggleLines: { onPressed: () => this.lines = !this.lines }, loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
+                break: { onPressed: () => this.breakStroke() },
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -196,6 +198,13 @@ class Toy {
                 closed: s.closed
             };
         }), this.viewGroup);
+    }
+    breakStroke() {
+        const stroke = this.strokes.pop();
+        if (stroke !== undefined) {
+            const strokes = stroke.break();
+            this.strokes.push(...strokes);
+        }
     }
     setColorDraggingTarget(inputs, color, draggingTarget) {
         this.currentColor = color;
@@ -320,6 +329,10 @@ Toy.descriptor = {
                 physicalKeys: [["KeyC"]],
                 virtualKeys: "#control-closed"
             },
+            toggleLines: {
+                physicalKeys: [["KeyL"]],
+                virtualKeys: "#control-lines"
+            },
             loadBackgroundImage: {
                 physicalKeys: [["KeyG"]],
                 virtualKeys: "#control-load-bg"
@@ -331,6 +344,10 @@ Toy.descriptor = {
             resetViewMatrix: {
                 physicalKeys: [["Delete", "KeyS"]],
                 virtualKeys: ".control-reset-view"
+            },
+            break: {
+                physicalKeys: [["Enter"]],
+                virtualKeys: "#control-break"
             },
             save: {
                 physicalKeys: [["ControlLeft", "KeyS"], ["ControlRight", "KeyS"]],

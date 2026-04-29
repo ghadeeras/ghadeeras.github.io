@@ -48,6 +48,24 @@ export class TessellatedStrokeFactory {
                     }])
             });
         }
+        else if (inputStrokePoints.length === 2) {
+            const p1 = inputStrokePoints[0];
+            const p2 = inputStrokePoints[1];
+            const dir = aether.vec2.unit(aether.vec2.sub(p2.position, p1.position));
+            const n = aether.vec2.setLength([dir[1], -dir[0]], r);
+            return this.device.dataBuffer({
+                usage: ["STORAGE"],
+                data: strokePointsPairStruct.view([{
+                        left: aether.vec2.add(aether.vec2.add(p1.position, dir), n),
+                        right: aether.vec2.sub(aether.vec2.add(p1.position, dir), n),
+                        linear: p1.linear
+                    }, {
+                        left: aether.vec2.add(aether.vec2.sub(p2.position, dir), n),
+                        right: aether.vec2.sub(aether.vec2.sub(p2.position, dir), n),
+                        linear: p2.linear
+                    }])
+            });
+        }
         const start = inputStrokePoints[0];
         const end = inputStrokePoints[inputStrokePoints.length - 1];
         const startDist = start.linear[0];

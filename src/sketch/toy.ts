@@ -72,6 +72,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyC"]],
                     virtualKeys: "#control-closed"
                 },
+                toggleLines: {
+                    physicalKeys: [["KeyL"]],
+                    virtualKeys: "#control-lines"
+                },
                 loadBackgroundImage: {
                     physicalKeys: [["KeyG"]],
                     virtualKeys: "#control-load-bg"
@@ -83,6 +87,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 resetViewMatrix: {
                     physicalKeys: [["Delete", "KeyS"]],
                     virtualKeys: ".control-reset-view"
+                },
+                break: {
+                    physicalKeys: [["Enter"]],
+                    virtualKeys: "#control-break"
                 },
                 save: {
                     physicalKeys: [["ControlLeft", "KeyS"], ["ControlRight", "KeyS"]],
@@ -122,6 +130,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private backgroundGroup: BackgroundGroup | null = null
     private strokes: Stroke[] = []
     private brush = new Brush(this.canvas.device)
+    private lines = false
     private backgroundColor = new Color([1, 1, 1, 1])
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
@@ -255,7 +264,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes))
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), this.lines ? Number.POSITIVE_INFINITY : 4)
             : this.strokes[lastIndex]
     }
 
@@ -290,9 +299,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
-                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
+                toggleLines: { onPressed: () => this.lines = !this.lines },                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
+                break: { onPressed: () => this.breakStroke() },
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -347,6 +357,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             }), 
             this.viewGroup
         )
+    }
+
+    private breakStroke() {
+        const stroke = this.strokes.pop()
+        if (stroke !== undefined) {
+            const strokes = stroke.break()
+            this.strokes.push(...strokes)
+        }
     }
 
     private setColorDraggingTarget(inputs: gear.loops.LoopInputs<ToyDescriptor>, color: "BRUSH" | "BACKGROUND", draggingTarget: gear.loops.DraggingTarget) {

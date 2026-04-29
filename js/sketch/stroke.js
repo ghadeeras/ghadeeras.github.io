@@ -19,6 +19,29 @@ export class Stroke {
             this._strokeGroup = null;
         }
     }
+    clone() {
+        const stroke = new Stroke({ ...this._attributes }, this.attributesDestructor, this.minDistance, this.time);
+        for (const point of this.points) {
+            stroke.addPoint(point.position);
+        }
+        if (this.finalized) {
+            stroke.finalize();
+        }
+        return stroke;
+    }
+    break() {
+        if (this.finalized) {
+            return [this];
+        }
+        const newStroke = this.clone();
+        newStroke.finalize();
+        this.destroy();
+        this._startTime = this._endTime = this.time();
+        this._length = 0;
+        this.points.splice(0, this.points.length - 1);
+        this.points[0].linear = [0, 0];
+        return [newStroke, this];
+    }
     get attributes() {
         return { ...this._attributes, closed: this.closed ? 1 : 0 };
     }

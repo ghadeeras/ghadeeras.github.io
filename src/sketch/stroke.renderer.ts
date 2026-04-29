@@ -121,7 +121,7 @@ const shader = /* wgsl */ `
 
         let left_right = point.right - point.left;
         let width = length(left_right);
-        let u = select(select(select(0.0, -0.5, index < 0), 0.5, index >= max_point_index), 0.0, closed);
+        let u = select(select(select(0.0, -0.5, index < 0), 0.5, index > max_point_index), 0.0, closed);
         let cap = u * vec2(left_right.y, -left_right.x);
         point.left += cap; 
         point.right += cap;
