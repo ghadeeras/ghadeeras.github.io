@@ -23,6 +23,8 @@ export async function init() {
 
 type ToyDescriptor = typeof Toy.descriptor
 
+const windingSpeed = 2048
+
 class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     static readonly descriptor = {
@@ -92,6 +94,26 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["Enter"]],
                     virtualKeys: "#control-break"
                 },
+                windBackward: {
+                    physicalKeys: [["ArrowLeft"]],
+                    virtualKeys: "#control-wind-backward"
+                },
+                windForward: {
+                    physicalKeys: [["ArrowRight"]],
+                    virtualKeys: "#control-wind-forward"
+                },
+                windBeginning: {
+                    physicalKeys: [["Home"]],
+                    virtualKeys: "#control-wind-beginning"
+                },
+                windEnd: {
+                    physicalKeys: [["End"]],
+                    virtualKeys: "#control-wind-end"
+                },
+                windFast: {
+                    physicalKeys: [["ShiftRight"], ["ShiftLeft"]],
+                    virtualKeys: "#control-wind-fast"
+                },
                 save: {
                     physicalKeys: [["ControlLeft", "KeyS"], ["ControlRight", "KeyS"]],
                     virtualKeys: ".control-save"
@@ -129,6 +151,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private viewGroup: cmn.ViewBindGroup
     private backgroundGroup: BackgroundGroup | null = null
     private strokes: Stroke[] = []
+    private distance: Distance = { strokeIndex: 0, distance: 0 }
+    private targetStroke = -1
+    private fastWind = false
     private brush = new Brush(this.canvas.device)
     private lines = false
     private backgroundColor = new Color([1, 1, 1, 1])
@@ -223,6 +248,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.renderer.updateView(this.viewGroup, this.view)
     }
 
+    get visibleDistance() {
+        return this.distance
+    }
+
+    set visibleDistance(visibleDistance: Distance) {
+        this.distance = visibleDistance
+    }
+
     get color() {
         return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor
     }
@@ -272,6 +305,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const lastIndex = this.strokes.length - 1
         if (lastIndex < 0 || this.strokes[lastIndex] !== stroke) {
             this.strokes.push(stroke)
+            this.resetDistance()
         }
     }
 
@@ -285,7 +319,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
-        const v = 0.01
         return {
             keys: {
                 drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
@@ -299,10 +332,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
                 toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
-                toggleLines: { onPressed: () => this.lines = !this.lines },                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
+                toggleLines: { onPressed: () => this.lines = !this.lines },                
+                loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
                 break: { onPressed: () => this.breakStroke() },
+                windBackward: { onPressed: () => this.targetStroke = Math.max(this.targetStroke - 1, -1) },
+                windForward: { onPressed: () => this.targetStroke = Math.min(this.targetStroke + 1, this.strokes.length - 1) },
+                windBeginning: { onPressed: () => this.targetStroke = -1 },
+                windEnd: { onPressed: () => this.targetStroke = this.strokes.length - 1 },
+                windFast: { onPressed: () => this.fastWind = true, onReleased: () => this.fastWind = false },
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
@@ -330,7 +369,22 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
     
-    animate(): void {
+    animate(time: number, delta: number): void {
+        // TODO optimize by only updating distance when there is a relevant change.
+        if (this.strokes.length === 0) {
+            return
+        }
+        if (this.fastWind) {
+            this.windInstantly()
+            return
+        }
+        const maxDistDelta = windingSpeed * delta / 1000
+        const distDelta = 
+              this.distance.strokeIndex < this.targetStroke ?  maxDistDelta 
+            : this.distance.strokeIndex > this.targetStroke ? -maxDistDelta 
+            : this.distance.strokeIndex >= 0 && this.distance.distance < this.strokes[this.distance.strokeIndex].visibleLength - maxDistDelta ? maxDistDelta 
+            : 0
+        this.distance = distDelta !== 0 ? this.visibleDistancePlus(distDelta) : { ...this.distance, distance: Number.POSITIVE_INFINITY }
     }
 
     render() {
@@ -343,16 +397,18 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
         this.renderer.renderTo(
             attachment, 
-            this.strokes.map(s => {
-                this.tessellatedStrokeFactory.strokeThickness = s.thickness
-                this.tessellatedStrokeFactory.strokeTension = s.tension
-                this.tessellatedStrokeFactory.strokeClosed = s.closed
+            this.strokes.map((stroke, i) => {
+                this.tessellatedStrokeFactory.strokeThickness = stroke.thickness
+                this.tessellatedStrokeFactory.strokeTension = stroke.tension
+                this.tessellatedStrokeFactory.strokeClosed = stroke.closed
+                let distance = this.distance.strokeIndex === i ? Math.min(this.distance.distance / stroke.visibleLength, 1) : (i < this.distance.strokeIndex ? 1 : 0)
                 return {
-                    group: s.strokeGroup(points => this.renderer.stroke(
-                        this.brush.dataBuffer(s.attributes),
+                    group: stroke.strokeGroup(points => this.renderer.stroke(
+                        this.brush.dataBuffer(stroke.attributes),
                         this.tessellatedStrokeFactory.tesselate(points)
                     )),
-                    closed: s.closed
+                    closed: stroke.closed,
+                    distance
                 }
             }), 
             this.viewGroup
@@ -365,6 +421,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             const strokes = stroke.break()
             this.strokes.push(...strokes)
         }
+        this.resetDistance()
     }
 
     private setColorDraggingTarget(inputs: gear.loops.LoopInputs<ToyDescriptor>, color: "BRUSH" | "BACKGROUND", draggingTarget: gear.loops.DraggingTarget) {
@@ -397,11 +454,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private undo(): void {
         this.strokes.pop()?.destroy()
+        this.resetDistance()
     }
 
     private clearStrokes(): void {
         this.strokes.forEach(s => s.destroy())
         this.strokes = []
+        this.resetDistance()
     }
 
     private save(): void {
@@ -446,8 +505,43 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 this.strokes.push(stroke)
             }
         }
+        this.resetDistance()
     }
 
+    private visibleDistancePlus(delta: number): Distance {
+        if (this.strokes.length === 0 || delta === 0) {
+            return this.distance
+        }
+        let i = this.distance.strokeIndex
+        let s = this.strokes[i]
+        let d = Math.min(this.distance.distance, s.visibleLength) + delta
+        while (i < this.strokes.length - 1 && d > s.visibleLength) {
+            d -= s.visibleLength
+            s = this.strokes[++i]
+        }
+        while (i > 0 && d < 0) {
+            s = this.strokes[--i]
+            d += s.visibleLength
+        }
+        i = Math.min(Math.max(i, 0), this.strokes.length - 1)
+        d = Math.min(Math.max(d, 0), s.visibleLength)
+        return { strokeIndex: i, distance: d }
+    }
+
+    private resetDistance() {
+        this.targetStroke = this.strokes.length - 1
+        this.windInstantly()
+    }
+
+    private windInstantly() {
+        this.distance = { strokeIndex: Math.max(this.targetStroke, 0), distance: this.targetStroke < 0 ? 0 : Number.POSITIVE_INFINITY }
+    }
+
+}
+
+type Distance = {
+    strokeIndex: number
+    distance: number
 }
 
 type Sketch = {

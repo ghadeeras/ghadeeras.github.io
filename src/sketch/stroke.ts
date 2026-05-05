@@ -66,6 +66,10 @@ export class Stroke {
         return this._length
     }
 
+    get visibleLength() {
+        return this.length + (this.closed ? 0.5 * this.thickness : this.thickness)
+    }
+
     get finalized() {
         return this._finalized
     }

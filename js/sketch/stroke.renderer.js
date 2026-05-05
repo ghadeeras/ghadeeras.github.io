@@ -59,9 +59,11 @@ export class Renderer {
                 this.pipelineLayout.addTo(pass, { view });
                 for (const stroke of strokes) {
                     const strokeBuffer = stroke.group.entries.strokePoints.baseResource();
-                    const controlPointsCount = Math.ceil(strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize) + (stroke.closed ? 1 : 2);
-                    this.pipelineLayout.addTo(pass, { stroke: stroke.group });
-                    pass.draw(controlPointsCount * 2);
+                    const controlPointsCount = Math.ceil(stroke.distance * (strokeBuffer.size / cmn.strokePointsPairStruct.paddedSize + (stroke.closed ? 1 : 2)));
+                    if (controlPointsCount > 0) {
+                        this.pipelineLayout.addTo(pass, { stroke: stroke.group });
+                        pass.draw(controlPointsCount * 2);
+                    }
                 }
             });
         });
