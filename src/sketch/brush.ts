@@ -19,7 +19,7 @@ export class Brush {
     
     private _position: aether.Vec2 = [0, 0]
 
-    constructor(private device: gpu.Device) {
+    constructor(private device: gpu.Device, private canvas: HTMLCanvasElement) {
         this.thickness = this._thickness
     }
 
@@ -42,9 +42,6 @@ export class Brush {
 
     set thickness(size: number) {
         this._thickness = size
-        const radius = this._thickness / window.devicePixelRatio
-        this.circle.setAttribute("r", `${radius}`)
-        this.circle.setAttribute("stroke-width", `${radius}`)
     }
 
     get tension() {
@@ -69,8 +66,12 @@ export class Brush {
 
     set position(pos: aether.Vec2) {
         this._position = pos
-        this.cursor.style.left = `${this._position[0] / window.devicePixelRatio - this.cursor.clientWidth / 2}px`
-        this.cursor.style.top = `${this._position[1] / window.devicePixelRatio - this.cursor.clientHeight / 2}px`
+        const ratio = this.canvas.clientWidth / this.canvas.width
+        const radius = this._thickness * ratio
+        this.circle.setAttribute("r", `${radius}px`)
+        this.circle.setAttribute("stroke-width", `${radius}px`)
+        this.cursor.style.left = `${this._position[0] * ratio - this.cursor.clientWidth / 2}px`
+        this.cursor.style.top = `${this._position[1] * ratio - this.cursor.clientHeight / 2}px`
         this.cursor.style.display = "block"
     }
 

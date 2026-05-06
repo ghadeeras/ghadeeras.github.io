@@ -2,8 +2,9 @@ import * as gear from "gear";
 import { strokeAttributesStruct } from "./common.js";
 import { Color, toHex } from "./color.js";
 export class Brush {
-    constructor(device) {
+    constructor(device, canvas) {
         this.device = device;
+        this.canvas = canvas;
         this.cache = new Map();
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
@@ -30,9 +31,6 @@ export class Brush {
     }
     set thickness(size) {
         this._thickness = size;
-        const radius = this._thickness / window.devicePixelRatio;
-        this.circle.setAttribute("r", `${radius}`);
-        this.circle.setAttribute("stroke-width", `${radius}`);
     }
     get tension() {
         return this._tension;
@@ -51,8 +49,12 @@ export class Brush {
     }
     set position(pos) {
         this._position = pos;
-        this.cursor.style.left = `${this._position[0] / window.devicePixelRatio - this.cursor.clientWidth / 2}px`;
-        this.cursor.style.top = `${this._position[1] / window.devicePixelRatio - this.cursor.clientHeight / 2}px`;
+        const ratio = this.canvas.clientWidth / this.canvas.width;
+        const radius = this._thickness * ratio;
+        this.circle.setAttribute("r", `${radius}px`);
+        this.circle.setAttribute("stroke-width", `${radius}px`);
+        this.cursor.style.left = `${this._position[0] * ratio - this.cursor.clientWidth / 2}px`;
+        this.cursor.style.top = `${this._position[1] * ratio - this.cursor.clientHeight / 2}px`;
         this.cursor.style.display = "block";
     }
     dataBuffer(strokeAttributes = this.attributes) {

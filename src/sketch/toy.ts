@@ -126,6 +126,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyV"]],
                     virtualKeys: "#control-v"
                 },
+                resizeCanvas: {
+                    physicalKeys: [["KeyR"]],
+                    virtualKeys: "#control-resize-canvas"
+                }
             },
             pointers: {
                 primary: {
@@ -154,7 +158,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private distance: Distance = { strokeIndex: 0, distance: 0 }
     private targetStroke = -1
     private fastWind = false
-    private brush = new Brush(this.canvas.device)
+    private brush = new Brush(this.canvas.device, this.canvas.element)
     private lines = false
     private backgroundColor = new Color([1, 1, 1, 1])
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
@@ -345,6 +349,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
+                resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
                 primary: {
@@ -357,14 +362,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
-            canvases: {
-                scene: {
-                    onResize: () => {
-                        this.canvas.resize()
-                        this.renderer.updateView(this.viewGroup, this.view)
-                    }
-                }
-            },
             onRender: () => this.render()
         }
     }
@@ -535,6 +532,19 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private windInstantly() {
         this.distance = { strokeIndex: Math.max(this.targetStroke, 0), distance: this.targetStroke < 0 ? 0 : Number.POSITIVE_INFINITY }
+    }
+
+    private resizeCanvas() {
+        const width = parseInt((document.getElementById("canvas-width") as HTMLInputElement).value)
+        const height = parseInt((document.getElementById("canvas-height") as HTMLInputElement).value)
+        if (!isNaN(width) && !isNaN(height)) {
+            this.canvas.element.width = width
+            this.canvas.element.height = height
+            this.view.width = width
+            this.view.height = height
+            this.canvas.resize()
+            this.renderer.updateView(this.viewGroup, this.view)
+        }
     }
 
 }

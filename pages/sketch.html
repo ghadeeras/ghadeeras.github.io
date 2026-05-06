@@ -37,8 +37,8 @@
             </div>
         </div>
         <div class="tiles">
-            <div style="width: 96.875%; height: 96.875%; overflow: hidden;">
-                <canvas id="canvas" style="width: 100%; height: 100%; cursor: none">
+            <div style="max-width: 96.875%; max-height: 96.875%; overflow: auto;">
+                <canvas id="canvas" style="cursor: none" width="1920" height="1080">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
                 <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top:0px; left:0px; z-index: 8; pointer-events: none; display: none;">
@@ -77,21 +77,26 @@
                 </table>
                 <p>The following keys perform the specified actions:</p>
                 <table>
-                    <tr><td><kbd class="control-clear">Shift</kbd> + <kbd class="control-clear">Del</kbd></td><td>Clear</td></tr>
-                    <tr><td><kbd id="control-undo">Backspace</kbd></td><td>Undo Stroke</td></tr>
-                    <tr><td><kbd id="control-closed">C</kbd></td><td>Toggle Closed Stroke</td></tr>
-                    <tr><td><kbd id="control-lines">L</kbd></td><td>Toggle Lines</td></tr>
-                    <tr><td><kbd id="control-load-bg">G</kbd></td><td>Load Background Image</td></tr>
-                    <tr><td><kbd class="control-clear-bg">Delete</kbd> + <kbd class="control-clear-bg">G</kbd></td><td>Clear Background Image</td></tr>
-                    <tr><td><kbd class="control-reset-view">Delete</kbd> + <kbd class="control-reset-view">S</kbd></td><td>Reset View</td></tr>
-                    <tr><td><kbd class="control-save">Ctrl</kbd> + <kbd class="control-save">S</kbd></td><td>Save</td></tr>
-                    <tr><td><kbd class="control-load">Ctrl</kbd> + <kbd class="control-load">L</kbd></td><td>Load</td></tr>
-                    <tr><td><kbd id="control-wind-fast">Shift</kbd></td><td>Fast Wind</td></tr>
-                    <tr><td><kbd id="control-wind-backward">Arrow Left</kbd></td><td>Wind Backward</td></tr>
-                    <tr><td><kbd id="control-wind-forward">Arrow Right</kbd></td><td>Wind Forward</td></tr>
-                    <tr><td><kbd id="control-wind-beginning">Home</kbd></td><td>Wind to Beginning</td></tr>
-                    <tr><td><kbd id="control-wind-end">End</kbd></td><td>Wind to End</td></tr>
-                    <tr><td><kbd id="control-v">V</kbd></td><td>Start/Stop Video Recording</td></tr>
+                    <tr><td><kbd class="control-clear">Shift</kbd> + <kbd class="control-clear">Del</kbd></td><td>Clear</td><td></td></tr>
+                    <tr><td><kbd id="control-undo">Backspace</kbd></td><td>Undo Stroke</td><td></td></tr>
+                    <tr><td><kbd id="control-closed">C</kbd></td><td>Toggle Closed Stroke</td><td></td></tr>
+                    <tr><td><kbd id="control-lines">L</kbd></td><td>Toggle Lines</td><td></td></tr>
+                    <tr><td><kbd id="control-load-bg">G</kbd></td><td>Load Background Image</td><td></td></tr>
+                    <tr><td><kbd class="control-clear-bg">Delete</kbd> + <kbd class="control-clear-bg">G</kbd></td><td>Clear Background Image</td><td></td></tr>
+                    <tr><td><kbd class="control-reset-view">Delete</kbd> + <kbd class="control-reset-view">S</kbd></td><td>Reset View</td><td></td></tr>
+                    <tr><td><kbd class="control-save">Ctrl</kbd> + <kbd class="control-save">S</kbd></td><td>Save</td><td></td></tr>
+                    <tr><td><kbd class="control-load">Ctrl</kbd> + <kbd class="control-load">L</kbd></td><td>Load</td><td></td></tr>
+                    <tr><td><kbd id="control-wind-fast">Shift</kbd></td><td>Fast Wind</td><td></td></tr>
+                    <tr><td><kbd id="control-wind-backward">Arrow Left</kbd></td><td>Wind Backward</td><td></td></tr>
+                    <tr><td><kbd id="control-wind-forward">Arrow Right</kbd></td><td>Wind Forward</td><td></td></tr>
+                    <tr><td><kbd id="control-wind-beginning">Home</kbd></td><td>Wind to Beginning</td><td></td></tr>
+                    <tr><td><kbd id="control-wind-end">End</kbd></td><td>Wind to End</td><td></td></tr>
+                    <tr><td><kbd id="control-v">V</kbd></td><td>Start/Stop Video Recording</td><td></td></tr>
+                    <tr><td><kbd id="control-resize-canvas">R</kbd></td><td>Resize Canvas</td><td>
+                        <input type="number" id="canvas-width" value="1920">
+                        x
+                        <input type="number" id="canvas-height" value="1080">
+                    </td></tr>
                 </table>
             </div>
         </div>

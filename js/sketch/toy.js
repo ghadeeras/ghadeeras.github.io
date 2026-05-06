@@ -30,7 +30,7 @@ class Toy {
         this.distance = { strokeIndex: 0, distance: 0 };
         this.targetStroke = -1;
         this.fastWind = false;
-        this.brush = new Brush(this.canvas.device);
+        this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
         this.backgroundColor = new Color([1, 1, 1, 1]);
         this.currentColor = "BRUSH";
@@ -173,6 +173,7 @@ class Toy {
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
+                resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
                 primary: {
@@ -184,14 +185,6 @@ class Toy {
     }
     outputWiring() {
         return {
-            canvases: {
-                scene: {
-                    onResize: () => {
-                        this.canvas.resize();
-                        this.renderer.updateView(this.viewGroup, this.view);
-                    }
-                }
-            },
             onRender: () => this.render()
         };
     }
@@ -343,6 +336,18 @@ class Toy {
     windInstantly() {
         this.distance = { strokeIndex: Math.max(this.targetStroke, 0), distance: this.targetStroke < 0 ? 0 : Number.POSITIVE_INFINITY };
     }
+    resizeCanvas() {
+        const width = parseInt(document.getElementById("canvas-width").value);
+        const height = parseInt(document.getElementById("canvas-height").value);
+        if (!isNaN(width) && !isNaN(height)) {
+            this.canvas.element.width = width;
+            this.canvas.element.height = height;
+            this.view.width = width;
+            this.view.height = height;
+            this.canvas.resize();
+            this.renderer.updateView(this.viewGroup, this.view);
+        }
+    }
 }
 Toy.descriptor = {
     input: {
@@ -443,6 +448,10 @@ Toy.descriptor = {
                 physicalKeys: [["KeyV"]],
                 virtualKeys: "#control-v"
             },
+            resizeCanvas: {
+                physicalKeys: [["KeyR"]],
+                virtualKeys: "#control-resize-canvas"
+            }
         },
         pointers: {
             primary: {
