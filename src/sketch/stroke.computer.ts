@@ -60,7 +60,7 @@ export class TessellatedStrokeFactory {
             const p1 = inputStrokePoints[0]
             const p2 = inputStrokePoints[1]
             const dir = aether.vec2.unit(aether.vec2.sub(p2.position, p1.position))
-            const n: aether.Vec2 = aether.vec2.setLength([dir[1], -dir[0]], r)
+            const n: aether.Vec2 = aether.vec2.withLength(r, [dir[1], -dir[0]])
             return this.device.dataBuffer({
                 usage: ["STORAGE"],
                 data: strokePointsPairStruct.view([{
@@ -78,7 +78,7 @@ export class TessellatedStrokeFactory {
         const end = inputStrokePoints[inputStrokePoints.length - 1]
         const startDist = start.linear[0]
         const endDist = end.linear[0]
-        const closingSegmentLength = this.attributes.closed === 1 ? aether.vec2.length(aether.vec2.sub(start.position, end.position)) : 0
+        const closingSegmentLength = this.attributes.closed === 1 ? aether.vec2.distance(start.position, end.position) : 0
         const strokeLength = endDist - startDist + closingSegmentLength
         const segmentsCount = Math.max(Math.ceil(strokeLength * segmentsPerUnitLength), 1.0);
         const group = this.shader.tesselationGroup(this.attributes, inputStrokePoints, segmentsCount)

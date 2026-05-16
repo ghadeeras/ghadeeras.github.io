@@ -56,28 +56,14 @@ export function hueOf(color3D) {
 }
 export class Pallette2D {
     constructor(red, green, blue) {
-        this.redLine = line(green, blue);
-        this.greenLine = line(blue, red);
-        this.blueLine = line(red, green);
-        this.redLine = aether.vec3.scale(this.redLine, 1 / aether.vec3.dot([...red, 1], this.redLine));
-        this.greenLine = aether.vec3.scale(this.greenLine, 1 / aether.vec3.dot([...green, 1], this.greenLine));
-        this.blueLine = aether.vec3.scale(this.blueLine, 1 / aether.vec3.dot([...blue, 1], this.blueLine));
+        this.bary = new aether.Bary([...red, 0], [...green, 0], [...blue, 0]);
     }
     toColor(position) {
-        const p = aether.vec3.of(...position, 1);
-        return aether.vec3.min(aether.vec3.max(aether.vec3.of(aether.vec3.dot(p, this.redLine), aether.vec3.dot(p, this.greenLine), aether.vec3.dot(p, this.blueLine)), [0, 0, 0]), [1, 1, 1]);
+        return this.bary.fromCartesian([...position, 0]);
     }
     fromColor(color) {
-        const c = aether.vec3.sub(color, this.toColor([0, 0]));
-        const r = aether.vec2.scale(aether.vec2.from(this.redLine), c[0]);
-        const g = aether.vec2.scale(aether.vec2.from(this.greenLine), c[1]);
-        const b = aether.vec2.scale(aether.vec2.from(this.blueLine), c[2]);
-        return aether.vec2.addAll(r, g, b);
+        const cartesian = this.bary.toCartesian(color);
+        return aether.vec2.from(cartesian);
     }
-}
-function line(p1, p2) {
-    const dir = aether.vec2.unit(aether.vec2.sub(p2, p1));
-    const normal = aether.vec2.of(dir[1], -dir[0]);
-    return aether.vec3.of(...normal, -aether.vec2.dot(normal, p1));
 }
 //# sourceMappingURL=color.js.map
