@@ -1,8 +1,9 @@
 import * as aether from "aether";
 export class Stroke {
-    constructor(_attributes, attributesDestructor, minDistance = 4, time = () => performance.now()) {
+    constructor(_attributes, attributesDestructor, _skipInitalCap = false, minDistance = 4, time = () => performance.now()) {
         this._attributes = _attributes;
         this.attributesDestructor = attributesDestructor;
+        this._skipInitalCap = _skipInitalCap;
         this.minDistance = minDistance;
         this.time = time;
         this.points = [];
@@ -20,7 +21,7 @@ export class Stroke {
         }
     }
     clone() {
-        const stroke = new Stroke({ ...this._attributes }, this.attributesDestructor, this.minDistance, this.time);
+        const stroke = new Stroke({ ...this._attributes }, this.attributesDestructor, this._skipInitalCap, this.minDistance, this.time);
         for (const point of this.points) {
             stroke.addPoint(point.position);
         }
@@ -38,6 +39,7 @@ export class Stroke {
         this.destroy();
         this._startTime = this._endTime = this.time();
         this._length = 0;
+        this._skipInitalCap = true;
         this.points.splice(0, this.points.length - 1);
         this.points[0].linear = [0, 0];
         return [newStroke, this];
@@ -85,6 +87,9 @@ export class Stroke {
     set closed(closed) {
         this.destroy();
         this._attributes.closed = closed ? 1 : 0;
+    }
+    get skipInitalCap() {
+        return this._skipInitalCap;
     }
     finalize() {
         this.destroy();

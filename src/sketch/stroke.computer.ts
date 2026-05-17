@@ -56,23 +56,6 @@ export class TessellatedStrokeFactory {
                     linear: [0, 0]
                 }])
             })
-        } else if (inputStrokePoints.length === 2) {
-            const p1 = inputStrokePoints[0]
-            const p2 = inputStrokePoints[1]
-            const dir = aether.vec2.unit(aether.vec2.sub(p2.position, p1.position))
-            const n: aether.Vec2 = aether.vec2.withLength(r, [dir[1], -dir[0]])
-            return this.device.dataBuffer({
-                usage: ["STORAGE"],
-                data: strokePointsPairStruct.view([{
-                    left: aether.vec2.add(aether.vec2.add(p1.position, dir), n),
-                    right: aether.vec2.sub(aether.vec2.add(p1.position, dir), n),
-                    linear: p1.linear
-                }, {
-                    left: aether.vec2.add(aether.vec2.sub(p2.position, dir), n),
-                    right: aether.vec2.sub(aether.vec2.sub(p2.position, dir), n),
-                    linear: p2.linear
-                }])
-            })
         }
         const start = inputStrokePoints[0]
         const end = inputStrokePoints[inputStrokePoints.length - 1]
@@ -110,13 +93,13 @@ export class TesselationShader {
         return this.pipeline.bindGroup("tesselation", this.pipeline.device.dataBuffers({
             strokeAttributes: { usage: ["UNIFORM"], data: strokeAttributesStruct.view([strokeAttributes]) },
             inputStrokePoints: { usage: ["STORAGE"], data: inputPointStruct.view(inputStrokePoints) },
-            outputStrokePoints: { usage: ["STORAGE"], size: strokePointsPairStruct.paddedSize * segmentsCount },
+            outputStrokePoints: { usage: ["STORAGE"], size: strokePointsPairStruct.paddedSize * (segmentsCount + 1) },
         }))
     }
 
     tesselate(tesselation: TesselationGroup) {
-        const segmentsCount = Math.ceil(tesselation.entries.outputStrokePoints.baseResource().size / strokePointsPairStruct.paddedSize);
-        const workGroupsCount = Math.ceil(segmentsCount / this.workGroupSize);
+        const pointsCount = Math.ceil(tesselation.entries.outputStrokePoints.baseResource().size / strokePointsPairStruct.paddedSize);
+        const workGroupsCount = Math.ceil(pointsCount / this.workGroupSize);
         this.pipeline
             .withGroups({ tesselation })
             .dispatchWorkGroups(workGroupsCount)
@@ -188,7 +171,7 @@ const tesselationShader = /* wgsl */ `
 
     fn compute_point(index: u32, points_count: u32) -> StrokePointsPair {
         let curve_length = curve_length();
-        let dist = curve_length * (f32(index) / f32(points_count));
+        let dist = curve_length * (f32(index) / f32(points_count - 1u));
         let i = closest_point_index(dist);
         let t = float_index(i, dist, curve_length);
         let p = spline(t, curve_length);
@@ -276,19 +259,43 @@ const tesselationShader = /* wgsl */ `
     // TODO Replace with incremental approach.
     fn input_point(i: i32, curve_length: f32) -> StrokePoint {
         let input_stroke_points_count = i32(arrayLength(&input_stroke_points));
-        let offset = select(0.0, f32(i / input_stroke_points_count) * curve_length, stroke_attributes.closed == 1u);
-        let index = select(clamp(i, 0, input_stroke_points_count - 1), i % input_stroke_points_count, stroke_attributes.closed == 1u);
+        let mirror_index = select(
+            select(
+                select(
+                    i, 
+                    input_stroke_points_count - 1, 
+                    i >= input_stroke_points_count
+                ), 
+                0, 
+                i < 0
+            ), 
+            i, 
+            stroke_attributes.closed == 1u
+        );
+        let j = 2 * mirror_index - i;
+        let offset = select(0.0, f32(j / input_stroke_points_count) * curve_length, stroke_attributes.closed == 1u);
+        let index = select(clamp(j, 0, input_stroke_points_count - 1), j % input_stroke_points_count, stroke_attributes.closed == 1u);
         let p = input_stroke_points[select(index, index + input_stroke_points_count, index < 0)];
-        return StrokePoint(p.position, p.linear + vec2(select(offset, offset - curve_length, index < 0), 0.0));
+        var point = StrokePoint(p.position, p.linear + vec2(select(offset, offset - curve_length, index < 0), 0.0));
+        if (mirror_index != i) {
+            let mirror_point = input_stroke_points[mirror_index];
+            point.position = 2.0 * mirror_point.position - point.position;
+            point.linear.x = 2.0 * mirror_point.linear.x - point.linear.x;
+        }
+        return point;
     }
 
     fn transfer_function(t: f32) -> vec2f {
-        let w = PI / stroke_attributes.tension;
+        let w = PI / tension();
         let angle = w * t;
         return vec2f(cos(angle) + 1.0, -w * sin(angle));
     }
 
     fn transfer_function_width() -> f32 {
-        return 2.0 * stroke_attributes.tension;
+        return 2.0 * tension();
+    }
+
+    fn tension() -> f32 {
+        return min(stroke_attributes.tension, f32(max(arrayLength(&input_stroke_points), 2u)));
     }
 `

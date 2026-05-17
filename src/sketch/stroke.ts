@@ -15,6 +15,7 @@ export class Stroke {
     constructor(
         private _attributes: cmn.StrokeAttributes,
         private attributesDestructor: (strokeAttributes: cmn.StrokeAttributes) => void,
+        private _skipInitalCap = false,
         private minDistance = 4,
         private time: () => number = () => performance.now()
     ) {}
@@ -28,7 +29,7 @@ export class Stroke {
     }
 
     clone() {
-        const stroke = new Stroke({ ...this._attributes }, this.attributesDestructor, this.minDistance, this.time)
+        const stroke = new Stroke({ ...this._attributes }, this.attributesDestructor, this._skipInitalCap, this.minDistance, this.time)
         for (const point of this.points) {
             stroke.addPoint(point.position)
         }
@@ -48,6 +49,7 @@ export class Stroke {
         this.destroy()
         this._startTime = this._endTime = this.time()
         this._length = 0
+        this._skipInitalCap = true
         this.points.splice(0, this.points.length - 1)
         this.points[0].linear = [0, 0]
 
@@ -109,6 +111,10 @@ export class Stroke {
     set closed(closed: boolean) {
         this.destroy()
         this._attributes.closed = closed ? 1 : 0
+    }
+
+    get skipInitalCap() {
+        return this._skipInitalCap
     }
 
     finalize() {

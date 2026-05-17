@@ -128,7 +128,7 @@ class Toy {
     get stroke() {
         const lastIndex = this.strokes.length - 1;
         return lastIndex < 0 || this.strokes[lastIndex].finalized
-            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), this.lines ? Number.POSITIVE_INFINITY : 4)
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), false, this.lines ? Number.POSITIVE_INFINITY : 4)
             : this.strokes[lastIndex];
     }
     set stroke(stroke) {
@@ -220,6 +220,7 @@ class Toy {
             return {
                 group: stroke.strokeGroup(points => this.renderer.stroke(this.brush.dataBuffer(stroke.attributes), this.tessellatedStrokeFactory.tesselate(points))),
                 closed: stroke.closed,
+                skipInitalCap: stroke.skipInitalCap,
                 distance
             };
         }), this.viewGroup);

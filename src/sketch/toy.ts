@@ -301,7 +301,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     get stroke(): Stroke {
         const lastIndex = this.strokes.length - 1
         return lastIndex < 0 || this.strokes[lastIndex].finalized 
-            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), this.lines ? Number.POSITIVE_INFINITY : 4)
+            ? new Stroke(this.brush.attributes, attributes => this.brush.destroyDataBuffer(attributes), false, this.lines ? Number.POSITIVE_INFINITY : 4)
             : this.strokes[lastIndex]
     }
 
@@ -405,6 +405,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                         this.tessellatedStrokeFactory.tesselate(points)
                     )),
                     closed: stroke.closed,
+                    skipInitalCap: stroke.skipInitalCap,
                     distance
                 }
             }), 
