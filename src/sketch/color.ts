@@ -85,7 +85,8 @@ export class Pallette2D {
     }
 
     toColor(position: aether.Vec2): aether.Vec3 {
-        return this.bary.fromCartesian([...position, 0])
+        const color = this.bary.fromCartesian([...position, 0])
+        return aether.vec3.min(aether.vec3.max(color, [0, 0, 0]), [1, 1, 1])
     }
 
     fromColor(color: aether.Vec3): aether.Vec2 {
