@@ -10,8 +10,10 @@ export class Brush {
 
     private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
     private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
+    private brushSizeElement = gear.required(document.getElementById("brush-size")) as HTMLElement
+    private tensionElement = gear.required(document.getElementById("tension")) as HTMLElement
 
-    private _color: Color = new Color([0, 0, 0, 1], () => this.refreshColor())
+    private _color: Color = new Color([0, 0, 0, 1], "color", () => this.refreshColor())
 
     private _thickness: number = 8
     private _tension: number = 8
@@ -21,6 +23,7 @@ export class Brush {
 
     constructor(private device: gpu.Device, private canvas: HTMLCanvasElement) {
         this.thickness = this._thickness
+        this.tension = this._tension
     }
 
     get attributes(): StrokeAttributes {
@@ -42,6 +45,7 @@ export class Brush {
 
     set thickness(size: number) {
         this._thickness = size
+        this.brushSizeElement.textContent = Math.round(size).toString()
     }
 
     get tension() {
@@ -50,6 +54,7 @@ export class Brush {
 
     set tension(tension: number) {
         this._tension = tension
+        this.tensionElement.textContent = Math.round(tension).toString()
     }
 
     get closed() {

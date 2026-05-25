@@ -6,13 +6,17 @@ export class Color {
     private _hue: aether.Vec3
     private _intensity: number
     private _alpha: number
+
+    private element: HTMLInputElement
     
-    constructor(rgba: aether.Vec4, private colorChangeCallback: () => void = () => {}) {
+    constructor(rgba: aether.Vec4, element: string, private colorChangeCallback: () => void = () => {}) {
         const rgb: aether.Vec3 = [rgba[0], rgba[1], rgba[2]]
         this._hue = hueOf(rgb)
         this._intensity = Math.max(...rgb)
         this._alpha = rgba[3]
-        gear.invokeLater(() => colorChangeCallback())
+        this.element = gear.required(document.getElementById(element)) as HTMLInputElement
+        this.element.addEventListener("blur", () => this.hex = this.element.value)
+        gear.invokeLater(() => this.refresh())
     }
 
     get hue(): aether.Vec3 {
@@ -21,7 +25,7 @@ export class Color {
 
     set hue(hue: aether.Vec3) {
         this._hue = hueOf(hue)
-        this.colorChangeCallback()
+        this.refresh()
     }
 
     get intensity() {
@@ -30,7 +34,7 @@ export class Color {
 
     set intensity(intensity: number) {
         this._intensity = Math.min(Math.max(intensity, 0), 1)
-        this.colorChangeCallback()
+        this.refresh()
     }
 
     get rgba(): aether.Vec4 {
@@ -42,6 +46,11 @@ export class Color {
         this._hue = hueOf(rgb)
         this._intensity = Math.max(...rgb)
         this._alpha = rgba[3]
+        this.refresh()
+    }
+
+    private refresh() {
+        this.element.value = this.hex.toUpperCase()
         this.colorChangeCallback()
     }
 
@@ -50,7 +59,12 @@ export class Color {
     }
 
     set hex(hex: string) {
-        this.rgba = fromHex(hex)
+        const rgba = fromHex(hex)
+        if (rgba.every(v => v >= 0 && v <= 1)) {
+            this.rgba = rgba
+        } else {
+            this.refresh()
+        }
     }
 
 }
@@ -61,7 +75,7 @@ export function toHex(color: aether.Vec4): string {
 
 export function fromHex(hex: string): aether.Vec4 {
     if (hex.length != 8) {
-        return [0.5, 0.5, 0.5, 1]
+        return [NaN, NaN, NaN, NaN]
     }
     const parse = (start: number) => parseInt(hex.slice(start, start + 2), 16) / 255
     return [parse(0), parse(2), parse(4), parse(6)]

@@ -160,7 +160,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private fastWind = false
     private brush = new Brush(this.canvas.device, this.canvas.element)
     private lines = false
-    private backgroundColor = new Color([1, 1, 1, 1])
+    private backgroundColor = new Color([1, 1, 1, 1], "bg-color")
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
     

@@ -32,7 +32,7 @@ class Toy {
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
-        this.backgroundColor = new Color([1, 1, 1, 1]);
+        this.backgroundColor = new Color([1, 1, 1, 1], "bg-color");
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
         this.inverseViewMatrix = aether.mat3.identity();

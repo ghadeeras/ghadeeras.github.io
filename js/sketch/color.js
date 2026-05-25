@@ -1,27 +1,29 @@
 import * as aether from "aether";
 import * as gear from "gear";
 export class Color {
-    constructor(rgba, colorChangeCallback = () => { }) {
+    constructor(rgba, element, colorChangeCallback = () => { }) {
         this.colorChangeCallback = colorChangeCallback;
         const rgb = [rgba[0], rgba[1], rgba[2]];
         this._hue = hueOf(rgb);
         this._intensity = Math.max(...rgb);
         this._alpha = rgba[3];
-        gear.invokeLater(() => colorChangeCallback());
+        this.element = gear.required(document.getElementById(element));
+        this.element.addEventListener("blur", () => this.hex = this.element.value);
+        gear.invokeLater(() => this.refresh());
     }
     get hue() {
         return this._hue;
     }
     set hue(hue) {
         this._hue = hueOf(hue);
-        this.colorChangeCallback();
+        this.refresh();
     }
     get intensity() {
         return this._intensity;
     }
     set intensity(intensity) {
         this._intensity = Math.min(Math.max(intensity, 0), 1);
-        this.colorChangeCallback();
+        this.refresh();
     }
     get rgba() {
         return [...aether.vec3.scale(this._hue, this._intensity), this._alpha];
@@ -31,13 +33,23 @@ export class Color {
         this._hue = hueOf(rgb);
         this._intensity = Math.max(...rgb);
         this._alpha = rgba[3];
+        this.refresh();
+    }
+    refresh() {
+        this.element.value = this.hex.toUpperCase();
         this.colorChangeCallback();
     }
     get hex() {
         return toHex(this.rgba);
     }
     set hex(hex) {
-        this.rgba = fromHex(hex);
+        const rgba = fromHex(hex);
+        if (rgba.every(v => v >= 0 && v <= 1)) {
+            this.rgba = rgba;
+        }
+        else {
+            this.refresh();
+        }
     }
 }
 export function toHex(color) {
@@ -45,7 +57,7 @@ export function toHex(color) {
 }
 export function fromHex(hex) {
     if (hex.length != 8) {
-        return [0.5, 0.5, 0.5, 1];
+        return [NaN, NaN, NaN, NaN];
     }
     const parse = (start) => parseInt(hex.slice(start, start + 2), 16) / 255;
     return [parse(0), parse(2), parse(4), parse(6)];

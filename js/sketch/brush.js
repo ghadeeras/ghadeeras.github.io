@@ -8,12 +8,15 @@ export class Brush {
         this.cache = new Map();
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
-        this._color = new Color([0, 0, 0, 1], () => this.refreshColor());
+        this.brushSizeElement = gear.required(document.getElementById("brush-size"));
+        this.tensionElement = gear.required(document.getElementById("tension"));
+        this._color = new Color([0, 0, 0, 1], "color", () => this.refreshColor());
         this._thickness = 8;
         this._tension = 8;
         this._closed = 0;
         this._position = [0, 0];
         this.thickness = this._thickness;
+        this.tension = this._tension;
     }
     get attributes() {
         return {
@@ -31,12 +34,14 @@ export class Brush {
     }
     set thickness(size) {
         this._thickness = size;
+        this.brushSizeElement.textContent = Math.round(size).toString();
     }
     get tension() {
         return this._tension;
     }
     set tension(tension) {
         this._tension = tension;
+        this.tensionElement.textContent = Math.round(tension).toString();
     }
     get closed() {
         return this._closed == 1;
