@@ -48,10 +48,12 @@ fn mul(c1: vec2<f32>, c2: vec2<f32>) -> vec2<f32> {
 fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
     var z = z0;
     for (var i = 0; i < depth; i += 1) {
+        let old_l2 = dot(z, z);
         z = mul(z, z) + c;
-        var l2 = dot(z, z);
+        let l2 = dot(z, z);
         if (l2 > 4.0) {
-            let e = exp(-f32(i) * (1.0 + params.intensity * 255.0) / f32(depth));
+            let f = max((4.0 - old_l2) / (l2 - old_l2), 0.0);
+            let e = exp(-(f32(i - 1) + sqrt(f)) * (1.0 + params.intensity * 255.0) / f32(depth));
             return select(e, 1.0 - e, params.xray != 0);
         }
     }

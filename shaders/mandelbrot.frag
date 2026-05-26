@@ -40,10 +40,12 @@ vec2 mul(vec2 c1, vec2 c2) {
 
 float mandelbrot(vec2 c, vec2 z) {
     for (int i = 0; i < depth; i++) {
+        float old_l2 = dot(z, z);
         z = mul(z, z) + c;
         float l2 = dot(z, z);
         if (l2 > 4.0) {
-            float e = exp(-float(i) * (1.0 + intensity * 255.0) / float(depth));
+            float f = max((4.0 - old_l2) / (l2 - old_l2), 0.0);
+            float e = exp(-(float(i - 1) + sqrt(f)) * (1.0 + intensity * 255.0) / float(depth));
             return xray != 0 ? 1.0 - e : e;
         }
     }
