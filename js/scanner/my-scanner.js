@@ -1,49 +1,51 @@
 import * as L from "languasaurus";
+const lowerCaseChar = L.charIn("a-z");
+const upperCaseChar = L.charIn("A-Z");
+const alphaChar = L.choice(lowerCaseChar, upperCaseChar);
+const numericChar = L.charIn("0-9");
+const alphaNumericChar = L.choice(alphaChar, numericChar);
+export const tokenDefs = {
+    whiteSpace: L.string(L.oneOrMore(L.charFrom(" \t\r\n"))),
+    comment: L.string(L.concat(L.char("#"), L.zeroOrMore(L.charOtherThan("\n")), L.char("\n"))),
+    keywordIf: L.boolean(L.word("if")),
+    keywordOtherwise: L.boolean(L.word("otherwise")),
+    keywordWhere: L.boolean(L.word("where")),
+    identifier: L.string(L.concat(alphaChar, L.zeroOrMore(alphaNumericChar))),
+    literalInt: L.integer(L.oneOrMore(numericChar)),
+    literalFloat: L.float(L.concat(L.zeroOrMore(numericChar), L.char("."), L.oneOrMore(numericChar))),
+    literalString: L.string(L.choice(L.concat(L.char('"'), L.zeroOrMore(L.charOtherThan('"')), L.char('"')), L.concat(L.char("'"), L.zeroOrMore(L.charOtherThan("'")), L.char("'")))),
+    literalBoolean: L.boolean(L.choice(L.word("true"), L.word("false"))).parsedAs(lexeme => lexeme == "true"),
+    opPlus: L.boolean(L.char("+")),
+    opMinus: L.boolean(L.char("-")),
+    opMul: L.boolean(L.char("*")),
+    opDiv: L.boolean(L.char("/")),
+    opPow: L.boolean(L.char("^")),
+    opNot: L.boolean(L.char("!")),
+    opAnd: L.boolean(L.char("&")),
+    opOr: L.boolean(L.char("|")),
+    opEqual: L.op("=="),
+    opNotEqual: L.op("!="),
+    opGreaterThan: L.op(">"),
+    opLessThan: L.op("<"),
+    opGreaterThanOrEqual: L.op(">="),
+    opLessThanOrEqual: L.op("<="),
+    opDeclare: L.op("="),
+    delCommaParen: L.delimiter(","),
+    delOpenParen: L.delimiter("("),
+    delCloseParen: L.delimiter(")"),
+    delOpenSquare: L.delimiter("["),
+    delCloseSquare: L.delimiter("]"),
+    delOpenCurly: L.delimiter("{"),
+    delCloseCurly: L.delimiter("}")
+};
 export class MyScanner extends L.Scanner {
     constructor() {
-        super(...arguments);
-        this.lowerCaseChar = L.charIn("a-z");
-        this.upperCaseChar = L.charIn("A-Z");
-        this.alphaChar = L.choice(this.lowerCaseChar, this.upperCaseChar);
-        this.numericChar = L.charIn("0-9");
-        this.alphaNumericChar = L.choice(this.alphaChar, this.numericChar);
-        this.whiteSpace = this.string(L.oneOrMore(L.charFrom(" \t\r\n")));
-        this.comment = this.string(L.concat(L.char("#"), L.zeroOrMore(L.charOtherThan("\n")), L.char("\n")));
-        this.keywordIf = this.boolean(L.word("if"));
-        this.keywordOtherwise = this.boolean(L.word("otherwise"));
-        this.keywordWhere = this.boolean(L.word("where"));
-        this.identifier = this.string(L.concat(this.alphaChar, L.zeroOrMore(this.alphaNumericChar)));
-        this.literalInt = this.integer(L.oneOrMore(this.numericChar));
-        this.literalFloat = this.float(L.concat(L.zeroOrMore(this.numericChar), L.char("."), L.oneOrMore(this.numericChar)));
-        this.literalString = this.string(L.choice(L.concat(L.char('"'), L.zeroOrMore(L.charOtherThan('"')), L.char('"')), L.concat(L.char("'"), L.zeroOrMore(L.charOtherThan("'")), L.char("'"))));
-        this.literalBoolean = this.boolean(L.choice(L.word("true"), L.word("false"))).parsedAs(lexeme => lexeme == "true");
-        this.opPlus = this.boolean(L.char("+"));
-        this.opMinus = this.boolean(L.char("-"));
-        this.opMul = this.boolean(L.char("*"));
-        this.opDiv = this.boolean(L.char("/"));
-        this.opPow = this.boolean(L.char("^"));
-        this.opNot = this.boolean(L.char("!"));
-        this.opAnd = this.boolean(L.char("&"));
-        this.opOr = this.boolean(L.char("|"));
-        this.opEqual = this.boolean(L.chars("=="));
-        this.opNotEqual = this.boolean(L.chars("!="));
-        this.opGreaterThan = this.boolean(L.char(">"));
-        this.opLessThan = this.boolean(L.char("<"));
-        this.opGreaterThanOrEqual = this.boolean(L.chars(">="));
-        this.opLessThanOrEqual = this.boolean(L.chars("<="));
-        this.opDeclare = this.boolean(L.char("="));
-        this.delCommaParen = this.boolean(L.char(","));
-        this.delOpenParen = this.boolean(L.char("("));
-        this.delCloseParen = this.boolean(L.char(")"));
-        this.delOpenSquare = this.boolean(L.char("["));
-        this.delCloseSquare = this.boolean(L.char("]"));
-        this.delOpenCurly = this.boolean(L.char("{"));
-        this.delCloseCurly = this.boolean(L.char("}"));
+        super(tokenDefs);
     }
     tokenize(text) {
         let output = "";
         for (const token of this.iterator(new L.TextInputStream(text))) {
-            if (token.tokenType == this.whiteSpace) {
+            if (token.tokenType == tokenDefs.whiteSpace) {
                 continue;
             }
             output +=
@@ -55,8 +57,8 @@ export class MyScanner extends L.Scanner {
     }
     tokenName(token) {
         switch (token.tokenType) {
-            case this.errorTokenType: return "ERROR";
-            case this.eofTokenType: return "EOF";
+            case L.error: return "ERROR";
+            case L.eof: return "EOF";
             default: return this.tokenTypeName(token.tokenType);
         }
     }

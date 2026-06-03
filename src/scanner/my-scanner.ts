@@ -1,36 +1,34 @@
 import * as L from "languasaurus"
 
-export class MyScanner extends L.Scanner {
-
-    private lowerCaseChar = L.charIn("a-z")
-    private upperCaseChar = L.charIn("A-Z")
-    private alphaChar = L.choice(this.lowerCaseChar, this.upperCaseChar)
-    private numericChar = L.charIn("0-9")
-    private alphaNumericChar = L.choice(this.alphaChar, this.numericChar)
-
-    readonly whiteSpace = this.string(L.oneOrMore(L.charFrom(" \t\r\n")))
-    readonly comment = this.string(L.concat(
+const lowerCaseChar = L.charIn("a-z")
+const upperCaseChar = L.charIn("A-Z")
+const alphaChar = L.choice(lowerCaseChar, upperCaseChar)
+const numericChar = L.charIn("0-9")
+const alphaNumericChar = L.choice(alphaChar, numericChar)
+export const tokenDefs = {
+    whiteSpace: L.string(L.oneOrMore(L.charFrom(" \t\r\n"))),
+    comment: L.string(L.concat(
         L.char("#"), 
         L.zeroOrMore(L.charOtherThan("\n")), 
         L.char("\n")
-    ))
+    )),
 
-    readonly keywordIf = this.boolean(L.word("if"))
-    readonly keywordOtherwise = this.boolean(L.word("otherwise"))
-    readonly keywordWhere = this.boolean(L.word("where"))
+    keywordIf: L.boolean(L.word("if")),
+    keywordOtherwise: L.boolean(L.word("otherwise")),
+    keywordWhere: L.boolean(L.word("where")),
 
-    readonly identifier = this.string(L.concat(
-        this.alphaChar,
-        L.zeroOrMore(this.alphaNumericChar)
-    ))
+    identifier: L.string(L.concat(
+        alphaChar,
+        L.zeroOrMore(alphaNumericChar)
+    )),
 
-    readonly literalInt = this.integer(L.oneOrMore(this.numericChar))
-    readonly literalFloat = this.float(L.concat(
-        L.zeroOrMore(this.numericChar),
+    literalInt: L.integer(L.oneOrMore(numericChar)),
+    literalFloat: L.float(L.concat(
+        L.zeroOrMore(numericChar),
         L.char("."),
-        L.oneOrMore(this.numericChar)
-    ))
-    readonly literalString = this.string(L.choice(
+        L.oneOrMore(numericChar)
+    )),
+    literalString: L.string(L.choice(
         L.concat(
             L.char('"'),
             L.zeroOrMore(L.charOtherThan('"')),
@@ -41,43 +39,49 @@ export class MyScanner extends L.Scanner {
             L.zeroOrMore(L.charOtherThan("'")),
             L.char("'")
         )
-    ))
-    readonly literalBoolean = this.boolean(L.choice(
+    )),
+    literalBoolean: L.boolean(L.choice(
         L.word("true"),
         L.word("false"),
-    )).parsedAs(lexeme => lexeme == "true")
+    )).parsedAs(lexeme => lexeme == "true"),
 
-    readonly opPlus = this.boolean(L.char("+"))
-    readonly opMinus = this.boolean(L.char("-"))
-    readonly opMul = this.boolean(L.char("*"))
-    readonly opDiv = this.boolean(L.char("/"))
-    readonly opPow = this.boolean(L.char("^"))
+    opPlus: L.boolean(L.char("+")),
+    opMinus: L.boolean(L.char("-")),
+    opMul: L.boolean(L.char("*")),
+    opDiv: L.boolean(L.char("/")),
+    opPow: L.boolean(L.char("^")),
 
-    readonly opNot = this.boolean(L.char("!"))
-    readonly opAnd = this.boolean(L.char("&"))
-    readonly opOr = this.boolean(L.char("|"))
+    opNot: L.boolean(L.char("!")),
+    opAnd: L.boolean(L.char("&")),
+    opOr: L.boolean(L.char("|")),
 
-    readonly opEqual = this.boolean(L.chars("=="))
-    readonly opNotEqual = this.boolean(L.chars("!="))
-    readonly opGreaterThan = this.boolean(L.char(">"))
-    readonly opLessThan = this.boolean(L.char("<"))
-    readonly opGreaterThanOrEqual = this.boolean(L.chars(">="))
-    readonly opLessThanOrEqual = this.boolean(L.chars("<="))
+    opEqual: L.op("=="),
+    opNotEqual: L.op("!="),
+    opGreaterThan: L.op(">"),
+    opLessThan: L.op("<"),
+    opGreaterThanOrEqual: L.op(">="),
+    opLessThanOrEqual: L.op("<="),
 
-    readonly opDeclare = this.boolean(L.char("="))
+    opDeclare: L.op("="),
 
-    readonly delCommaParen = this.boolean(L.char(","))
-    readonly delOpenParen = this.boolean(L.char("("))
-    readonly delCloseParen = this.boolean(L.char(")"))
-    readonly delOpenSquare = this.boolean(L.char("["))
-    readonly delCloseSquare = this.boolean(L.char("]"))
-    readonly delOpenCurly = this.boolean(L.char("{"))
-    readonly delCloseCurly = this.boolean(L.char("}"))
+    delCommaParen: L.delimiter(","),
+    delOpenParen: L.delimiter("("),
+    delCloseParen: L.delimiter(")"),
+    delOpenSquare: L.delimiter("["),
+    delCloseSquare: L.delimiter("]"),
+    delOpenCurly: L.delimiter("{"),
+    delCloseCurly: L.delimiter("}")
+} 
+export class MyScanner extends L.Scanner<typeof tokenDefs> {
+
+    constructor() {
+        super(tokenDefs)
+    }
 
     tokenize(text: string): string {
         let output = ""
         for (const token of this.iterator(new L.TextInputStream(text))) {
-            if (token.tokenType == this.whiteSpace) {
+            if (token.tokenType == tokenDefs.whiteSpace) {
                 continue
             }
             output += 
@@ -90,8 +94,8 @@ export class MyScanner extends L.Scanner {
     
     private tokenName(token: L.Token<any>) {
         switch (token.tokenType) {
-            case this.errorTokenType: return "ERROR"
-            case this.eofTokenType: return "EOF"
+            case L.error: return "ERROR"
+            case L.eof: return "EOF"
             default: return this.tokenTypeName(token.tokenType)
         }
     }
