@@ -32,7 +32,10 @@ class Toy {
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
-        this.backgroundColor = new Color([1, 1, 1, 1], "bg-color");
+        this.backgroundColor = new Color([1, 1, 1, 1], "bg-color", () => {
+            const c = aether.vec4.from(aether.vec4.add(this.backgroundColor.rgba, [0.6, 0.6, 0.6, 0]).map(c => c - Math.floor(c)));
+            this.borderElement.style.borderColor = `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`;
+        });
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
         this.inverseViewMatrix = aether.mat3.identity();
@@ -48,6 +51,7 @@ class Toy {
         }, 1));
         this.imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
         this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json");
+        this.borderElement = gear.required(document.getElementById("border"));
         this.viewGroup = renderer.view(this.view);
     }
     static async create() {
@@ -88,6 +92,7 @@ class Toy {
         this.inverseViewMatrix = aether.mat3.from(m);
         this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix);
         this.renderer.updateView(this.viewGroup, this.view);
+        this.borderElement.style.transform = `matrix(${this.viewMatrix[0][0]}, ${this.viewMatrix[0][1]}, ${this.viewMatrix[1][0]}, ${this.viewMatrix[1][1]}, ${this.viewMatrix[2][0]}, ${this.viewMatrix[2][1]})`;
     }
     get visibleDistance() {
         return this.distance;
@@ -172,7 +177,7 @@ class Toy {
                 windFast: { onPressed: () => this.fastWind = true, onReleased: () => this.fastWind = false },
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
-                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
+                record: { onPressed: () => this.startStopRecording(outputs) },
                 resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
@@ -347,7 +352,15 @@ class Toy {
             this.view.height = height;
             this.canvas.resize();
             this.renderer.updateView(this.viewGroup, this.view);
+            this.borderElement.style.width = `${width}px`;
+            this.borderElement.style.height = `${height}px`;
         }
+    }
+    startStopRecording(outputs) {
+        if (outputs.canvases.scene.recorder.state !== "recording") {
+            this.matrix = aether.mat4.identity();
+        }
+        outputs.canvases.scene.recorder.startStop();
     }
 }
 Toy.descriptor = {

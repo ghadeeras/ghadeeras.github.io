@@ -160,7 +160,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private fastWind = false
     private brush = new Brush(this.canvas.device, this.canvas.element)
     private lines = false
-    private backgroundColor = new Color([1, 1, 1, 1], "bg-color")
+    private backgroundColor = new Color([1, 1, 1, 1], "bg-color", () => {
+        const c = aether.vec4.from(aether.vec4.add(this.backgroundColor.rgba, [0.6, 0.6, 0.6, 0]).map(c => c - Math.floor(c)))
+        this.borderElement.style.borderColor = `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`        
+    })
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
     
@@ -198,6 +201,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
     private jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json")
+
+    private borderElement = gear.required(document.getElementById("border"))
 
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view(this.view)
@@ -250,6 +255,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.inverseViewMatrix = aether.mat3.from(m)
         this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix)
         this.renderer.updateView(this.viewGroup, this.view)
+        this.borderElement.style.transform = `matrix(${this.viewMatrix[0][0]}, ${this.viewMatrix[0][1]}, ${this.viewMatrix[1][0]}, ${this.viewMatrix[1][1]}, ${this.viewMatrix[2][0]}, ${this.viewMatrix[2][1]})`
     }
 
     get visibleDistance() {
@@ -348,7 +354,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 windFast: { onPressed: () => this.fastWind = true, onReleased: () => this.fastWind = false },
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
-                record: { onPressed: () => outputs.canvases.scene.recorder.startStop() },
+                record: { onPressed: () => this.startStopRecording(outputs) },
                 resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
@@ -545,7 +551,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             this.view.height = height
             this.canvas.resize()
             this.renderer.updateView(this.viewGroup, this.view)
+            this.borderElement.style.width = `${width}px`
+            this.borderElement.style.height = `${height}px`
         }
+    }
+
+    private startStopRecording(outputs: gear.loops.LoopOutputs<ToyDescriptor>) {
+        if (outputs.canvases.scene.recorder.state !== "recording") {
+            this.matrix = aether.mat4.identity()
+        }
+        outputs.canvases.scene.recorder.startStop()
     }
 
 }

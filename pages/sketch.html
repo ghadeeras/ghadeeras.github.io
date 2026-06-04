@@ -19,6 +19,26 @@
             import init from "../js/initializer.js"
             init(toy);
         </script>
+        <style>
+            #cursor {
+                position: absolute; 
+                top:0px; 
+                left:0px; 
+                z-index: 8; 
+                pointer-events: none; 
+                display: none;
+            }
+            #border {
+                position: absolute; 
+                top:0px; 
+                left:0px; 
+                width: 1920px; 
+                height: 1080px; 
+                z-index: 4; 
+                pointer-events: none; 
+                border: 1px dotted black;
+            }
+        </style>
     </head>
     <body>
         <div class="menu">
@@ -37,13 +57,14 @@
             </div>
         </div>
         <div class="tiles">
-            <div style="max-width: 96.875%; max-height: 96.875%; overflow: auto;">
+            <div style="max-width: 96.875%; max-height: 96.875%; overflow: hidden;">
                 <canvas id="canvas" style="cursor: none" width="1920" height="1080">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
-                <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top:0px; left:0px; z-index: 8; pointer-events: none; display: none;">
+                <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="64" cy="64" r="0" stroke="red" fill="transparent" stroke-width="0"/>
                 </svg>
+                <div id="border"></div>
                 <div id="monitor" class="hud top-right">
                     <div>
                         <table>
