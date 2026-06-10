@@ -36,7 +36,19 @@
                 height: 1080px; 
                 z-index: 4; 
                 pointer-events: none; 
-                border: 1px dotted black;
+                border: 2px dashed black;
+            }
+            div.canvas-container {
+                background: 
+                    linear-gradient(to right,  #808080FF 0px, #808080FF 2px, transparent 2px),
+                    linear-gradient(to bottom, #808080FF 0px, #808080FF 2px, transparent 2px),
+                    linear-gradient(to right,  #808080FF 0px, #808080FF 1px, transparent 1px),
+                    linear-gradient(to bottom, #808080FF 0px, #808080FF 1px, transparent 1px),
+                    #ffffff;
+                background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+                max-width: 96.875%; 
+                max-height: 96.875%; 
+                overflow: hidden;
             }
         </style>
     </head>
@@ -57,8 +69,8 @@
             </div>
         </div>
         <div class="tiles">
-            <div style="max-width: 96.875%; max-height: 96.875%; overflow: hidden;">
-                <canvas id="canvas" style="cursor: none" width="1920" height="1080">
+            <div class="canvas-container">
+                <canvas id="canvas" style="cursor: none; background-color: #00000000;" width="1920" height="1080">
                     Your browser seems not to support HTML 5 Canvas!
                 </canvas>
                 <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg">
@@ -113,6 +125,7 @@
                     <tr><td><kbd id="control-wind-beginning">Home</kbd></td><td>Wind to Beginning</td><td></td></tr>
                     <tr><td><kbd id="control-wind-end">End</kbd></td><td>Wind to End</td><td></td></tr>
                     <tr><td><kbd id="control-v">V</kbd></td><td>Start/Stop Video Recording</td><td></td></tr>
+                    <tr><td><kbd id="control-export">X</kbd></td><td>Export Image</td><td></td></tr>
                     <tr><td><kbd id="control-resize-canvas">R</kbd></td><td>Resize Canvas</td><td>
                         <input type="number" id="canvas-width" value="1920">
                         x

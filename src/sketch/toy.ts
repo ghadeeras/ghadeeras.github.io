@@ -126,6 +126,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyV"]],
                     virtualKeys: "#control-v"
                 },
+                export: {
+                    physicalKeys: [["KeyX"]],
+                    virtualKeys: "#control-export"
+                },
                 resizeCanvas: {
                     physicalKeys: [["KeyR"]],
                     virtualKeys: "#control-resize-canvas"
@@ -212,6 +216,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         try {
             const device = await gpuDevice()
             const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4)
+            canvas.context.configure({
+                ...canvas.configs,
+                alphaMode: "premultiplied",
+            })
             const commonLayouts = cmn.groupLayouts(device)
             const renderer = await Renderer.create(commonLayouts)
             const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device)
@@ -355,6 +363,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => this.startStopRecording(outputs) },
+                export: { onPressed: () => this.export() },
                 resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
@@ -365,7 +374,6 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             }
         }
     }
-
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.render()
@@ -465,6 +473,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.strokes.forEach(s => s.destroy())
         this.strokes = []
         this.resetDistance()
+    }
+
+    private export(): void {
+        let imageUrl = this.canvas.element.toDataURL("image/png")
+        gear.save(imageUrl, 'image/png', 'Sketch.png')
     }
 
     private save(): void {

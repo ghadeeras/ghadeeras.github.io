@@ -58,6 +58,10 @@ class Toy {
         try {
             const device = await gpuDevice();
             const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element, 4);
+            canvas.context.configure({
+                ...canvas.configs,
+                alphaMode: "premultiplied",
+            });
             const commonLayouts = cmn.groupLayouts(device);
             const renderer = await Renderer.create(commonLayouts);
             const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device);
@@ -178,6 +182,7 @@ class Toy {
                 save: { onReleased: () => this.save() },
                 load: { onReleased: () => this.load() },
                 record: { onPressed: () => this.startStopRecording(outputs) },
+                export: { onPressed: () => this.export() },
                 resizeCanvas: { onPressed: () => this.resizeCanvas() },
             },
             pointers: {
@@ -272,6 +277,10 @@ class Toy {
         this.strokes.forEach(s => s.destroy());
         this.strokes = [];
         this.resetDistance();
+    }
+    export() {
+        let imageUrl = this.canvas.element.toDataURL("image/png");
+        gear.save(imageUrl, 'image/png', 'Sketch.png');
     }
     save() {
         const indices = new Map();
@@ -461,6 +470,10 @@ Toy.descriptor = {
             record: {
                 physicalKeys: [["KeyV"]],
                 virtualKeys: "#control-v"
+            },
+            export: {
+                physicalKeys: [["KeyX"]],
+                virtualKeys: "#control-export"
             },
             resizeCanvas: {
                 physicalKeys: [["KeyR"]],
