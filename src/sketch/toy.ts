@@ -94,6 +94,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["Enter"]],
                     virtualKeys: "#control-break"
                 },
+                mark: {
+                    physicalKeys: [["KeyM"]],
+                    virtualKeys: "#control-mark"
+                },
+                windToMark: {
+                    physicalKeys: [["ControlLeft", "KeyM"], ["ControlRight", "KeyM"]],
+                    virtualKeys: ".control-wind-to-mark"
+                },
                 windBackward: {
                     physicalKeys: [["ArrowLeft"]],
                     virtualKeys: "#control-wind-backward"
@@ -161,6 +169,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private strokes: Stroke[] = []
     private distance: Distance = { strokeIndex: 0, distance: 0 }
     private targetStroke = -1
+    private markedStroke = -1
     private fastWind = false
     private brush = new Brush(this.canvas.device, this.canvas.element)
     private lines = false
@@ -355,6 +364,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
                 break: { onPressed: () => this.breakStroke() },
+                mark: { onPressed: () => this.markedStroke = this.targetStroke },
+                windToMark: { onPressed: () => this.windToMark() },
                 windBackward: { onPressed: () => this.targetStroke = Math.max(this.targetStroke - 1, -1) },
                 windForward: { onPressed: () => this.targetStroke = Math.min(this.targetStroke + 1, this.strokes.length - 1) },
                 windBeginning: { onPressed: () => this.targetStroke = -1 },
@@ -374,6 +385,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             }
         }
     }
+
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
             onRender: () => this.render()
@@ -478,6 +490,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private export(): void {
         let imageUrl = this.canvas.element.toDataURL("image/png")
         gear.save(imageUrl, 'image/png', 'Sketch.png')
+    }
+
+    private windToMark(): void {
+        if (this.markedStroke !== -1) {
+            [this.targetStroke, this.markedStroke] = [this.markedStroke, this.targetStroke];
+        }
     }
 
     private save(): void {

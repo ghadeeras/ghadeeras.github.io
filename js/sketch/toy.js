@@ -29,6 +29,7 @@ class Toy {
         this.strokes = [];
         this.distance = { strokeIndex: 0, distance: 0 };
         this.targetStroke = -1;
+        this.markedStroke = -1;
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
@@ -174,6 +175,8 @@ class Toy {
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
                 break: { onPressed: () => this.breakStroke() },
+                mark: { onPressed: () => this.markedStroke = this.targetStroke },
+                windToMark: { onPressed: () => this.windToMark() },
                 windBackward: { onPressed: () => this.targetStroke = Math.max(this.targetStroke - 1, -1) },
                 windForward: { onPressed: () => this.targetStroke = Math.min(this.targetStroke + 1, this.strokes.length - 1) },
                 windBeginning: { onPressed: () => this.targetStroke = -1 },
@@ -281,6 +284,11 @@ class Toy {
     export() {
         let imageUrl = this.canvas.element.toDataURL("image/png");
         gear.save(imageUrl, 'image/png', 'Sketch.png');
+    }
+    windToMark() {
+        if (this.markedStroke !== -1) {
+            [this.targetStroke, this.markedStroke] = [this.markedStroke, this.targetStroke];
+        }
     }
     save() {
         const indices = new Map();
@@ -438,6 +446,14 @@ Toy.descriptor = {
             break: {
                 physicalKeys: [["Enter"]],
                 virtualKeys: "#control-break"
+            },
+            mark: {
+                physicalKeys: [["KeyM"]],
+                virtualKeys: "#control-mark"
+            },
+            windToMark: {
+                physicalKeys: [["ControlLeft", "KeyM"], ["ControlRight", "KeyM"]],
+                virtualKeys: ".control-wind-to-mark"
             },
             windBackward: {
                 physicalKeys: [["ArrowLeft"]],
