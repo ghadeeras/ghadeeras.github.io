@@ -1,4 +1,5 @@
 import * as gear from "gear";
+import * as aether from "aether";
 import { strokeAttributesStruct } from "./common.js";
 import { Color, toHex } from "./color.js";
 export class Brush {
@@ -6,6 +7,8 @@ export class Brush {
         this.device = device;
         this.canvas = canvas;
         this.cache = new Map();
+        this.borderElement = gear.required(document.getElementById("border"));
+        this.container = gear.required(document.getElementsByClassName("canvas-container")[0]);
         this.cursor = gear.required(document.getElementById("cursor"));
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
         this.brushSizeElement = gear.required(document.getElementById("brush-size"));
@@ -97,7 +100,12 @@ export class Brush {
         };
     }
     refreshColor() {
+        const bg = aether.vec4.of(...aether.vec3.from(aether.vec4.add(this.color.rgba, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))), 1);
+        const fg = aether.vec4.of(...aether.vec3.from(aether.vec4.mix(0.3, this.color.rgba, bg)), 1);
         this.circle.setAttribute("stroke", `#${this.color.hex}`);
+        this.borderElement.style.borderColor = `#${this.color.hex}`;
+        this.container.style.setProperty("--pattern-color", `#${toHex(fg)}`);
+        this.container.style.setProperty("--bg-color", `#${toHex(bg)}`);
     }
 }
 //# sourceMappingURL=brush.js.map

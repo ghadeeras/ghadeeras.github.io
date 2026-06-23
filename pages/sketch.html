@@ -39,12 +39,14 @@
                 border: 2px dashed black;
             }
             div.canvas-container {
+                --pattern-color: #808080FF;
+                --bg-color: #ffffff;
                 background: 
-                    linear-gradient(to right,  #808080FF 0px, #808080FF 2px, transparent 2px),
-                    linear-gradient(to bottom, #808080FF 0px, #808080FF 2px, transparent 2px),
-                    linear-gradient(to right,  #808080FF 0px, #808080FF 1px, transparent 1px),
-                    linear-gradient(to bottom, #808080FF 0px, #808080FF 1px, transparent 1px),
-                    #ffffff;
+                    linear-gradient(to right,  var(--pattern-color) 0px, var(--pattern-color) 2px, transparent 2px),
+                    linear-gradient(to bottom, var(--pattern-color) 0px, var(--pattern-color) 2px, transparent 2px),
+                    linear-gradient(to right,  var(--pattern-color) 0px, var(--pattern-color) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--pattern-color) 0px, var(--pattern-color) 1px, transparent 1px),
+                    var(--bg-color);
                 background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
                 max-width: 96.875%; 
                 max-height: 96.875%; 
@@ -94,7 +96,7 @@
                 </p>
             </div>
         </div>
-        <div id="controls" class="hud">
+        <div id="controls" class="hud top-left">
             <div>
                 <h1>The Controls / Key Mappings</h1>
                 <p>The following keys change the function of mouse-dragging:</p>
@@ -129,8 +131,8 @@
                     <tr><td><kbd id="control-v">V</kbd></td><td>Start/Stop Video Recording</td><td></td></tr>
                     <tr><td><kbd id="control-export">X</kbd></td><td>Export Image</td><td></td></tr>
                     <tr><td><kbd id="control-resize-canvas">R</kbd></td><td>Resize Canvas</td><td>
-                        <input type="number" id="canvas-width" value="1920">
-                        x
+                        <input type="number" id="canvas-width" value="1920"> <br />
+                        x <br />
                         <input type="number" id="canvas-height" value="1080">
                     </td></tr>
                 </table>

@@ -88,6 +88,17 @@ a {
     font-size: small;
 }
 
+.top-left {
+    top: 16px;
+    right: auto;
+    bottom: auto;
+    left: 64px;
+    height: auto;
+    border: 2px solid rgb(64, 96, 160);
+    opacity: 0.67;
+    font-size: small;
+}
+
 .hud > div {
     margin: 16px 16px 16px 16px;
 }

@@ -29,14 +29,11 @@ class Toy {
         this.strokes = [];
         this.distance = { strokeIndex: 0, distance: 0 };
         this.targetStroke = -1;
-        this.markedStroke = -1;
+        this.markedStroke = null;
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
-        this.backgroundColor = new Color([1, 1, 1, 1], "bg-color", () => {
-            const c = aether.vec4.from(aether.vec4.add(this.backgroundColor.rgba, [0.6, 0.6, 0.6, 0]).map(c => c - Math.floor(c)));
-            this.borderElement.style.borderColor = `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`;
-        });
+        this.backgroundColor = new Color([0, 0, 0, 0], "bg-color");
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
         this.inverseViewMatrix = aether.mat3.identity();
@@ -127,12 +124,12 @@ class Toy {
         return aether.vec2.scale(aether.vec2.mul(p, [this.canvas.element.height, this.canvas.element.width]), 1 / Math.max(this.canvas.element.width, this.canvas.element.height));
     }
     get tension() {
-        return this.tessellatedStrokeFactory.strokeTension;
+        return this.brush.tension;
     }
     set tension(tension) {
         this.brush.tension = tension;
-        for (const s of this.strokes) {
-            s.tension = tension;
+        if (this.strokes.length > 0) {
+            this.strokes[this.strokes.length - 1].tension = tension;
         }
     }
     get stroke() {
@@ -286,7 +283,7 @@ class Toy {
         gear.save(imageUrl, 'image/png', 'Sketch.png');
     }
     windToMark() {
-        if (this.markedStroke !== -1) {
+        if (this.markedStroke !== null) {
             [this.targetStroke, this.markedStroke] = [this.markedStroke, this.targetStroke];
         }
     }

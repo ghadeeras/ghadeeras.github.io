@@ -169,14 +169,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private strokes: Stroke[] = []
     private distance: Distance = { strokeIndex: 0, distance: 0 }
     private targetStroke = -1
-    private markedStroke = -1
+    private markedStroke: number | null = null
     private fastWind = false
     private brush = new Brush(this.canvas.device, this.canvas.element)
     private lines = false
-    private backgroundColor = new Color([1, 1, 1, 1], "bg-color", () => {
-        const c = aether.vec4.from(aether.vec4.add(this.backgroundColor.rgba, [0.6, 0.6, 0.6, 0]).map(c => c - Math.floor(c)))
-        this.borderElement.style.borderColor = `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`        
-    })
+    private backgroundColor = new Color([0, 0, 0, 0], "bg-color")
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
     
@@ -311,13 +308,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     get tension() {
-        return this.tessellatedStrokeFactory.strokeTension
+        return this.brush.tension
     }
 
     set tension(tension: number) {
         this.brush.tension = tension
-        for (const s of this.strokes) {
-            s.tension = tension
+        if (this.strokes.length > 0) {
+            this.strokes[this.strokes.length - 1].tension = tension
         }
     }
 
@@ -493,7 +490,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private windToMark(): void {
-        if (this.markedStroke !== -1) {
+        if (this.markedStroke !== null) {
             [this.targetStroke, this.markedStroke] = [this.markedStroke, this.targetStroke];
         }
     }
