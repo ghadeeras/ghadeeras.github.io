@@ -13,9 +13,9 @@ export const tokenDefs = {
         L.char("\n")
     )),
 
-    keywordIf: L.boolean(L.word("if")),
-    keywordOtherwise: L.boolean(L.word("otherwise")),
-    keywordWhere: L.boolean(L.word("where")),
+    keywordIf: L.keyword("if"),
+    keywordOtherwise: L.keyword("otherwise"),
+    keywordWhere: L.keyword("where"),
 
     identifier: L.string(L.concat(
         alphaChar,
@@ -40,20 +40,17 @@ export const tokenDefs = {
             L.char("'")
         )
     )),
-    literalBoolean: L.boolean(L.choice(
-        L.word("true"),
-        L.word("false"),
-    )).parsedAs(lexeme => lexeme == "true"),
+    literalBoolean: L.boolean(),
 
-    opPlus: L.boolean(L.char("+")),
-    opMinus: L.boolean(L.char("-")),
-    opMul: L.boolean(L.char("*")),
-    opDiv: L.boolean(L.char("/")),
-    opPow: L.boolean(L.char("^")),
+    opPlus: L.op("+"),
+    opMinus: L.op("-"),
+    opMul: L.op("*"),
+    opDiv: L.op("/"),
+    opPow: L.op("^"),
 
-    opNot: L.boolean(L.char("!")),
-    opAnd: L.boolean(L.char("&")),
-    opOr: L.boolean(L.char("|")),
+    opNot: L.op("!"),
+    opAnd: L.op("&"),
+    opOr: L.op("|"),
 
     opEqual: L.op("=="),
     opNotEqual: L.op("!="),
