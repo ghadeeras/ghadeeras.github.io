@@ -33,7 +33,12 @@ class Toy {
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
-        this.backgroundColor = new Color([0, 0, 0, 0], "bg-color");
+        this.backgroundColor = new Color([0, 0, 0, 0], "bg-color", () => {
+            const bg = this.backgroundColor.rgba;
+            const fg = aether.vec4.mix(0.75, bg, aether.vec4.from(aether.vec4.add(bg, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))));
+            this.brush.container.style.setProperty("--bg-color", `#${toHex(bg).substring(0, 6)}FF`);
+            this.brush.container.style.setProperty("--fg-color", `#${toHex(fg).substring(0, 6)}FF`);
+        });
         this.currentColor = "BRUSH";
         this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
         this.inverseViewMatrix = aether.mat3.identity();
@@ -49,8 +54,10 @@ class Toy {
         }, 1));
         this.imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
         this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json");
-        this.borderElement = gear.required(document.getElementById("border"));
+        this.widthElement = document.getElementById("canvas-width");
+        this.heightElement = document.getElementById("canvas-height");
         this.viewGroup = renderer.view(this.view);
+        document.onpaste = e => this.paste(e);
     }
     static async create() {
         try {
@@ -94,7 +101,8 @@ class Toy {
         this.inverseViewMatrix = aether.mat3.from(m);
         this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix);
         this.renderer.updateView(this.viewGroup, this.view);
-        this.borderElement.style.transform = `matrix(${this.viewMatrix[0][0]}, ${this.viewMatrix[0][1]}, ${this.viewMatrix[1][0]}, ${this.viewMatrix[1][1]}, ${this.viewMatrix[2][0]}, ${this.viewMatrix[2][1]})`;
+        const vm = this.viewMatrix;
+        this.brush.borderElement.style.transform = `matrix(${vm[0][0]}, ${vm[0][1]}, ${vm[1][0]}, ${vm[1][1]}, ${vm[2][0]}, ${vm[2][1]})`;
     }
     get visibleDistance() {
         return this.distance;
@@ -110,7 +118,7 @@ class Toy {
     }
     set hue2D(hue2D) {
         this.hue = hue2D;
-        const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.canvas.element.width, this.canvas.element.height]), 1 / Math.min(this.canvas.element.width, this.canvas.element.height));
+        const p = aether.vec2.scale(aether.vec2.mul(hue2D, [this.brush.container.clientWidth, this.brush.container.clientHeight]), 1 / Math.min(this.brush.container.clientWidth, this.brush.container.clientHeight));
         this.color.hue = this.pallette2D.toColor(p);
     }
     get intensity() {
@@ -193,6 +201,19 @@ class Toy {
             }
         };
     }
+    async paste(event) {
+        event.preventDefault();
+        const content = event.clipboardData;
+        if (content === null) {
+            return;
+        }
+        for (const file of content.files) {
+            if (file.type.startsWith("image/")) {
+                this.loadBackgroundImage(file);
+                break;
+            }
+        }
+    }
     outputWiring() {
         return {
             onRender: () => this.render()
@@ -216,7 +237,9 @@ class Toy {
     }
     render() {
         const c = this.backgroundColor.rgba;
-        const attachment = { ...this.canvas.attachment({ r: c[0], g: c[1], b: c[2], a: c[3] }), storeOp: "store" };
+        const attachment = { ...this.canvas.attachment({
+                r: c[0] * c[3], g: c[1] * c[3], b: c[2] * c[3], a: c[3]
+            }), storeOp: "store" };
         if (this.backgroundGroup !== null) {
             this.backgroundRenderer.renderTo(attachment, this.backgroundGroup, this.viewGroup);
             attachment.loadOp = "load";
@@ -256,18 +279,22 @@ class Toy {
     async loadNewBackgroundImage() {
         const file = await this.imageFileSelector.select();
         if (file.length == 1) {
-            const imageBitmap = await createImageBitmap(file[0]);
-            const texture = this.canvas.device.texture({
-                size: [imageBitmap.width, imageBitmap.height],
-                format: this.canvas.format,
-                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
-            });
-            this.canvas.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
-            if (this.backgroundGroup !== null) {
-                this.backgroundGroup.entries.background_texture.baseResource().destroy();
-            }
-            this.backgroundGroup = await this.backgroundRenderer.background(texture);
+            await this.loadBackgroundImage(file[0]);
         }
+    }
+    async loadBackgroundImage(f) {
+        const imageBitmap = await createImageBitmap(f);
+        const texture = this.canvas.device.texture({
+            size: [imageBitmap.width, imageBitmap.height],
+            format: this.canvas.format,
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        this.canvas.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
+        if (this.backgroundGroup !== null) {
+            this.backgroundGroup.entries.background_texture.baseResource().destroy();
+        }
+        this.backgroundGroup = await this.backgroundRenderer.background(texture);
+        this.resizeCanvas([imageBitmap.width, imageBitmap.height]);
     }
     undo() {
         this.strokes.pop()?.destroy();
@@ -356,9 +383,14 @@ class Toy {
     windInstantly() {
         this.distance = { strokeIndex: Math.max(this.targetStroke, 0), distance: this.targetStroke < 0 ? 0 : Number.POSITIVE_INFINITY };
     }
-    resizeCanvas() {
-        const width = parseInt(document.getElementById("canvas-width").value);
-        const height = parseInt(document.getElementById("canvas-height").value);
+    resizeCanvas(size = undefined) {
+        let width = parseInt(document.getElementById("canvas-width").value);
+        let height = parseInt(document.getElementById("canvas-height").value);
+        if (size !== undefined) {
+            [width, height] = size;
+            this.widthElement.value = width.toFixed(0);
+            this.heightElement.value = height.toFixed(0);
+        }
         if (!isNaN(width) && !isNaN(height)) {
             this.canvas.element.width = width;
             this.canvas.element.height = height;
@@ -366,8 +398,8 @@ class Toy {
             this.view.height = height;
             this.canvas.resize();
             this.renderer.updateView(this.viewGroup, this.view);
-            this.borderElement.style.width = `${width}px`;
-            this.borderElement.style.height = `${height}px`;
+            this.brush.borderElement.style.width = `${width}px`;
+            this.brush.borderElement.style.height = `${height}px`;
         }
     }
     startStopRecording(outputs) {

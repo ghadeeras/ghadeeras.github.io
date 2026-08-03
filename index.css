@@ -6,8 +6,8 @@ body {
     padding: 0px 0px 0px 0px;
     margin: 0px 0px 0px 0px;
     font-family: Arial, Helvetica, sans-serif;
-    background: rgb(192, 192, 192);
-    color: rgb(64, 96, 160);
+    background: light-dark(rgb(192, 192, 192), rgb(96, 96, 96));
+    color: light-dark(rgb(64, 96, 160), lightgray);
 }
 
 div {
@@ -35,7 +35,7 @@ a {
     width: 48px;
     height: 100%;
     border: 1px black;
-    background: white;
+    background: light-dark(white, rgb(32, 64, 96));
     box-shadow: 2px 0px 4px black;
 }
 
@@ -140,7 +140,7 @@ a {
     float: left;
     border: 1px black;
     margin: 8px 0px 0px 8px;
-    background: white;
+    background: light-dark(white, rgb(32, 64, 96));
     box-shadow: 2px 2px 4px black;
 }
 
@@ -160,7 +160,7 @@ a {
 }
 
 .tiles > div sub {
-    color: red;
+    color: rgb(240, 60, 120);
     font-size: xx-small;
     font-weight: bold;
 }
@@ -180,20 +180,20 @@ a {
 }
 
 #logo {
-    background-image: url('/icons/gh32px.png'); 
+    background-image: light-dark(url('/icons/gh32px.png'), url('/icons/gh32px-dark.png')); 
     margin-bottom: 32px;
 }
 
 #controls-button { 
-    background-image: url('/icons/controls.svg');
+    background-image: light-dark(url('/icons/controls.svg'), url('/icons/controls-dark.svg'));
 }
 
 #about-button {
-    background-image: url('/icons/about.svg');
+    background-image: light-dark(url('/icons/about.svg'), url('/icons/about-dark.svg'));
 }
 
 #monitor-button {
-    background-image: url('/icons/monitor.svg');
+    background-image: light-dark(url('/icons/monitor.svg'), url('/icons/monitor-dark.svg'));
 }
 
 #github { 

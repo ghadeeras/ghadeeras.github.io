@@ -8,14 +8,14 @@ export class Brush {
 
     private cache = new Map<string, [gpu.DataBuffer, number]>()
 
-    private borderElement = gear.required(document.getElementById("border"))
-    private container = gear.required(document.getElementsByClassName("canvas-container")[0]) as HTMLElement
-    private cursor = gear.required(document.getElementById("cursor")) as HTMLElement
-    private circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
-    private brushSizeElement = gear.required(document.getElementById("brush-size")) as HTMLElement
-    private tensionElement = gear.required(document.getElementById("tension")) as HTMLElement
+    readonly borderElement = gear.required(document.getElementById("border"))
+    readonly container = gear.required(document.getElementsByClassName("canvas-container")[0]) as HTMLElement
+    readonly cursor = gear.required(document.getElementById("cursor")) as HTMLElement
+    readonly circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
+    readonly brushSizeElement = gear.required(document.getElementById("brush-size")) as HTMLElement
+    readonly tensionElement = gear.required(document.getElementById("tension")) as HTMLElement
 
-    private _color: Color = new Color([0, 0, 0, 1], "color", () => this.refreshColor())
+    private _color: Color = new Color([0.125, 0.25, 0.375, 1], "color", () => this.refreshColor())
 
     private _thickness: number = 8
     private _tension: number = 8
@@ -120,12 +120,8 @@ export class Brush {
     }
 
     private refreshColor() {
-        const bg = aether.vec4.of(...aether.vec3.from(aether.vec4.add(this.color.rgba, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))), 1)
-        const fg = aether.vec4.of(...aether.vec3.from(aether.vec4.mix(0.3, this.color.rgba, bg)), 1)
-        this.circle.setAttribute("stroke", `#${this.color.hex}`)
-        this.borderElement.style.borderColor = `#${this.color.hex}`
-        this.container.style.setProperty("--pattern-color", `#${toHex(fg)}`)
-        this.container.style.setProperty("--bg-color", `#${toHex(bg)}`)
+        const c = this.color.hex
+        this.circle.setAttribute("stroke", `#${c}`)
     }
 
 }

@@ -20,6 +20,9 @@
             init(toy);
         </script>
         <style>
+            :root {
+                color-scheme: dark;
+            }
             #cursor {
                 position: absolute; 
                 top:0px; 
@@ -39,13 +42,13 @@
                 border: 2px dashed black;
             }
             div.canvas-container {
-                --pattern-color: #808080FF;
-                --bg-color: #ffffff;
+                --fg-color: #202020FF;
+                --bg-color: #000000;
                 background: 
-                    linear-gradient(to right,  var(--pattern-color) 0px, var(--pattern-color) 2px, transparent 2px),
-                    linear-gradient(to bottom, var(--pattern-color) 0px, var(--pattern-color) 2px, transparent 2px),
-                    linear-gradient(to right,  var(--pattern-color) 0px, var(--pattern-color) 1px, transparent 1px),
-                    linear-gradient(to bottom, var(--pattern-color) 0px, var(--pattern-color) 1px, transparent 1px),
+                    linear-gradient(to right,  var(--fg-color) 0px, var(--fg-color) 2px, transparent 2px),
+                    linear-gradient(to bottom, var(--fg-color) 0px, var(--fg-color) 2px, transparent 2px),
+                    linear-gradient(to right,  var(--fg-color) 0px, var(--fg-color) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--fg-color) 0px, var(--fg-color) 1px, transparent 1px),
                     var(--bg-color);
                 background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
                 max-width: 96.875%; 
@@ -54,7 +57,7 @@
             }
         </style>
     </head>
-    <body>
+    <body contenteditable="true">
         <div class="menu">
             <div class="items">
                 <div id="logo" title="Ghadeer's Playcloud"></div>
@@ -72,9 +75,7 @@
         </div>
         <div class="tiles">
             <div class="canvas-container">
-                <canvas id="canvas" style="cursor: none; background-color: #00000000;" width="1920" height="1080">
-                    Your browser seems not to support HTML 5 Canvas!
-                </canvas>
+                <canvas id="canvas" style="cursor: none; background-color: #00000000;" width="1920" height="1080"></canvas>
                 <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="64" cy="64" r="0" stroke="red" fill="transparent" stroke-width="0"/>
                 </svg>

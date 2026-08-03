@@ -1,5 +1,4 @@
 import * as gear from "gear";
-import * as aether from "aether";
 import { strokeAttributesStruct } from "./common.js";
 import { Color, toHex } from "./color.js";
 export class Brush {
@@ -13,7 +12,7 @@ export class Brush {
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
         this.brushSizeElement = gear.required(document.getElementById("brush-size"));
         this.tensionElement = gear.required(document.getElementById("tension"));
-        this._color = new Color([0, 0, 0, 1], "color", () => this.refreshColor());
+        this._color = new Color([0.125, 0.25, 0.375, 1], "color", () => this.refreshColor());
         this._thickness = 8;
         this._tension = 8;
         this._closed = 0;
@@ -100,12 +99,8 @@ export class Brush {
         };
     }
     refreshColor() {
-        const bg = aether.vec4.of(...aether.vec3.from(aether.vec4.add(this.color.rgba, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))), 1);
-        const fg = aether.vec4.of(...aether.vec3.from(aether.vec4.mix(0.3, this.color.rgba, bg)), 1);
-        this.circle.setAttribute("stroke", `#${this.color.hex}`);
-        this.borderElement.style.borderColor = `#${this.color.hex}`;
-        this.container.style.setProperty("--pattern-color", `#${toHex(fg)}`);
-        this.container.style.setProperty("--bg-color", `#${toHex(bg)}`);
+        const c = this.color.hex;
+        this.circle.setAttribute("stroke", `#${c}`);
     }
 }
 //# sourceMappingURL=brush.js.map
