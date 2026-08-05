@@ -46,6 +46,8 @@ function doLink(element: HTMLElement, url: string, inNewWindow = false) {
     }
 }
 
+const huds = new Map<string, () => void>
+
 function setupHud(hudId: string, buttonId: string) {
     const hud = document.getElementById(hudId)
     if (!hud) {
@@ -55,12 +57,23 @@ function setupHud(hudId: string, buttonId: string) {
     if (!hudButton) {
         return
     }
-    hudButton.onclick = _ => {
+    const handler = () => {
         if (currentHudId !== null && currentHudId !== hudId) {
             const currentHud = required(document.getElementById(currentHudId))
             currentHud.setAttribute("style", "")
         }
         hud.setAttribute("style", currentHudId !== hudId ? "visibility: visible" : "")
         currentHudId = currentHudId !== hudId ? hudId : null
+    }
+    huds.set(hudId, handler)
+    hudButton.onclick = handler
+}
+
+export function showHud(hudId: string) {
+    if (hudId !== currentHudId) {
+        const handler = huds.get(hudId)
+        if (handler !== undefined) {
+            handler()
+        }
     }
 }

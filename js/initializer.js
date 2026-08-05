@@ -31,6 +31,7 @@ function doLink(element, url, inNewWindow = false) {
             : location.href = url;
     };
 }
+const huds = new Map;
 function setupHud(hudId, buttonId) {
     const hud = document.getElementById(hudId);
     if (!hud) {
@@ -40,7 +41,7 @@ function setupHud(hudId, buttonId) {
     if (!hudButton) {
         return;
     }
-    hudButton.onclick = _ => {
+    const handler = () => {
         if (currentHudId !== null && currentHudId !== hudId) {
             const currentHud = required(document.getElementById(currentHudId));
             currentHud.setAttribute("style", "");
@@ -48,5 +49,15 @@ function setupHud(hudId, buttonId) {
         hud.setAttribute("style", currentHudId !== hudId ? "visibility: visible" : "");
         currentHudId = currentHudId !== hudId ? hudId : null;
     };
+    huds.set(hudId, handler);
+    hudButton.onclick = handler;
+}
+export function showHud(hudId) {
+    if (hudId !== currentHudId) {
+        const handler = huds.get(hudId);
+        if (handler !== undefined) {
+            handler();
+        }
+    }
 }
 //# sourceMappingURL=initializer.js.map

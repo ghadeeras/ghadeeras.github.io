@@ -9,6 +9,7 @@ import { Brush } from "./brush.js"
 import { Color, fromHex, Pallette2D, toHex } from "./color.js"
 import { BackgroundGroup, BackgroundRenderer } from "./bg.renderer.js"
 import * as cmn from "./common.js"
+import { showHud } from "../initializer.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
@@ -130,6 +131,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["ControlLeft", "KeyL"], ["ControlRight", "KeyL"]],
                     virtualKeys: ".control-load"
                 },
+                paste: {
+                    physicalKeys: [["KeyP"]],
+                    virtualKeys: ".control-paste"
+                },
                 record: {
                     physicalKeys: [["KeyV"]],
                     virtualKeys: "#control-v"
@@ -178,6 +183,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const fg = aether.vec4.mix(0.75, bg, aether.vec4.from(aether.vec4.add(bg, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))))
         this.brush.container.style.setProperty("--bg-color", `#${toHex(bg).substring(0, 6)}FF`)
         this.brush.container.style.setProperty("--fg-color", `#${toHex(fg).substring(0, 6)}FF`)
+        this.brush.borderElement.style.setProperty("border-color", `#${toHex(fg).substring(0, 6)}FF`)
     })
     private currentColor: "BRUSH" | "BACKGROUND" = "BRUSH"
     private pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1])
@@ -217,9 +223,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*")
     private jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json")
 
+    private pasteElement = gear.required(document.getElementById("paste")) as HTMLInputElement
+
     constructor(private canvas: gpu.Canvas, private renderer: Renderer, private tessellatedStrokeFactory: TessellatedStrokeFactory, private backgroundRenderer: BackgroundRenderer) {
         this.viewGroup = renderer.view(this.view)
-        document.onpaste = e => this.paste(e)
+        this.pasteElement.onpaste = e => this.paste(e)
+        this.pasteElement.onbeforeinput = e => e.preventDefault()
     }
 
     static async create(): Promise<Toy> {
@@ -295,10 +304,19 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     set hue2D(hue2D: aether.Vec2) {
         this.hue = hue2D
-        const p = aether.vec2.scale(
-            aether.vec2.mul(hue2D, [this.brush.container.clientWidth, this.brush.container.clientHeight]), 
-            1 / Math.min(this.brush.container.clientWidth, this.brush.container.clientHeight)
+        const dim = 0.5 * Math.min(this.brush.container.clientWidth, this.brush.container.clientHeight)
+        const inverseDim = 1 / dim;
+        const p = aether.vec2.mul(
+            aether.vec2.add(
+                aether.vec2.mul(
+                    hue2D, 
+                    [0.5 * this.canvas.element.clientWidth, -0.5 * this.canvas.element.clientHeight]
+                ), 
+                [0.5 * (this.canvas.element.clientWidth - this.brush.container.clientWidth), 0.5 * (this.canvas.element.clientHeight - this.brush.container.clientHeight)]
+            ), 
+            [inverseDim, -inverseDim]
         )
+        console.log(hue2D, p)
         this.color.hue = this.pallette2D.toColor(p)
     }
 
@@ -367,6 +385,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 toggleLines: { onPressed: () => this.lines = !this.lines },                
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
+                paste: { onReleased:() => this.paste() },
                 resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
                 break: { onPressed: () => this.breakStroke() },
                 mark: { onPressed: () => this.markedStroke = this.targetStroke },
@@ -391,18 +410,30 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
-    async paste(event: ClipboardEvent) {
-        event.preventDefault()
-        const content = event.clipboardData
-        if (content === null) {
-            return
-        }
-        for (const file of content.files) {
-            if (file.type.startsWith("image/")) {
-                this.loadBackgroundImage(file)
-                break;
+    async paste(e: ClipboardEvent | undefined = undefined) {
+        if (e !== undefined && e.clipboardData) {
+            e.preventDefault()
+            for (const file of e.clipboardData.files) {
+                if (file.type.startsWith("image/")) {
+                    this.loadBackgroundImage(file)
+                }
+            }
+            this.pasteElement.blur()
+        } else {
+            try {
+                const items = await navigator.clipboard.read()
+                for (const item of items) {
+                    if (item.types.some(type => type.startsWith("image/"))) {
+                        let content = await item.getType("image/png")
+                        this.loadBackgroundImage(content)
+                    }
+                }
+            } catch (error) {
+                showHud("controls")
+                this.pasteElement.focus()
             }
         }
+        window.focus()
     }
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
@@ -487,7 +518,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
-    private async loadBackgroundImage(f: File) {
+    private async loadBackgroundImage(f: File | Blob) {
         const imageBitmap = await createImageBitmap(f)
         const texture = this.canvas.device.texture({
             size: [imageBitmap.width, imageBitmap.height],

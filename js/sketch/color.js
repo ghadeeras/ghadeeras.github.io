@@ -8,7 +8,20 @@ export class Color {
         this._intensity = Math.max(...rgb);
         this._alpha = rgba[3];
         this.element = gear.required(document.getElementById(element));
-        this.element.addEventListener("blur", () => this.hex = this.element.value);
+        this.element.addEventListener("keypress", e => {
+            if (e.code === "Enter" && this.hex === this.element.value.toUpperCase()) {
+                this.element.blur();
+            }
+        });
+        this.element.addEventListener("change", e => {
+            if (this.element === document.activeElement) {
+                this.hex = this.element.value;
+                this.element.blur();
+            }
+            else {
+                this.element.value = this.hex;
+            }
+        });
         gear.invokeLater(() => this.refresh());
     }
     get hue() {
@@ -36,7 +49,7 @@ export class Color {
         this.refresh();
     }
     refresh() {
-        this.element.value = this.hex.toUpperCase();
+        this.element.value = this.hex;
         this.colorChangeCallback();
     }
     get hex() {
@@ -53,7 +66,7 @@ export class Color {
     }
 }
 export function toHex(color) {
-    return color.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+    return color.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 export function fromHex(hex) {
     if (hex.length != 8) {
