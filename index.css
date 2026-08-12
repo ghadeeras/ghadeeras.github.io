@@ -73,7 +73,7 @@ a {
 .hud {
     visibility: hidden;
     z-index: 16;
-    background-color: rgba(16, 24, 40, 0.875);
+    background-color: rgba(16, 24, 40, 0.6);
     color: white;
 }
 
@@ -84,7 +84,6 @@ a {
     right: 16px;
     height: auto;
     border: 2px solid rgb(64, 96, 160);
-    opacity: 0.67;
     font-size: small;
 }
 
@@ -95,7 +94,6 @@ a {
     left: 64px;
     height: auto;
     border: 2px solid rgb(64, 96, 160);
-    opacity: 0.67;
     font-size: small;
 }
 

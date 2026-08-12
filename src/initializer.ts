@@ -48,30 +48,45 @@ function doLink(element: HTMLElement, url: string, inNewWindow = false) {
 
 const huds = new Map<string, () => void>
 
-function setupHud(hudId: string, buttonId: string) {
+function setupHud(hudId: string, buttonId: string | null) {
     const hud = document.getElementById(hudId)
     if (!hud) {
-        return
-    }
-    const hudButton = document.getElementById(buttonId)
-    if (!hudButton) {
         return
     }
     const handler = () => {
         if (currentHudId !== null && currentHudId !== hudId) {
             const currentHud = required(document.getElementById(currentHudId))
-            currentHud.setAttribute("style", "")
+            currentHud.style.visibility = ""
+            currentHud.dispatchEvent(new Event("cancel"))
         }
-        hud.setAttribute("style", currentHudId !== hudId ? "visibility: visible" : "")
+        hud.style.visibility = currentHudId !== hudId ? "visible" : ""
         currentHudId = currentHudId !== hudId ? hudId : null
+        if (currentHudId !== hudId) {
+            hud.dispatchEvent(new Event("cancel"))
+        }
     }
     huds.set(hudId, handler)
-    hudButton.onclick = handler
+    if (buttonId !== null) {
+        const hudButton = document.getElementById(buttonId)
+        if (!hudButton) {
+            return
+        }
+        hudButton.onclick = handler
+    }
 }
 
 export function showHud(hudId: string) {
     if (hudId !== currentHudId) {
         const handler = huds.get(hudId)
+        if (handler !== undefined) {
+            handler()
+        }
+    }
+}
+
+export function hideCurrentHud() {
+    if (currentHudId !== null) {
+        const handler = huds.get(currentHudId)
         if (handler !== undefined) {
             handler()
         }

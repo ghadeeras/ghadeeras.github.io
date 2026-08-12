@@ -1,6 +1,6 @@
 import * as gear from "gear";
 import { strokeAttributesStruct } from "./common.js";
-import { Color, toHex } from "./color.js";
+import { Color, toHex } from "../utils/color.js";
 export class Brush {
     constructor(device, canvas) {
         this.device = device;
@@ -12,7 +12,7 @@ export class Brush {
         this.circle = gear.required(this.cursor.getElementsByTagName("circle")[0]);
         this.brushSizeElement = gear.required(document.getElementById("brush-size"));
         this.tensionElement = gear.required(document.getElementById("tension"));
-        this._color = new Color([0.125, 0.25, 0.375, 1], "color", () => this.refreshColor());
+        this._color = new Color([0.125, 0.25, 0.375, 1], () => this.refreshColor());
         this._thickness = 8;
         this._tension = 8;
         this._closed = 0;

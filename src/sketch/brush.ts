@@ -2,7 +2,7 @@ import * as gear from "gear"
 import * as aether from "aether"
 import { gpu } from "lumen"
 import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
-import { Color, toHex } from "./color.js"
+import { Color, toHex } from "../utils/color.js"
 
 export class Brush {
 
@@ -15,7 +15,7 @@ export class Brush {
     readonly brushSizeElement = gear.required(document.getElementById("brush-size")) as HTMLElement
     readonly tensionElement = gear.required(document.getElementById("tension")) as HTMLElement
 
-    private _color: Color = new Color([0.125, 0.25, 0.375, 1], "color", () => this.refreshColor())
+    private _color: Color = new Color([0.125, 0.25, 0.375, 1], () => this.refreshColor())
 
     private _thickness: number = 8
     private _tension: number = 8

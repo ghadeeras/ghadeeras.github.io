@@ -1,18 +1,20 @@
 import { gpu } from "lumen";
 import * as gear from "gear";
 import * as aether from "aether";
-import { LinearDragging, positionDragging, TranslationDragging } from "../utils/dragging.js";
+import { LinearDragging, TranslationDragging } from "../utils/dragging.js";
 import { Renderer } from "./stroke.renderer.js";
 import { TessellatedStrokeFactory } from "./stroke.computer.js";
 import { Stroke } from "./stroke.js";
 import { Brush } from "./brush.js";
-import { Color, fromHex, Pallette2D, toHex } from "./color.js";
 import { BackgroundRenderer } from "./bg.renderer.js";
 import * as cmn from "./common.js";
-import { showHud } from "../initializer.js";
+import { hideCurrentHud, showHud } from "../initializer.js";
+import { Palette } from "../utils/palette.js";
+import { Color, fromHex, toHex } from "../utils/color.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch";
 export const huds = {
-    "monitor": "monitor-button"
+    "monitor": "monitor-button",
+    "palette": null
 };
 export async function init() {
     const toy = await Toy.create();
@@ -21,11 +23,12 @@ export async function init() {
 }
 const windingSpeed = 2048;
 class Toy {
-    constructor(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer) {
+    constructor(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer, palette) {
         this.canvas = canvas;
         this.renderer = renderer;
         this.tessellatedStrokeFactory = tessellatedStrokeFactory;
         this.backgroundRenderer = backgroundRenderer;
+        this.palette = palette;
         this.backgroundGroup = null;
         this.strokes = [];
         this.distance = { strokeIndex: 0, distance: 0 };
@@ -34,29 +37,25 @@ class Toy {
         this.fastWind = false;
         this.brush = new Brush(this.canvas.device, this.canvas.element);
         this.lines = false;
-        this.backgroundColor = new Color([0, 0, 0, 0], "bg-color", () => {
+        this.backgroundColor = new Color([0, 0, 0, 0], () => {
             const bg = this.backgroundColor.rgba;
             const fg = aether.vec4.mix(0.75, bg, aether.vec4.from(aether.vec4.add(bg, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))));
             this.brush.container.style.setProperty("--bg-color", `#${toHex(bg).substring(0, 6)}FF`);
             this.brush.container.style.setProperty("--fg-color", `#${toHex(fg).substring(0, 6)}FF`);
             this.brush.borderElement.style.setProperty("border-color", `#${toHex(fg).substring(0, 6)}FF`);
         });
-        this.currentColor = "BRUSH";
-        this.pallette2D = new Pallette2D([-1, -1], [0, 1], [1, -1]);
         this.inverseViewMatrix = aether.mat3.identity();
         this.viewMatrix = aether.mat3.identity();
-        this.hue = this.toHue2D(this.brush.color.hue);
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.infiniteCanvasSpacePos(p)));
         this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
         this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
-        this.hueTarget = gear.loops.draggingTarget(gear.property(this, "hue2D"), positionDragging);
-        this.intensityTarget = gear.loops.draggingTarget(gear.property(this, "intensity"), new LinearDragging(() => 0, 0, 1, 1));
         this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
         this.imageFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("image/*");
         this.jsonFileSelector = gear.FileSelector.create().disallowMultipleFiles().ofType("application/json");
         this.pasteElement = gear.required(document.getElementById("paste"));
+        this.canceller = () => { };
         this.widthElement = document.getElementById("canvas-width");
         this.heightElement = document.getElementById("canvas-height");
         this.viewGroup = renderer.view(this.view);
@@ -75,7 +74,8 @@ class Toy {
             const renderer = await Renderer.create(commonLayouts);
             const tessellatedStrokeFactory = await TessellatedStrokeFactory.create(device);
             const backgroundRenderer = await BackgroundRenderer.create(commonLayouts.view);
-            return new Toy(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer);
+            const palette = await Palette.create("palette", v => (v ? showHud : hideCurrentHud)("palette"));
+            return new Toy(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer, palette);
         }
         catch (e) {
             gear.required(document.getElementById(Toy.descriptor.output.canvases.scene.element)).style.cursor = "default";
@@ -114,30 +114,6 @@ class Toy {
     set visibleDistance(visibleDistance) {
         this.distance = visibleDistance;
     }
-    get color() {
-        return this.currentColor === "BRUSH" ? this.brush.color : this.backgroundColor;
-    }
-    get hue2D() {
-        return this.hue;
-    }
-    set hue2D(hue2D) {
-        this.hue = hue2D;
-        const dim = 0.5 * Math.min(this.brush.container.clientWidth, this.brush.container.clientHeight);
-        const inverseDim = 1 / dim;
-        const p = aether.vec2.mul(aether.vec2.add(aether.vec2.mul(hue2D, [0.5 * this.canvas.element.clientWidth, -0.5 * this.canvas.element.clientHeight]), [0.5 * (this.canvas.element.clientWidth - this.brush.container.clientWidth), 0.5 * (this.canvas.element.clientHeight - this.brush.container.clientHeight)]), [inverseDim, -inverseDim]);
-        console.log(hue2D, p);
-        this.color.hue = this.pallette2D.toColor(p);
-    }
-    get intensity() {
-        return this.color.intensity;
-    }
-    set intensity(intensity) {
-        this.color.intensity = intensity;
-    }
-    toHue2D(hue) {
-        const p = this.pallette2D.fromColor(hue);
-        return aether.vec2.scale(aether.vec2.mul(p, [this.canvas.element.height, this.canvas.element.width]), 1 / Math.max(this.canvas.element.width, this.canvas.element.height));
-    }
     get tension() {
         return this.brush.tension;
     }
@@ -174,10 +150,8 @@ class Toy {
                 drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
                 brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
                 tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
-                hue: { onPressed: () => { this.setColorDraggingTarget(inputs, "BRUSH", this.hueTarget); } },
-                intensity: { onPressed: () => { this.setColorDraggingTarget(inputs, "BRUSH", this.intensityTarget); } },
-                backgroundHue: { onPressed: () => { this.setColorDraggingTarget(inputs, "BACKGROUND", this.hueTarget); } },
-                backgroundIntensity: { onPressed: () => { this.setColorDraggingTarget(inputs, "BACKGROUND", this.intensityTarget); } },
+                fgColor: { onPressed: () => { this.pickColor(this.brush.color); } },
+                bgColor: { onPressed: () => { this.pickColor(this.backgroundColor); } },
                 sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
@@ -200,6 +174,7 @@ class Toy {
                 record: { onPressed: () => this.startStopRecording(outputs) },
                 export: { onPressed: () => this.export() },
                 resizeCanvas: { onPressed: () => this.resizeCanvas() },
+                cancel: { onReleased: () => this.cancel() },
             },
             pointers: {
                 primary: {
@@ -208,6 +183,16 @@ class Toy {
                 }
             }
         };
+    }
+    cancel() {
+        this.canceller();
+        this.canceller = () => { };
+        hideCurrentHud();
+    }
+    async pickColor(color) {
+        this.canceller();
+        this.canceller = () => this.palette.cancel();
+        color.rgba = await this.palette.pick(color.rgba);
     }
     async paste(e = undefined) {
         if (e !== undefined && e.clipboardData) {
@@ -288,10 +273,6 @@ class Toy {
         }
         this.resetDistance();
     }
-    setColorDraggingTarget(inputs, color, draggingTarget) {
-        this.currentColor = color;
-        inputs.pointers.primary.draggingTarget = draggingTarget;
-    }
     clearBackgroundImage() {
         if (this.backgroundGroup !== null) {
             this.backgroundGroup.entries.background_texture.baseResource().destroy();
@@ -366,7 +347,7 @@ class Toy {
             const text = await file[0].text();
             const sketch = JSON.parse(text);
             this.clearStrokes();
-            this.backgroundColor.rgba = typeof sketch.backgroundColor === "string" ? fromHex(sketch.backgroundColor) : sketch.backgroundColor;
+            this.backgroundColor.rgba = typeof sketch.backgroundColor === "string" ? fromHex(sketch.backgroundColor, this.backgroundColor.rgba) : sketch.backgroundColor;
             for (const s of sketch.strokes) {
                 const attributes = fromSerializableAttributes(sketch.strokesAttributes[s.attributes]);
                 const stroke = new Stroke(attributes, attributes => this.brush.destroyDataBuffer(attributes));
@@ -438,21 +419,13 @@ Toy.descriptor = {
                 physicalKeys: [["KeyD"]],
                 virtualKeys: "#control-d"
             },
-            hue: {
+            fgColor: {
                 physicalKeys: [["KeyH"]],
                 virtualKeys: "#control-h"
             },
-            intensity: {
-                physicalKeys: [["KeyI"]],
-                virtualKeys: "#control-i"
-            },
-            backgroundHue: {
+            bgColor: {
                 physicalKeys: [["ShiftRight", "KeyH"], ["ShiftLeft", "KeyH"]],
                 virtualKeys: ".control-bg-h"
-            },
-            backgroundIntensity: {
-                physicalKeys: [["ShiftRight", "KeyI"], ["ShiftLeft", "KeyI"]],
-                virtualKeys: ".control-bg-i"
             },
             brushSize: {
                 physicalKeys: [["KeyB"]],
@@ -549,7 +522,10 @@ Toy.descriptor = {
             resizeCanvas: {
                 physicalKeys: [["KeyR"]],
                 virtualKeys: "#control-resize-canvas"
-            }
+            },
+            cancel: {
+                physicalKeys: [["Escape"]],
+            },
         },
         pointers: {
             primary: {
@@ -596,7 +572,7 @@ function toSerializableAttributes(a) {
 }
 function fromSerializableAttributes(serializableAttributes) {
     return {
-        color: typeof serializableAttributes.color === "string" ? fromHex(serializableAttributes.color) : serializableAttributes.color,
+        color: typeof serializableAttributes.color === "string" ? fromHex(serializableAttributes.color, [0, 0, 0, 0]) : serializableAttributes.color,
         thickness: serializableAttributes.thickness,
         tension: serializableAttributes.tension,
         closed: serializableAttributes.closed ? 1 : 0
