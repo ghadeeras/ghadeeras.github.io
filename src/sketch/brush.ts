@@ -11,7 +11,8 @@ export class Brush {
     readonly borderElement = gear.required(document.getElementById("border"))
     readonly container = gear.required(document.getElementsByClassName("canvas-container")[0]) as HTMLElement
     readonly cursor = gear.required(document.getElementById("cursor")) as HTMLElement
-    readonly circle = gear.required(this.cursor.getElementsByTagName("circle")[0]) as SVGCircleElement
+    readonly circle = gear.required(this.cursor.getElementsByTagName("circle")[0])
+    readonly rect = gear.required(this.cursor.getElementsByTagName("rect")[0])
     readonly brushSizeElement = gear.required(document.getElementById("brush-size")) as HTMLElement
     readonly tensionElement = gear.required(document.getElementById("tension")) as HTMLElement
 
@@ -20,12 +21,15 @@ export class Brush {
     private _thickness: number = 8
     private _tension: number = 8
     private _closed: number = 0
+    private _lines: boolean = false
+    private _visible: boolean = true
     
     private _position: aether.Vec2 = [0, 0]
 
     constructor(private device: gpu.Device, private canvas: HTMLCanvasElement) {
         this.thickness = this._thickness
         this.tension = this._tension
+        this.visible = true
     }
 
     get attributes(): StrokeAttributes {
@@ -45,8 +49,39 @@ export class Brush {
         return this._thickness
     }
 
+    get lines() {
+        return this._lines
+    }
+
+    set lines(lines: boolean) {
+        this._lines = lines
+        this.refreshColor()
+    }
+
+    get visible() {
+        return this._visible
+    }
+
+    set visible(visible: boolean) {
+        this._visible = visible
+        this.cursor.style.display = visible ? "block" : "none"
+        this.position = this._position
+    }
+
     set thickness(size: number) {
         this._thickness = size
+        const ratio = this.canvas.clientWidth / this.canvas.width
+        const radius = this._thickness * ratio
+        const r = `${radius}px`
+        const d = `${2 * radius}px`
+        const offset = `${64 - radius}px`
+        this.circle.setAttribute("r", r)
+        this.circle.setAttribute("stroke-width", r)
+        this.rect.setAttribute("x", offset)
+        this.rect.setAttribute("y", offset)
+        this.rect.setAttribute("width", d)
+        this.rect.setAttribute("height", d)
+        this.rect.setAttribute("stroke-width", r)
         this.brushSizeElement.textContent = Math.round(size).toString()
     }
 
@@ -74,12 +109,8 @@ export class Brush {
     set position(pos: aether.Vec2) {
         this._position = pos
         const ratio = this.canvas.clientWidth / this.canvas.width
-        const radius = this._thickness * ratio
-        this.circle.setAttribute("r", `${radius}px`)
-        this.circle.setAttribute("stroke-width", `${radius}px`)
         this.cursor.style.left = `${this._position[0] * ratio - this.cursor.clientWidth / 2}px`
         this.cursor.style.top = `${this._position[1] * ratio - this.cursor.clientHeight / 2}px`
-        this.cursor.style.display = "block"
     }
 
     dataBuffer(strokeAttributes: StrokeAttributes = this.attributes): gpu.DataBuffer {
@@ -121,7 +152,13 @@ export class Brush {
 
     private refreshColor() {
         const c = this.color.hex
-        this.circle.setAttribute("stroke", `#${c}`)
+        if (this._lines) {
+            this.circle.setAttribute("stroke", `#00000000`)
+            this.rect.setAttribute("stroke", `#${c}`)
+        } else {
+            this.circle.setAttribute("stroke", `#${c}`)
+            this.rect.setAttribute("stroke", `#00000000`)
+        }
     }
 
 }

@@ -78,6 +78,7 @@
                 <canvas id="canvas" style="cursor: none; background-color: #00000000;" width="1920" height="1080"></canvas>
                 <svg id="cursor" width="128" height="128" version="1.1" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="64" cy="64" r="0" stroke="red" fill="transparent" stroke-width="0"/>
+                    <rect x="56" y="56" width="16" height="16" stroke="red" fill="transparent" stroke-width="8"/>
                 </svg>
                 <div id="border"></div>
                 <div id="monitor" class="hud top-right">
@@ -106,14 +107,12 @@
                     <tr><td><kbd id="control-d">D</kbd></td><td>Drawing</td><td></td></tr>
                     <tr><td><kbd id="control-b">B</kbd></td><td>Brush Size</td><td><span id="brush-size"></span></td></tr>
                     <tr><td><kbd id="control-t">T</kbd></td><td>Tension</td><td><span id="tension"></span></td></tr>
-                    <tr><td><kbd id="control-h">H</kbd></td><td>Hue</td><td><input type="text" id="color" value="#000000FF"></td></tr>
-                    <tr><td><kbd id="control-i">I</kbd></td><td>Intensity</td><td></td></tr>
-                    <tr><td><kbd class="control-bg-h">Shift</kbd> + <kbd class="control-bg-h">H</kbd></td><td>Background Hue</td><td><input type="text" id="bg-color" value="#FFFFFFFF"></td></tr>
-                    <tr><td><kbd class="control-bg-i">Shift</kbd> + <kbd class="control-bg-i">I</kbd></td><td>Background Intensity</td><td></td></tr>
                     <tr><td><kbd id="control-s">S</kbd></td><td>Sliding</td><td></td></tr>
                 </table>
                 <p>The following keys perform the specified actions:</p>
                 <table>
+                    <tr><td><kbd id="control-h">H</kbd></td><td>Brush Color Dialog</td><td></td></tr>
+                    <tr><td><kbd class="control-bg-h">Shift</kbd> + <kbd class="control-bg-h">H</kbd></td><td>Background Color Dialog</td><td></td></tr>
                     <tr><td><kbd class="control-clear">Shift</kbd> + <kbd class="control-clear">Del</kbd></td><td>Clear</td><td></td></tr>
                     <tr><td><kbd id="control-undo">Backspace</kbd></td><td>Undo Stroke</td><td></td></tr>
                     <tr><td><kbd id="control-closed">C</kbd></td><td>Toggle Closed Stroke</td><td></td></tr>

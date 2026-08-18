@@ -326,16 +326,16 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>, outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
         return {
             keys: {
-                drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
-                brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
-                tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
+                drawing: { onPressed: () => this.enterDrawingMode(inputs) },
+                brushSize: { onPressed: () => this.enterBrushResizingMode(inputs) },
+                tension: { onPressed: () => this.enterTensionAdjusingMode(inputs) },
+                sliding: { onPressed: () => this.enterSlidingMode(inputs) },
                 fgColor: { onPressed: () => { this.pickColor(this.brush.color) } },
                 bgColor: { onPressed: () => { this.pickColor(this.backgroundColor) } },
-                sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
-                toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
-                toggleLines: { onPressed: () => this.lines = !this.lines },                
+                toggleClosed: { onPressed: () =>this.toggleClosed() },
+                toggleLines: { onPressed: () => this.toggleLines() },                
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 paste: { onReleased:() => this.paste() },
@@ -364,6 +364,42 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
     
+    private toggleClosed() {
+        if (this.strokes.length > 0) {
+            const lastStroke = this.strokes[this.strokes.length - 1]
+            lastStroke.closed = !lastStroke.closed
+        }
+    }
+
+    private enterDrawingMode(inputs: gear.loops.LoopInputs<ToyDescriptor>): void {
+        inputs.pointers.primary.draggingTarget = this.strokeTarget
+        this.brush.visible = true
+        this.canvas.element.style.cursor = "none"
+    }
+
+    private enterSlidingMode(inputs: gear.loops.LoopInputs<ToyDescriptor>): void {
+        inputs.pointers.primary.draggingTarget = this.slidingTarget
+        this.brush.visible = false
+        this.canvas.element.style.cursor = "all-scroll"
+    }
+
+    private enterBrushResizingMode(inputs: gear.loops.LoopInputs<ToyDescriptor>): void {
+        inputs.pointers.primary.draggingTarget = this.brushSizeTarget
+        this.brush.visible = true
+        this.canvas.element.style.cursor = "row-resize"
+    }
+
+    private enterTensionAdjusingMode(inputs: gear.loops.LoopInputs<ToyDescriptor>): void {
+        inputs.pointers.primary.draggingTarget = this.tensionTarget
+        this.brush.visible = false
+        this.canvas.element.style.cursor = "row-resize"
+    }
+
+    private toggleLines() {
+        this.lines = !this.lines
+        this.brush.lines = !this.brush.lines
+    }
+
     private cancel(): void {
         this.canceller()
         this.canceller = () => {}

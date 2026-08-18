@@ -147,16 +147,16 @@ class Toy {
     inputWiring(inputs, outputs) {
         return {
             keys: {
-                drawing: { onPressed: () => inputs.pointers.primary.draggingTarget = this.strokeTarget },
-                brushSize: { onPressed: () => inputs.pointers.primary.draggingTarget = this.brushSizeTarget },
-                tension: { onPressed: () => inputs.pointers.primary.draggingTarget = this.tensionTarget },
+                drawing: { onPressed: () => this.enterDrawingMode(inputs) },
+                brushSize: { onPressed: () => this.enterBrushResizingMode(inputs) },
+                tension: { onPressed: () => this.enterTensionAdjusingMode(inputs) },
+                sliding: { onPressed: () => this.enterSlidingMode(inputs) },
                 fgColor: { onPressed: () => { this.pickColor(this.brush.color); } },
                 bgColor: { onPressed: () => { this.pickColor(this.backgroundColor); } },
-                sliding: { onPressed: () => inputs.pointers.primary.draggingTarget = this.slidingTarget },
                 clear: { onPressed: () => this.clearStrokes() },
                 undo: { onPressed: () => this.undo() },
-                toggleClosed: { onPressed: () => this.brush.closed = !this.brush.closed },
-                toggleLines: { onPressed: () => this.lines = !this.lines },
+                toggleClosed: { onPressed: () => this.toggleClosed() },
+                toggleLines: { onPressed: () => this.toggleLines() },
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 paste: { onReleased: () => this.paste() },
@@ -183,6 +183,36 @@ class Toy {
                 }
             }
         };
+    }
+    toggleClosed() {
+        if (this.strokes.length > 0) {
+            const lastStroke = this.strokes[this.strokes.length - 1];
+            lastStroke.closed = !lastStroke.closed;
+        }
+    }
+    enterDrawingMode(inputs) {
+        inputs.pointers.primary.draggingTarget = this.strokeTarget;
+        this.brush.visible = true;
+        this.canvas.element.style.cursor = "none";
+    }
+    enterSlidingMode(inputs) {
+        inputs.pointers.primary.draggingTarget = this.slidingTarget;
+        this.brush.visible = false;
+        this.canvas.element.style.cursor = "all-scroll";
+    }
+    enterBrushResizingMode(inputs) {
+        inputs.pointers.primary.draggingTarget = this.brushSizeTarget;
+        this.brush.visible = true;
+        this.canvas.element.style.cursor = "row-resize";
+    }
+    enterTensionAdjusingMode(inputs) {
+        inputs.pointers.primary.draggingTarget = this.tensionTarget;
+        this.brush.visible = false;
+        this.canvas.element.style.cursor = "row-resize";
+    }
+    toggleLines() {
+        this.lines = !this.lines;
+        this.brush.lines = !this.brush.lines;
     }
     cancel() {
         this.canceller();
