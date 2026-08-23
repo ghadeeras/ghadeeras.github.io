@@ -47,7 +47,7 @@ fn color(
     var fogFactor = exp2(fragPosition.z * uniforms.fogginess / 8.0);
 
     var shade = diffuse * diffuse + specular * uniforms.shininess;
-    return vec4<f32>(mix(vec3<f32>(1.0), shade * materialColor, fogFactor), uniforms.color.a);
+    return vec4<f32>(mix(vec3<f32>(0.125, 0.0625, 0.125), shade * materialColor, fogFactor), uniforms.color.a);
 }
 
 @vertex

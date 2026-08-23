@@ -91,13 +91,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
 
-    readonly contourTarget = gear.loops.draggingTarget(mapped(gear.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
+    readonly contourTarget = gear.loops.draggingTarget(gear.property(this, "contourValue"), dragging.LinearDragging.dragger(-0.5, 0.8, 1))
     readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
     readonly focalLengthDragging = gear.loops.draggingTarget(gear.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
     readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly lightRadiusDragging = gear.loops.draggingTarget(gear.property(this.view, "lightRadius"), dragging.RatioDragging.dragger())
+    readonly shininessDragging = gear.loops.draggingTarget(gear.property(this.view, "shininess"), dragging.LinearDragging.dragger(0, 1, 1))
+    readonly fogginessDragging = gear.loops.draggingTarget(gear.property(this.view, "fogginess"), dragging.LinearDragging.dragger(0, 256, 1))
 
     private lodElement = gear.required(document.getElementById("lod")) 
     private meshComputer: gear.DeferredComputation<void> = new gear.DeferredComputation(() => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, this.scalarFieldInstance.vertices))
@@ -110,7 +110,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.modelMatrix = aether.mat4.identity()
         this.contourValue = 0.01
         this.resolution = 64
-        this.field = 0
+        this.field = 1
+        view.shininess = 1.0
+        view.lightRadius = 0.001
     }
 
     static async create() {
