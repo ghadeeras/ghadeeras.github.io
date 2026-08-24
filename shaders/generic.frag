@@ -14,6 +14,7 @@ in vec3 fragNormal;
 out vec4 fragColor; 
 
 uniform vec4 color;
+uniform vec4 backgroundColor;
 uniform float shininess;
 
 uniform vec3 lightPosition;
@@ -44,5 +45,5 @@ void main() {
     float fogFactor = exp2(fragPosition.z * fogginess / 8.0);
 
     float shade = diffuse * diffuse + specular * shininess;
-    fragColor = vec4(mix(vec3(1.0), shade * materialColor, fogFactor), color.a);
+    fragColor = vec4(mix(backgroundColor.rgb, shade * materialColor, fogFactor), color.a);
 }

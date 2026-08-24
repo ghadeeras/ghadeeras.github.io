@@ -9,6 +9,7 @@ struct Uniforms {
     normalsMat: mat4x4<f32>,
     projectionMat: mat4x4<f32>,
     color: vec4<f32>,
+    backgroundColor: vec4<f32>,
     lightPos: vec4<f32>,
     shininess: f32,
     lightRadius: f32,
@@ -47,7 +48,7 @@ fn color(
     var fogFactor = exp2(fragPosition.z * uniforms.fogginess / 8.0);
 
     var shade = diffuse * diffuse + specular * uniforms.shininess;
-    return vec4<f32>(mix(vec3<f32>(0.125, 0.0625, 0.125), shade * materialColor, fogFactor), uniforms.color.a);
+    return vec4<f32>(mix(uniforms.backgroundColor.rgb, shade * materialColor, fogFactor), uniforms.color.a);
 }
 
 @vertex

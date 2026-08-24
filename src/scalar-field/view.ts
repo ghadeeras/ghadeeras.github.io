@@ -19,6 +19,8 @@ export interface View {
 
     color: aether.Vec<4>
 
+    backgroundColor: aether.Vec<4>
+
     shininess: number
 
     lightPosition: aether.Vec<4>

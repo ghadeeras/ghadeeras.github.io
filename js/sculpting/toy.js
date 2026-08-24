@@ -41,6 +41,7 @@ class Toy {
         view.matView = viewMatrix;
         view.focalLength = 4;
         view.color = [0.5, 0.5, 0.5, 1.0];
+        view.backgroundColor = [0.125, 0.125, 0.125, 1.0];
         view.shininess = 1;
         view.fogginess = 0.0;
         view.lightPosition = this.toLightPosition([0.0, 0.0]);

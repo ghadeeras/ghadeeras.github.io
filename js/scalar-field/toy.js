@@ -33,6 +33,7 @@ class Toy {
         this.field = 1;
         view.shininess = 1.0;
         view.lightRadius = 0.001;
+        view.backgroundColor = [0.125, 0.0625, 0.125, 1.0];
     }
     static async create() {
         const scalarFieldModule = await aether.loadScalarFieldModule();

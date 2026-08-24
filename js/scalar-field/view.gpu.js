@@ -12,6 +12,7 @@ export class GPUView {
             }),
             projectionMat: gpu.mat4x4,
             color: gpu.f32.x4,
+            backgroundColor: gpu.f32.x4,
             lightPos: gpu.f32.x4,
             shininess: gpu.f32,
             lightRadius: gpu.f32,
@@ -68,8 +69,9 @@ export class GPUView {
     }
     render() {
         this.device.enqueueCommands("render", encoder => {
+            const [r, g, b, a] = this.backgroundColor;
             const passDescriptor = {
-                colorAttachments: [this.gpuCanvas.attachment({ r: 0.125, g: 0.0625, b: 0.125, a: 1 })],
+                colorAttachments: [this.gpuCanvas.attachment({ r, g, b, a })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment()
             };
             encoder.renderPass(passDescriptor, pass => {
@@ -130,6 +132,12 @@ export class GPUView {
     }
     set color(c) {
         this.uniforms.set(this.uniformsStruct.members.color, c);
+    }
+    get backgroundColor() {
+        return this.uniforms.get(this.uniformsStruct.members.backgroundColor);
+    }
+    set backgroundColor(c) {
+        this.uniforms.set(this.uniformsStruct.members.backgroundColor, c);
     }
     get lightPosition() {
         return this._lightPosition;

@@ -17,7 +17,7 @@ class Toy {
         this.canvas = canvas;
         this.fieldRenderer = fieldRenderer;
         this.fieldSampler = fieldSampler;
-        this.contourTarget = gear.loops.draggingTarget(mapped(gear.property(this.fieldRenderer, "contourValue"), ([_, y]) => y), dragging.positionDragging);
+        this.contourTarget = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "contourValue"), dragging.LinearDragging.dragger(-1, 1, 1));
         this.rotationDragging = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.projectionViewMatrix, 4));
         this.matrixDragging = gear.loops.draggingTarget(gear.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));

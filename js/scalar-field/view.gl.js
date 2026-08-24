@@ -20,6 +20,7 @@ export class GLView {
         this._matModelNormals = this.program.uniform("normalsMat");
         this._matProjection = this.program.uniform("projectionMat");
         this._color = this.program.uniform("color");
+        this._backgroundColor = this.program.uniform("backgroundColor");
         this._shininess = this.program.uniform("shininess");
         this._lightPosition = this.program.uniform("lightPosition");
         this._lightRadius = this.program.uniform("lightRadius");
@@ -29,6 +30,7 @@ export class GLView {
         this._matView = aether.mat4.identity();
         this._matProjection.data = aether.mat4.columnMajorArray(aether.mat4.identity());
         this._color.data = [0.2, 0.4, 0.8, 1.0];
+        this._backgroundColor.data = [1.0, 1.0, 1.0, 1.0];
         this._shininess.data = [0.5];
         this._globalLightPosition = [2, 2, 2, 1];
         this._lightPosition.data = [2, 2, 2];
@@ -60,7 +62,7 @@ export class GLView {
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.clearDepth(1);
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(...this.backgroundColor);
     }
     setMatModel(modelPositions, modelNormals = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
         this._matPositions = modelPositions;
@@ -108,6 +110,13 @@ export class GLView {
     }
     set color(c) {
         this._color.data = c;
+    }
+    get backgroundColor() {
+        return aether.vec4.from(this._backgroundColor.data);
+    }
+    set backgroundColor(c) {
+        this._backgroundColor.data = c;
+        this.context.gl.clearColor(...c);
     }
     get shininess() {
         return this._shininess.data[0];

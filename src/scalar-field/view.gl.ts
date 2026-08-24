@@ -19,6 +19,7 @@ export class GLView implements v.View {
     private _matProjection: wgl.Uniform
 
     private _color: wgl.Uniform
+    private _backgroundColor: wgl.Uniform
     private _shininess: wgl.Uniform
 
     private _lightPosition: wgl.Uniform
@@ -56,6 +57,7 @@ export class GLView implements v.View {
         this._matProjection = this.program.uniform("projectionMat")
     
         this._color = this.program.uniform("color")
+        this._backgroundColor = this.program.uniform("backgroundColor")
         this._shininess = this.program.uniform("shininess")
 
         this._lightPosition = this.program.uniform("lightPosition")
@@ -68,6 +70,7 @@ export class GLView implements v.View {
         this._matProjection.data = aether.mat4.columnMajorArray(aether.mat4.identity())
 
         this._color.data = [0.2, 0.4, 0.8, 1.0]
+        this._backgroundColor.data = [1.0, 1.0, 1.0, 1.0]
         this._shininess.data = [0.5]
 
         this._globalLightPosition = [2, 2, 2, 1]
@@ -108,7 +111,7 @@ export class GLView implements v.View {
         const gl = this.context.gl
         gl.enable(gl.DEPTH_TEST)
         gl.clearDepth(1)
-        gl.clearColor(1, 1, 1, 1)
+        gl.clearColor(...this.backgroundColor)
     }
 
     setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
@@ -170,6 +173,15 @@ export class GLView implements v.View {
 
     set color(c: aether.Vec<4>) {
         this._color.data = c
+    }
+
+    get backgroundColor(): aether.Vec<4> {
+        return aether.vec4.from(this._backgroundColor.data)
+    }
+
+    set backgroundColor(c: aether.Vec<4>) {
+        this._backgroundColor.data = c
+        this.context.gl.clearColor(...c)
     }
 
     get shininess(): number {
