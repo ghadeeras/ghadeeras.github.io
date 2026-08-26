@@ -20,18 +20,19 @@ export abstract class ModelMatrixDragging implements gear.loops.Dragger<aether.M
         return to => {
             const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]))
             const delta = this.delta(actualFrom, actualTo, this.speed)
-            const newRotation = aether.mat4.mul(delta, rotation)
+            const newMatrix = aether.mat4.mul(delta, rotation)
+            newMatrix[3][3] = 0
             return [
-                newRotation[0],
-                newRotation[1],
-                newRotation[2],
-                translation
+                newMatrix[0],
+                newMatrix[1],
+                newMatrix[2],
+                aether.vec4.add(newMatrix[3], translation)
             ]
         };
     }
 
     end(matrix: aether.Mat<4>): aether.Mat<4> {
-        return aetherx.orthogonal(matrix)
+        return aether.mat4.orthogonal(matrix)
     }
 
     protected abstract delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4>
@@ -168,7 +169,7 @@ export class ZoomDragging implements gear.loops.Dragger<[aether.Mat<4>, aether.M
     }
 
     end([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>]): [aether.Mat<4>, aether.Mat<4>] {
-        return [projectionMat, aetherx.orthogonal(viewMat)];
+        return [projectionMat, aether.mat4.orthogonal(viewMat)];
     }
 
     static dragger(speed: number = 1) {

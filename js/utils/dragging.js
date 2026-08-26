@@ -1,5 +1,4 @@
 import * as aether from "aether";
-import * as aetherx from "./aether.js";
 export class ModelMatrixDragging {
     constructor(projViewMatrix, speed = 1) {
         this.projViewMatrix = projViewMatrix;
@@ -18,17 +17,18 @@ export class ModelMatrixDragging {
         return to => {
             const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]));
             const delta = this.delta(actualFrom, actualTo, this.speed);
-            const newRotation = aether.mat4.mul(delta, rotation);
+            const newMatrix = aether.mat4.mul(delta, rotation);
+            newMatrix[3][3] = 0;
             return [
-                newRotation[0],
-                newRotation[1],
-                newRotation[2],
-                translation
+                newMatrix[0],
+                newMatrix[1],
+                newMatrix[2],
+                aether.vec4.add(newMatrix[3], translation)
             ];
         };
     }
     end(matrix) {
-        return aetherx.orthogonal(matrix);
+        return aether.mat4.orthogonal(matrix);
     }
 }
 export class RotationDragging extends ModelMatrixDragging {
@@ -132,7 +132,7 @@ export class ZoomDragging {
         };
     }
     end([projectionMat, viewMat]) {
-        return [projectionMat, aetherx.orthogonal(viewMat)];
+        return [projectionMat, aether.mat4.orthogonal(viewMat)];
     }
     static dragger(speed = 1) {
         return new ZoomDragging(speed);

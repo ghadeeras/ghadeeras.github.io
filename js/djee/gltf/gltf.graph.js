@@ -46,8 +46,8 @@ export class Node extends IdentifiableObject {
     constructor(node, i, meshes, cameras, nodes) {
         super(`node#${i}`);
         this.matrix = gltf.matrixOf(node);
-        this.antiMatrix = aetherX.anti(this.matrix);
-        this.isIdentityMatrix = aetherX.isIdentityMatrix(this.matrix);
+        this.antiMatrix = aether.mat4.comatrix(this.matrix);
+        this.isIdentityMatrix = aether.isIdentity(this.matrix);
         this.cameras = node.camera !== undefined ? [cameras[node.camera]] : [];
         this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : [];
         this.children = node.children !== undefined ? node.children.map(child => nodes[child]()) : [];
@@ -62,7 +62,7 @@ export class Perspective {
         this.camera = camera;
         this.matrix = matrix;
         this.modelMatrix = modelMatrix;
-        this.antiMatrix = aetherX.anti(matrix);
+        this.antiMatrix = aether.mat4.comatrix(matrix);
     }
 }
 export class Camera {
@@ -214,7 +214,7 @@ function collectScenePerspectives(scene) {
 function collectNodePerspectives(node, parentMatrix, perspectives) {
     const matrix = node.isIdentityMatrix ? parentMatrix : aether.mat4.mul(parentMatrix, node.matrix);
     if (node.cameras[0]) {
-        const m = aetherX.orthogonal(aether.mat4.inverse(matrix));
+        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix));
         perspectives.push(new Perspective(node.cameras[0], m));
     }
     for (const child of node.children) {
