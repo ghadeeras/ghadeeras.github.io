@@ -1,6 +1,5 @@
 import * as gear from "gear"
 import * as oldGear from "../utils/legacy/gear/index.js";
-import { positionDragging } from "../utils/dragging.js";
 import { ProgramSample } from "./samples.js";
 
 export class Controller {
@@ -83,3 +82,5 @@ function mouseXYFlow() {
 function clamp(n: number, min: number, max: number) {
     return n < min ? min : (n > max ? max : n);
 }
+
+const positionDragging = new oldGear.SimpleDraggingHandler<oldGear.PointerPosition>(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)])

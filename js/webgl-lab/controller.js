@@ -1,6 +1,5 @@
 import * as gear from "gear";
 import * as oldGear from "../utils/legacy/gear/index.js";
-import { positionDragging } from "../utils/dragging.js";
 export class Controller {
     get program() {
         return gear.lazy(() => programFlow());
@@ -65,4 +64,5 @@ function mouseXYFlow() {
 function clamp(n, min, max) {
     return n < min ? min : (n > max ? max : n);
 }
+const positionDragging = new oldGear.SimpleDraggingHandler(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)]);
 //# sourceMappingURL=controller.js.map

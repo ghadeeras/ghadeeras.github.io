@@ -1,39 +1,82 @@
 import * as aether from "aether"
-import * as oldGear from "../utils/legacy/gear/index.js"
+import * as gear from "gear"
 
 export interface FlattenedSierpinski {
     corners: number[];
     centers: number[];
     stride: number;
+    depth: number
 }
 
-interface Sierpinski {
+export interface Sierpinski {
     depth: number;
     a: aether.Vec<2>;
     b: aether.Vec<2>;
     c: aether.Vec<2>;
+    tessellated: FlattenedSierpinski
 }
 
-const defaultSierpinski: Sierpinski = {
+const defaultSierpinski = {
     depth: 5,
     a: vec(90),
     b: vec(210),
     c: vec(330)
 }
 
-export function sierpinski(
-    depth: oldGear.Value<number> = new oldGear.Value(),
-    a: oldGear.Value<aether.Vec<2>> = new oldGear.Value(), 
-    b: oldGear.Value<aether.Vec<2>> = new oldGear.Value(), 
-    c: oldGear.Value<aether.Vec<2>> = new oldGear.Value(),
-): oldGear.Value<FlattenedSierpinski> {
-    const sierpinski: Sierpinski = { ...defaultSierpinski }
-    return oldGear.Value.from<Sierpinski>(
-        depth.reduce((s, d) => s = {...s, depth :d}, sierpinski), 
-        a.reduce((s, a) => s = {...s, a :a}, sierpinski), 
-        b.reduce((s, b) => s = {...s, b :b}, sierpinski), 
-        c.reduce((s, c) => s = {...s, c :c}, sierpinski) 
-    ).map(s => tessellatedTriangle(s.a, s.b, s.c, s.depth));
+export function newSierpinski() {
+    return new SierpinskiImpl()
+}
+
+class SierpinskiImpl implements Sierpinski {
+
+    private sierpinski = { ...defaultSierpinski }
+    private flattened = new gear.Lazy(() => tessellatedTriangle(
+        this.sierpinski.a,
+        this.sierpinski.b,
+        this.sierpinski.c,
+        this.sierpinski.depth,
+    ))
+
+    get a() {
+        return this.sierpinski.a
+    }
+
+    set a(a: aether.Vec2) {
+        this.sierpinski.a = a
+        this.flattened.refresh()
+    }
+
+    get b() {
+        return this.sierpinski.b
+    }
+
+    set b(b: aether.Vec2) {
+        this.sierpinski.b = b
+        this.flattened.refresh()
+    }
+
+    get c() {
+        return this.sierpinski.c
+    }
+
+    set c(c: aether.Vec2) {
+        this.sierpinski.c = c
+        this.flattened.refresh()
+    }
+
+    get depth(): number {
+        return this.sierpinski.depth
+    }
+
+    set depth(depth: number) {
+        this.sierpinski.depth = depth
+        this.flattened.refresh()
+    }
+
+    get tessellated() {
+        return this.flattened.get()
+    }
+
 }
 
 function vec(angleInDegrees: number): aether.Vec<2> {
@@ -45,7 +88,8 @@ function tessellatedTriangle(a: aether.Vec<2>, b: aether.Vec<2>, c: aether.Vec<2
     const result: FlattenedSierpinski = {
         corners: [],
         centers: [],
-        stride: a.length
+        stride: a.length,
+        depth
     };
     doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
     return result;

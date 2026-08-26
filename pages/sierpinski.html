@@ -1,82 +1,68 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
-    <title>Sierpinski Triangles</title>
-    <link type="text/css" rel="stylesheet" href="../css/ghadeeras.css" />
-    <script type="importmap">
-        {
-          "imports": {
-            "lumen": "/node_modules/lumen/lib/index.js",
-            "aether": "/node_modules/aether/lib/index.js",
-            "gear": "/node_modules/gear/lib/index.js"
-          }
-        }
-    </script>          
-    <script type="module">
-        import * as Sierpinski from "../js/sierpinski/toy.js"
-        Sierpinski.init();
-    </script>
-</head>
-
-<body>
-
-    <div id="head">
-        <div><a href="../index.html">Ghadeer's Playcloud</a></div>
-    </div>
-
-    <div id="content">
-
-        <div id="side">
-
-            <div class="section">
-                <strong><a href="https://en.wikipedia.org/wiki/Sierpinski_triangle" target="_blank">Sierpinski triangles</a> are fun! :-)</strong>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+        <title>Sierpinski Triangles</title>
+        <link type="text/css" rel="stylesheet" href="../index.css" />
+        <script type="importmap">
+            {
+              "imports": {
+                "lumen": "/node_modules/lumen/lib/index.js",
+                "aether": "/node_modules/aether/lib/index.js",
+                "gear": "/node_modules/gear/lib/index.js"
+              }
+            }
+        </script>          
+        <script type="module">
+            import * as sierpinski from "../js/sierpinski/toy.js"
+            import init from "../js/initializer.js"
+            init(sierpinski);
+        </script>
+    </head>
+    
+    <body>
+        <div class="menu">
+            <div class="items">
+                <div id="logo" title="Ghadeer's Playcloud"></div>
+                <div id="controls-button" title="Controls"></div>
+                <div id="monitor-button" title="Monitor"></div>
             </div>
-
+            <div class="links">
+                <div id="github" title="Fork me!"></div>
+                <div id="linkedin" title="Contact me!"></div>
+                <div id="mastodon" title="Follow me!"></div>
+                <div id="youtube" title="Subscribe to my channel!"></div>
+            </div>
+        </div>
+        <div class="tiles">
             <div>
-                <p>
-                    <input id="input-corners" name="input-corners" type="checkbox" checked="checked" />
-                    <span title="Checking this option will render the 'edge' of the fractal, or rather the sub-triangles at the corners of each divided triangle.">Fractal edge</span>
-                </p>
-                <p>
-                    <input id="input-centers" name="input-centers" type="checkbox" checked="checked" />
-                    <span title="Checking this option will render the 'enterior' of the fractal, or rather the subtriangles at the centers of each divided triangle.">Fractal enterior</span>
-                </p>
-                <p>
-                    <span title="Higher values may be slow to render, as the number of triangles increases exponentially.">Recursive division depth</span>:
-                    <button id="division-inc">+</button>
-                    <span id="division-depth">8</span>
-                    <button id="division-dec">-</button>
-                </p>
-                <p>
+                <canvas id="canvas-gl" width="960" height="960"></canvas>
+                <div id="monitor" class="hud top-right">
                     <div>
-                        <input id="input-scale" name="input-scale" type="checkbox" checked="checked" 
-                            title="If checked, moving the mouse pointer 'vertically' over the canvas while holding down the mouse button will change the amount of scaling applied on the rendered shape. Scaling is applied before twisting."/>
-                        <span>Scale = <span id="scale">1.0</span></span>
+                        <table>
+                            <tr><th>Twist</th><td><span id="twist">0.0</span></span></td></tr>
+                            <tr><th>Scale</th><td><span id="scale">1.0</span></span></td></tr>
+                            <tr><th>Depth</th><td><span id="division-depth">5</span></td></tr>
+                            <tr><th>FPS</th><td><span id="fps-watch">0</span></td></tr>
+                        </table>
                     </div>
-                </p>
-                <p>
-                    <div>
-                        <input id="input-twist" name="input-twist" type="checkbox" checked="checked" 
-                        title="If checked, moving the mouse pointer 'horizontally' over the canvas while holding down the mouse button will change the amount of twist applied on the rendered shape. Twisting is applied after scaling."/>
-                        <span>Twist = <span id="twist">0.0</span></span>
-                    </div>
-                </p>
-            </div>
-
-        </div>
-
-        <div id="main">
-            <div class="view">
-                <canvas id="canvas-gl" width="640" height="640">
-                    Your browser seems not to support HTML 5 Canvas!
-                </canvas>
+                </div>
             </div>
         </div>
-
-    </div>
-</body>
-
+        <div id="controls" class="hud">
+            <div>
+                <h1>The Controls / Key Mappings</h1>
+                <p>The following keys perform the folowing actions:</p>
+                <table>
+                    <tr><td></td><td><kbd id="control-t">T</kbd></td><td>Toggle twist control enablement</td></tr>
+                    <tr><td></td><td><kbd id="control-s">S</kbd></td><td>Toggle scale control enablement</td></tr>
+                    <tr><td></td><td><kbd id="control-corners">C</kbd></td><td>Show/hide corners</td></tr>
+                    <tr><td></td><td><kbd class="control-centers">Shift</kbd> + <kbd class="control-centers">C</kbd></td><td>Show/hide centers</td></tr>
+                    <tr><td></td><td><kbd id="control-inc-depth">&uparrow;</kbd></td><td>Increases division depth</td></tr>
+                    <tr><td></td><td><kbd id="control-dec-depth">&downarrow;</kbd></td><td>Decrease division depth</td></tr>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

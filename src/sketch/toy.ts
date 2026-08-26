@@ -192,11 +192,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     )
     private brushSizeTarget = gear.loops.draggingTarget(
         gear.property(this.brush, "thickness"), 
-        new LinearDragging(() => 0, 8, 40, 20)
+        LinearDragging.dragger(8, 40, 20)
     )
     private tensionTarget = gear.loops.draggingTarget(
         gear.property(this, "tension"), 
-        new LinearDragging(() => 0, 2, 128, 64)
+        LinearDragging.dragger(2, 128, 64)
     )
     private slidingTarget = gear.loops.draggingTarget(
         gear.property(this, "matrix"), 

@@ -1,14 +1,50 @@
 import * as aether from "aether";
-import * as oldGear from "../utils/legacy/gear/index.js";
+import * as gear from "gear";
 const defaultSierpinski = {
     depth: 5,
     a: vec(90),
     b: vec(210),
     c: vec(330)
 };
-export function sierpinski(depth = new oldGear.Value(), a = new oldGear.Value(), b = new oldGear.Value(), c = new oldGear.Value()) {
-    const sierpinski = { ...defaultSierpinski };
-    return oldGear.Value.from(depth.reduce((s, d) => s = { ...s, depth: d }, sierpinski), a.reduce((s, a) => s = { ...s, a: a }, sierpinski), b.reduce((s, b) => s = { ...s, b: b }, sierpinski), c.reduce((s, c) => s = { ...s, c: c }, sierpinski)).map(s => tessellatedTriangle(s.a, s.b, s.c, s.depth));
+export function newSierpinski() {
+    return new SierpinskiImpl();
+}
+class SierpinskiImpl {
+    constructor() {
+        this.sierpinski = { ...defaultSierpinski };
+        this.flattened = new gear.Lazy(() => tessellatedTriangle(this.sierpinski.a, this.sierpinski.b, this.sierpinski.c, this.sierpinski.depth));
+    }
+    get a() {
+        return this.sierpinski.a;
+    }
+    set a(a) {
+        this.sierpinski.a = a;
+        this.flattened.refresh();
+    }
+    get b() {
+        return this.sierpinski.b;
+    }
+    set b(b) {
+        this.sierpinski.b = b;
+        this.flattened.refresh();
+    }
+    get c() {
+        return this.sierpinski.c;
+    }
+    set c(c) {
+        this.sierpinski.c = c;
+        this.flattened.refresh();
+    }
+    get depth() {
+        return this.sierpinski.depth;
+    }
+    set depth(depth) {
+        this.sierpinski.depth = depth;
+        this.flattened.refresh();
+    }
+    get tessellated() {
+        return this.flattened.get();
+    }
 }
 function vec(angleInDegrees) {
     const angle = Math.PI * angleInDegrees / 180;
@@ -18,7 +54,8 @@ function tessellatedTriangle(a, b, c, depth) {
     const result = {
         corners: [],
         centers: [],
-        stride: a.length
+        stride: a.length,
+        depth
     };
     doTesselateTriangle(a, b, c, depth, result.corners, result.centers);
     return result;

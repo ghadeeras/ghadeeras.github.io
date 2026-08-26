@@ -1,54 +1,47 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import * as oldGear from "./legacy/gear/index.js"
 import * as aetherx from "./aether.js"
 
-export abstract class ModelMatrixDragging implements oldGear.DraggingHandler<aether.Mat<4>>, gear.loops.Dragger<aether.Mat<4>> {
+export abstract class ModelMatrixDragging implements gear.loops.Dragger<aether.Mat<4>> {
 
-    constructor(private matrix: gear.Supplier<aether.Mat<4>>, private projViewMatrix: gear.Supplier<aether.Mat<4>>, private speed: number = 1) {
+    constructor(private projViewMatrix: gear.Supplier<aether.Mat<4>>, private speed: number = 1) {
     }
 
-    begin(matrix: aether.Mat<4>, position: oldGear.PointerPosition): gear.loops.DraggingFunction<aether.Mat<4>> {
-        return this.mapper(matrix, position)
-    }
-
-    end(matrix: aether.Mat<4>): aether.Mat<4> {
-        return this.finalize(matrix)
-    }
-
-    currentValue(): aether.Mat<4> {
-        return this.matrix();
-    }
-
-    mapper(matrix: aether.Mat<4>, from: oldGear.PointerPosition): oldGear.DraggingPositionMapper<aether.Mat<4>> {
+    begin(matrix: aether.Mat<4>, position: gear.loops.PointerPosition): gear.loops.DraggingFunction<aether.Mat<4>> {
+        const translation = matrix[3]
+        const rotation: aether.Mat4 = [
+            matrix[0],
+            matrix[1],
+            matrix[2],
+            [0, 0, 0, 1],
+        ]
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix())
-        const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...from, 1, 1]))
+        const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1]))
         return to => {
             const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]))
             const delta = this.delta(actualFrom, actualTo, this.speed)
-            const translation = aether.mat4.translation(aether.vec3.from(matrix[3]))
-            const rotation: aether.Mat4 = [
-                matrix[0],
-                matrix[1],
-                matrix[2],
-                [0, 0, 0, 1],
+            const newRotation = aether.mat4.mul(delta, rotation)
+            return [
+                newRotation[0],
+                newRotation[1],
+                newRotation[2],
+                translation
             ]
-            return aether.mat4.mul(translation, aether.mat4.mul(delta, rotation))
         };
     }
 
-    protected abstract delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4>
-
-    finalize(matrix: aether.Mat<4>): aether.Mat<4> {
+    end(matrix: aether.Mat<4>): aether.Mat<4> {
         return aetherx.orthogonal(matrix)
     }
+
+    protected abstract delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4>
 
 }
 
 export class RotationDragging extends ModelMatrixDragging {
 
-    constructor(matrix: gear.Supplier<aether.Mat<4>>, projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
-        super(matrix, projViewMatrix, speed)
+    constructor(projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
+        super(projViewMatrix, speed)
     }
 
     protected delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4> {
@@ -56,15 +49,15 @@ export class RotationDragging extends ModelMatrixDragging {
     }
 
     static dragger(projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
-        return new RotationDragging(supplyNothing, projViewMatrix, speed)
+        return new RotationDragging(projViewMatrix, speed)
     }
 
 }
 
 export class TranslationDragging extends ModelMatrixDragging {
 
-    constructor(matrix: gear.Supplier<aether.Mat<4>>, projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
-        super(matrix, projViewMatrix, speed)
+    constructor(projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
+        super(projViewMatrix, speed)
     }
 
     protected delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number) {
@@ -72,15 +65,15 @@ export class TranslationDragging extends ModelMatrixDragging {
     }
 
     static dragger(projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
-        return new TranslationDragging(supplyNothing, projViewMatrix, speed)
+        return new TranslationDragging(projViewMatrix, speed)
     }
 
 }
 
 export class ScaleDragging extends ModelMatrixDragging {
 
-    constructor(matrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {
-        super(matrix, () => aether.mat4.identity(), speed)
+    constructor(speed: number = 1) {
+        super(() => aether.mat4.identity(), speed)
     }
 
     protected delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number) {
@@ -89,85 +82,57 @@ export class ScaleDragging extends ModelMatrixDragging {
     }
 
     static dragger(speed: number = 1) {
-        return new ScaleDragging(supplyNothing, speed)
+        return new ScaleDragging(speed)
     }
 
 }
 
-export class RatioDragging implements oldGear.DraggingHandler<number>, gear.loops.Dragger<number> {
+export class RatioDragging implements gear.loops.Dragger<number> {
 
-    constructor(private ratio: gear.Supplier<number>, private min: number = Math.pow(2, -128), private max: number = Math.pow(2, 128), private speed: number = 1) {
+    constructor(private min: number = Math.pow(2, -128), private max: number = Math.pow(2, 128), private speed: number = 1) {
     }
 
-    begin(ratio: number, position: oldGear.PointerPosition): gear.loops.DraggingFunction<number> {
-        return this.mapper(ratio, position)
+    begin(ratio: number, position: gear.loops.PointerPosition): gear.loops.DraggingFunction<number> {
+        return to => clamp(ratio * Math.pow(2, this.speed * (to[1] - position[1])), this.min, this.max);
     }
 
     end(ratio: number): number {
         return ratio
     }
 
-    currentValue(): number {
-        return this.ratio();
-    }
-
-    mapper(ratio: number, from: oldGear.PointerPosition): oldGear.DraggingPositionMapper<number> {
-        return to => clamp(ratio * Math.pow(2, this.speed * (to[1] - from[1])), this.min, this.max);
-    }
-
-    finalize(ratio: number): number {
-        return ratio;
-    }
-
     static dragger(min: number = Math.pow(2, -128), max: number = Math.pow(2, 128), speed: number = 1) {
-        return new RatioDragging(supplyNothing, min, max, speed)
+        return new RatioDragging(min, max, speed)
     }
 
 }
 
-export class LinearDragging implements oldGear.DraggingHandler<number>, gear.loops.Dragger<number> {
+export class LinearDragging implements gear.loops.Dragger<number> {
 
-    constructor(private value: gear.Supplier<number>, private min: number = -1, private max: number = 1, private speed: number = 1) {
+    constructor(private min: number = -1, private max: number = 1, private speed: number = 1) {
     }
 
-    begin(value: number, position: oldGear.PointerPosition): gear.loops.DraggingFunction<number> {
-        return this.mapper(value, position)
+    begin(value: number, position: gear.loops.PointerPosition): gear.loops.DraggingFunction<number> {
+        return to => clamp(value + this.speed * (to[1] - position[1]), this.min, this.max);
     }
 
     end(value: number): number {
         return value
     }
 
-    currentValue(): number {
-        return this.value();
-    }
-
-    mapper(value: number, from: oldGear.PointerPosition): oldGear.DraggingPositionMapper<number> {
-        return to => clamp(value + this.speed * (to[1] - from[1]), this.min, this.max);
-    }
-
-    finalize(value: number): number {
-        return value;
-    }
-
     static dragger(min: number = -1, max: number = 1, speed: number = 1) {
-        return new LinearDragging(supplyNothing, min, max, speed)
+        return new LinearDragging(min, max, speed)
     }
 
 }
 
-class PositionDragging extends oldGear.SimpleDraggingHandler<oldGear.PointerPosition> implements gear.loops.Dragger<oldGear.PointerPosition> {
+class PositionDragging implements gear.loops.Dragger<gear.loops.PointerPosition> {
 
-    constructor() {
-        super(to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)])
+    begin(): gear.loops.DraggingFunction<gear.loops.PointerPosition> {
+        return to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)]
     }
 
-    begin(pos: oldGear.PointerPosition, position: oldGear.PointerPosition): gear.loops.DraggingFunction<oldGear.PointerPosition> {
-        return this.mapper(pos, position, false, false, false)
-    }
-
-    end(pos: oldGear.PointerPosition): oldGear.PointerPosition {
-        return this.finalize(pos)
+    end(pos: gear.loops.PointerPosition): gear.loops.PointerPosition {
+        return pos
     }
 
 }
@@ -178,33 +143,21 @@ function clamp(n: number, min: number, max: number) {
     return Math.min(Math.max(n, min), max)
 }
 
-export class ZoomDragging implements oldGear.DraggingHandler<[aether.Mat<4>, aether.Mat<4>]>, gear.loops.Dragger<[aether.Mat<4>, aether.Mat<4>]> {
+export class ZoomDragging implements gear.loops.Dragger<[aether.Mat<4>, aether.Mat<4>]> {
 
-    constructor(private projectViewMatrices: gear.Supplier<[aether.Mat<4>, aether.Mat<4>]>, private speed: number = 1) {
+    constructor(private speed: number = 1) {
     }
 
-    begin(projectViewMatrices: [aether.Mat<4>, aether.Mat<4>], position: oldGear.PointerPosition): gear.loops.DraggingFunction<[aether.Mat<4>, aether.Mat<4>]> {
-        return this.mapper(projectViewMatrices, position)
-    }
-
-    end(projectViewMatrices: [aether.Mat<4>, aether.Mat<4>]): [aether.Mat<4>, aether.Mat<4>] {
-        return this.finalize(projectViewMatrices)
-    }
-
-    currentValue(): [aether.Mat<4>, aether.Mat<4>] {
-        return this.projectViewMatrices();
-    }
-
-    mapper([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>], from: oldGear.PointerPosition): oldGear.DraggingPositionMapper<[aether.Mat<4>, aether.Mat<4>]> {
+    begin([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>], position: gear.loops.PointerPosition): gear.loops.DraggingFunction<[aether.Mat<4>, aether.Mat<4>]> {
         const [sx, sy] = [projectionMat[0][0], projectionMat[1][1]]
         const [focalLength, aspectRatio] = [Math.max(sx, sy), sy / sx]
         const toVec3: (v: aether.Vec2) => aether.Vec3 = aspectRatio > 1 
             ? v => [v[0] * aspectRatio, v[1], -focalLength] 
             : v => [v[0], v[1] / aspectRatio, -focalLength]
-        const actualFrom = toVec3(from)
+        const actualFrom = toVec3(position)
         return to => {
-            const scale = Math.pow(2, this.speed * (to[1] - from[1]))
-            const actualTo = toVec3(aether.vec2.scale(from , 1 / scale))
+            const scale = Math.pow(2, this.speed * (to[1] - position[1]))
+            const actualTo = toVec3(aether.vec2.scale(position , 1 / scale))
             const rotation = aether.mat4.crossProdRotation(actualFrom, actualTo)
             const scaling = aether.mat4.scaling(scale, scale, 1)
             return [
@@ -214,15 +167,12 @@ export class ZoomDragging implements oldGear.DraggingHandler<[aether.Mat<4>, aet
         };
     }
 
-    finalize([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>]): [aether.Mat<4>, aether.Mat<4>] {
+    end([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>]): [aether.Mat<4>, aether.Mat<4>] {
         return [projectionMat, aetherx.orthogonal(viewMat)];
     }
 
     static dragger(speed: number = 1) {
-        return new ZoomDragging(supplyNothing, speed)
+        return new ZoomDragging(speed)
     }
-}
 
-function supplyNothing<T>(): T {
-    throw new Error("Unsupported!")
 }

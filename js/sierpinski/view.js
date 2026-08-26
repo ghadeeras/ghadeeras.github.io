@@ -1,4 +1,4 @@
-import * as oldGear from "../utils/legacy/gear/index.js";
+import * as gear from "gear";
 import { wgl } from "lumen";
 const vertexShader = /*glsl*/ `
     attribute vec2 vPosition;
@@ -23,11 +23,8 @@ const fragmentShader = /*glsl*/ `
     }
 `;
 const ST = wgl.ShaderType;
-function round(value) {
-    return Math.round(1000 * value) / 1000;
-}
 export class View {
-    constructor(canvasId, depthId, twistId, scaleId, inputs) {
+    constructor(canvasId, depthId, twistId, scaleId) {
         this.mustShowCorners = true;
         this.mustShowCenters = true;
         this.stride = 0;
@@ -42,38 +39,33 @@ export class View {
         this.cornersBuffer = this.context.newAttributesBuffer();
         this.centersBuffer = this.context.newAttributesBuffer();
         this.context.gl.clearColor(1, 1, 1, 1);
-        const twist = inputs.twist.defaultsTo(0);
-        const scale = inputs.scale.defaultsTo(1);
-        oldGear.text(depthId).value = inputs.depth.defaultsTo(5).map(v => v + "");
-        oldGear.text(twistId).value = twist.map(v => round(v) + "");
-        oldGear.text(scaleId).value = twist.map(v => round(v) + "");
-        twist.attach(t => this.setTwist(t));
-        scale.attach(s => this.setScale(s));
-        inputs.sierpinsky.attach(s => this.setSierpinski(s));
-        inputs.showCorners.defaultsTo(true).attach(show => this.setShowCorners(show));
-        inputs.showCenters.defaultsTo(true).attach(show => this.setShowCenters(show));
+        this.depthElement = gear.htmlElement(depthId);
+        this.twistElement = gear.htmlElement(twistId);
+        this.scaleElement = gear.htmlElement(scaleId);
+        this.setTwist(0);
+        this.setScale(1);
+        this.setShowCorners(true);
+        this.setShowCenters(true);
     }
     setSierpinski(flattenedSierpinski) {
         this.cornersBuffer.float32Data = flattenedSierpinski.corners;
         this.centersBuffer.float32Data = flattenedSierpinski.centers;
         this.stride = flattenedSierpinski.stride;
-        this.draw();
+        this.depthElement.innerText = flattenedSierpinski.depth.toFixed(0);
     }
     setTwist(twist) {
         this.shaderTwist.data = [twist];
-        this.draw();
+        this.twistElement.innerText = twist.toFixed(3);
     }
     setScale(scale) {
         this.shaderScale.data = [scale];
-        this.draw();
+        this.scaleElement.innerText = scale.toFixed(3);
     }
     setShowCorners(showCorners) {
         this.mustShowCorners = showCorners;
-        this.draw();
     }
     setShowCenters(showCenters) {
         this.mustShowCenters = showCenters;
-        this.draw();
     }
     draw() {
         setTimeout(() => {

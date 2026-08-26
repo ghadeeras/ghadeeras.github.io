@@ -1,17 +1,17 @@
-import { sierpinski } from "./model.js";
+import * as gear from "gear";
 import { View } from "./view.js";
 import { Controller } from "./controller.js";
-export function init() {
+import { newSierpinski } from "./model.js";
+export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sierpinski";
+export const huds = {
+    "monitor": "monitor-button"
+};
+export async function init() {
     window.onload = () => {
-        const controller = new Controller("canvas-gl", "input-corners", "input-centers", "input-twist", "input-scale", "division-inc", "division-dec");
-        new View("canvas-gl", "division-depth", "twist", "scale", {
-            depth: controller.depth,
-            scale: controller.scale,
-            twist: controller.twist,
-            showCorners: controller.showCorners,
-            showCenters: controller.showCenters,
-            sierpinsky: sierpinski(controller.depth)
-        });
+        const model = newSierpinski();
+        const view = new View(Controller.descriptor.output.canvases.canvas.element, "division-depth", "twist", "scale");
+        const controller = new Controller(view, model);
+        gear.loops.newLoop(controller, Controller.descriptor).run();
     };
 }
 //# sourceMappingURL=toy.js.map

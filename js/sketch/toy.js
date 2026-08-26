@@ -47,8 +47,8 @@ class Toy {
         this.inverseViewMatrix = aether.mat3.identity();
         this.viewMatrix = aether.mat3.identity();
         this.strokeTarget = gear.loops.draggingTarget(gear.property(this, "stroke"), new StrokeSampler(p => this.infiniteCanvasSpacePos(p)));
-        this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), new LinearDragging(() => 0, 8, 40, 20));
-        this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), new LinearDragging(() => 0, 2, 128, 64));
+        this.brushSizeTarget = gear.loops.draggingTarget(gear.property(this.brush, "thickness"), LinearDragging.dragger(8, 40, 20));
+        this.tensionTarget = gear.loops.draggingTarget(gear.property(this, "tension"), LinearDragging.dragger(2, 128, 64));
         this.slidingTarget = gear.loops.draggingTarget(gear.property(this, "matrix"), TranslationDragging.dragger(() => {
             return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1);
         }, 1));
