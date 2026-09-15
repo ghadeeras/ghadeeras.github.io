@@ -45,7 +45,7 @@ fn mul(c1: vec2<f32>, c2: vec2<f32>) -> vec2<f32> {
     return vec2(r.x - r.y, i.x + i.y);
 }
 
-fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
+fn mandelbrot(c: vec2<f32>, z0: vec2<f32>, scale: f32) -> f32 {
     var z = z0;
     for (var i = 0; i < depth; i += 1) {
         let old_l2 = dot(z, z);
@@ -53,7 +53,7 @@ fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
         let l2 = dot(z, z);
         if (l2 > 4.0) {
             let f = max((4.0 - old_l2) / (l2 - old_l2), 0.0);
-            let e = exp(-(f32(i - 1) + sqrt(f)) * (1.0 + params.intensity * 255.0) / f32(depth));
+            let e = exp(-(f32(i - 1) + sqrt(f)) * (1.0 + params.intensity * scale * 255.0) / f32(depth));
             return select(e, 1.0 - e, params.xray != 0);
         }
     }
@@ -63,7 +63,7 @@ fn mandelbrot(c: vec2<f32>, z0: vec2<f32>) -> f32 {
 fn mandelbrotOrJulia(p: vec2<f32>, julia: bool) -> f32 {
     let c = select(params.scale * p + params.center, params.center, julia);
     let z = select(vec2<f32>(0.0), p, julia);
-    return mandelbrot(c, z);
+    return mandelbrot(c, z, select(params.scale, 1.0, julia));
 }
 
 fn adaptToJuliaWindow(position: vec2<f32>, aspect: f32, pixelSize: f32) -> vec3<f32> {

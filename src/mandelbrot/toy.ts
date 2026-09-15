@@ -1,13 +1,15 @@
 import * as aether from "aether"
 import * as gear from "gear"
 import { view, View } from "./view.js"
-import { positionDragging } from "../utils/dragging.js"
+import { LinearDragging, positionDragging } from "../utils/dragging.js"
+import { hideHud, showHud } from "../initializer.js"
 
 let audioContext: AudioContext
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/mandelbrot"
 export const huds = {
-    "monitor": "monitor-button"
+    "monitor": "monitor-button",
+    "warning": null
 }
 
 export async function init() {
@@ -72,10 +74,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         },
     } satisfies gear.loops.LoopDescriptor
     
-    readonly moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(this.mandelbrotView))
-    readonly zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(this.mandelbrotView))
+    readonly moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(), "innerViewPosition")
+    readonly zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(), "innerViewPosition")
     readonly colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
-    readonly intensityTarget = gear.loops.draggingTarget(mapped(gear.property(this.mandelbrotView, "intensity"), ([_, y]) => (y + 1) / 2), positionDragging)
+    readonly intensityTarget = gear.loops.draggingTarget(gear.property(this.mandelbrotView, "intensity"), LinearDragging.dragger(0, 1))
 
     readonly intensityWatch = gear.required(document.getElementById("intensity"))
     readonly hueWatch = gear.required(document.getElementById("hue"))
@@ -104,17 +106,17 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             pointers: {
                 canvas: {
                     defaultDraggingTarget: this.zoomTarget,
-                    primaryButton: { onPressed: () => this.click(...inputs.pointers.canvas.position, inputs.pointers.canvas.draggingTarget == null) }
+                    primaryButton: { onPressed: () => this.click(...inputs.pointers.canvas.innerViewPosition, inputs.pointers.canvas.draggingTarget == null) }
                 }
             },
             keys: {
-                move: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.moveTarget }, 
-                zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomTarget }, 
-                color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorTarget }, 
-                intensity: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.intensityTarget }, 
+                move: { onPressed: () => { hideHud("warning"); inputs.pointers.canvas.draggingTarget = this.moveTarget }}, 
+                zoom: { onPressed: () => { hideHud("warning"); inputs.pointers.canvas.draggingTarget = this.zoomTarget }}, 
+                color: { onPressed: () => { hideHud("warning"); inputs.pointers.canvas.draggingTarget = this.colorTarget }}, 
+                intensity: { onPressed: () => { hideHud("warning"); inputs.pointers.canvas.draggingTarget = this.intensityTarget }}, 
                 xray: { onPressed: () => this.mandelbrotView.xray = !this.mandelbrotView.xray }, 
                 crosshairs: { onPressed: () => this.mandelbrotView.crosshairs = !this.mandelbrotView.crosshairs }, 
-                sound: { onPressed: () => inputs.pointers.canvas.draggingTarget = null },
+                sound: { onPressed: () => { showHud("warning"); inputs.pointers.canvas.draggingTarget = null }},
             }
         }
     }
@@ -134,12 +136,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     click(x: number, y: number, soundOn: boolean) {
         this.posWatch.innerText = toFixedVec([x, y])
         if (soundOn) {
-            const aspectRatio = this.canvas.clientWidth / this.canvas.clientHeight
             const c = aether.vec2.add(
-                aether.vec2.scale(
-                    aether.vec2.mul([x, y], aspectRatio > 1 ? [aspectRatio, 1] : [1, 1 / aspectRatio]), 
-                    this.mandelbrotView.scale
-                ), 
+                aether.vec2.scale([x, y], this.mandelbrotView.scale), 
                 this.mandelbrotView.center
             )
             play(c)
@@ -185,7 +183,7 @@ function toFixed(c: number, digits: number = 3) {
 
 function play(c: aether.Vec<2>) {
     if (audioContext == null) {
-        audioContext = new window.AudioContext({sampleRate: 9450})
+        audioContext = new window.AudioContext({sampleRate: 8192})
     }
     const audioBuffer = audioContext.createBuffer(2, audioContext.sampleRate * 3, audioContext.sampleRate)
     
@@ -216,9 +214,13 @@ function play(c: aether.Vec<2>) {
 
 function playBuffer(audioContext: AudioContext, audioBuffer: AudioBuffer) {
     const source = audioContext.createBufferSource()
+    const lpf = audioContext.createBiquadFilter()
+    lpf.type = "lowpass"
+    lpf.frequency.value = 880
     source.channelCount = 2
     source.buffer = audioBuffer
-    source.connect(audioContext.destination)
+    source.connect(lpf)
+    lpf.connect(audioContext.destination)
     source.start()
 }
 
@@ -229,18 +231,13 @@ type Transformation = {
 
 class Zoom implements gear.loops.Dragger<Transformation> {
 
-    constructor(private view: View) {
-    }
-
     begin(value: Transformation, from: gear.loops.PointerPosition): gear.loops.DraggingFunction<Transformation> {
         const initial: Transformation = {
             center: value.center,
             scale: value.scale
         }
-        const aspect = this.view.canvas.width / this.view.canvas.height
-        const bounds: aether.Vec2 = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect]
         return to => {
-            const delta = aether.vec2.mul(calculateDelta(from, to), bounds)
+            const delta = calculateDelta(from, to)
             const power = -delta[1]
             const factor = 16 ** power
             return power == 0 ? initial : {
@@ -248,7 +245,7 @@ class Zoom implements gear.loops.Dragger<Transformation> {
                 center: aether.vec2.sub(
                     initial.center, 
                     aether.vec2.scale(
-                        calculateDelta([0, 0], aether.vec2.mul(from, bounds), initial.scale), 
+                        calculateDelta([0, 0], from, initial.scale), 
                         factor - 1
                     )
                 )
@@ -264,7 +261,7 @@ class Zoom implements gear.loops.Dragger<Transformation> {
 
 class Move implements gear.loops.Dragger<Transformation> {
 
-    constructor(private view: View) {
+    constructor() {
     }
 
     begin(value: Transformation, from: gear.loops.PointerPosition): gear.loops.DraggingFunction<Transformation> {
@@ -272,10 +269,8 @@ class Move implements gear.loops.Dragger<Transformation> {
             center: value.center,
             scale: value.scale
         }
-        const aspect = this.view.canvas.width / this.view.canvas.height
-        const bounds: aether.Vec2 = aspect >= 1 ? [aspect, 1] : [1, 1 / aspect]
         return to => {
-            const delta = aether.vec2.mul(calculateDelta(from, to, initial.scale), bounds)
+            const delta = calculateDelta(from, to, initial.scale)
             return {
                 scale: initial.scale,
                 center: aether.vec2.max(

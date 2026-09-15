@@ -84,6 +84,12 @@ export function showHud(hudId: string) {
     }
 }
 
+export function hideHud(hudId: string) {
+    if (currentHudId === hudId) {
+        hideCurrentHud()
+    }
+}
+
 export function hideCurrentHud() {
     if (currentHudId !== null) {
         const handler = huds.get(currentHudId)

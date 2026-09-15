@@ -38,14 +38,14 @@ vec2 mul(vec2 c1, vec2 c2) {
     return vec2(r.x - r.y, i.x + i.y);
 }
 
-float mandelbrot(vec2 c, vec2 z) {
+float mandelbrot(vec2 c, vec2 z, float s) {
     for (int i = 0; i < depth; i++) {
         float old_l2 = dot(z, z);
         z = mul(z, z) + c;
         float l2 = dot(z, z);
         if (l2 > 4.0) {
             float f = max((4.0 - old_l2) / (l2 - old_l2), 0.0);
-            float e = exp(-(float(i - 1) + sqrt(f)) * (1.0 + intensity * 255.0) / float(depth));
+            float e = exp(-(float(i - 1) + sqrt(f)) * (1.0 + intensity * s * 255.0) / float(depth));
             return xray != 0 ? 1.0 - e : e;
         }
     }
@@ -55,7 +55,7 @@ float mandelbrot(vec2 c, vec2 z) {
 float mandelbrotOrJulia(vec2 p, bool julia) {
     vec2 c = julia ? center : scale * p + center;
     vec2 z = julia ? p : vec2(0.0);
-    return mandelbrot(c, z);
+    return mandelbrot(c, z, julia ? 1.0 : scale);
 }
 
 vec3 adaptToJuliaWindow(vec2 position, float aspect, float pixelSize) {
