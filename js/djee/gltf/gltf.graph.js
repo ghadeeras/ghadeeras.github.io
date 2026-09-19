@@ -8,8 +8,9 @@ export class Model {
         gltf.enrichBufferViews(model);
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors));
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews));
+        this.materials = (model.materials ?? []).map((material, i) => new Material(material, i));
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
-        this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors));
+        this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials));
         const nodes = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes)));
         this.nodes = nodes.map(node => node());
         this.scenes = model.scenes.map((scene, i) => new Scene(scene, i, this.nodes, legacyPerspective));
@@ -46,7 +47,7 @@ export class Node extends IdentifiableObject {
     constructor(node, i, meshes, cameras, nodes) {
         super(`node#${i}`);
         this.matrix = gltf.matrixOf(node);
-        this.antiMatrix = aether.mat4.comatrix(this.matrix);
+        this.antiMatrix = comatrix(this.matrix);
         this.isIdentityMatrix = aether.isIdentity(this.matrix);
         this.cameras = node.camera !== undefined ? [cameras[node.camera]] : [];
         this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : [];
@@ -62,7 +63,7 @@ export class Perspective {
         this.camera = camera;
         this.matrix = matrix;
         this.modelMatrix = modelMatrix;
-        this.antiMatrix = aether.mat4.comatrix(matrix);
+        this.antiMatrix = comatrix(matrix);
     }
 }
 export class Camera {
@@ -109,14 +110,14 @@ export class OrthographicCamera extends Camera {
     }
 }
 export class Mesh extends IdentifiableObject {
-    constructor(mesh, i, accessors) {
+    constructor(mesh, i, accessors, materials) {
         super(`mesh#${i}`);
-        this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors));
+        this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors, materials));
         this.range = aetherX.union(this.primitives.map(p => p.range));
     }
 }
 export class Primitive extends IdentifiableObject {
-    constructor(primitive, m, i, accessors) {
+    constructor(primitive, m, i, accessors, materials) {
         super(`primitive#${m}_${i}`);
         this.mode = primitive.mode ?? WebGL2RenderingContext.TRIANGLES;
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null;
@@ -130,6 +131,7 @@ export class Primitive extends IdentifiableObject {
             }
         }
         const position = this.attributes["POSITION"];
+        this.material = primitive.material !== undefined ? (materials[primitive.material] ?? null) : null;
         this.range = position.range;
     }
 }
@@ -164,6 +166,24 @@ export class BufferView extends IdentifiableObject {
                 .reduce((s1, s2) => s1 + s2, 0) :
             sizeOf(references[0]));
     }
+}
+export class Material extends IdentifiableObject {
+    constructor(material, i) {
+        super(`material${i}`);
+        const pbr = material.pbrMetallicRoughness ?? {};
+        this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
+        this.metallicFactor = pbr.metallicFactor ?? 1;
+        this.roughnessFactor = pbr.roughnessFactor ?? 1;
+        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0);
+        this.alphaMode = material.alphaMode ?? "OPAQUE";
+        this.alphaCutoff = material.alphaCutoff ?? 0.5;
+        this.doubleSided = material.doubleSided ?? false;
+    }
+}
+function comatrix(matrix) {
+    const m = [...matrix];
+    m[3] = [0, 0, 0, 1];
+    return aether.mat4.comatrix(m);
 }
 export function defaultPerspective(legacyPerspective = false, matrix = aether.mat4.identity()) {
     return new Perspective(defaultCamera(legacyPerspective), defaultViewMatrix(), matrix);
@@ -214,7 +234,7 @@ function collectScenePerspectives(scene) {
 function collectNodePerspectives(node, parentMatrix, perspectives) {
     const matrix = node.isIdentityMatrix ? parentMatrix : aether.mat4.mul(parentMatrix, node.matrix);
     if (node.cameras[0]) {
-        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix));
+        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix), true);
         perspectives.push(new Perspective(node.cameras[0], m));
     }
     for (const child of node.children) {

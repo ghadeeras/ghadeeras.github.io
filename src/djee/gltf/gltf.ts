@@ -23,6 +23,8 @@ export type Model = {
 
     accessors: Accessor[]
 
+    materials?: Material[]
+
 }
 
 export type Scene = {
@@ -123,10 +125,29 @@ export type MeshPrimitive = {
     
     indices?: number
 
+    material?: number
+
     attributes: {
         [attributeName: string]: number
     }
 
+}
+
+export type Material = {
+        pbrMetallicRoughness?: {
+            baseColorFactor?: aether.Vec4,
+            baseColorTexture?: {},
+            metallicFactor?: number,
+            roughnessFactor?: number,
+            metallicRoughnessTexture?: {},
+        },
+        normalTexture?: {},
+        occlusionTexture?: {},
+        emissiveTexture?: {},
+        emissiveFactor?: aether.Vec3,
+        alphaMode?: "OPAQUE" | "MASK" | "BLEND",
+        alphaCutoff?: number,
+        doubleSided?: boolean
 }
 
 export type PrimitiveMode = WebGL2RenderingContext[

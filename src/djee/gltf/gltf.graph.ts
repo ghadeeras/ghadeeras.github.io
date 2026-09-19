@@ -11,14 +11,16 @@ export class Model {
     readonly cameras: Camera[]
     readonly meshes: Mesh[]
     readonly accessors: Accessor[]
+    readonly materials: Material[]
     readonly bufferViews: BufferView[]
 
     constructor(model: gltf.Model, readonly buffers: ArrayBuffer[], legacyPerspective: boolean) {
         gltf.enrichBufferViews(model)
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors))
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews))
+        this.materials = (model.materials ?? []).map((material, i) => new Material(material, i))
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective))
-        this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors))
+        this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials))
         
         const nodes: utils.Supplier<Node>[] = model.nodes.map((node, i) => 
             utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes))
@@ -86,7 +88,7 @@ export class Node extends IdentifiableObject {
     constructor(node: gltf.Node, i: number, meshes: Mesh[], cameras: Camera[], nodes: utils.Supplier<Node>[]) {
         super(`node#${i}`)
         this.matrix = gltf.matrixOf(node)
-        this.antiMatrix = aether.mat4.comatrix(this.matrix)
+        this.antiMatrix = comatrix(this.matrix)
         this.isIdentityMatrix = aether.isIdentity(this.matrix)
         this.cameras = node.camera !== undefined ? [cameras[node.camera]] : []
         this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : []
@@ -104,7 +106,7 @@ export class Perspective {
     readonly antiMatrix: aether.Mat4
     
     constructor(readonly camera: Camera, readonly matrix: aether.Mat4, readonly modelMatrix = aether.mat4.identity()) {
-        this.antiMatrix = aether.mat4.comatrix(matrix)
+        this.antiMatrix = comatrix(matrix)
     }
 
 }
@@ -179,9 +181,9 @@ export class Mesh extends IdentifiableObject {
     readonly primitives: Primitive[]
     readonly range: aetherX.Range3D
 
-    constructor(mesh: gltf.Mesh, i: number, accessors: Accessor[]) {
+    constructor(mesh: gltf.Mesh, i: number, accessors: Accessor[], materials: Material[]) {
         super(`mesh#${i}`)
-        this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors))
+        this.primitives = mesh.primitives.map((primitive, p) => new Primitive(primitive, i, p, accessors, materials))
         this.range = aetherX.union(this.primitives.map(p => p.range))
     }
 
@@ -195,9 +197,10 @@ export class Primitive extends IdentifiableObject {
     readonly attributes: {
         [attributeName: string]: Accessor
     }
+    readonly material: Material | null
     readonly range: aetherX.Range3D
 
-    constructor(primitive: gltf.MeshPrimitive, m: number, i: number, accessors: Accessor[]) {
+    constructor(primitive: gltf.MeshPrimitive, m: number, i: number, accessors: Accessor[], materials: Material[]) {
         super(`primitive#${m}_${i}`)
         this.mode = primitive.mode ?? WebGL2RenderingContext.TRIANGLES
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null
@@ -211,6 +214,7 @@ export class Primitive extends IdentifiableObject {
             }
         }
         const position = this.attributes["POSITION"]
+        this.material = primitive.material !== undefined ? (materials[primitive.material] ?? null) : null
         this.range = position.range
     }
 
@@ -268,6 +272,36 @@ export class BufferView extends IdentifiableObject {
         )
     }
 
+}
+
+export class Material extends IdentifiableObject {
+    
+    private baseColorFactor: aether.Vec4
+    private metallicFactor: number
+    private roughnessFactor: number
+    private emissiveFactor: aether.Vec3
+    private alphaMode: "OPAQUE" | "MASK" | "BLEND"
+    private alphaCutoff: number
+    private doubleSided: boolean
+
+    constructor(material: gltf.Material, i: number) {
+        super(`material${i}`)
+        const pbr = material.pbrMetallicRoughness ?? {}
+        this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1)
+        this.metallicFactor = pbr.metallicFactor ?? 1
+        this.roughnessFactor = pbr.roughnessFactor ?? 1
+        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
+        this.alphaMode = material.alphaMode ?? "OPAQUE"
+        this.alphaCutoff = material.alphaCutoff ?? 0.5
+        this.doubleSided = material.doubleSided ?? false
+    }
+
+}
+
+function comatrix(matrix: aether.Mat4): aether.Mat4 {
+    const m: aether.Mat4 = [...matrix]
+    m[3] = [0, 0, 0, 1]  
+    return aether.mat4.comatrix(m)
 }
 
 export function defaultPerspective(legacyPerspective: boolean = false, matrix = aether.mat4.identity()): Perspective {
@@ -330,7 +364,7 @@ function collectScenePerspectives(scene: Scene): Perspective[] {
 function collectNodePerspectives(node: Node, parentMatrix: aether.Mat4, perspectives: Perspective[]) {
     const matrix = node.isIdentityMatrix ? parentMatrix : aether.mat4.mul(parentMatrix, node.matrix)
     if (node.cameras[0]) {
-        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix))
+        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix), true)
         perspectives.push(new Perspective(node.cameras[0], m))
     }
     for (const child of node.children) {

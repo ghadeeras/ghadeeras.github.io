@@ -1,6 +1,5 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import * as aetherx from "./aether.js"
 
 export abstract class ModelMatrixDragging implements gear.loops.Dragger<aether.Mat<4>> {
 
@@ -32,7 +31,7 @@ export abstract class ModelMatrixDragging implements gear.loops.Dragger<aether.M
     }
 
     end(matrix: aether.Mat<4>): aether.Mat<4> {
-        return aether.mat4.orthogonal(matrix)
+        return aether.mat4.orthogonal(matrix, true)
     }
 
     protected abstract delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4>
@@ -169,7 +168,7 @@ export class ZoomDragging implements gear.loops.Dragger<[aether.Mat<4>, aether.M
     }
 
     end([projectionMat, viewMat]: [aether.Mat<4>, aether.Mat<4>]): [aether.Mat<4>, aether.Mat<4>] {
-        return [projectionMat, aether.mat4.orthogonal(viewMat)];
+        return [projectionMat, aether.mat4.orthogonal(viewMat, true)];
     }
 
     static dragger(speed: number = 1) {

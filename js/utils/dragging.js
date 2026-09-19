@@ -28,7 +28,7 @@ export class ModelMatrixDragging {
         };
     }
     end(matrix) {
-        return aether.mat4.orthogonal(matrix);
+        return aether.mat4.orthogonal(matrix, true);
     }
 }
 export class RotationDragging extends ModelMatrixDragging {
@@ -132,7 +132,7 @@ export class ZoomDragging {
         };
     }
     end([projectionMat, viewMat]) {
-        return [projectionMat, aether.mat4.orthogonal(viewMat)];
+        return [projectionMat, aether.mat4.orthogonal(viewMat, true)];
     }
     static dragger(speed = 1) {
         return new ZoomDragging(speed);
