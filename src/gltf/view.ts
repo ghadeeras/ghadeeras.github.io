@@ -33,9 +33,11 @@ export interface View {
 
     set lightRadius(r: number)
 
-    set shininess(s: number)
-
     set fogginess(f: number)
+
+    set roughnessFactor(s: number)
+
+    set metallicFactor(s: number)
 
 }
 

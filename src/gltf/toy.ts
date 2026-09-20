@@ -76,9 +76,13 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyC"]],
                     virtualKeys: "#control-c",
                 },
-                shininess: {
+                roughnessFactor: {
                     physicalKeys: [["KeyH"]],
                     virtualKeys: "#control-h",
+                },
+                metallicFactor: {
+                    physicalKeys: [["KeyT"]],
+                    virtualKeys: "#control-t",
                 },
                 lightDirection: {
                     physicalKeys: [["KeyD"]],
@@ -140,7 +144,8 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     readonly colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
     readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
     readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
     readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     private _perspectives: gltf.graph.Perspective[] = []
@@ -152,8 +157,9 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private constructor(private models: [string, string][], private view: View, private xrSwitch: xr.XRSwitch | null) {
         this.modelIndex = 1
-        this.view.modelColor = [0.8, 0.8, 0.8, 1]
-        this.view.shininess = 1
+        this.view.modelColor = [1, 1, 1, 1]
+        this.view.roughnessFactor = 1.0
+        this.view.metallicFactor = 1.0
         this.view.fogginess = 0
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5])
         this.view.lightRadius = 0.005
@@ -191,7 +197,8 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 scale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.scaleDragging }, 
                 zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging }, 
                 color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging }, 
-                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging }, 
+                roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging }, 
+                metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging }, 
                 lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
                 lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
                 fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging }, 

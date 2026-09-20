@@ -1,17 +1,17 @@
 import * as aether from "aether";
 import { gpu } from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js";
+import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
         positions: gpu.mat4x4,
         normals: gpu.mat4x4,
     }),
     projectionMat: gpu.mat4x4,
-    color: gpu.f32.x4,
     lightPos: gpu.f32.x4,
-    shininess: gpu.f32,
     lightRadius: gpu.f32,
     fogginess: gpu.f32,
+    material: gltfMaterialsStruct,
 });
 export class GPUView {
     constructor(device, shaderModule, canvasId) {
@@ -26,7 +26,22 @@ export class GPUView {
         this.uniforms = device.syncBuffer({
             label: "uniforms",
             usage: ["UNIFORM"],
-            size: uniformsStruct.paddedSize
+            data: uniformsStruct.view([{
+                    fogginess: 0,
+                    lightPos: aether.vec4.of(-1.0, 1.0, 1.0, 1.0),
+                    lightRadius: 0.0,
+                    mat: {
+                        positions: aether.mat4.identity(),
+                        normals: aether.mat4.identity(),
+                    },
+                    projectionMat: aether.mat4.identity(),
+                    material: {
+                        baseColorFactor: aether.vec4.of(1.0, 1.0, 1.0, 1.0),
+                        emissiveFactor: aether.vec3.of(1.0, 1.0, 1.0),
+                        metallicFactor: 1.0,
+                        roughnessFactor: 1.0
+                    }
+                }])
         });
         this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
             entries: [{
@@ -46,9 +61,8 @@ export class GPUView {
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, { POSITION: 0, NORMAL: 1 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         this.pipelineLayout = this.device.wrapped.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout],
+            bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout, this.rendererFactory.materialsGroupLayout],
         });
-        this.fragmentState = this.shaderModule.fragmentState("f_main", [this.gpuCanvas]);
         this.depthState = this.depthTexture.depthState({ depthCompare: "greater" });
     }
     get aspectRatio() {
@@ -63,7 +77,7 @@ export class GPUView {
         return this.gpuCanvas.element;
     }
     set modelColor(color) {
-        this.uniforms.set(uniformsStruct.members.color, color);
+        this.uniforms.set(uniformsStruct.members.material.members.baseColorFactor, color);
     }
     set lightPosition(p) {
         this.uniforms.set(uniformsStruct.members.lightPos, [...p, 1]);
@@ -71,8 +85,11 @@ export class GPUView {
     set lightRadius(r) {
         this.uniforms.set(uniformsStruct.members.lightRadius, r);
     }
-    set shininess(s) {
-        this.uniforms.set(uniformsStruct.members.shininess, s);
+    set roughnessFactor(r) {
+        this.uniforms.set(uniformsStruct.members.material.members.roughnessFactor, r);
+    }
+    set metallicFactor(m) {
+        this.uniforms.set(uniformsStruct.members.material.members.metallicFactor, m);
     }
     set fogginess(f) {
         this.uniforms.set(uniformsStruct.members.fogginess, f);
@@ -119,7 +136,7 @@ export class GPUView {
         const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
         return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
-            fragment: this.fragmentState,
+            fragment: this.shaderModule.fragmentState(attributesCount == 2 ? "f_main" : "f_main_no_normals", [this.gpuCanvas]),
             depthStencil: this.depthState,
             multisample: {
                 count: this.gpuCanvas.sampleCount
@@ -136,7 +153,7 @@ export class GPUView {
     draw() {
         this.device.enqueueCommands("render", encoder => {
             const passDescriptor = {
-                colorAttachments: [this.gpuCanvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+                colorAttachments: [this.gpuCanvas.attachment({ r: 0.0625, g: 0.0625, b: 0.0625, a: 1 })],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
             };
             encoder.renderPass(passDescriptor, pass => {

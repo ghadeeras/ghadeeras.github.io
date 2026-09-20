@@ -48,8 +48,11 @@ export class GLView {
     set lightRadius(r) {
         this.uLightRadius.data = [r];
     }
-    set shininess(s) {
-        this.uShininess.data = [s];
+    set roughnessFactor(s) {
+        this.uShininess.data = [1 - s];
+    }
+    set metallicFactor(m) {
+        this.uShininess.data = [1 - m];
     }
     set fogginess(f) {
         this.uFogginess.data = [f];

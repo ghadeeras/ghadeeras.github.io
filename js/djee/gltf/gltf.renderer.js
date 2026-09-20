@@ -1,58 +1,59 @@
 import * as aether from "aether";
 import { failure } from "../utils.js";
+import * as graph from "../gltf/gltf.graph.js";
 export class GLTFRenderer {
     constructor(model, adapter) {
         this.model = model;
         this.adapter = adapter;
         this.resources = [];
-        this.matrixBinders = this.createNodeBinders();
-        this.primitiveBinders = this.createPrimitiveBinders();
+        this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines();
+        this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
     }
     destroy() {
         while (this.resources.length > 0) {
             this.resources.pop()?.destroy();
         }
     }
-    createNodeBinders() {
-        const matrices = collectSceneMatrices(this.model.scene);
-        const buffer = this.adapter.matricesBuffer(matrices);
-        this.resources.push(buffer);
-        return this.createSceneNodeBinders(this.model.scene, buffer);
-    }
-    createSceneNodeBinders(scene, matricesBuffer) {
-        const map = new Map();
-        map.set(scene, this.adapter.matrixBinder(matricesBuffer, 0));
-        for (const node of scene.nodes) {
-            this.createNodeChildBinders(node, false, matricesBuffer, map);
+    createNodeLevelRenderingRoutines() {
+        const data = collectNodeLevelData(this.model.scene);
+        const resources = this.adapter.nodeLevelResources(data.matrices);
+        this.resources.push(resources);
+        const mapping = data.mappings[0];
+        const binder = mapping.matrixIndex !== null
+            ? this.adapter.nodeLevelBinder(resources, mapping.matrixIndex)
+            : () => { };
+        const routines = [this.createNodeLevelRenderingRoutine(mapping.node, binder)];
+        for (let i = 1; i < data.mappings.length; i++) {
+            const mapping = data.mappings[i];
+            const binder = mapping.matrixIndex !== null && mapping.matrixIndex !== data.mappings[i - 1].matrixIndex
+                ? this.adapter.nodeLevelBinder(resources, mapping.matrixIndex)
+                : () => { };
+            routines.push(this.createNodeLevelRenderingRoutine(mapping.node, binder));
         }
-        return map;
+        return routines;
     }
-    createNodeChildBinders(node, parentDirty, matricesBuffer, map) {
-        let dirty = parentDirty || !node.isIdentityMatrix;
-        if (dirty && node.meshes.length > 0) {
-            map.set(node, this.adapter.matrixBinder(matricesBuffer, map.size));
-            dirty = false;
-        }
-        for (const child of node.children) {
-            this.createNodeChildBinders(child, dirty, matricesBuffer, map);
-        }
-        return map;
+    createNodeLevelRenderingRoutine(node, binder) {
+        return node instanceof graph.Scene ? binder : renderer => this.renderNode(renderer, node, binder);
     }
-    createPrimitiveBinders() {
+    createPrimitiveLevelRenderingRoutines() {
+        const resources = this.adapter.primitiveLevelResources(this.model.materials);
+        this.resources.push(resources);
         const buffers = this.gpuBuffers();
-        const primitiveRenderers = new Map();
+        const meshRoutines = [];
         for (const mesh of this.model.meshes) {
+            const primitiveRoutines = [];
+            meshRoutines.push(primitiveRoutines);
             for (const primitive of mesh.primitives) {
-                const renderer = this.primitiveBinder(primitive, buffers);
-                primitiveRenderers.set(primitive, renderer);
+                const renderer = this.createPrimitiveLevelRenderingRoutine(primitive, buffers, resources);
+                primitiveRoutines.push(renderer);
             }
         }
-        return primitiveRenderers;
+        return meshRoutines;
     }
-    primitiveBinder(primitive, buffers) {
+    createPrimitiveLevelRenderingRoutine(primitive, buffers, resources) {
         const index = this.asIndex(primitive, buffers);
         const attributes = this.asVertexAttributes(primitive, buffers);
-        return this.adapter.primitiveBinder(primitive.count, primitive.mode, attributes, index);
+        return this.adapter.primitiveLevelRenderingRoutine(primitive.count, primitive.mode, resources, primitive.material.index, attributes, index);
     }
     asVertexAttributes(primitive, buffers) {
         const result = [];
@@ -90,22 +91,14 @@ export class GLTFRenderer {
         return buffers;
     }
     render(renderer) {
-        const binder = this.matrixBinders.get(this.model.scene) ?? failure("There must be at least a scene renderer!");
-        binder(renderer);
-        for (const node of this.model.scene.nodes) {
-            this.renderNode(renderer, node, binder);
+        for (const routine of this.nodeLevelRenderingRoutines) {
+            routine(renderer);
         }
     }
-    renderNode(renderer, node, parentBinder) {
-        const binder = this.matrixBinders.get(node) ?? parentBinder;
-        if (node.meshes.length > 0) {
-            binder(renderer);
-        }
+    renderNode(renderer, node, binder) {
+        binder(renderer);
         for (const mesh of node.meshes) {
             this.renderMesh(renderer, mesh);
-        }
-        for (const child of node.children) {
-            this.renderNode(renderer, child, binder);
         }
     }
     renderMesh(renderer, mesh) {
@@ -114,34 +107,42 @@ export class GLTFRenderer {
         }
     }
     renderPrimitive(renderer, primitive) {
-        const binder = this.primitiveBinders.get(primitive) ?? failure(`No renderer for primitive ${primitive.key}`);
-        binder(renderer);
+        const routine = this.primitiveLevelRenderingRoutines[primitive.meshIndex][primitive.index];
+        routine(renderer);
     }
 }
-function collectSceneMatrices(scene) {
+function collectNodeLevelData(scene) {
     const matrix = {
         matrix: aether.mat4.identity(),
         antiMatrix: aether.mat4.identity()
     };
-    const matrices = [matrix];
+    const resources = {
+        matrices: [],
+        mappings: [{
+                node: scene,
+                matrixIndex: null
+            }]
+    };
+    let index = null;
     for (const node of scene.nodes) {
-        collectNodeMatrices(node, false, matrix, matrices);
+        index = doCollectNodeLevelData(node, matrix, index, resources);
     }
-    return matrices;
+    return resources;
 }
-function collectNodeMatrices(node, parentDirty, parentMatrix, matrices) {
-    const matrix = {
+function doCollectNodeLevelData(node, parentMatrix, parentIndex, resources) {
+    const matrix = node.isIdentityMatrix ? parentMatrix : {
         matrix: aether.mat4.mul(parentMatrix.matrix, node.matrix),
         antiMatrix: aether.mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
     };
-    let dirty = parentDirty || !node.isIdentityMatrix;
-    if (dirty && node.meshes.length > 0) {
-        matrices.push(matrix);
-        dirty = false;
+    let index = node.isIdentityMatrix ? parentIndex : null;
+    if (index === null && node.meshes.length > 0) {
+        index = resources.matrices.length;
+        resources.matrices.push(matrix);
     }
+    resources.mappings.push({ node, matrixIndex: index });
     for (const child of node.children) {
-        collectNodeMatrices(child, dirty, matrix, matrices);
+        index = doCollectNodeLevelData(child, matrix, index, resources);
     }
-    return matrices;
+    return parentIndex === null && node.isIdentityMatrix && index !== null ? index : parentIndex;
 }
 //# sourceMappingURL=gltf.renderer.js.map

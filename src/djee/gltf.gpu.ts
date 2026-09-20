@@ -10,6 +10,13 @@ export const gltfMatricesStruct = gpu.struct({
     antiMatrix: gpu.mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false)
 
+export const gltfMaterialsStruct = gpu.struct({
+    baseColorFactor: gpu.f32.x4,
+    metallicFactor: gpu.f32,
+    roughnessFactor: gpu.f32,
+    emissiveFactor: gpu.f32.x3,
+}).clone(0, 256, false)
+
 export function gltfMatrixGroupLayout() {
     return {
         entries: [{
@@ -23,12 +30,12 @@ export function gltfMatrixGroupLayout() {
     } satisfies GPUBindGroupLayoutDescriptor
 }
 
-export class MatricesResource implements Resource {
+export class NodeLevelResources implements Resource {
     
-    constructor(readonly group: GPUBindGroup, readonly buffer: gpu.DataBuffer) {}
+    constructor(readonly group: GPUBindGroup, readonly matricesBuffer: gpu.DataBuffer) {}
 
     destroy(): void {
-        this.buffer.destroy()
+        this.matricesBuffer.destroy()
     }
 
 }
@@ -38,6 +45,16 @@ export class VertexBuffer implements Resource {
 
     destroy(): void {
         this.data.destroy();
+    }
+
+}
+
+class PrimitiveLevelResources implements Resource {
+
+    constructor(readonly group: GPUBindGroup, readonly materialsBuffer: gpu.DataBuffer) {}
+
+    destroy(): void {
+        this.materialsBuffer.destroy()
     }
 
 }
@@ -55,13 +72,14 @@ export class GPURendererFactory {
         this.adapter = new GPUAdapter(
             device, 
             device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), 
+            device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), 
             matricesGroupIndex, 
             attributeLocations, 
             caching(pipelineSupplier)
         )
     }
 
-    newInstance(model: graph.Model): renderer.GLTFRenderer<MatricesResource, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
+    newInstance(model: graph.Model): renderer.GLTFRenderer<NodeLevelResources, PrimitiveLevelResources, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
         return new renderer.GLTFRenderer(model, this.adapter)
     }
 
@@ -69,19 +87,24 @@ export class GPURendererFactory {
         return this.adapter.matricesGroupLayout
     }
 
+    get materialsGroupLayout(): GPUBindGroupLayout {
+        return this.adapter.materialsGroupLayout
+    }
+
 }
 
-class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
+class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLevelResources, VertexBuffer, gpu.DataBuffer, GPURenderPassEncoder> {
 
     constructor(
         private device: gpu.Device, 
         readonly matricesGroupLayout: GPUBindGroupLayout,
+        readonly materialsGroupLayout: GPUBindGroupLayout,
         private matricesGroupIndex: number,
         private attributeLocations: Partial<Record<string, number>>, 
         private pipelineSupplier: (bufferLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState) => GPURenderPipeline,
     ) {}
 
-    matricesBuffer(matrices: renderer.Matrix[]): MatricesResource {
+    nodeLevelResources(matrices: renderer.Matrix[]): NodeLevelResources {
         const dataView = gltfMatricesStruct.view(matrices)
         const buffer = this.device.dataBuffer({
             label: "matrices",
@@ -89,6 +112,7 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
             data: dataView
         });
         const group = this.device.wrapped.createBindGroup({
+            label: "nodeLevelResources",
             layout: this.matricesGroupLayout,
             entries: [{
                 binding: 0,
@@ -98,7 +122,28 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
                 }
             }]
         });
-        return new MatricesResource(group, buffer)
+        return new NodeLevelResources(group, buffer)
+    }
+
+    primitiveLevelResources(materials: graph.Material[]): PrimitiveLevelResources {
+        const dataView = gltfMaterialsStruct.view(materials)
+        const buffer = this.device.dataBuffer({
+            label: "materials",
+            usage: ["UNIFORM"],
+            data: dataView
+        });
+        const group = this.device.wrapped.createBindGroup({
+            label: "primitiveLevelResources",
+            layout: this.materialsGroupLayout,
+            entries: [{
+                binding: 0,
+                resource: {
+                    buffer: buffer.wrapped,
+                    size: gltfMaterialsStruct.paddedSize,
+                }
+            }]
+        });
+        return new PrimitiveLevelResources(group, buffer)
     }
 
     vertexBuffer(dataView: DataView, stride: number): VertexBuffer {
@@ -117,11 +162,19 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
         })
     }
 
-    matrixBinder(matrixBuffer: MatricesResource, index: number): renderer.Binder<GPURenderPassEncoder> {
-        return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, [index * gltfMatricesStruct.stride])
+    nodeLevelBinder(matrixBuffer: NodeLevelResources, index: number): renderer.RenderingRoutine<GPURenderPassEncoder> {
+        const offsets = [index * gltfMatricesStruct.stride]
+        return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, offsets)
     }
 
-    primitiveBinder(count: number, mode: gltf.PrimitiveMode, attributes: renderer.VertexAttribute<VertexBuffer>[], index: renderer.Index<gpu.DataBuffer> | null = null): renderer.Binder<GPURenderPassEncoder> {
+    primitiveLevelRenderingRoutine(
+        count: number, 
+        mode: gltf.PrimitiveMode, 
+        resources: PrimitiveLevelResources,
+        materialIndex: number, 
+        attributes: renderer.VertexAttribute<VertexBuffer>[], 
+        index: renderer.Index<gpu.DataBuffer> | null = null
+    ): renderer.RenderingRoutine<GPURenderPassEncoder> {
         const topology = toGpuTopology(mode)
         const indexFormat: GPUIndexFormat = index !== null ? toGpuIndexFormat(index.componentType) : "uint32"
         const vertexBufferSlots = asVertexBufferSlots(attributes, this.attributeLocations);
@@ -133,15 +186,18 @@ class GPUAdapter implements renderer.APIAdapter<MatricesResource, VertexBuffer, 
         }
         const pipeline = this.pipelineSupplier(bufferLayouts, primitiveState);
         
+        const offsets = [materialIndex * gltfMaterialsStruct.stride]
         return index !== null ?
             pass => {
                 pass.setPipeline(pipeline);
+                pass.setBindGroup(2, resources.group, offsets)
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.setIndexBuffer(index.buffer.wrapped, indexFormat, index.offset);
                 pass.drawIndexed(count);
             } :
             pass => {
                 pass.setPipeline(pipeline);
+                pass.setBindGroup(2, resources.group, offsets)
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.draw(count);
             };

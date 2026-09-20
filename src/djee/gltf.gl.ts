@@ -13,7 +13,14 @@ class MatrixBuffer implements Resource {
 
 }
 
-export class GLRenderer extends renderer.GLTFRenderer<MatrixBuffer, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
+class DummyResource implements Resource {
+
+    destroy(): void {
+    }
+
+}
+
+export class GLRenderer extends renderer.GLTFRenderer<MatrixBuffer, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
 
     constructor(
         model: graph.Model,
@@ -27,7 +34,7 @@ export class GLRenderer extends renderer.GLTFRenderer<MatrixBuffer, wgl.Attribut
 
 }
 
-export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
+export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
 
     constructor(
         private context: wgl.Context, 
@@ -37,8 +44,12 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, wgl.Attribut
     ) {
     }
 
-    matricesBuffer(matrices: renderer.Matrix[]): MatrixBuffer {
+    nodeLevelResources(matrices: renderer.Matrix[]): MatrixBuffer {
         return new MatrixBuffer(matrices)
+    }
+
+    primitiveLevelResources(materials: graph.Material[]): Resource {
+        return new DummyResource()
     }
 
     vertexBuffer(view: DataView, stride: number): wgl.AttributesBuffer {
@@ -53,7 +64,7 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, wgl.Attribut
         return buffer
     }
 
-    matrixBinder(matrixBuffer: MatrixBuffer, index: number): renderer.Binder<wgl.Context> {
+    nodeLevelBinder(matrixBuffer: MatrixBuffer, index: number): renderer.RenderingRoutine<wgl.Context> {
         const matrix = matrixBuffer.matrices[index]
         const positionsMat = aether.mat4.columnMajorArray(matrix.matrix)
         const normalsMat = aether.mat4.columnMajorArray(matrix.antiMatrix)
@@ -63,8 +74,8 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, wgl.Attribut
         }
     }
 
-    primitiveBinder(count: number, mode: number, attributes: renderer.VertexAttribute<wgl.AttributesBuffer>[], index: renderer.Index<wgl.IndicesBuffer> | null = null): renderer.Binder<wgl.Context> {
-        const binders: renderer.Binder<wgl.Context>[] = []
+    primitiveLevelRenderingRoutine(count: number, mode: number, _uniforms: Resource, _materialIndex: number, attributes: renderer.VertexAttribute<wgl.AttributesBuffer>[], index: renderer.Index<wgl.IndicesBuffer> | null = null): renderer.RenderingRoutine<wgl.Context> {
+        const binders: renderer.RenderingRoutine<wgl.Context>[] = []
         for (const vertexAttribute of attributes) {
             const attribute = this.attributes[vertexAttribute.name]
             if (attribute !== undefined) {

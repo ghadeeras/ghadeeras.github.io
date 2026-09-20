@@ -34,7 +34,8 @@ class GLTFToy {
         this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
         this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
         this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.shininessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "shininess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._perspectives = [];
         this._modelIndex = 0;
@@ -42,8 +43,9 @@ class GLTFToy {
         this._model = null;
         this.xrSession = null;
         this.modelIndex = 1;
-        this.view.modelColor = [0.8, 0.8, 0.8, 1];
-        this.view.shininess = 1;
+        this.view.modelColor = [1, 1, 1, 1];
+        this.view.roughnessFactor = 1.0;
+        this.view.metallicFactor = 1.0;
         this.view.fogginess = 0;
         this.view.lightPosition = this.toLightPosition([-0.5, 0.5]);
         this.view.lightRadius = 0.005;
@@ -72,7 +74,8 @@ class GLTFToy {
                 scale: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.scaleDragging },
                 zoom: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.zoomDragging },
                 color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging },
-                shininess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.shininessDragging },
+                roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging },
+                metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging },
                 lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
                 lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging },
                 fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
@@ -233,9 +236,13 @@ GLTFToy.descriptor = {
                 physicalKeys: [["KeyC"]],
                 virtualKeys: "#control-c",
             },
-            shininess: {
+            roughnessFactor: {
                 physicalKeys: [["KeyH"]],
                 virtualKeys: "#control-h",
+            },
+            metallicFactor: {
+                physicalKeys: [["KeyT"]],
+                virtualKeys: "#control-t",
             },
             lightDirection: {
                 physicalKeys: [["KeyD"]],

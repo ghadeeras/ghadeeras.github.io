@@ -94,8 +94,12 @@ export class GLView implements View {
        this.uLightRadius.data = [r]
     }
     
-    set shininess(s: number) {
-        this.uShininess.data = [s]
+    set roughnessFactor(s: number) {
+        this.uShininess.data = [1 - s]
+    }
+
+    set metallicFactor(m: number) {
+        this.uShininess.data = [1 - m]
     }
 
     set fogginess(f: number) {

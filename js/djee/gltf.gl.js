@@ -8,6 +8,10 @@ class MatrixBuffer {
     destroy() {
     }
 }
+class DummyResource {
+    destroy() {
+    }
+}
 export class GLRenderer extends renderer.GLTFRenderer {
     constructor(model, context, attributes, positionsMatUniform, normalsMatUniform) {
         super(model, new GLAdapter(context, attributes, positionsMatUniform, normalsMatUniform));
@@ -20,8 +24,11 @@ export class GLAdapter {
         this.positionsMatUniform = positionsMatUniform;
         this.normalsMatUniform = normalsMatUniform;
     }
-    matricesBuffer(matrices) {
+    nodeLevelResources(matrices) {
         return new MatrixBuffer(matrices);
+    }
+    primitiveLevelResources(materials) {
+        return new DummyResource();
     }
     vertexBuffer(view, stride) {
         const buffer = this.context.newAttributesBuffer(stride);
@@ -33,7 +40,7 @@ export class GLAdapter {
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         return buffer;
     }
-    matrixBinder(matrixBuffer, index) {
+    nodeLevelBinder(matrixBuffer, index) {
         const matrix = matrixBuffer.matrices[index];
         const positionsMat = aether.mat4.columnMajorArray(matrix.matrix);
         const normalsMat = aether.mat4.columnMajorArray(matrix.antiMatrix);
@@ -42,7 +49,7 @@ export class GLAdapter {
             this.normalsMatUniform.data = normalsMat;
         };
     }
-    primitiveBinder(count, mode, attributes, index = null) {
+    primitiveLevelRenderingRoutine(count, mode, _uniforms, _materialIndex, attributes, index = null) {
         const binders = [];
         for (const vertexAttribute of attributes) {
             const attribute = this.attributes[vertexAttribute.name];

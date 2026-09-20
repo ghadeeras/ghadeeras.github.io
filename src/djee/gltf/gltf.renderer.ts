@@ -4,27 +4,29 @@ import { failure } from "../utils.js";
 import * as gltf from "../gltf/gltf.js";
 import * as graph from "../gltf/gltf.graph.js";
 
-export interface APIAdapter<U extends Resource, V extends Resource, I extends Resource, R> {
+export interface APIAdapter<N extends Resource, P extends Resource, V extends Resource, I extends Resource, R> {
 
-    matricesBuffer(matrices: Matrix[]): U
+    nodeLevelResources(matrices: Matrix[]): N
+
+    primitiveLevelResources(materials: graph.Material[]): P
 
     vertexBuffer(view: DataView, stride: number): V
 
     indexBuffer(view: DataView, stride: number): I
 
-    matrixBinder(matrixBuffer: U, index: number): Binder<R>
+    nodeLevelBinder(resources: N, matrixIndex: number): RenderingRoutine<R>
 
-    primitiveBinder(count: number, mode: gltf.PrimitiveMode, attributes: VertexAttribute<V>[], index?: Index<I> | null): Binder<R>
+    primitiveLevelRenderingRoutine(count: number, mode: gltf.PrimitiveMode, resources: P, materialIndex: number, attributes: VertexAttribute<V>[], index?: Index<I> | null): RenderingRoutine<R>
 
 }
 
-export type Index<I> = {
+export type Index<I extends Resource> = {
     componentType: gltf.ScalarType,
     offset: number,
     buffer: I,
 }
 
-export type VertexAttribute<V> = {
+export type VertexAttribute<V extends Resource> = {
     name: string,
     type: gltf.ElementType,
     componentType: gltf.ScalarType,
@@ -34,26 +36,26 @@ export type VertexAttribute<V> = {
     buffer: V,
 }
 
-export type Binder<R> = (renderer: R) => void
+export type RenderingRoutine<R> = (renderer: R) => void
 
 export type Matrix = {
     matrix: aether.Mat4,
     antiMatrix: aether.Mat4,
 }
 
-export class GLTFRenderer<U extends Resource, V extends Resource, I extends Resource, R> {
+export class GLTFRenderer<N extends Resource, P extends Resource, V extends Resource, I extends Resource, R> {
 
-    private matrixBinders: Map<graph.Node | graph.Scene, Binder<R>>
-    private primitiveBinders: Map<graph.Primitive, Binder<R>>
+    private nodeLevelRenderingRoutines: RenderingRoutine<R>[]
+    private primitiveLevelRenderingRoutines: RenderingRoutine<R>[][]
     
     private resources: Resource[] = []
 
     constructor(
         private model: graph.Model, 
-        private adapter: APIAdapter<U, V, I, R> 
+        private adapter: APIAdapter<N, P, V, I, R> 
     ) {
-        this.matrixBinders = this.createNodeBinders()
-        this.primitiveBinders = this.createPrimitiveBinders();
+        this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines()
+        this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
     }
 
     destroy() {
@@ -62,50 +64,50 @@ export class GLTFRenderer<U extends Resource, V extends Resource, I extends Reso
         }
     }
 
-    private createNodeBinders(): typeof this.matrixBinders {
-        const matrices = collectSceneMatrices(this.model.scene)
-        const buffer = this.adapter.matricesBuffer(matrices)
-        this.resources.push(buffer)
-        return this.createSceneNodeBinders(this.model.scene, buffer);
+    private createNodeLevelRenderingRoutines(): RenderingRoutine<R>[] {
+        const data = collectNodeLevelData(this.model.scene)
+        const resources = this.adapter.nodeLevelResources(data.matrices)
+        this.resources.push(resources)
+
+        const mapping  = data.mappings[0]
+        const binder   = mapping.matrixIndex !== null 
+            ? this.adapter.nodeLevelBinder(resources, mapping.matrixIndex) 
+            : () => {}
+        const routines = [this.createNodeLevelRenderingRoutine(mapping.node, binder)]
+        for (let i = 1; i < data.mappings.length; i++) {
+            const mapping = data.mappings[i]
+            const binder  = mapping.matrixIndex !== null && mapping.matrixIndex !== data.mappings[i - 1].matrixIndex 
+                ? this.adapter.nodeLevelBinder(resources, mapping.matrixIndex) 
+                : () => {}
+            routines.push(this.createNodeLevelRenderingRoutine(mapping.node, binder))
+        }
+        return routines
     }
 
-    private createSceneNodeBinders(scene: graph.Scene, matricesBuffer: U): typeof this.matrixBinders {
-        const map: typeof this.matrixBinders = new Map()
-        map.set(scene, this.adapter.matrixBinder(matricesBuffer, 0))
-        for (const node of scene.nodes) {
-            this.createNodeChildBinders(node, false, matricesBuffer, map)
-        }
-        return map
+    private createNodeLevelRenderingRoutine(node: graph.Node | graph.Scene, binder: RenderingRoutine<R>): RenderingRoutine<R> {
+        return node instanceof graph.Scene ? binder : renderer => this.renderNode(renderer, node, binder)
     }
-    
-    private createNodeChildBinders(node: graph.Node, parentDirty: boolean, matricesBuffer: U, map: typeof this.matrixBinders): typeof this.matrixBinders {
-        let dirty = parentDirty || !node.isIdentityMatrix
-        if (dirty && node.meshes.length > 0) {
-            map.set(node, this.adapter.matrixBinder(matricesBuffer, map.size))
-            dirty = false
-        }
-        for (const child of node.children) {
-            this.createNodeChildBinders(child, dirty, matricesBuffer, map)
-        }
-        return map
-    }
-    
-    private createPrimitiveBinders(): typeof this.primitiveBinders {
+
+    private createPrimitiveLevelRenderingRoutines(): typeof this.primitiveLevelRenderingRoutines {
+        const resources = this.adapter.primitiveLevelResources(this.model.materials)
+        this.resources.push(resources)
         const buffers = this.gpuBuffers();
-        const primitiveRenderers: typeof this.primitiveBinders = new Map()
+        const meshRoutines: RenderingRoutine<R>[][] = []
         for (const mesh of this.model.meshes) {
+            const primitiveRoutines: RenderingRoutine<R>[] = []
+            meshRoutines.push(primitiveRoutines)
             for (const primitive of mesh.primitives) {
-                const renderer = this.primitiveBinder(primitive, buffers);
-                primitiveRenderers.set(primitive, renderer);
+                const renderer = this.createPrimitiveLevelRenderingRoutine(primitive, buffers, resources);
+                primitiveRoutines.push(renderer);
             }
         }
-        return primitiveRenderers
+        return meshRoutines
     }
 
-    private primitiveBinder(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>): Binder<R> {
+    private createPrimitiveLevelRenderingRoutine(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>, resources: P): RenderingRoutine<R> {
         const index = this.asIndex(primitive, buffers);
         const attributes = this.asVertexAttributes(primitive, buffers);
-        return this.adapter.primitiveBinder(primitive.count, primitive.mode, attributes, index)        
+        return this.adapter.primitiveLevelRenderingRoutine(primitive.count, primitive.mode, resources, primitive.material.index, attributes, index)        
     }
     
     private asVertexAttributes(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>): VertexAttribute<V>[] {
@@ -147,23 +149,15 @@ export class GLTFRenderer<U extends Resource, V extends Resource, I extends Reso
     }
     
     render(renderer: R) {
-        const binder: Binder<R> = this.matrixBinders.get(this.model.scene) ?? failure("There must be at least a scene renderer!");
-        binder(renderer)
-        for (const node of this.model.scene.nodes) {
-            this.renderNode(renderer, node, binder)
+        for (const routine of this.nodeLevelRenderingRoutines) {
+            routine(renderer)
         }
     }
 
-    private renderNode(renderer: R, node: graph.Node, parentBinder: Binder<R>) {
-        const binder = this.matrixBinders.get(node) ?? parentBinder
-        if (node.meshes.length > 0) {
-            binder(renderer)
-        }
+    private renderNode(renderer: R, node: graph.Node, binder: RenderingRoutine<R>) {
+        binder(renderer);
         for (const mesh of node.meshes) {
-            this.renderMesh(renderer, mesh)
-        }
-        for (const child of node.children) {
-            this.renderNode(renderer, child, binder)
+            this.renderMesh(renderer, mesh);
         }
     }
 
@@ -174,36 +168,54 @@ export class GLTFRenderer<U extends Resource, V extends Resource, I extends Reso
     }
 
     private renderPrimitive(renderer: R, primitive: graph.Primitive) {
-        const binder: Binder<R> = this.primitiveBinders.get(primitive) ?? failure(`No renderer for primitive ${primitive.key}`)
-        binder(renderer)
+        const routine = this.primitiveLevelRenderingRoutines[primitive.meshIndex][primitive.index]
+        routine(renderer)
     }
 
 }
 
-function collectSceneMatrices(scene: graph.Scene): Matrix[] {
+function collectNodeLevelData(scene: graph.Scene): NodeLevelResources {
     const matrix: Matrix = {
         matrix: aether.mat4.identity(),
         antiMatrix: aether.mat4.identity()
     }
-    const matrices = [matrix]
-    for (const node of scene.nodes) {
-        collectNodeMatrices(node, false, matrix, matrices)
+    const resources: NodeLevelResources = {
+        matrices: [],
+        mappings: [{
+            node: scene,
+            matrixIndex: null
+        }]
     }
-    return matrices
+    let index: number | null = null
+    for (const node of scene.nodes) {
+        index = doCollectNodeLevelData(node, matrix, index, resources)
+    }
+    return resources
 }
 
-function collectNodeMatrices(node: graph.Node, parentDirty: boolean, parentMatrix: Matrix, matrices: Matrix[]): Matrix[] {
-    const matrix: Matrix = {
+function doCollectNodeLevelData(node: graph.Node, parentMatrix: Matrix, parentIndex: number | null, resources: NodeLevelResources): number | null {
+    const matrix = node.isIdentityMatrix ? parentMatrix : {
         matrix: aether.mat4.mul(parentMatrix.matrix, node.matrix),
         antiMatrix: aether.mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
     }
-    let dirty = parentDirty || !node.isIdentityMatrix
-    if (dirty && node.meshes.length > 0) {
-        matrices.push(matrix)
-        dirty = false
+    let index = node.isIdentityMatrix ? parentIndex : null
+    if (index === null && node.meshes.length > 0) {
+        index = resources.matrices.length
+        resources.matrices.push(matrix)
     }
+    resources.mappings.push({ node, matrixIndex: index })
     for (const child of node.children) {
-        collectNodeMatrices(child, dirty, matrix, matrices)
+        index = doCollectNodeLevelData(child, matrix, index, resources)
     }
-    return matrices
+    return parentIndex === null && node.isIdentityMatrix && index !== null ? index : parentIndex
+}
+
+type NodeLevelMapping = {
+    node: graph.Node | graph.Scene;
+    matrixIndex: number | null;
+};
+
+type NodeLevelResources = {
+    matrices: Matrix[],
+    mappings: NodeLevelMapping[]
 }

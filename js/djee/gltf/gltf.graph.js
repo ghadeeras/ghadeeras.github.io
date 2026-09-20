@@ -6,11 +6,12 @@ export class Model {
     constructor(model, buffers, legacyPerspective) {
         this.buffers = buffers;
         gltf.enrichBufferViews(model);
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials;
+        this.materials = materials.map((material, i) => new Material(material, i));
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors));
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews));
-        this.materials = (model.materials ?? []).map((material, i) => new Material(material, i));
-        this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials));
+        this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
         const nodes = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes)));
         this.nodes = nodes.map(node => node());
         this.scenes = model.scenes.map((scene, i) => new Scene(scene, i, this.nodes, legacyPerspective));
@@ -117,8 +118,10 @@ export class Mesh extends IdentifiableObject {
     }
 }
 export class Primitive extends IdentifiableObject {
-    constructor(primitive, m, i, accessors, materials) {
-        super(`primitive#${m}_${i}`);
+    constructor(primitive, meshIndex, index, accessors, materials) {
+        super(`primitive#${meshIndex}_${index}`);
+        this.meshIndex = meshIndex;
+        this.index = index;
         this.mode = primitive.mode ?? WebGL2RenderingContext.TRIANGLES;
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null;
         this.count = this.indices !== null ? this.indices.count : Number.MAX_SAFE_INTEGER;
@@ -131,7 +134,7 @@ export class Primitive extends IdentifiableObject {
             }
         }
         const position = this.attributes["POSITION"];
-        this.material = primitive.material !== undefined ? (materials[primitive.material] ?? null) : null;
+        this.material = materials[primitive.material !== undefined ? primitive.material : 0];
         this.range = position.range;
     }
 }
@@ -168,13 +171,14 @@ export class BufferView extends IdentifiableObject {
     }
 }
 export class Material extends IdentifiableObject {
-    constructor(material, i) {
-        super(`material${i}`);
+    constructor(material, index) {
+        super(`material${index}`);
+        this.index = index;
         const pbr = material.pbrMetallicRoughness ?? {};
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
-        this.metallicFactor = pbr.metallicFactor ?? 1;
-        this.roughnessFactor = pbr.roughnessFactor ?? 1;
-        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0);
+        this.metallicFactor = pbr.metallicFactor ?? 0.5;
+        this.roughnessFactor = pbr.roughnessFactor ?? 0.5;
+        this.emissiveFactor = aether.vec3.of(0, 0, 0); // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
         this.alphaMode = material.alphaMode ?? "OPAQUE";
         this.alphaCutoff = material.alphaCutoff ?? 0.5;
         this.doubleSided = material.doubleSided ?? false;

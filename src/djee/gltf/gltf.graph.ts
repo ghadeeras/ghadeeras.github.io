@@ -16,12 +16,14 @@ export class Model {
 
     constructor(model: gltf.Model, readonly buffers: ArrayBuffer[], legacyPerspective: boolean) {
         gltf.enrichBufferViews(model)
+
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials
+        this.materials = materials.map((material, i) => new Material(material, i))
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors))
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews))
-        this.materials = (model.materials ?? []).map((material, i) => new Material(material, i))
-        this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective))
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials))
         
+        this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective))
         const nodes: utils.Supplier<Node>[] = model.nodes.map((node, i) => 
             utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes))
         )
@@ -197,11 +199,11 @@ export class Primitive extends IdentifiableObject {
     readonly attributes: {
         [attributeName: string]: Accessor
     }
-    readonly material: Material | null
+    readonly material: Material
     readonly range: aetherX.Range3D
 
-    constructor(primitive: gltf.MeshPrimitive, m: number, i: number, accessors: Accessor[], materials: Material[]) {
-        super(`primitive#${m}_${i}`)
+    constructor(primitive: gltf.MeshPrimitive, readonly meshIndex: number, readonly index: number, accessors: Accessor[], materials: Material[]) {
+        super(`primitive#${meshIndex}_${index}`)
         this.mode = primitive.mode ?? WebGL2RenderingContext.TRIANGLES
         this.indices = primitive.indices !== undefined ? accessors[primitive.indices] : null
         this.count = this.indices !== null ? this.indices.count : Number.MAX_SAFE_INTEGER
@@ -214,7 +216,7 @@ export class Primitive extends IdentifiableObject {
             }
         }
         const position = this.attributes["POSITION"]
-        this.material = primitive.material !== undefined ? (materials[primitive.material] ?? null) : null
+        this.material = materials[primitive.material !== undefined ? primitive.material: 0]
         this.range = position.range
     }
 
@@ -276,21 +278,21 @@ export class BufferView extends IdentifiableObject {
 
 export class Material extends IdentifiableObject {
     
-    private baseColorFactor: aether.Vec4
-    private metallicFactor: number
-    private roughnessFactor: number
-    private emissiveFactor: aether.Vec3
-    private alphaMode: "OPAQUE" | "MASK" | "BLEND"
-    private alphaCutoff: number
-    private doubleSided: boolean
+    readonly baseColorFactor: aether.Vec4
+    readonly metallicFactor: number
+    readonly roughnessFactor: number
+    readonly emissiveFactor: aether.Vec3
+    readonly alphaMode: "OPAQUE" | "MASK" | "BLEND"
+    readonly alphaCutoff: number
+    readonly doubleSided: boolean
 
-    constructor(material: gltf.Material, i: number) {
-        super(`material${i}`)
+    constructor(material: gltf.Material, readonly index: number) {
+        super(`material${index}`)
         const pbr = material.pbrMetallicRoughness ?? {}
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1)
-        this.metallicFactor = pbr.metallicFactor ?? 1
-        this.roughnessFactor = pbr.roughnessFactor ?? 1
-        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
+        this.metallicFactor = pbr.metallicFactor ?? 0.5
+        this.roughnessFactor = pbr.roughnessFactor ?? 0.5
+        this.emissiveFactor = aether.vec3.of(0, 0, 0) // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
         this.alphaMode = material.alphaMode ?? "OPAQUE"
         this.alphaCutoff = material.alphaCutoff ?? 0.5
         this.doubleSided = material.doubleSided ?? false

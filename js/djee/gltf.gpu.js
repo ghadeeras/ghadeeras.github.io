@@ -5,6 +5,12 @@ export const gltfMatricesStruct = gpu.struct({
     matrix: gpu.mat4x4,
     antiMatrix: gpu.mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false);
+export const gltfMaterialsStruct = gpu.struct({
+    baseColorFactor: gpu.f32.x4,
+    metallicFactor: gpu.f32,
+    roughnessFactor: gpu.f32,
+    emissiveFactor: gpu.f32.x3,
+}).clone(0, 256, false);
 export function gltfMatrixGroupLayout() {
     return {
         entries: [{
@@ -17,13 +23,13 @@ export function gltfMatrixGroupLayout() {
             }],
     };
 }
-export class MatricesResource {
-    constructor(group, buffer) {
+export class NodeLevelResources {
+    constructor(group, matricesBuffer) {
         this.group = group;
-        this.buffer = buffer;
+        this.matricesBuffer = matricesBuffer;
     }
     destroy() {
-        this.buffer.destroy();
+        this.matricesBuffer.destroy();
     }
 }
 export class VertexBuffer {
@@ -35,9 +41,18 @@ export class VertexBuffer {
         this.data.destroy();
     }
 }
+class PrimitiveLevelResources {
+    constructor(group, materialsBuffer) {
+        this.group = group;
+        this.materialsBuffer = materialsBuffer;
+    }
+    destroy() {
+        this.materialsBuffer.destroy();
+    }
+}
 export class GPURendererFactory {
     constructor(device, matricesGroupIndex, attributeLocations, pipelineSupplier) {
-        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
+        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
     }
     newInstance(model) {
         return new renderer.GLTFRenderer(model, this.adapter);
@@ -45,16 +60,20 @@ export class GPURendererFactory {
     get matricesGroupLayout() {
         return this.adapter.matricesGroupLayout;
     }
+    get materialsGroupLayout() {
+        return this.adapter.materialsGroupLayout;
+    }
 }
 class GPUAdapter {
-    constructor(device, matricesGroupLayout, matricesGroupIndex, attributeLocations, pipelineSupplier) {
+    constructor(device, matricesGroupLayout, materialsGroupLayout, matricesGroupIndex, attributeLocations, pipelineSupplier) {
         this.device = device;
         this.matricesGroupLayout = matricesGroupLayout;
+        this.materialsGroupLayout = materialsGroupLayout;
         this.matricesGroupIndex = matricesGroupIndex;
         this.attributeLocations = attributeLocations;
         this.pipelineSupplier = pipelineSupplier;
     }
-    matricesBuffer(matrices) {
+    nodeLevelResources(matrices) {
         const dataView = gltfMatricesStruct.view(matrices);
         const buffer = this.device.dataBuffer({
             label: "matrices",
@@ -62,6 +81,7 @@ class GPUAdapter {
             data: dataView
         });
         const group = this.device.wrapped.createBindGroup({
+            label: "nodeLevelResources",
             layout: this.matricesGroupLayout,
             entries: [{
                     binding: 0,
@@ -71,7 +91,27 @@ class GPUAdapter {
                     }
                 }]
         });
-        return new MatricesResource(group, buffer);
+        return new NodeLevelResources(group, buffer);
+    }
+    primitiveLevelResources(materials) {
+        const dataView = gltfMaterialsStruct.view(materials);
+        const buffer = this.device.dataBuffer({
+            label: "materials",
+            usage: ["UNIFORM"],
+            data: dataView
+        });
+        const group = this.device.wrapped.createBindGroup({
+            label: "primitiveLevelResources",
+            layout: this.materialsGroupLayout,
+            entries: [{
+                    binding: 0,
+                    resource: {
+                        buffer: buffer.wrapped,
+                        size: gltfMaterialsStruct.paddedSize,
+                    }
+                }]
+        });
+        return new PrimitiveLevelResources(group, buffer);
     }
     vertexBuffer(dataView, stride) {
         return new VertexBuffer(this.device.dataBuffer({
@@ -87,10 +127,11 @@ class GPUAdapter {
             data: this.adapt(dataView, stride)
         });
     }
-    matrixBinder(matrixBuffer, index) {
-        return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, [index * gltfMatricesStruct.stride]);
+    nodeLevelBinder(matrixBuffer, index) {
+        const offsets = [index * gltfMatricesStruct.stride];
+        return pass => pass.setBindGroup(this.matricesGroupIndex, matrixBuffer.group, offsets);
     }
-    primitiveBinder(count, mode, attributes, index = null) {
+    primitiveLevelRenderingRoutine(count, mode, resources, materialIndex, attributes, index = null) {
         const topology = toGpuTopology(mode);
         const indexFormat = index !== null ? toGpuIndexFormat(index.componentType) : "uint32";
         const vertexBufferSlots = asVertexBufferSlots(attributes, this.attributeLocations);
@@ -100,15 +141,18 @@ class GPUAdapter {
             stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined
         };
         const pipeline = this.pipelineSupplier(bufferLayouts, primitiveState);
+        const offsets = [materialIndex * gltfMaterialsStruct.stride];
         return index !== null ?
             pass => {
                 pass.setPipeline(pipeline);
+                pass.setBindGroup(2, resources.group, offsets);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.setIndexBuffer(index.buffer.wrapped, indexFormat, index.offset);
                 pass.drawIndexed(count);
             } :
             pass => {
                 pass.setPipeline(pipeline);
+                pass.setBindGroup(2, resources.group, offsets);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.draw(count);
             };

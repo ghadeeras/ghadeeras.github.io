@@ -37,7 +37,10 @@ export class GPUView implements View {
     set lightRadius(r: number) {
     }
 
-    set shininess(s: number) {
+    set roughnessFactor(r: number) {
+    }
+
+    set metallicFactor(m: number) {
     }
 
     set fogginess(f: number) {

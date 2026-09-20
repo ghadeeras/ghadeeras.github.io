@@ -25,7 +25,9 @@ export class GPUView {
     }
     set lightRadius(r) {
     }
-    set shininess(s) {
+    set roughnessFactor(r) {
+    }
+    set metallicFactor(m) {
     }
     set fogginess(f) {
     }
