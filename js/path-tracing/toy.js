@@ -46,7 +46,7 @@ class Toy {
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
         const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
         const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
-        const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.format);
+        const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.srgbFormat);
         return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
     }
     inputWiring(_, outputs) {
@@ -144,7 +144,7 @@ class Toy {
                 this.denoiser.render(encoder, this.stacker.colorAttachment(clearColor));
             }
             if (this.stacker.layersCount >= this._minLayersCount) {
-                this.stacker.render(encoder, this.canvas.attachment(clearColor));
+                this.stacker.render(encoder, this.canvas.attachment(clearColor, true));
             }
         });
     }

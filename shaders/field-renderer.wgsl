@@ -39,12 +39,12 @@ var<private> firstFieldSign: f32;
 
 fn colorAt(position: vec2<f32>, aspectRatio: f32, pixelSize: f32) -> vec4<f32> {
     let halfPixel = 0.5 * pixelSize;
-    return sqrt(0.25 * (
+    return 0.25 * (
         sampleColorAt(position) +
         sampleColorAt(position + vec2(halfPixel,       0.0)) +
         sampleColorAt(position + vec2(      0.0, halfPixel)) +
         sampleColorAt(position + vec2(halfPixel, halfPixel))
-    ));
+    );
 }
 
 fn sampleColorAt(position: vec2<f32>) -> vec4<f32> {

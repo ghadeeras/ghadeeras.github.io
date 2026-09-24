@@ -74,7 +74,7 @@ fn color(
     let color = (cosLN + ambientLight) * diffuseBase + (specular + ambientLight) * specularBase + emissiveFactor;
     let foggedColor = mix(vec3<f32>(ambientLight), color, fogFactor);
 
-    return vec4<f32>(sqrt(foggedColor), materialColor.a);
+    return vec4<f32>(foggedColor, materialColor.a);
 }
 
 fn v_main_common(

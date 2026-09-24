@@ -74,5 +74,5 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     };
     c = c / w;
     
-    return vec4(sqrt(c), 1.0);
+    return vec4(c, 1.0);
 }

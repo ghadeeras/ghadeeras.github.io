@@ -196,7 +196,7 @@ export class GPUView implements View {
         const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
         return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
-            fragment: this.shaderModule.fragmentState(attributesCount == 2 ? "f_main" : "f_main_no_normals", [this.gpuCanvas]),
+            fragment: this.shaderModule.fragmentState(attributesCount == 2 ? "f_main" : "f_main_no_normals", [this.gpuCanvas.srgbFormat]),
             depthStencil: this.depthState,
             multisample: {
                 count: this.gpuCanvas.sampleCount
@@ -214,8 +214,9 @@ export class GPUView implements View {
 
     draw() {
         this.device.enqueueCommands("render", encoder => {
+            const c = 0.0625 * 0.0625
             const passDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [this.gpuCanvas.attachment({ r: 0.0625, g: 0.0625, b: 0.0625, a: 1 })],
+                colorAttachments: [this.gpuCanvas.attachment({ r: c, g: c, b: c, a: 1 }, true)],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
             };
             encoder.renderPass(passDescriptor, pass => {

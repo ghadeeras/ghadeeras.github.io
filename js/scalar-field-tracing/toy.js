@@ -30,7 +30,7 @@ class Toy {
         const device = await gpuDevice();
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
         const sampler = await FieldSampler.create(device);
-        const renderer = await FieldRenderer.create(sampler.fieldTexture, canvas);
+        const renderer = await FieldRenderer.create(sampler.fieldTexture, canvas.srgbFormat);
         return new Toy(canvas, renderer, sampler);
     }
     get scale() {
@@ -96,7 +96,7 @@ class Toy {
         this.fieldRenderer.position = aether.vec3.add(this.fieldRenderer.position, velocity);
     }
     render() {
-        this.fieldRenderer.render(this.canvas.attachment({ r: 0, g: 0, b: 0, a: 0 }));
+        this.fieldRenderer.render(this.canvas.attachment({ r: 0, g: 0, b: 0, a: 0 }, true));
     }
 }
 Toy.descriptor = {
