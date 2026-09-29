@@ -21,7 +21,7 @@ export async function init() {
     const loop = gear.loops.newLoop(toy, Toy.descriptor);
     loop.run();
 }
-const windingSpeed = 2048;
+const windingSpeed = 512;
 class Toy {
     constructor(canvas, renderer, tessellatedStrokeFactory, backgroundRenderer, palette) {
         this.canvas = canvas;

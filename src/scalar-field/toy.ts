@@ -3,9 +3,11 @@ import * as gear from "gear"
 import { gltf } from "../djee/index.js"
 import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
+import { parse } from "./exp.parser.js"
 
 export const huds = {
-    "monitor": "monitor-button"
+    "monitor": "monitor-button",
+    "exp-hud": "exp-button",
 }
 
 export async function init() {
@@ -73,6 +75,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 nextField: {
                     physicalKeys: [["ArrowRight"]],
                     virtualKeys: "#control-right",
+                }, 
+                polyField: {
+                    physicalKeys: [["KeyP"]],
+                    virtualKeys: "#control-poly",
                 },
             }
         },
@@ -143,8 +149,25 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 prevField: { onPressed: () => this.field -= 1 },
                 nextField: { onPressed: () => this.field += 1 },
                 export: { onPressed: () => this.saveModel() },
+                polyField: { onPressed: () => this.polygonizeField() }
             }
         }
+    }
+
+    private expArea = gear.required(document.getElementById("expression")) as HTMLTextAreaElement
+    private fieldElem = gear.required(document.getElementById("field"))
+    private dF_dXElem = gear.required(document.getElementById("dF_dX"))
+    private dF_dYElem = gear.required(document.getElementById("dF_dY"))
+    private dF_dZElem = gear.required(document.getElementById("dF_dZ"))
+
+    polygonizeField(): void {
+        const [f, field, dF_dX, dF_dY, dF_dZ] = parse(this.expArea.value)
+        this.fieldElem.textContent = field
+        this.dF_dXElem.textContent = dF_dX
+        this.dF_dYElem.textContent = dF_dY
+        this.dF_dZElem.textContent = dF_dZ
+        fields[0] = f
+        this.field = 0
     }
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {

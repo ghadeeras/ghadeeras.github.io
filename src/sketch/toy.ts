@@ -26,7 +26,7 @@ export async function init() {
 
 type ToyDescriptor = typeof Toy.descriptor
 
-const windingSpeed = 2048
+const windingSpeed = 512
 
 class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 

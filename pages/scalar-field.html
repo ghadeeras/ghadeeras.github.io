@@ -8,6 +8,13 @@
             :root {
                 color-scheme: dark;
             }
+            #exp-button {
+                background-image: light-dark(url('/icons/eq.svg'), url('/icons/eq-dark.svg'));
+            }
+            textarea {
+                width: 75%;
+                height: 66%;
+            }
         </style>
         <link type="text/css" rel="stylesheet" href="/index.css" />
         <script type="importmap">
@@ -15,7 +22,8 @@
               "imports": {
                 "lumen": "/node_modules/lumen/lib/index.js",
                 "aether": "/node_modules/aether/lib/index.js",
-                "gear": "/node_modules/gear/lib/index.js"
+                "gear": "/node_modules/gear/lib/index.js",
+                "languasaurus": "/node_modules/languasaurus/lib/index.js"
               }
             }
         </script>          
@@ -32,6 +40,7 @@
                 <div id="controls-button" title="Controls"></div>
                 <div id="about-button" title="About / Info"></div>
                 <div id="monitor-button" title="Monitor"></div>
+                <div id="exp-button" title="Field Expression"></div>
             </div>
             <div class="links">
                 <div id="github" title="Fork me!"></div>
@@ -54,6 +63,23 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div id="exp-hud" class="hud">
+            <div>
+                <h1>Scalar Field Expression</h1>
+                Constants: 123 (integers), 123.456 (floats), ... etc.<br/>
+                Variables: x, y, z<br/>
+                Operators: +, -, *, /, ^<br/>
+                Functions: sin, cos, exp, log, sqrt
+                <p></p>
+                <textarea name="expression" id="expression" rows="8">x * y * z</textarea><br/>
+                <button id="control-poly">Polygonize Field</button>
+                <p></p>
+                Field expression: <p id="field"></p>
+                dF/dX: <p id="dF_dX"></p>
+                dF/dY: <p id="dF_dY"></p>
+                dF/dZ: <p id="dF_dZ"></p>
             </div>
         </div>
         <div id="about" class="hud">
