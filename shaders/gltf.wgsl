@@ -9,6 +9,7 @@ struct VertexOutput {
     @builtin(position) projPos: vec4<f32>,
     @location(0) pos: vec3<f32>,
     @location(1) normal: vec3<f32>,
+    @location(2) texcoordBaseColor: vec2<f32>,
 };
 
 struct Uniforms {
@@ -46,22 +47,21 @@ var<uniform> node: Node;
 var<uniform> material: Material;
 
 fn color(
-    fragPosition: vec3<f32>,
-    fragNormal: vec3<f32>,
-    frontFacing: bool
+    position: vec3<f32>,
+    normal: vec3<f32>,
+    baseColor: vec4<f32>,
 ) -> vec4<f32> {
-    let viewDir = normalize(-fragPosition);
+    let viewDir = normalize(-position);
     let lightDir = normalize(uniforms.lightPos.xyz);
-    let normal = normalize(select(-fragNormal, fragNormal, frontFacing));
     let lightRadius = mix(minLightRadius, maxLightRadius, uniforms.lightRadius);
 
-    let materialColor = uniforms.material.baseColorFactor * material.baseColorFactor;
+    let materialColor = uniforms.material.baseColorFactor * material.baseColorFactor * baseColor;
     let emissiveFactor = uniforms.material.emissiveFactor * material.emissiveFactor;
     let metallicFactor = uniforms.material.metallicFactor * material.metallicFactor;
     let roughnessFactor = uniforms.material.roughnessFactor * material.roughnessFactor;
     let smoothnessFactor = 1.0 / mix(epsilon, 1.0, roughnessFactor);
 
-    let fogFactor = exp2(fragPosition.z * uniforms.fogginess / 8.0);
+    let fogFactor = exp2(position.z * uniforms.fogginess / 8.0);
 
     let cosLN = clamp(dot(lightDir, normal) + lightRadius, 0.0, 1.0);
     let cosVN = max(dot(viewDir, normal), 0.0);
@@ -77,47 +77,42 @@ fn color(
     return vec4<f32>(foggedColor, materialColor.a);
 }
 
-fn v_main_common(
-    pos: vec3<f32>, 
-    normal: vec3<f32>
+@vertex
+fn v_main(
+    @location(0) pos: vec3<f32>, 
+    @location(1) normal: vec3<f32>,
+    @location(2) texcoordBaseColor: vec2<f32>
 ) -> VertexOutput {
     let newPos = uniforms.positionsMat * node.positionsMat * vec4<f32>(pos, 1.0);
     let newNormal = uniforms.normalsMat * node.normalsMat * vec4<f32>(normal, 0.0);
     return VertexOutput(
         uniforms.projectionMat * newPos,
         newPos.xyz,
-        newNormal.xyz
+        newNormal.xyz,
+        texcoordBaseColor,
     );
-}
-@vertex
-fn v_main(
-    @location(0) pos: vec3<f32>, 
-    @location(1) normal: vec3<f32>
-) -> VertexOutput {
-    return v_main_common(pos, normal);
-}
-
-@vertex
-fn v_main_no_normals(
-    @location(0) pos: vec3<f32>
-) -> VertexOutput {
-    return v_main_common(pos, vec3<f32>(0.0, 0.0, 0.0));
 }
 
 @fragment
 fn f_main(
-    @location(0) pos: vec3<f32>,
-    @location(1) normal: vec3<f32>,
+    @location(0) fragPosition: vec3<f32>,
+    @location(1) fragNormal: vec3<f32>,
+    @location(2) texcoordBaseColor: vec2<f32>,
     @builtin(front_facing) frontFacing: bool
 ) -> @location(0) vec4<f32> {
-    return color(pos, normal, frontFacing);
+    let normal = normalize(select(
+        select(-fragNormal, fragNormal, frontFacing), 
+        cross(dpdy(fragPosition), dpdx(fragPosition)), 
+        all(fragNormal == vec3(0.0))
+    ));
+    return color(fragPosition, normal, texcoordToColor(texcoordBaseColor));
 }
 
-@fragment
-fn f_main_no_normals(
-    @location(0) pos: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @builtin(front_facing) frontFacing: bool
-) -> @location(0) vec4<f32> {
-    return color(pos, cross(dpdy(pos), dpdx(pos)), true);
+fn texcoordToColor(coord: vec2f) -> vec4f {
+    let c = vec3(
+        0.5 + 0.5  *  coord.x, 
+        0.5 - 0.25 * (coord.x + coord.y), 
+        0.5 + 0.5  *  coord.y, 
+    );
+    return vec4(c / max(c.x, max(c.y, c.z)), 1.0);
 }

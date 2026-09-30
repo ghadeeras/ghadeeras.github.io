@@ -136,18 +136,23 @@ export type MeshPrimitive = {
 export type Material = {
         pbrMetallicRoughness?: {
             baseColorFactor?: aether.Vec4,
-            baseColorTexture?: {},
+            baseColorTexture?: TextureInfo,
             metallicFactor?: number,
             roughnessFactor?: number,
-            metallicRoughnessTexture?: {},
+            metallicRoughnessTexture?: TextureInfo,
         },
-        normalTexture?: {},
-        occlusionTexture?: {},
-        emissiveTexture?: {},
+        normalTexture?: TextureInfo,
+        occlusionTexture?: TextureInfo,
+        emissiveTexture?: TextureInfo,
         emissiveFactor?: aether.Vec3,
         alphaMode?: "OPAQUE" | "MASK" | "BLEND",
         alphaCutoff?: number,
         doubleSided?: boolean
+}
+
+export type TextureInfo = {
+    index: number,
+    texCoord?: number
 }
 
 export type PrimitiveMode = WebGL2RenderingContext[

@@ -27,7 +27,7 @@ export type Index<I extends Resource> = {
 }
 
 export type VertexAttribute<V extends Resource> = {
-    name: string,
+    name: keyof typeof ZERO_VERTEX_BUFFER_LAYOUT | "UNKNOWN",
     type: gltf.ElementType,
     componentType: gltf.ScalarType,
     offset: number,
@@ -43,7 +43,22 @@ export type Matrix = {
     antiMatrix: aether.Mat4,
 }
 
+// Layout of Zero Vertex Buffer (for missing vertex attributes)
+const ZERO_VERTEX_BUFFER_STRIDE = 22 * 4
+const ZERO_VERTEX_BUFFER_LAYOUT = {
+    POSITION                   : { type: "VEC3", offset:  0 * 4},
+    NORMAL                     : { type: "VEC3", offset:  4 * 4},
+//  TANGENT                    : { type: "VEC3", offset:  8 * 4},
+    TEXCOORD_BASE_COLOR        : { type: "VEC2", offset: 12 * 4},
+//  TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4},
+//  TEXCOORD_TEXCOORD_EMISSIVE : { type: "VEC2", offset: 16 * 4},
+//  TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4},
+//  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
+} as const
+
 export class GLTFRenderer<N extends Resource, P extends Resource, V extends Resource, I extends Resource, R> {
+
+    private zeroVertexBuffer: V
 
     private nodeLevelRenderingRoutines: RenderingRoutine<R>[]
     private primitiveLevelRenderingRoutines: RenderingRoutine<R>[][]
@@ -54,6 +69,10 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
         private model: graph.Model, 
         private adapter: APIAdapter<N, P, V, I, R> 
     ) {
+        // Zero Vertex Buffer must be initialized first!
+        const maxCount = Math.max(...model.accessors.map(a => a.count))
+        this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), 16 * 4)
+
         this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines()
         this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
     }
@@ -106,25 +125,43 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
 
     private createPrimitiveLevelRenderingRoutine(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>, resources: P): RenderingRoutine<R> {
         const index = this.asIndex(primitive, buffers);
-        const attributes = this.asVertexAttributes(primitive, buffers);
+        const attributes = Object.keys(ZERO_VERTEX_BUFFER_LAYOUT)
+            .map(key => this.vertexAttribute(key as keyof typeof ZERO_VERTEX_BUFFER_LAYOUT, primitive, buffers));
         return this.adapter.primitiveLevelRenderingRoutine(primitive.count, primitive.mode, resources, primitive.material.index, attributes, index)        
     }
     
-    private asVertexAttributes(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>): VertexAttribute<V>[] {
-        const result: VertexAttribute<V>[] = [];
-        for (const attribute of Object.keys(primitive.attributes)) {
-            const accessor = primitive.attributes[attribute];
-            result.push({
-                name: attribute,
+    private vertexAttribute(name: keyof typeof ZERO_VERTEX_BUFFER_LAYOUT, primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>) {
+        const key = Object.keys(primitive.attributes).find(k => this.semanticallyIs(name, k, primitive));
+        const accessor = primitive.attributes[key ?? "UNKNOWN"];
+        return accessor === undefined
+            ? {
+                name,
+                type: ZERO_VERTEX_BUFFER_LAYOUT[name].type,
+                offset: ZERO_VERTEX_BUFFER_LAYOUT[name].offset,
+                stride: ZERO_VERTEX_BUFFER_STRIDE,
+                componentType: WebGL2RenderingContext.FLOAT,
+                normalized: false,
+                buffer: this.zeroVertexBuffer,
+            }
+            : {
+                name,
                 type: accessor.type,
                 componentType: accessor.componentType,
                 offset: accessor.byteOffset,
                 stride: accessor.bufferView.byteStride,
                 normalized: accessor.normalized,
                 buffer: (buffers.get(accessor.bufferView) ?? failure("Missing vertex buffer!")) as V,
-            })
+            };
+    }
+
+    private semanticallyIs(attributeName: VertexAttribute<V>["name"], key: string, primitive: graph.Primitive): boolean {
+        const m = primitive.material
+        switch (attributeName) {
+            case "POSITION":
+            case "NORMAL": return attributeName === key
+            case "TEXCOORD_BASE_COLOR": return m.baseColorTexture !== null && `TEXCOORD_${m.baseColorTexture.texCoord}` === key
+            case "UNKNOWN": return true
         }
-        return result;
     }
     
     private asIndex(primitive: graph.Primitive, buffers: Map<graph.BufferView, V | I>): Index<I> | null {

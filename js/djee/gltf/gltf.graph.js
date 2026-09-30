@@ -176,12 +176,18 @@ export class Material extends IdentifiableObject {
         this.index = index;
         const pbr = material.pbrMetallicRoughness ?? {};
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
+        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0) : null;
         this.metallicFactor = pbr.metallicFactor ?? 0.5;
         this.roughnessFactor = pbr.roughnessFactor ?? 0.5;
         this.emissiveFactor = aether.vec3.of(0, 0, 0); // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
         this.alphaMode = material.alphaMode ?? "OPAQUE";
         this.alphaCutoff = material.alphaCutoff ?? 0.5;
         this.doubleSided = material.doubleSided ?? false;
+    }
+}
+export class TextureInfo {
+    constructor(texCoord) {
+        this.texCoord = texCoord;
     }
 }
 function comatrix(matrix) {

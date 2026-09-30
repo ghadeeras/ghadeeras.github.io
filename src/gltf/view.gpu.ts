@@ -97,7 +97,7 @@ export class GPUView implements View {
         this.rendererFactory = new gltf_gpu.GPURendererFactory(
             this.device,
             1,
-            { POSITION: 0, NORMAL: 1 },
+            { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2 },
             (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
         )
 
@@ -196,12 +196,12 @@ export class GPUView implements View {
         const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
         return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
-            fragment: this.shaderModule.fragmentState(attributesCount == 2 ? "f_main" : "f_main_no_normals", [this.gpuCanvas.srgbFormat]),
+            fragment: this.shaderModule.fragmentState("f_main", [this.gpuCanvas.srgbFormat]),
             depthStencil: this.depthState,
             multisample: {
                 count: this.gpuCanvas.sampleCount
             },
-            vertex: this.shaderModule.vertexState(attributesCount == 2 ? "v_main" : "v_main_no_normals", vertexLayouts),
+            vertex: this.shaderModule.vertexState("v_main", vertexLayouts),
             primitive: primitiveState,
         });
     }

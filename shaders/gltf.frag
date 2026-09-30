@@ -30,7 +30,6 @@ void main() {
                 
     if (!gl_FrontFacing) {
         normal = -normal;
-        materialColor = vec3(1.0) - materialColor;
     }
                 
     float cosLN = -dot(lightDir, normal);

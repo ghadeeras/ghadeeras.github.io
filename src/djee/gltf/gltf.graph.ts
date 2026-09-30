@@ -279,6 +279,7 @@ export class BufferView extends IdentifiableObject {
 export class Material extends IdentifiableObject {
     
     readonly baseColorFactor: aether.Vec4
+    readonly baseColorTexture: TextureInfo | null
     readonly metallicFactor: number
     readonly roughnessFactor: number
     readonly emissiveFactor: aether.Vec3
@@ -290,6 +291,7 @@ export class Material extends IdentifiableObject {
         super(`material${index}`)
         const pbr = material.pbrMetallicRoughness ?? {}
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1)
+        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0) : null
         this.metallicFactor = pbr.metallicFactor ?? 0.5
         this.roughnessFactor = pbr.roughnessFactor ?? 0.5
         this.emissiveFactor = aether.vec3.of(0, 0, 0) // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
@@ -297,6 +299,12 @@ export class Material extends IdentifiableObject {
         this.alphaCutoff = material.alphaCutoff ?? 0.5
         this.doubleSided = material.doubleSided ?? false
     }
+
+}
+
+export class TextureInfo {
+
+    constructor(readonly texCoord: number) {}
 
 }
 
