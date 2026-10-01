@@ -42,7 +42,7 @@ class GLTFToy {
         this._cameraIndex = 0;
         this._model = null;
         this.xrSession = null;
-        this.modelIndex = 1;
+        this.modelIndex = Math.abs(models.findIndex(([n, _]) => n === "ABeautifulGame"));
         this.view.modelColor = [1, 1, 1, 1];
         this.view.roughnessFactor = 1.0;
         this.view.metallicFactor = 1.0;

@@ -22,7 +22,7 @@ export interface APIAdapter<
 
     indexBuffer(view: DataView, stride: number): I
 
-    texture(image: ImageBitmap): T
+    texture(image: ImageBitmap, linear: boolean): T
 
     sampler(sampler: graph.Sampler): S
 
@@ -60,7 +60,10 @@ export type Material<T extends Resource, S> = {
     baseColorTexture: [T, S]
     metallicFactor: number
     roughnessFactor: number
+    metallicRoughnessTexture: [T, S]
     emissiveFactor: aether.Vec3
+    emissiveTexture: [T, S]
+    occlusionTexture: [T, S]
     alphaMode: "OPAQUE" | "MASK" | "BLEND"
     alphaCutoff: number
     doubleSided: boolean
@@ -73,9 +76,9 @@ const ZERO_VERTEX_BUFFER_LAYOUT = {
     NORMAL                     : { type: "VEC3", offset:  4 * 4},
 //  TANGENT                    : { type: "VEC3", offset:  8 * 4},
     TEXCOORD_BASE_COLOR        : { type: "VEC2", offset: 12 * 4},
-//  TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4},
-//  TEXCOORD_TEXCOORD_EMISSIVE : { type: "VEC2", offset: 16 * 4},
-//  TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4},
+    TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4},
+    TEXCOORD_TEXCOORD_EMISSIVE : { type: "VEC2", offset: 16 * 4},
+    TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4},
 //  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
 } as const
 
@@ -99,11 +102,11 @@ export class GLTFRenderer<
     private constructor(
         private model: graph.Model, 
         private adapter: APIAdapter<N, P, T, S, V, I, R> ,
-        private whiteBaseColorImage: ImageBitmap,
+        private whiteImage: ImageBitmap,
     ) {
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count))
-        this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), 16 * 4)
+        this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), ZERO_VERTEX_BUFFER_STRIDE)
 
         this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines()
         this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
@@ -121,8 +124,8 @@ export class GLTFRenderer<
         model: graph.Model, 
         adapter: APIAdapter<N, P, T, S, V, I, R> ,
     ): Promise<GLTFRenderer<N, P, T, S, V, I, R>> {
-        const whiteBaseColorImage = await onePixelImage(1, 1, 1, 1);
-        return new GLTFRenderer(model, adapter, whiteBaseColorImage)
+        const whiteImage = await onePixelImage(1, 1, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteImage)
     }
 
     destroy() {
@@ -209,6 +212,9 @@ export class GLTFRenderer<
             case "POSITION":
             case "NORMAL": return attributeName === key
             case "TEXCOORD_BASE_COLOR": return m.baseColorTexture !== null && `TEXCOORD_${m.baseColorTexture.texCoord}` === key
+            case "TEXCOORD_METALLIC_ROUGHNESS": return m.metallicRoughnessTexture !== null && `TEXCOORD_${m.metallicRoughnessTexture.texCoord}` === key
+            case "TEXCOORD_TEXCOORD_EMISSIVE": return m.emissiveTexture !== null && `TEXCOORD_${m.emissiveTexture.texCoord}` === key
+            case "TEXCOORD_TEXCOORD_OCCLUSION": return m.occlusionTexture !== null && `TEXCOORD_${m.occlusionTexture.texCoord}` === key
             case "UNKNOWN": return true
         }
     }
@@ -237,8 +243,12 @@ export class GLTFRenderer<
     private gpuMaterials() {
         const textures = this.gpuTextures();
         const samplers = this.gpuSamplers();
-        const whiteBaseColorTexture = this.adapter.texture(this.whiteBaseColorImage);
+        const whiteBaseColorTexture = this.adapter.texture(this.whiteImage, false);
         const whiteBaseColorSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const whiteMetallicRoughnessTexture = this.adapter.texture(this.whiteImage, true);
+        const whiteMetallicRoughnessSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const whiteEmissiveTexture = this.adapter.texture(this.whiteImage, false);
+        const whiteEmissiveSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const materials: Material<T, S>[] = this.model.materials.map(m => ({
             baseColorFactor: m.baseColorFactor,
             baseColorTexture: m.baseColorTexture !== null ? [
@@ -247,7 +257,19 @@ export class GLTFRenderer<
             ] : [whiteBaseColorTexture, whiteBaseColorSampler],
             metallicFactor: m.metallicFactor,
             roughnessFactor: m.roughnessFactor,
+            metallicRoughnessTexture: m.metallicRoughnessTexture !== null ? [
+                textures.get(m.metallicRoughnessTexture.texture.source) ?? whiteMetallicRoughnessTexture,
+                samplers.get(m.metallicRoughnessTexture.texture.sampler) ?? whiteMetallicRoughnessSampler,
+            ] : [whiteMetallicRoughnessTexture, whiteMetallicRoughnessSampler],
             emissiveFactor: m.emissiveFactor,
+            emissiveTexture: m.emissiveTexture !== null ? [
+                textures.get(m.emissiveTexture.texture.source) ?? whiteEmissiveTexture,
+                samplers.get(m.emissiveTexture.texture.sampler) ?? whiteEmissiveSampler,
+            ] : [whiteEmissiveTexture, whiteEmissiveSampler],
+            occlusionTexture: m.occlusionTexture !== null ? [
+                textures.get(m.occlusionTexture.texture.source) ?? whiteBaseColorTexture,
+                samplers.get(m.occlusionTexture.texture.sampler) ?? whiteBaseColorSampler,
+            ] : [whiteBaseColorTexture, whiteBaseColorSampler],
             alphaCutoff: m.alphaCutoff,
             alphaMode: m.alphaMode,
             doubleSided: m.doubleSided,
@@ -256,9 +278,9 @@ export class GLTFRenderer<
     }
 
     private gpuTextures() {
-        const textures: Map<ImageBitmap, T> = new Map();
+        const textures: Map<graph.TextureImage, T> = new Map();
         for (const image of this.model.images) {
-            const gpuTexture = this.adapter.texture(image)
+            const gpuTexture = this.adapter.texture(image.image, image.linear)
             this.resources.push(gpuTexture)
             textures.set(image, gpuTexture);
         }
@@ -312,7 +334,7 @@ async function onePixelImage(r: number, g: number, b: number, a: number) {
 }
 
 function u8Shade(s: number): number {
-    return Math.min(Math.max(Math.round(s * 0xFF), 0, 0xFF))
+    return Math.min(Math.max(Math.round(s * 0xFF), 0), 0xFF)
 }
 
 function collectNodeLevelData(scene: graph.Scene): NodeLevelResources {

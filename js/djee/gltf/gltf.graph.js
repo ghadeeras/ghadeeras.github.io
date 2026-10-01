@@ -5,14 +5,22 @@ import * as aetherX from '../../utils/aether.js';
 export class Model {
     constructor(model, buffers, images, legacyPerspective) {
         this.buffers = buffers;
-        this.images = images;
         gltf.enrichBufferViews(model);
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors));
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews));
+        this.images = images.map(i => ({ image: i, linear: false }));
         this.samplers = [...(model.samplers ?? []), {}].map((s, i) => new Sampler(s, i));
-        this.textures = (model.textures ?? []).map((t, i) => new Texture(t, i, this.samplers, images));
-        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials;
+        this.textures = (model.textures ?? []).map((t, i) => new Texture(t, i, this.samplers, this.images));
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{ pbrMetallicRoughness: { metallicFactor: 0.5, roughnessFactor: 0.5 } }] : model.materials;
         this.materials = materials.map((material, i) => new Material(material, i, this.textures));
+        for (const m of this.materials) {
+            if (m.metallicRoughnessTexture !== null) {
+                m.metallicRoughnessTexture.texture.source.linear = true;
+            }
+            if (m.occlusionTexture !== null) {
+                m.occlusionTexture.texture.source.linear = true;
+            }
+        }
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials));
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
         const nodes = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes)));
@@ -194,9 +202,12 @@ export class Material extends IdentifiableObject {
         const pbr = material.pbrMetallicRoughness ?? {};
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
         this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0, textures[pbr.baseColorTexture.index]) : null;
-        this.metallicFactor = pbr.metallicFactor ?? 0.5;
-        this.roughnessFactor = pbr.roughnessFactor ?? 0.5;
-        this.emissiveFactor = aether.vec3.of(0, 0, 0); // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
+        this.metallicFactor = pbr.metallicFactor ?? 1.0;
+        this.roughnessFactor = pbr.roughnessFactor ?? 1.0;
+        this.metallicRoughnessTexture = pbr.metallicRoughnessTexture !== undefined ? new TextureInfo(pbr.metallicRoughnessTexture.texCoord ?? 0, textures[pbr.metallicRoughnessTexture.index]) : null;
+        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0);
+        this.emissiveTexture = material.emissiveTexture !== undefined ? new TextureInfo(material.emissiveTexture.texCoord ?? 0, textures[material.emissiveTexture.index]) : null;
+        this.occlusionTexture = material.occlusionTexture !== undefined ? new TextureInfo(material.occlusionTexture.texCoord ?? 0, textures[material.occlusionTexture.index]) : null;
         this.alphaMode = material.alphaMode ?? "OPAQUE";
         this.alphaCutoff = material.alphaCutoff ?? 0.5;
         this.doubleSided = material.doubleSided ?? false;

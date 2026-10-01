@@ -156,7 +156,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private xrSession: xr.XRealitySession | null = null
 
     private constructor(private models: [string, string][], private view: View, private xrSwitch: xr.XRSwitch | null) {
-        this.modelIndex = 1
+        this.modelIndex = Math.abs(models.findIndex(([n, _]) => n === "ABeautifulGame"))
         this.view.modelColor = [1, 1, 1, 1]
         this.view.roughnessFactor = 1.0
         this.view.metallicFactor = 1.0

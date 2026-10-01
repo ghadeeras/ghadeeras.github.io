@@ -8,26 +8,26 @@ const ZERO_VERTEX_BUFFER_LAYOUT = {
     NORMAL: { type: "VEC3", offset: 4 * 4 },
     //  TANGENT                    : { type: "VEC3", offset:  8 * 4},
     TEXCOORD_BASE_COLOR: { type: "VEC2", offset: 12 * 4 },
-    //  TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4},
-    //  TEXCOORD_TEXCOORD_EMISSIVE : { type: "VEC2", offset: 16 * 4},
-    //  TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4},
+    TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4 },
+    TEXCOORD_TEXCOORD_EMISSIVE: { type: "VEC2", offset: 16 * 4 },
+    TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4 },
     //  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
 };
 export class GLTFRenderer {
-    constructor(model, adapter, whiteBaseColorImage) {
+    constructor(model, adapter, whiteImage) {
         this.model = model;
         this.adapter = adapter;
-        this.whiteBaseColorImage = whiteBaseColorImage;
+        this.whiteImage = whiteImage;
         this.resources = [];
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count));
-        this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), 16 * 4);
+        this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), ZERO_VERTEX_BUFFER_STRIDE);
         this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines();
         this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
     }
     static async create(model, adapter) {
-        const whiteBaseColorImage = await onePixelImage(1, 1, 1, 1);
-        return new GLTFRenderer(model, adapter, whiteBaseColorImage);
+        const whiteImage = await onePixelImage(1, 1, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteImage);
     }
     destroy() {
         while (this.resources.length > 0) {
@@ -106,6 +106,9 @@ export class GLTFRenderer {
             case "POSITION":
             case "NORMAL": return attributeName === key;
             case "TEXCOORD_BASE_COLOR": return m.baseColorTexture !== null && `TEXCOORD_${m.baseColorTexture.texCoord}` === key;
+            case "TEXCOORD_METALLIC_ROUGHNESS": return m.metallicRoughnessTexture !== null && `TEXCOORD_${m.metallicRoughnessTexture.texCoord}` === key;
+            case "TEXCOORD_TEXCOORD_EMISSIVE": return m.emissiveTexture !== null && `TEXCOORD_${m.emissiveTexture.texCoord}` === key;
+            case "TEXCOORD_TEXCOORD_OCCLUSION": return m.occlusionTexture !== null && `TEXCOORD_${m.occlusionTexture.texCoord}` === key;
             case "UNKNOWN": return true;
         }
     }
@@ -131,8 +134,12 @@ export class GLTFRenderer {
     gpuMaterials() {
         const textures = this.gpuTextures();
         const samplers = this.gpuSamplers();
-        const whiteBaseColorTexture = this.adapter.texture(this.whiteBaseColorImage);
+        const whiteBaseColorTexture = this.adapter.texture(this.whiteImage, false);
         const whiteBaseColorSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const whiteMetallicRoughnessTexture = this.adapter.texture(this.whiteImage, true);
+        const whiteMetallicRoughnessSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const whiteEmissiveTexture = this.adapter.texture(this.whiteImage, false);
+        const whiteEmissiveSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const materials = this.model.materials.map(m => ({
             baseColorFactor: m.baseColorFactor,
             baseColorTexture: m.baseColorTexture !== null ? [
@@ -141,7 +148,19 @@ export class GLTFRenderer {
             ] : [whiteBaseColorTexture, whiteBaseColorSampler],
             metallicFactor: m.metallicFactor,
             roughnessFactor: m.roughnessFactor,
+            metallicRoughnessTexture: m.metallicRoughnessTexture !== null ? [
+                textures.get(m.metallicRoughnessTexture.texture.source) ?? whiteMetallicRoughnessTexture,
+                samplers.get(m.metallicRoughnessTexture.texture.sampler) ?? whiteMetallicRoughnessSampler,
+            ] : [whiteMetallicRoughnessTexture, whiteMetallicRoughnessSampler],
             emissiveFactor: m.emissiveFactor,
+            emissiveTexture: m.emissiveTexture !== null ? [
+                textures.get(m.emissiveTexture.texture.source) ?? whiteEmissiveTexture,
+                samplers.get(m.emissiveTexture.texture.sampler) ?? whiteEmissiveSampler,
+            ] : [whiteEmissiveTexture, whiteEmissiveSampler],
+            occlusionTexture: m.occlusionTexture !== null ? [
+                textures.get(m.occlusionTexture.texture.source) ?? whiteBaseColorTexture,
+                samplers.get(m.occlusionTexture.texture.sampler) ?? whiteBaseColorSampler,
+            ] : [whiteBaseColorTexture, whiteBaseColorSampler],
             alphaCutoff: m.alphaCutoff,
             alphaMode: m.alphaMode,
             doubleSided: m.doubleSided,
@@ -151,7 +170,7 @@ export class GLTFRenderer {
     gpuTextures() {
         const textures = new Map();
         for (const image of this.model.images) {
-            const gpuTexture = this.adapter.texture(image);
+            const gpuTexture = this.adapter.texture(image.image, image.linear);
             this.resources.push(gpuTexture);
             textures.set(image, gpuTexture);
         }
@@ -197,7 +216,7 @@ async function onePixelImage(r, g, b, a) {
     return whiteBaseColorImage;
 }
 function u8Shade(s) {
-    return Math.min(Math.max(Math.round(s * 0xFF), 0, 0xFF));
+    return Math.min(Math.max(Math.round(s * 0xFF), 0), 0xFF);
 }
 function collectNodeLevelData(scene) {
     const matrix = {

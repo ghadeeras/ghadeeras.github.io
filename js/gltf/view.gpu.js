@@ -59,7 +59,7 @@ export class GPUView {
                     resource: this.uniforms.gpuBuffer.wrapped
                 }]
         });
-        this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
+        this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2, TEXCOORD_METALLIC_ROUGHNESS: 3, TEXCOORD_TEXCOORD_EMISSIVE: 4, TEXCOORD_TEXCOORD_OCCLUSION: 5 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         this.pipelineLayout = this.device.wrapped.createPipelineLayout({
             bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout, this.rendererFactory.materialsGroupLayout],
         });
@@ -133,16 +133,19 @@ export class GPUView {
         return model;
     }
     primitivePipeline(vertexLayouts, primitiveState) {
-        const attributesCount = vertexLayouts.map(layout => [...layout.attributes].length).reduce((l1, l2) => l1 + l2, 0);
         return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
+            vertex: {
+                module: this.shaderModule.wrapped,
+                entryPoint: "v_main",
+                buffers: vertexLayouts
+            },
+            primitive: primitiveState,
             fragment: this.shaderModule.fragmentState("f_main", [this.gpuCanvas.srgbFormat]),
             depthStencil: this.depthState,
             multisample: {
                 count: this.gpuCanvas.sampleCount
             },
-            vertex: this.shaderModule.vertexState("v_main", vertexLayouts),
-            primitive: primitiveState,
         });
     }
     resize() {
@@ -152,7 +155,7 @@ export class GPUView {
     }
     draw() {
         this.device.enqueueCommands("render", encoder => {
-            const c = 0.0625 * 0.0625;
+            const c = 0.125 * 0.125;
             const passDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: c, g: c, b: c, a: 1 }, true)],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)

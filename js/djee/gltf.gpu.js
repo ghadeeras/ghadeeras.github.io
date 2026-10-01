@@ -37,6 +37,30 @@ export function gltfMaterialGroupLayout() {
                 binding: 2,
                 visibility: GPUShaderStage.FRAGMENT,
                 sampler: { type: "filtering" },
+            }, {
+                binding: 3,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: "float" }
+            }, {
+                binding: 4,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: "filtering" },
+            }, {
+                binding: 5,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: "float" }
+            }, {
+                binding: 6,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: "filtering" },
+            }, {
+                binding: 7,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: "float" }
+            }, {
+                binding: 8,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: "filtering" },
             }],
     };
 }
@@ -134,6 +158,24 @@ class GPUAdapter {
                 }, {
                     binding: 2,
                     resource: m.baseColorTexture[1].wrapped
+                }, {
+                    binding: 3,
+                    resource: m.metallicRoughnessTexture[0].wrapped.createView({ format: "rgba8unorm" })
+                }, {
+                    binding: 4,
+                    resource: m.metallicRoughnessTexture[1].wrapped
+                }, {
+                    binding: 5,
+                    resource: m.emissiveTexture[0].wrapped.createView({ format: "rgba8unorm" })
+                }, {
+                    binding: 6,
+                    resource: m.emissiveTexture[1].wrapped
+                }, {
+                    binding: 7,
+                    resource: m.occlusionTexture[0].wrapped.createView({ format: "rgba8unorm" })
+                }, {
+                    binding: 8,
+                    resource: m.occlusionTexture[1].wrapped
                 }]
         }));
         return new PrimitiveLevelResources(groups, buffer);
@@ -152,10 +194,10 @@ class GPUAdapter {
             data: this.adapt(dataView, stride)
         });
     }
-    texture(imageBitmap) {
+    texture(imageBitmap, linear) {
         const texture = this.device.texture({
             size: [imageBitmap.width, imageBitmap.height],
-            format: "rgba8unorm-srgb",
+            format: linear ? "rgba8unorm" : "rgba8unorm-srgb",
             viewFormats: ["rgba8unorm-srgb", "rgba8unorm"],
             usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
         });
