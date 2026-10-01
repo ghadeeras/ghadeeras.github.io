@@ -12,9 +12,12 @@ class DummyResource {
     destroy() {
     }
 }
-export class GLRenderer extends renderer.GLTFRenderer {
-    constructor(model, context, attributes, positionsMatUniform, normalsMatUniform) {
-        super(model, new GLAdapter(context, attributes, positionsMatUniform, normalsMatUniform));
+export class GLRendererFactory {
+    constructor(context, attributes, positionsMatUniform, normalsMatUniform) {
+        this.adapter = new GLAdapter(context, attributes, positionsMatUniform, normalsMatUniform);
+    }
+    async newInstance(model) {
+        return await renderer.GLTFRenderer.create(model, this.adapter);
     }
 }
 export class GLAdapter {
@@ -27,7 +30,7 @@ export class GLAdapter {
     nodeLevelResources(matrices) {
         return new MatrixBuffer(matrices);
     }
-    primitiveLevelResources(materials) {
+    primitiveLevelResources(_) {
         return new DummyResource();
     }
     vertexBuffer(view, stride) {
@@ -39,6 +42,12 @@ export class GLAdapter {
         const buffer = this.context.newIndicesBuffer();
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
         return buffer;
+    }
+    texture(_) {
+        return new DummyResource();
+    }
+    sampler(_) {
+        return new DummyResource();
     }
     nodeLevelBinder(matrixBuffer, index) {
         const matrix = matrixBuffer.matrices[index];

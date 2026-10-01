@@ -3,6 +3,7 @@ import { gpu } from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
+import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
 
 export type ModelIndexEntry = {
     name: string,
@@ -41,7 +42,7 @@ export class GPUView implements View {
     private depthState: GPUDepthStencilState
 
     private rendererFactory: gltf_gpu.GPURendererFactory
-    private renderer: ReturnType<gltf_gpu.GPURendererFactory["newInstance"]> | null = null
+    private renderer: GLTFRenderer<any, any, any, any, any, any, any> | null = null
 
     private _viewMatrix = aether.mat4.identity()
     private _modelMatrix = aether.mat4.identity()
@@ -96,7 +97,8 @@ export class GPUView implements View {
 
         this.rendererFactory = new gltf_gpu.GPURendererFactory(
             this.device,
-            1,
+            1, 
+            2,
             { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2 },
             (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
         )
@@ -188,7 +190,7 @@ export class GPUView implements View {
             this.renderer.destroy();
             this.renderer = null;
         }
-        this.renderer = this.rendererFactory.newInstance(model);
+        this.renderer = await this.rendererFactory.newInstance(model);
         return model
     }
 

@@ -46,6 +46,14 @@ var<uniform> node: Node;
 @binding(0)
 var<uniform> material: Material;
 
+@group(2)
+@binding(1)
+var baseColorTexture: texture_2d<f32>;
+
+@group(2)
+@binding(2)
+var baseColorSampler: sampler;
+
 fn color(
     position: vec3<f32>,
     normal: vec3<f32>,
@@ -105,14 +113,6 @@ fn f_main(
         cross(dpdy(fragPosition), dpdx(fragPosition)), 
         all(fragNormal == vec3(0.0))
     ));
-    return color(fragPosition, normal, texcoordToColor(texcoordBaseColor));
-}
-
-fn texcoordToColor(coord: vec2f) -> vec4f {
-    let c = vec3(
-        0.5 + 0.5  *  coord.x, 
-        0.5 - 0.25 * (coord.x + coord.y), 
-        0.5 + 0.5  *  coord.y, 
-    );
-    return vec4(c / max(c.x, max(c.y, c.z)), 1.0);
+    let baseColor = textureSample(baseColorTexture, baseColorSampler, texcoordBaseColor);
+    return color(fragPosition, normal, baseColor);
 }

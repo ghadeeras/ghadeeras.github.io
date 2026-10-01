@@ -14,15 +14,20 @@ const ZERO_VERTEX_BUFFER_LAYOUT = {
     //  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
 };
 export class GLTFRenderer {
-    constructor(model, adapter) {
+    constructor(model, adapter, whiteBaseColorImage) {
         this.model = model;
         this.adapter = adapter;
+        this.whiteBaseColorImage = whiteBaseColorImage;
         this.resources = [];
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count));
         this.zeroVertexBuffer = adapter.vertexBuffer(new DataView(new ArrayBuffer(maxCount * ZERO_VERTEX_BUFFER_STRIDE)), 16 * 4);
         this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines();
         this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
+    }
+    static async create(model, adapter) {
+        const whiteBaseColorImage = await onePixelImage(1, 1, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteBaseColorImage);
     }
     destroy() {
         while (this.resources.length > 0) {
@@ -51,9 +56,10 @@ export class GLTFRenderer {
         return node instanceof graph.Scene ? binder : renderer => this.renderNode(renderer, node, binder);
     }
     createPrimitiveLevelRenderingRoutines() {
-        const resources = this.adapter.primitiveLevelResources(this.model.materials);
-        this.resources.push(resources);
         const buffers = this.gpuBuffers();
+        const materials = this.gpuMaterials();
+        const resources = this.adapter.primitiveLevelResources(materials);
+        this.resources.push(resources);
         const meshRoutines = [];
         for (const mesh of this.model.meshes) {
             const primitiveRoutines = [];
@@ -91,7 +97,7 @@ export class GLTFRenderer {
                 offset: accessor.byteOffset,
                 stride: accessor.bufferView.byteStride,
                 normalized: accessor.normalized,
-                buffer: (buffers.get(accessor.bufferView) ?? failure("Missing vertex buffer!")),
+                buffer: (buffers.get(accessor.bufferView) ?? this.zeroVertexBuffer),
             };
     }
     semanticallyIs(attributeName, key, primitive) {
@@ -122,6 +128,43 @@ export class GLTFRenderer {
         }
         return buffers;
     }
+    gpuMaterials() {
+        const textures = this.gpuTextures();
+        const samplers = this.gpuSamplers();
+        const whiteBaseColorTexture = this.adapter.texture(this.whiteBaseColorImage);
+        const whiteBaseColorSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const materials = this.model.materials.map(m => ({
+            baseColorFactor: m.baseColorFactor,
+            baseColorTexture: m.baseColorTexture !== null ? [
+                textures.get(m.baseColorTexture.texture.source) ?? whiteBaseColorTexture,
+                samplers.get(m.baseColorTexture.texture.sampler) ?? whiteBaseColorSampler,
+            ] : [whiteBaseColorTexture, whiteBaseColorSampler],
+            metallicFactor: m.metallicFactor,
+            roughnessFactor: m.roughnessFactor,
+            emissiveFactor: m.emissiveFactor,
+            alphaCutoff: m.alphaCutoff,
+            alphaMode: m.alphaMode,
+            doubleSided: m.doubleSided,
+        }));
+        return materials;
+    }
+    gpuTextures() {
+        const textures = new Map();
+        for (const image of this.model.images) {
+            const gpuTexture = this.adapter.texture(image);
+            this.resources.push(gpuTexture);
+            textures.set(image, gpuTexture);
+        }
+        return textures;
+    }
+    gpuSamplers() {
+        const samplers = new Map();
+        for (const sampler of this.model.samplers) {
+            const gpuSampler = this.adapter.sampler(sampler);
+            samplers.set(sampler, gpuSampler);
+        }
+        return samplers;
+    }
     render(renderer) {
         for (const routine of this.nodeLevelRenderingRoutines) {
             routine(renderer);
@@ -142,6 +185,19 @@ export class GLTFRenderer {
         const routine = this.primitiveLevelRenderingRoutines[primitive.meshIndex][primitive.index];
         routine(renderer);
     }
+}
+async function onePixelImage(r, g, b, a) {
+    const array = new Uint8ClampedArray(4);
+    array[0] = u8Shade(r);
+    array[1] = u8Shade(g);
+    array[2] = u8Shade(b);
+    array[3] = u8Shade(a);
+    const whiteBaseColorImageData = new ImageData(array, 1, 1);
+    const whiteBaseColorImage = await createImageBitmap(whiteBaseColorImageData);
+    return whiteBaseColorImage;
+}
+function u8Shade(s) {
+    return Math.min(Math.max(Math.round(s * 0xFF), 0, 0xFF));
 }
 function collectNodeLevelData(scene) {
     const matrix = {

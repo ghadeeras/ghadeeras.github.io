@@ -25,6 +25,12 @@ export type Model = {
 
     materials?: Material[]
 
+    textures?: Texture[]
+
+    samplers?: Sampler[]
+
+    images?: Image[]
+
 }
 
 export type Scene = {
@@ -92,6 +98,30 @@ export type Accessor = {
     max?: number[]
 
 }
+
+export type Texture = {
+
+    sampler?: number
+
+    source: number
+
+}
+
+export type Sampler = {
+
+    magFilter?: number
+
+    minFilter?: number
+
+    wrapS?: number
+
+    wrapT?: number
+
+}
+
+export type Image = 
+    | { bufferView: number, mimeType: "image/jpeg" | "image/png"} 
+    | { uri: string }
 
 export type Camera = PerspectiveCamera | OrthographicCamera
 export type PerspectiveCamera = {
@@ -177,7 +207,15 @@ export type ScalarType = WebGL2RenderingContext[
 
 export type ElementType = "SCALAR" | "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4"
 
-export async function fetchBuffers(bufferRefs: BufferRef[], baseUri: string) {
+export async function fetchModel(modelUri: string) {
+    const response = await fetch(modelUri, { mode: "cors" })
+    const model = await response.json() as Model
+    const buffers = await fetchBuffers(model.buffers, modelUri)
+    const images = await fetchImages(model, model.bufferViews, buffers, modelUri)
+    return { model, buffers, images }
+}
+
+async function fetchBuffers(bufferRefs: BufferRef[], baseUri: string): Promise<ArrayBuffer[]> {
     const buffers: ArrayBuffer[] = new Array<ArrayBuffer>(bufferRefs.length)
     for (let i = 0; i < buffers.length; i++) {
         buffers[i] = await fetchBuffer(bufferRefs[i], baseUri)
@@ -192,6 +230,28 @@ async function fetchBuffer(bufferRef: BufferRef, baseUri: string): Promise<Array
     return arrayBuffer.byteLength == bufferRef.byteLength ? 
         arrayBuffer : 
         failure(`Buffer at '${bufferRef.uri}' does not have expected length of ${bufferRef.byteLength} bytes!`)
+}
+
+async function fetchImages(model: Model, bufferViews: BufferView[], buffers: ArrayBuffer[], modelUri: string): Promise<ImageBitmap[]> {
+    const images = model.images ?? []
+    return Promise.all(images.map(i => fetchImageBitmap(i, bufferViews, buffers, modelUri)))
+}
+
+async function fetchImageBitmap(image: Image, bufferViews: BufferView[], buffers: ArrayBuffer[], baseUri: string): Promise<ImageBitmap> {
+    try {
+        if ("uri" in image) {
+            const response = await fetch(new URL(image.uri, baseUri))
+            return await createImageBitmap(await response.blob())
+        } else {
+            const view = bufferViews[image.bufferView]
+            const buffer = buffers[view.buffer]
+            const blob = new Blob([buffer], { type: image.mimeType })
+            return await createImageBitmap(blob)
+        }
+    } catch (e) {
+        console.error(e, image)
+        throw e
+    }
 }
 
 export function matrixOf(node: Node): aether.Mat4 {
@@ -215,7 +275,10 @@ export function enrichBufferViews(model: Model) {
         for (const primitive of mesh.primitives) {
             if (primitive.indices !== undefined) {
                 const accessor = model.accessors[primitive.indices]
-                const bufferView = model.bufferViews[accessor.bufferView ?? failure<number>("Using zero buffers not supported yet!")]
+                if (accessor.bufferView === undefined) {
+                    continue
+                }
+                const bufferView = model.bufferViews[accessor.bufferView]
                 bufferView.target = WebGL2RenderingContext.ELEMENT_ARRAY_BUFFER
                 if (bufferView.byteStride === undefined && accessor.componentType == WebGL2RenderingContext.UNSIGNED_BYTE) {
                     bufferView.byteStride = 1

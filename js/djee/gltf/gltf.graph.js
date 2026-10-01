@@ -3,13 +3,16 @@ import * as utils from '../utils.js';
 import * as aether from "aether";
 import * as aetherX from '../../utils/aether.js';
 export class Model {
-    constructor(model, buffers, legacyPerspective) {
+    constructor(model, buffers, images, legacyPerspective) {
         this.buffers = buffers;
+        this.images = images;
         gltf.enrichBufferViews(model);
-        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials;
-        this.materials = materials.map((material, i) => new Material(material, i));
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors));
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews));
+        this.samplers = [...(model.samplers ?? []), {}].map((s, i) => new Sampler(s, i));
+        this.textures = (model.textures ?? []).map((t, i) => new Texture(t, i, this.samplers, images));
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials;
+        this.materials = materials.map((material, i) => new Material(material, i, this.textures));
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials));
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
         const nodes = model.nodes.map((node, i) => utils.lazily(() => new Node(node, i, this.meshes, this.cameras, nodes)));
@@ -18,10 +21,8 @@ export class Model {
         this.scene = this.scenes[model.scene ?? 0];
     }
     static async create(modelUri, legacyPerspective = false) {
-        const response = await fetch(modelUri, { mode: "cors" });
-        const model = await response.json();
-        const buffers = await gltf.fetchBuffers(model.buffers, modelUri);
-        return new Model(model, buffers, legacyPerspective);
+        const { model, buffers, images } = await gltf.fetchModel(modelUri);
+        return new Model(model, buffers, images, legacyPerspective);
     }
 }
 class IdentifiableObject {
@@ -57,6 +58,22 @@ export class Node extends IdentifiableObject {
             aetherX.union(this.meshes.map(mesh => mesh.range)),
             aetherX.union(this.children.map(child => child.range))
         ]));
+    }
+}
+export class Texture extends IdentifiableObject {
+    constructor(texture, i, samplers, images) {
+        super(`texture#${i}`);
+        this.sampler = samplers[texture.sampler ?? samplers.length - 1];
+        this.source = images[texture.source];
+    }
+}
+export class Sampler extends IdentifiableObject {
+    constructor(sampler, i) {
+        super(`sampler#${i}`);
+        this.magFilter = sampler.magFilter ?? WebGL2RenderingContext.LINEAR;
+        this.minFilter = sampler.minFilter ?? WebGL2RenderingContext.LINEAR;
+        this.wrapS = sampler.wrapS ?? WebGL2RenderingContext.REPEAT;
+        this.wrapT = sampler.wrapT ?? WebGL2RenderingContext.REPEAT;
     }
 }
 export class Perspective {
@@ -171,12 +188,12 @@ export class BufferView extends IdentifiableObject {
     }
 }
 export class Material extends IdentifiableObject {
-    constructor(material, index) {
+    constructor(material, index, textures) {
         super(`material${index}`);
         this.index = index;
         const pbr = material.pbrMetallicRoughness ?? {};
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
-        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0) : null;
+        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0, textures[pbr.baseColorTexture.index]) : null;
         this.metallicFactor = pbr.metallicFactor ?? 0.5;
         this.roughnessFactor = pbr.roughnessFactor ?? 0.5;
         this.emissiveFactor = aether.vec3.of(0, 0, 0); // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
@@ -186,8 +203,9 @@ export class Material extends IdentifiableObject {
     }
 }
 export class TextureInfo {
-    constructor(texCoord) {
+    constructor(texCoord, texture) {
         this.texCoord = texCoord;
+        this.texture = texture;
     }
 }
 function comatrix(matrix) {

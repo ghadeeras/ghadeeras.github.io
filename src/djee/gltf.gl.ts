@@ -20,21 +20,26 @@ class DummyResource implements Resource {
 
 }
 
-export class GLRenderer extends renderer.GLTFRenderer<MatrixBuffer, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
+export class GLRendererFactory {
+
+    private adapter: GLAdapter
 
     constructor(
-        model: graph.Model,
         context: wgl.Context, 
         attributes: Partial<Record<string, wgl.Attribute>>, 
         positionsMatUniform: wgl.Uniform, 
         normalsMatUniform: wgl.Uniform
     ) {
-        super(model, new GLAdapter(context, attributes, positionsMatUniform, normalsMatUniform))
+        this.adapter = new GLAdapter(context, attributes, positionsMatUniform, normalsMatUniform)
+    }
+
+    async newInstance(model: graph.Model): Promise<renderer.GLTFRenderer<MatrixBuffer, Resource, Resource, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context>> {
+        return await renderer.GLTFRenderer.create(model, this.adapter)        
     }
 
 }
 
-export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
+export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, Resource, Resource, Resource, wgl.AttributesBuffer, wgl.IndicesBuffer, wgl.Context> {
 
     constructor(
         private context: wgl.Context, 
@@ -48,7 +53,7 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, Resource, wg
         return new MatrixBuffer(matrices)
     }
 
-    primitiveLevelResources(materials: graph.Material[]): Resource {
+    primitiveLevelResources(_: renderer.Material<Resource, Resource>[]): Resource {
         return new DummyResource()
     }
 
@@ -62,6 +67,14 @@ export class GLAdapter implements renderer.APIAdapter<MatrixBuffer, Resource, wg
         const buffer = this.context.newIndicesBuffer()
         buffer.data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
         return buffer
+    }
+
+    texture(_: ImageBitmap): Resource {
+        return new DummyResource()
+    }
+
+    sampler(_: graph.Sampler): Resource {
+        return new DummyResource()
     }
 
     nodeLevelBinder(matrixBuffer: MatrixBuffer, index: number): renderer.RenderingRoutine<wgl.Context> {

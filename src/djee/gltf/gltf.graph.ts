@@ -13,14 +13,21 @@ export class Model {
     readonly accessors: Accessor[]
     readonly materials: Material[]
     readonly bufferViews: BufferView[]
+    readonly samplers: Sampler[]
+    readonly textures: Texture[]
 
-    constructor(model: gltf.Model, readonly buffers: ArrayBuffer[], legacyPerspective: boolean) {
+    constructor(model: gltf.Model, readonly buffers: ArrayBuffer[], readonly images: ImageBitmap[], legacyPerspective: boolean) {
         gltf.enrichBufferViews(model)
 
-        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials
-        this.materials = materials.map((material, i) => new Material(material, i))
         this.bufferViews = model.bufferViews.map((bufferView, i) => new BufferView(bufferView, i, buffers, model.accessors))
         this.accessors = model.accessors.map((accessor, i) => new Accessor(accessor, i, this.bufferViews))
+
+        this.samplers = [...(model.samplers ?? []), {}].map((s, i) => new Sampler(s, i))
+        this.textures = (model.textures ?? []).map((t, i) => new Texture(t, i, this.samplers, images))
+
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials
+        this.materials = materials.map((material, i) => new Material(material, i, this.textures))
+
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials))
         
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective))
@@ -34,10 +41,8 @@ export class Model {
     }
 
     static async create(modelUri: string, legacyPerspective = false) {
-        const response = await fetch(modelUri, {mode : "cors"})
-        const model = await response.json() as gltf.Model
-        const buffers = await gltf.fetchBuffers(model.buffers, modelUri)
-        return new Model(model, buffers, legacyPerspective)
+        const { model, buffers, images } = await gltf.fetchModel(modelUri)
+        return new Model(model, buffers, images, legacyPerspective)
     }
 
 }
@@ -99,6 +104,36 @@ export class Node extends IdentifiableObject {
             aetherX.union(this.meshes.map(mesh => mesh.range)), 
             aetherX.union(this.children.map(child => child.range))
         ]))
+    }
+
+}
+
+export class Texture extends IdentifiableObject {
+
+    readonly sampler: Sampler
+    readonly source: ImageBitmap
+
+    constructor(texture: gltf.Texture, i: number, samplers: Sampler[], images: ImageBitmap[]) {
+        super(`texture#${i}`)
+        this.sampler = samplers[texture.sampler ?? samplers.length - 1]
+        this.source = images[texture.source]
+    }
+
+}
+
+export class Sampler extends IdentifiableObject {
+
+    readonly magFilter: number
+    readonly minFilter: number
+    readonly wrapS: number
+    readonly wrapT: number
+
+    constructor(sampler: gltf.Sampler, i: number) {
+        super(`sampler#${i}`)
+        this.magFilter = sampler.magFilter ?? WebGL2RenderingContext.LINEAR
+        this.minFilter = sampler.minFilter ?? WebGL2RenderingContext.LINEAR
+        this.wrapS     = sampler.wrapS     ?? WebGL2RenderingContext.REPEAT
+        this.wrapT     = sampler.wrapT     ?? WebGL2RenderingContext.REPEAT
     }
 
 }
@@ -287,11 +322,11 @@ export class Material extends IdentifiableObject {
     readonly alphaCutoff: number
     readonly doubleSided: boolean
 
-    constructor(material: gltf.Material, readonly index: number) {
+    constructor(material: gltf.Material, readonly index: number, textures: Texture[]) {
         super(`material${index}`)
         const pbr = material.pbrMetallicRoughness ?? {}
         this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1)
-        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0) : null
+        this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0, textures[pbr.baseColorTexture.index]) : null
         this.metallicFactor = pbr.metallicFactor ?? 0.5
         this.roughnessFactor = pbr.roughnessFactor ?? 0.5
         this.emissiveFactor = aether.vec3.of(0, 0, 0) // material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
@@ -304,7 +339,7 @@ export class Material extends IdentifiableObject {
 
 export class TextureInfo {
 
-    constructor(readonly texCoord: number) {}
+    constructor(readonly texCoord: number, readonly texture: Texture) {}
 
 }
 

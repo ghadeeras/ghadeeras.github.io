@@ -30,6 +30,10 @@ export class GLView {
         this.uColor = program.uniform("color");
         this.uShininess = program.uniform("shininess");
         this.uFogginess = program.uniform("fogginess");
+        this.rendererFactory = new gltf_gl.GLRendererFactory(this.context, {
+            "POSITION": this.position,
+            "NORMAL": this.normal,
+        }, this.uPositionsMat, this.uNormalsMat);
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
@@ -99,10 +103,7 @@ export class GLView {
             this.renderer.destroy();
             this.renderer = null;
         }
-        this.renderer = new gltf_gl.GLRenderer(model, this.context, {
-            "POSITION": this.position,
-            "NORMAL": this.normal,
-        }, this.uPositionsMat, this.uNormalsMat);
+        this.renderer = await this.rendererFactory.newInstance(model);
         return model;
     }
     resize() {

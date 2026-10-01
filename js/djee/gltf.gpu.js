@@ -23,6 +23,23 @@ export function gltfMatrixGroupLayout() {
             }],
     };
 }
+export function gltfMaterialGroupLayout() {
+    return {
+        entries: [{
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                buffer: { type: "uniform" },
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: "float" }
+            }, {
+                binding: 2,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: "filtering" },
+            }],
+    };
+}
 export class NodeLevelResources {
     constructor(group, matricesBuffer) {
         this.group = group;
@@ -42,8 +59,8 @@ export class VertexBuffer {
     }
 }
 class PrimitiveLevelResources {
-    constructor(group, materialsBuffer) {
-        this.group = group;
+    constructor(groups, materialsBuffer) {
+        this.groups = groups;
         this.materialsBuffer = materialsBuffer;
     }
     destroy() {
@@ -51,11 +68,11 @@ class PrimitiveLevelResources {
     }
 }
 export class GPURendererFactory {
-    constructor(device, matricesGroupIndex, attributeLocations, pipelineSupplier) {
-        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), matricesGroupIndex, attributeLocations, caching(pipelineSupplier));
+    constructor(device, matricesGroupIndex, materialsGroupIndex, attributeLocations, pipelineSupplier) {
+        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), device.wrapped.createBindGroupLayout(gltfMaterialGroupLayout()), matricesGroupIndex, materialsGroupIndex, attributeLocations, caching(pipelineSupplier));
     }
-    newInstance(model) {
-        return new renderer.GLTFRenderer(model, this.adapter);
+    async newInstance(model) {
+        return await renderer.GLTFRenderer.create(model, this.adapter);
     }
     get matricesGroupLayout() {
         return this.adapter.matricesGroupLayout;
@@ -65,11 +82,12 @@ export class GPURendererFactory {
     }
 }
 class GPUAdapter {
-    constructor(device, matricesGroupLayout, materialsGroupLayout, matricesGroupIndex, attributeLocations, pipelineSupplier) {
+    constructor(device, matricesGroupLayout, materialsGroupLayout, matricesGroupIndex, materialsGroupIndex, attributeLocations, pipelineSupplier) {
         this.device = device;
         this.matricesGroupLayout = matricesGroupLayout;
         this.materialsGroupLayout = materialsGroupLayout;
         this.matricesGroupIndex = matricesGroupIndex;
+        this.materialsGroupIndex = materialsGroupIndex;
         this.attributeLocations = attributeLocations;
         this.pipelineSupplier = pipelineSupplier;
     }
@@ -100,7 +118,7 @@ class GPUAdapter {
             usage: ["UNIFORM"],
             data: dataView
         });
-        const group = this.device.wrapped.createBindGroup({
+        const groups = materials.map((m, i) => this.device.wrapped.createBindGroup({
             label: "primitiveLevelResources",
             layout: this.materialsGroupLayout,
             entries: [{
@@ -108,10 +126,17 @@ class GPUAdapter {
                     resource: {
                         buffer: buffer.wrapped,
                         size: gltfMaterialsStruct.paddedSize,
+                        offset: i * gltfMaterialsStruct.stride
                     }
+                }, {
+                    binding: 1,
+                    resource: m.baseColorTexture[0].wrapped.createView({ format: "rgba8unorm" })
+                }, {
+                    binding: 2,
+                    resource: m.baseColorTexture[1].wrapped
                 }]
-        });
-        return new PrimitiveLevelResources(group, buffer);
+        }));
+        return new PrimitiveLevelResources(groups, buffer);
     }
     vertexBuffer(dataView, stride) {
         return new VertexBuffer(this.device.dataBuffer({
@@ -125,6 +150,26 @@ class GPUAdapter {
             label: "index",
             usage: ["INDEX", "VERTEX"],
             data: this.adapt(dataView, stride)
+        });
+    }
+    texture(imageBitmap) {
+        const texture = this.device.texture({
+            size: [imageBitmap.width, imageBitmap.height],
+            format: "rgba8unorm-srgb",
+            viewFormats: ["rgba8unorm-srgb", "rgba8unorm"],
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        this.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
+        texture.generateMipmaps();
+        return texture;
+    }
+    sampler(sampler) {
+        return this.device.sampler({
+            magFilter: filterMode(sampler.magFilter),
+            minFilter: filterMode(sampler.minFilter),
+            mipmapFilter: mipmapMode(sampler.minFilter),
+            addressModeU: addressMode(sampler.wrapS),
+            addressModeV: addressMode(sampler.wrapT),
         });
     }
     nodeLevelBinder(matrixBuffer, index) {
@@ -141,18 +186,18 @@ class GPUAdapter {
             stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined
         };
         const pipeline = this.pipelineSupplier(bufferLayouts, primitiveState);
-        const offsets = [materialIndex * gltfMaterialsStruct.stride];
+        const group = resources.groups[materialIndex];
         return index !== null ?
             pass => {
                 pass.setPipeline(pipeline);
-                pass.setBindGroup(2, resources.group, offsets);
+                pass.setBindGroup(this.materialsGroupIndex, group);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.setIndexBuffer(index.buffer.wrapped, indexFormat, index.offset);
                 pass.drawIndexed(count);
             } :
             pass => {
                 pass.setPipeline(pipeline);
-                pass.setBindGroup(2, resources.group, offsets);
+                pass.setBindGroup(this.materialsGroupIndex, group);
                 vertexBufferSlots.forEach((buffer, slot) => pass.setVertexBuffer(slot, buffer.gpuBuffer, buffer.offset));
                 pass.draw(count);
             };
@@ -318,5 +363,28 @@ function digestLayout(l) {
 }
 function digestAttribute(a) {
     return "{" + a.shaderLocation + ":" + a.offset + ":" + a.format + "}";
+}
+function filterMode(filter) {
+    switch (filter) {
+        case WebGL2RenderingContext.NEAREST:
+        case WebGL2RenderingContext.NEAREST_MIPMAP_NEAREST:
+        case WebGL2RenderingContext.LINEAR_MIPMAP_NEAREST: return "nearest";
+        default: return "linear";
+    }
+}
+function mipmapMode(filter) {
+    switch (filter) {
+        case WebGL2RenderingContext.NEAREST:
+        case WebGL2RenderingContext.NEAREST_MIPMAP_NEAREST:
+        case WebGL2RenderingContext.NEAREST_MIPMAP_LINEAR: return "nearest";
+        default: return "nearest";
+    }
+}
+function addressMode(wrap) {
+    switch (wrap) {
+        case WebGL2RenderingContext.CLAMP_TO_EDGE: return "clamp-to-edge";
+        case WebGL2RenderingContext.MIRRORED_REPEAT: return "mirror-repeat";
+        default: return "repeat";
+    }
 }
 //# sourceMappingURL=gltf.gpu.js.map

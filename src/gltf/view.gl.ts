@@ -3,6 +3,7 @@ import * as gear from "gear"
 import { wgl } from "lumen";
 import { gltf, gltf_gl } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
+import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
 
 export type ModelIndexEntry = {
     name: string,
@@ -33,7 +34,8 @@ export class GLView implements View {
     private uShininess: wgl.Uniform;
     private uFogginess: wgl.Uniform;
 
-    private renderer: gltf_gl.GLRenderer | null = null
+    private rendererFactory: gltf_gl.GLRendererFactory
+    private renderer: GLTFRenderer<any, any, any, any, any, any, any> | null = null
 
     private _viewMatrix: aether.Mat<4> = aether.mat4.identity()
     private _modelMatrix: aether.Mat<4> = aether.mat4.identity()
@@ -70,6 +72,11 @@ export class GLView implements View {
         this.uColor = program.uniform("color");
         this.uShininess = program.uniform("shininess");
         this.uFogginess = program.uniform("fogginess");
+
+        this.rendererFactory = new gltf_gl.GLRendererFactory(this.context, {
+            "POSITION": this.position,
+            "NORMAL": this.normal,
+        }, this.uPositionsMat, this.uNormalsMat)
 
         const gl = this.context.gl;
         gl.enable(gl.DEPTH_TEST);
@@ -157,10 +164,7 @@ export class GLView implements View {
             this.renderer.destroy();
             this.renderer = null;
         }
-        this.renderer = new gltf_gl.GLRenderer(model, this.context, {
-            "POSITION": this.position,
-            "NORMAL": this.normal,
-        }, this.uPositionsMat, this.uNormalsMat);
+        this.renderer = await this.rendererFactory.newInstance(model);
         return model
     }
 

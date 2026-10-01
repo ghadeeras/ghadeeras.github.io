@@ -4,15 +4,27 @@ import { failure } from "../utils.js";
 import * as gltf from "../gltf/gltf.js";
 import * as graph from "../gltf/gltf.graph.js";
 
-export interface APIAdapter<N extends Resource, P extends Resource, V extends Resource, I extends Resource, R> {
+export interface APIAdapter<
+    N extends Resource, 
+    P extends Resource, 
+    T extends Resource, 
+    S, 
+    V extends Resource, 
+    I extends Resource, 
+    R
+> {
 
     nodeLevelResources(matrices: Matrix[]): N
 
-    primitiveLevelResources(materials: graph.Material[]): P
+    primitiveLevelResources(materials: Material<T, S>[]): P
 
     vertexBuffer(view: DataView, stride: number): V
 
     indexBuffer(view: DataView, stride: number): I
+
+    texture(image: ImageBitmap): T
+
+    sampler(sampler: graph.Sampler): S
 
     nodeLevelBinder(resources: N, matrixIndex: number): RenderingRoutine<R>
 
@@ -43,6 +55,17 @@ export type Matrix = {
     antiMatrix: aether.Mat4,
 }
 
+export type Material<T extends Resource, S> = {
+    baseColorFactor: aether.Vec4
+    baseColorTexture: [T, S]
+    metallicFactor: number
+    roughnessFactor: number
+    emissiveFactor: aether.Vec3
+    alphaMode: "OPAQUE" | "MASK" | "BLEND"
+    alphaCutoff: number
+    doubleSided: boolean
+}
+
 // Layout of Zero Vertex Buffer (for missing vertex attributes)
 const ZERO_VERTEX_BUFFER_STRIDE = 22 * 4
 const ZERO_VERTEX_BUFFER_LAYOUT = {
@@ -56,7 +79,15 @@ const ZERO_VERTEX_BUFFER_LAYOUT = {
 //  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
 } as const
 
-export class GLTFRenderer<N extends Resource, P extends Resource, V extends Resource, I extends Resource, R> {
+export class GLTFRenderer<
+    N extends Resource, 
+    P extends Resource, 
+    T extends Resource, 
+    S, 
+    V extends Resource, 
+    I extends Resource, 
+    R
+> {
 
     private zeroVertexBuffer: V
 
@@ -65,9 +96,10 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
     
     private resources: Resource[] = []
 
-    constructor(
+    private constructor(
         private model: graph.Model, 
-        private adapter: APIAdapter<N, P, V, I, R> 
+        private adapter: APIAdapter<N, P, T, S, V, I, R> ,
+        private whiteBaseColorImage: ImageBitmap,
     ) {
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count))
@@ -75,6 +107,22 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
 
         this.nodeLevelRenderingRoutines = this.createNodeLevelRenderingRoutines()
         this.primitiveLevelRenderingRoutines = this.createPrimitiveLevelRenderingRoutines();
+    }
+
+    static async create<
+        N extends Resource, 
+        P extends Resource, 
+        T extends Resource, 
+        S, 
+        V extends Resource, 
+        I extends Resource, 
+        R
+    >(
+        model: graph.Model, 
+        adapter: APIAdapter<N, P, T, S, V, I, R> ,
+    ): Promise<GLTFRenderer<N, P, T, S, V, I, R>> {
+        const whiteBaseColorImage = await onePixelImage(1, 1, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteBaseColorImage)
     }
 
     destroy() {
@@ -108,9 +156,10 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
     }
 
     private createPrimitiveLevelRenderingRoutines(): typeof this.primitiveLevelRenderingRoutines {
-        const resources = this.adapter.primitiveLevelResources(this.model.materials)
-        this.resources.push(resources)
         const buffers = this.gpuBuffers();
+        const materials = this.gpuMaterials();
+        const resources = this.adapter.primitiveLevelResources(materials)
+        this.resources.push(resources)
         const meshRoutines: RenderingRoutine<R>[][] = []
         for (const mesh of this.model.meshes) {
             const primitiveRoutines: RenderingRoutine<R>[] = []
@@ -150,7 +199,7 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
                 offset: accessor.byteOffset,
                 stride: accessor.bufferView.byteStride,
                 normalized: accessor.normalized,
-                buffer: (buffers.get(accessor.bufferView) ?? failure("Missing vertex buffer!")) as V,
+                buffer: (buffers.get(accessor.bufferView) ?? this.zeroVertexBuffer) as V,
             };
     }
 
@@ -185,6 +234,46 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
         return buffers;
     }
     
+    private gpuMaterials() {
+        const textures = this.gpuTextures();
+        const samplers = this.gpuSamplers();
+        const whiteBaseColorTexture = this.adapter.texture(this.whiteBaseColorImage);
+        const whiteBaseColorSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const materials: Material<T, S>[] = this.model.materials.map(m => ({
+            baseColorFactor: m.baseColorFactor,
+            baseColorTexture: m.baseColorTexture !== null ? [
+                textures.get(m.baseColorTexture.texture.source) ?? whiteBaseColorTexture,
+                samplers.get(m.baseColorTexture.texture.sampler) ?? whiteBaseColorSampler,
+            ] : [whiteBaseColorTexture, whiteBaseColorSampler],
+            metallicFactor: m.metallicFactor,
+            roughnessFactor: m.roughnessFactor,
+            emissiveFactor: m.emissiveFactor,
+            alphaCutoff: m.alphaCutoff,
+            alphaMode: m.alphaMode,
+            doubleSided: m.doubleSided,
+        }));
+        return materials;
+    }
+
+    private gpuTextures() {
+        const textures: Map<ImageBitmap, T> = new Map();
+        for (const image of this.model.images) {
+            const gpuTexture = this.adapter.texture(image)
+            this.resources.push(gpuTexture)
+            textures.set(image, gpuTexture);
+        }
+        return textures;
+    }
+    
+    private gpuSamplers() {
+        const samplers: Map<graph.Sampler, S> = new Map();
+        for (const sampler of this.model.samplers) {
+            const gpuSampler = this.adapter.sampler(sampler)
+            samplers.set(sampler, gpuSampler);
+        }
+        return samplers;
+    }
+    
     render(renderer: R) {
         for (const routine of this.nodeLevelRenderingRoutines) {
             routine(renderer)
@@ -209,6 +298,21 @@ export class GLTFRenderer<N extends Resource, P extends Resource, V extends Reso
         routine(renderer)
     }
 
+}
+
+async function onePixelImage(r: number, g: number, b: number, a: number) {
+    const array = new Uint8ClampedArray(4);
+    array[0] = u8Shade(r);
+    array[1] = u8Shade(g);
+    array[2] = u8Shade(b);
+    array[3] = u8Shade(a);
+    const whiteBaseColorImageData = new ImageData(array, 1, 1);
+    const whiteBaseColorImage = await createImageBitmap(whiteBaseColorImageData);
+    return whiteBaseColorImage;
+}
+
+function u8Shade(s: number): number {
+    return Math.min(Math.max(Math.round(s * 0xFF), 0, 0xFF))
 }
 
 function collectNodeLevelData(scene: graph.Scene): NodeLevelResources {
