@@ -140,7 +140,7 @@ fn color(
 
     let smoothTangentY = cross(smoothNormal, smoothTangent);
     let tangentSpace = mat3x3(smoothTangent, smoothTangentY, smoothNormal);
-    let normal = normalize(tangentSpace * (tsNormal.xyz - 0.5));
+    let normal = normalize(tangentSpace * (tsNormal.xyz - 127.0 / 255.0));
 
     let cosLN = dot(lightDir, normal);
     let clampedCosLN = clamp(cosLN + lightRadius, 0.0, 1.0);

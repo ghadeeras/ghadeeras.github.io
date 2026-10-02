@@ -28,7 +28,7 @@ export class GLTFRenderer {
     }
     static async create(model, adapter) {
         const whiteImage = await onePixelImage(1, 1, 1, 1);
-        const blueImage = await onePixelImage(0.5, 0.5, 1, 1);
+        const blueImage = await onePixelImage(127.0 / 255.0, 127.0 / 255.0, 1, 1);
         return new GLTFRenderer(model, adapter, whiteImage, blueImage);
     }
     destroy() {

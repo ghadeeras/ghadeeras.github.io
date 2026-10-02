@@ -92,9 +92,10 @@ export class VertexBuffer {
     }
 }
 class PrimitiveLevelResources {
-    constructor(groups, materialsBuffer) {
+    constructor(groups, materialsBuffer, doubleSided) {
         this.groups = groups;
         this.materialsBuffer = materialsBuffer;
+        this.doubleSided = doubleSided;
     }
     destroy() {
         this.materialsBuffer.destroy();
@@ -198,7 +199,7 @@ class GPUAdapter {
                     resource: m.normalTexture[1].wrapped
                 }]
         }));
-        return new PrimitiveLevelResources(groups, buffer);
+        return new PrimitiveLevelResources(groups, buffer, materials.map(m => m.doubleSided));
     }
     vertexBuffer(dataView, stride) {
         return new VertexBuffer(this.device.dataBuffer({
@@ -245,7 +246,8 @@ class GPUAdapter {
         const bufferLayouts = vertexBufferSlots.map(b => b.gpuLayout);
         const primitiveState = {
             topology: topology,
-            stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined
+            stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined,
+            cullMode: resources.doubleSided[materialIndex] ? "none" : "back"
         };
         const pipeline = this.pipelineSupplier(bufferLayouts, primitiveState);
         const group = resources.groups[materialIndex];
@@ -401,7 +403,7 @@ function toGpuTopology(primitiveMode) {
 }
 function caching(pipelineSupplier) {
     const cache = new Map();
-    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts), () => pipelineSupplier(bufferLayouts, primitiveState));
+    return (bufferLayouts, primitiveState) => computeIfAbsent(cache, digest(bufferLayouts, primitiveState), () => pipelineSupplier(bufferLayouts, primitiveState));
 }
 function computeIfAbsent(map, key, computer) {
     let result = map.get(key);
@@ -411,14 +413,16 @@ function computeIfAbsent(map, key, computer) {
     }
     return result;
 }
-function digest(bufferLayouts) {
+function digest(bufferLayouts, primitiveState) {
     return [...bufferLayouts]
         .map(l => ({
         ...l,
         attributes: [...l.attributes].sort((a1, a2) => a1.shaderLocation - a2.shaderLocation)
     }))
         .sort((l1, l2) => l1.attributes[0].shaderLocation - l2.attributes[0].shaderLocation)
-        .reduce((s, l, i) => s + (i > 0 ? "|" : "") + digestLayout(l), "[") + "]";
+        .reduce((s, l, i) => s + (i > 0 ? "|" : "") + digestLayout(l), "[") + "]"
+        +
+            `[${primitiveState.topology ?? ""}|${primitiveState.stripIndexFormat ?? ""}|${primitiveState.cullMode ?? ""}|]`;
 }
 function digestLayout(l) {
     return "{" + l.arrayStride + ":" + [...l.attributes].reduce((s, a, i) => s + (i > 0 ? "|" : "") + digestAttribute(a), "[") + "]}";

@@ -27,7 +27,7 @@ export class Model {
         this.samplers = [...(model.samplers ?? []), {}].map((s, i) => new Sampler(s, i))
         this.textures = (model.textures ?? []).map((t, i) => new Texture(t, i, this.samplers, this.images))
 
-        const materials = model.materials === undefined || model.materials.length === 0 ? [{pbrMetallicRoughness: { metallicFactor: 0.5, roughnessFactor: 0.5 }}] : model.materials
+        const materials = model.materials === undefined || model.materials.length === 0 ? [{}] : model.materials
         this.materials = materials.map((material, i) => new Material(material, i, this.textures))
 
         for (const m of this.materials) {

@@ -102,7 +102,7 @@ export class VertexBuffer implements Resource {
 
 class PrimitiveLevelResources implements Resource {
 
-    constructor(readonly groups: GPUBindGroup[], readonly materialsBuffer: gpu.DataBuffer) {}
+    constructor(readonly groups: GPUBindGroup[], readonly materialsBuffer: gpu.DataBuffer, readonly doubleSided: boolean[]) {}
 
     destroy(): void {
         this.materialsBuffer.destroy()
@@ -234,7 +234,7 @@ class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLev
                 resource: m.normalTexture[1].wrapped
             }]
         }));
-        return new PrimitiveLevelResources(groups, buffer)
+        return new PrimitiveLevelResources(groups, buffer, materials.map(m => m.doubleSided))
     }
 
     vertexBuffer(dataView: DataView, stride: number): VertexBuffer {
@@ -299,8 +299,9 @@ class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLev
         const bufferLayouts = vertexBufferSlots.map(b => b.gpuLayout);
         const primitiveState = {
             topology: topology,
-            stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined
-        }
+            stripIndexFormat: topology.endsWith("strip") ? indexFormat : undefined,
+            cullMode: resources.doubleSided[materialIndex] ? "none" : "back"
+        } as const
         const pipeline = this.pipelineSupplier(bufferLayouts, primitiveState);
         
         const group = resources.groups[materialIndex]
@@ -477,7 +478,7 @@ function caching(pipelineSupplier: (bufferLayouts: GPUVertexBufferLayout[], prim
     const cache = new Map<string, GPURenderPipeline>()
     return (bufferLayouts, primitiveState) => computeIfAbsent(
         cache, 
-        digest(bufferLayouts), 
+        digest(bufferLayouts, primitiveState), 
         () => pipelineSupplier(bufferLayouts, primitiveState)
     )
 }
@@ -491,7 +492,7 @@ function computeIfAbsent<K, V, T extends V>(map: Map<K, V>, key: K, computer: (k
     return result;
 }
 
-function digest(bufferLayouts: GPUVertexBufferLayout[]): string {
+function digest(bufferLayouts: GPUVertexBufferLayout[], primitiveState: GPUPrimitiveState): string {
     return [...bufferLayouts]
         .map(l => ({
             ...l, 
@@ -499,6 +500,8 @@ function digest(bufferLayouts: GPUVertexBufferLayout[]): string {
         }))
         .sort((l1, l2) => l1.attributes[0].shaderLocation - l2.attributes[0].shaderLocation)
         .reduce((s, l, i) => s + (i > 0 ? "|" : "") + digestLayout(l), "[") + "]"
+        +
+        `[${primitiveState.topology ?? ""}|${primitiveState.stripIndexFormat ?? ""}|${primitiveState.cullMode ?? ""}|]`
 }
 
 function digestLayout(l: GPUVertexBufferLayout) {

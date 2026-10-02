@@ -32,6 +32,13 @@ function createModelJson(name, indexedVertices) {
                         }
                     }]
             }],
+        materials: [{
+                pbrMetallicRoughness: {
+                    metallicFactor: 0.5,
+                    roughnessFactor: 0.5
+                },
+                doubleSided: true
+            }],
         accessors: [{
                 type: "SCALAR",
                 componentType: intScalarSize == 2 ?
