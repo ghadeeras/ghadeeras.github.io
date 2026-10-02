@@ -6,18 +6,19 @@ const ZERO_VERTEX_BUFFER_STRIDE = 22 * 4;
 const ZERO_VERTEX_BUFFER_LAYOUT = {
     POSITION: { type: "VEC3", offset: 0 * 4 },
     NORMAL: { type: "VEC3", offset: 4 * 4 },
-    //  TANGENT                    : { type: "VEC3", offset:  8 * 4},
+    TANGENT: { type: "VEC3", offset: 8 * 4 },
     TEXCOORD_BASE_COLOR: { type: "VEC2", offset: 12 * 4 },
     TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4 },
     TEXCOORD_TEXCOORD_EMISSIVE: { type: "VEC2", offset: 16 * 4 },
     TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4 },
-    //  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
+    TEXCOORD_TEXCOORD_NORMAL: { type: "VEC2", offset: 20 * 4 },
 };
 export class GLTFRenderer {
-    constructor(model, adapter, whiteImage) {
+    constructor(model, adapter, whiteImage, blueImage) {
         this.model = model;
         this.adapter = adapter;
         this.whiteImage = whiteImage;
+        this.blueImage = blueImage;
         this.resources = [];
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count));
@@ -27,7 +28,8 @@ export class GLTFRenderer {
     }
     static async create(model, adapter) {
         const whiteImage = await onePixelImage(1, 1, 1, 1);
-        return new GLTFRenderer(model, adapter, whiteImage);
+        const blueImage = await onePixelImage(0.5, 0.5, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteImage, blueImage);
     }
     destroy() {
         while (this.resources.length > 0) {
@@ -104,11 +106,13 @@ export class GLTFRenderer {
         const m = primitive.material;
         switch (attributeName) {
             case "POSITION":
-            case "NORMAL": return attributeName === key;
+            case "NORMAL":
+            case "TANGENT": return attributeName === key;
             case "TEXCOORD_BASE_COLOR": return m.baseColorTexture !== null && `TEXCOORD_${m.baseColorTexture.texCoord}` === key;
             case "TEXCOORD_METALLIC_ROUGHNESS": return m.metallicRoughnessTexture !== null && `TEXCOORD_${m.metallicRoughnessTexture.texCoord}` === key;
             case "TEXCOORD_TEXCOORD_EMISSIVE": return m.emissiveTexture !== null && `TEXCOORD_${m.emissiveTexture.texCoord}` === key;
             case "TEXCOORD_TEXCOORD_OCCLUSION": return m.occlusionTexture !== null && `TEXCOORD_${m.occlusionTexture.texCoord}` === key;
+            case "TEXCOORD_TEXCOORD_NORMAL": return m.normalTexture !== null && `TEXCOORD_${m.normalTexture.texCoord}` === key;
             case "UNKNOWN": return true;
         }
     }
@@ -140,6 +144,8 @@ export class GLTFRenderer {
         const whiteMetallicRoughnessSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const whiteEmissiveTexture = this.adapter.texture(this.whiteImage, false);
         const whiteEmissiveSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const blueNormalTexture = this.adapter.texture(this.blueImage, true);
+        const blueNormalSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const materials = this.model.materials.map(m => ({
             baseColorFactor: m.baseColorFactor,
             baseColorTexture: m.baseColorTexture !== null ? [
@@ -161,6 +167,10 @@ export class GLTFRenderer {
                 textures.get(m.occlusionTexture.texture.source) ?? whiteBaseColorTexture,
                 samplers.get(m.occlusionTexture.texture.sampler) ?? whiteBaseColorSampler,
             ] : [whiteBaseColorTexture, whiteBaseColorSampler],
+            normalTexture: m.normalTexture !== null ? [
+                textures.get(m.normalTexture.texture.source) ?? blueNormalTexture,
+                samplers.get(m.normalTexture.texture.sampler) ?? blueNormalSampler,
+            ] : [blueNormalTexture, blueNormalSampler],
             alphaCutoff: m.alphaCutoff,
             alphaMode: m.alphaMode,
             doubleSided: m.doubleSided,

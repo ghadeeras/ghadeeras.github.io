@@ -59,7 +59,7 @@ export class GPUView {
                     resource: this.uniforms.gpuBuffer.wrapped
                 }]
         });
-        this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2, TEXCOORD_METALLIC_ROUGHNESS: 3, TEXCOORD_TEXCOORD_EMISSIVE: 4, TEXCOORD_TEXCOORD_OCCLUSION: 5 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
+        this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TANGENT: 2, TEXCOORD_BASE_COLOR: 3, TEXCOORD_METALLIC_ROUGHNESS: 4, TEXCOORD_TEXCOORD_EMISSIVE: 5, TEXCOORD_TEXCOORD_OCCLUSION: 6, TEXCOORD_TEXCOORD_NORMAL: 7 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
         this.pipelineLayout = this.device.wrapped.createPipelineLayout({
             bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout, this.rendererFactory.materialsGroupLayout],
         });

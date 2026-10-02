@@ -64,6 +64,7 @@ export type Material<T extends Resource, S> = {
     emissiveFactor: aether.Vec3
     emissiveTexture: [T, S]
     occlusionTexture: [T, S]
+    normalTexture: [T, S]
     alphaMode: "OPAQUE" | "MASK" | "BLEND"
     alphaCutoff: number
     doubleSided: boolean
@@ -74,12 +75,12 @@ const ZERO_VERTEX_BUFFER_STRIDE = 22 * 4
 const ZERO_VERTEX_BUFFER_LAYOUT = {
     POSITION                   : { type: "VEC3", offset:  0 * 4},
     NORMAL                     : { type: "VEC3", offset:  4 * 4},
-//  TANGENT                    : { type: "VEC3", offset:  8 * 4},
+    TANGENT                    : { type: "VEC3", offset:  8 * 4},
     TEXCOORD_BASE_COLOR        : { type: "VEC2", offset: 12 * 4},
     TEXCOORD_METALLIC_ROUGHNESS: { type: "VEC2", offset: 14 * 4},
     TEXCOORD_TEXCOORD_EMISSIVE : { type: "VEC2", offset: 16 * 4},
     TEXCOORD_TEXCOORD_OCCLUSION: { type: "VEC2", offset: 18 * 4},
-//  TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
+    TEXCOORD_TEXCOORD_NORMAL   : { type: "VEC2", offset: 20 * 4},
 } as const
 
 export class GLTFRenderer<
@@ -103,6 +104,7 @@ export class GLTFRenderer<
         private model: graph.Model, 
         private adapter: APIAdapter<N, P, T, S, V, I, R> ,
         private whiteImage: ImageBitmap,
+        private blueImage: ImageBitmap,
     ) {
         // Zero Vertex Buffer must be initialized first!
         const maxCount = Math.max(...model.accessors.map(a => a.count))
@@ -125,7 +127,8 @@ export class GLTFRenderer<
         adapter: APIAdapter<N, P, T, S, V, I, R> ,
     ): Promise<GLTFRenderer<N, P, T, S, V, I, R>> {
         const whiteImage = await onePixelImage(1, 1, 1, 1);
-        return new GLTFRenderer(model, adapter, whiteImage)
+        const blueImage = await onePixelImage(0.5, 0.5, 1, 1);
+        return new GLTFRenderer(model, adapter, whiteImage, blueImage)
     }
 
     destroy() {
@@ -210,11 +213,13 @@ export class GLTFRenderer<
         const m = primitive.material
         switch (attributeName) {
             case "POSITION":
-            case "NORMAL": return attributeName === key
+            case "NORMAL":
+            case "TANGENT": return attributeName === key
             case "TEXCOORD_BASE_COLOR": return m.baseColorTexture !== null && `TEXCOORD_${m.baseColorTexture.texCoord}` === key
             case "TEXCOORD_METALLIC_ROUGHNESS": return m.metallicRoughnessTexture !== null && `TEXCOORD_${m.metallicRoughnessTexture.texCoord}` === key
             case "TEXCOORD_TEXCOORD_EMISSIVE": return m.emissiveTexture !== null && `TEXCOORD_${m.emissiveTexture.texCoord}` === key
             case "TEXCOORD_TEXCOORD_OCCLUSION": return m.occlusionTexture !== null && `TEXCOORD_${m.occlusionTexture.texCoord}` === key
+            case "TEXCOORD_TEXCOORD_NORMAL": return m.normalTexture !== null && `TEXCOORD_${m.normalTexture.texCoord}` === key
             case "UNKNOWN": return true
         }
     }
@@ -249,6 +254,8 @@ export class GLTFRenderer<
         const whiteMetallicRoughnessSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const whiteEmissiveTexture = this.adapter.texture(this.whiteImage, false);
         const whiteEmissiveSampler = this.adapter.sampler(new graph.Sampler({}, 0));
+        const blueNormalTexture = this.adapter.texture(this.blueImage, true);
+        const blueNormalSampler = this.adapter.sampler(new graph.Sampler({}, 0));
         const materials: Material<T, S>[] = this.model.materials.map(m => ({
             baseColorFactor: m.baseColorFactor,
             baseColorTexture: m.baseColorTexture !== null ? [
@@ -270,6 +277,10 @@ export class GLTFRenderer<
                 textures.get(m.occlusionTexture.texture.source) ?? whiteBaseColorTexture,
                 samplers.get(m.occlusionTexture.texture.sampler) ?? whiteBaseColorSampler,
             ] : [whiteBaseColorTexture, whiteBaseColorSampler],
+            normalTexture: m.normalTexture !== null ? [
+                textures.get(m.normalTexture.texture.source) ?? blueNormalTexture,
+                samplers.get(m.normalTexture.texture.sampler) ?? blueNormalSampler,
+            ] : [blueNormalTexture, blueNormalSampler],
             alphaCutoff: m.alphaCutoff,
             alphaMode: m.alphaMode,
             doubleSided: m.doubleSided,

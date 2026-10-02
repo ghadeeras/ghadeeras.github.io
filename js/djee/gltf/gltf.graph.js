@@ -20,6 +20,9 @@ export class Model {
             if (m.occlusionTexture !== null) {
                 m.occlusionTexture.texture.source.linear = true;
             }
+            if (m.normalTexture !== null) {
+                m.normalTexture.texture.source.linear = true;
+            }
         }
         this.meshes = model.meshes.map((mesh, i) => new Mesh(mesh, i, this.accessors, this.materials));
         this.cameras = (model.cameras ?? []).map(camera => Camera.create(camera, legacyPerspective));
@@ -208,6 +211,7 @@ export class Material extends IdentifiableObject {
         this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0);
         this.emissiveTexture = material.emissiveTexture !== undefined ? new TextureInfo(material.emissiveTexture.texCoord ?? 0, textures[material.emissiveTexture.index]) : null;
         this.occlusionTexture = material.occlusionTexture !== undefined ? new TextureInfo(material.occlusionTexture.texCoord ?? 0, textures[material.occlusionTexture.index]) : null;
+        this.normalTexture = material.normalTexture !== undefined ? new TextureInfo(material.normalTexture.texCoord ?? 0, textures[material.normalTexture.index]) : null;
         this.alphaMode = material.alphaMode ?? "OPAQUE";
         this.alphaCutoff = material.alphaCutoff ?? 0.5;
         this.doubleSided = material.doubleSided ?? false;

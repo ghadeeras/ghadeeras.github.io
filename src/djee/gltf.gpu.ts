@@ -68,6 +68,14 @@ export function gltfMaterialGroupLayout() {
             binding: 8,
             visibility: GPUShaderStage.FRAGMENT,
             sampler: { type: "filtering" },
+        }, {
+            binding: 9,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: "float" }
+        }, {
+            binding: 10,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: { type: "filtering" },
         }],
     } satisfies GPUBindGroupLayoutDescriptor
 }
@@ -211,6 +219,12 @@ class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLev
             }, {
                 binding: 8,
                 resource: m.occlusionTexture[1].wrapped
+            }, {
+                binding: 9,
+                resource: m.normalTexture[0].wrapped.createView({ format: "rgba8unorm" })
+            }, {
+                binding: 10,
+                resource: m.normalTexture[1].wrapped
             }]
         }));
         return new PrimitiveLevelResources(groups, buffer)

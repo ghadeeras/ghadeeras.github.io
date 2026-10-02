@@ -99,7 +99,7 @@ export class GPUView implements View {
             this.device,
             1, 
             2,
-            { POSITION: 0, NORMAL: 1, TEXCOORD_BASE_COLOR: 2, TEXCOORD_METALLIC_ROUGHNESS: 3, TEXCOORD_TEXCOORD_EMISSIVE: 4, TEXCOORD_TEXCOORD_OCCLUSION: 5 },
+            { POSITION: 0, NORMAL: 1, TANGENT:2, TEXCOORD_BASE_COLOR: 3, TEXCOORD_METALLIC_ROUGHNESS: 4, TEXCOORD_TEXCOORD_EMISSIVE: 5, TEXCOORD_TEXCOORD_OCCLUSION: 6, TEXCOORD_TEXCOORD_NORMAL: 7 },
             (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState)
         )
 
