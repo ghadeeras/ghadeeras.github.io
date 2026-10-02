@@ -13,9 +13,10 @@ export class ModelMatrixDragging {
             [0, 0, 0, 1],
         ];
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix());
-        const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1]));
+        const origin = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [0, 0, 0, 1]));
+        const actualFrom = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1])), origin);
         return to => {
-            const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]));
+            const actualTo = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1])), origin);
             const delta = this.delta(actualFrom, actualTo, this.speed);
             const newMatrix = aether.mat4.mul(delta, rotation);
             newMatrix[3][3] = 0;
@@ -36,7 +37,7 @@ export class RotationDragging extends ModelMatrixDragging {
         super(projViewMatrix, speed);
     }
     delta(actualFrom, actualTo, speed) {
-        return aether.mat4.crossProdRotation(actualFrom, actualTo, -speed);
+        return aether.mat4.crossProdRotation(actualFrom, actualTo, speed);
     }
     static dragger(projViewMatrix, speed = 1) {
         return new RotationDragging(projViewMatrix, speed);

@@ -28,7 +28,7 @@ class Toy {
         this.scalarFieldModule = scalarFieldModule;
         this.view = view;
         this.picker = picker;
-        this.rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4));
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.matView));
         this.focalLengthDragging = gear.loops.draggingTarget(gear.property(this, "focalLength"), dragging.RatioDragging.dragger());
         this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
         this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);

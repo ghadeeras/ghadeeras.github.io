@@ -25,11 +25,15 @@ struct Material {
     metallicFactor: f32,
     roughnessFactor: f32,
     emissiveFactor: vec3f,
+    alphaCutoff: f32,
 }
 
 @group(0)
 @binding(0)
 var<uniform> uniforms: Uniforms;
+
+@group(0) @binding(1)
+var<storage, read_write> clock: atomic<u32>;
 
 @group(1)
 @binding(0)
@@ -78,6 +82,39 @@ var normalTexture: texture_2d<f32>;
 @group(2)
 @binding(10)
 var normalSampler: sampler;
+
+// ####################################
+// Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
+const RND_PRECISION: f32 = 0x1P-22;
+
+var<private> rng: vec4<u32>;
+
+fn next_u32() -> u32 {
+    var t = rng.w;
+    var s = rng.x;
+
+    t = t ^ (t << 11u);
+	t = t ^ (t >> 8u);
+    s = s ^ (s >> 19u);
+
+    rng = vec4(t ^ s, rng.xyz);
+    return rng.x;
+}
+
+fn next() -> f32 {
+    let n = (next_u32() + 0x1FFu) >> 10u;
+    return f32(n) * RND_PRECISION;
+}
+
+fn seedRNG(position: vec2<f32>) {
+    var p = vec2<u32>(position);
+    var r = p.xyxy * vec4(3u, 7u, 5u, 11u) + vec4(atomicAdd(&clock, 1u));
+    r = r + reverseBits(r.yzwx);
+    r = r * reverseBits(r.zwxy);
+    rng = r + reverseBits(r.wxyz);
+}
+
+// ####################################
 
 fn color(
     position: vec3<f32>,
@@ -175,6 +212,7 @@ fn f_main(
     @location(6) texcoordOcclusion: vec2<f32>,
     @location(7) texcoordNormal: vec2<f32>,
     @builtin(front_facing) frontFacing: bool,
+    @builtin(position) position: vec4<f32>,
 ) -> @location(0) vec4<f32> {
     let t = mat2x3(dpdy(fragPosition), dpdx(fragPosition));
     let normal = normalize(select(
@@ -192,8 +230,13 @@ fn f_main(
     let emissive = textureSample(emissiveTexture, emissiveSampler, texcoordEmissive);
     let occlusion = textureSample(occlusionTexture, occlusionSampler, texcoordOcclusion);
     let tsNormal = textureSample(normalTexture, normalSampler, texcoordNormal);
-    if (baseColor.a < 0.5) {
+
+    seedRNG(position.xy);
+    let opacity = baseColor.a * material.baseColorFactor.a;
+    let cutoff = select(material.alphaCutoff, next(), material.alphaCutoff > 1.0);
+    if (opacity < cutoff) {
         discard;
     }
+    
     return color(fragPosition, normal, tangent, baseColor, metallicRoughness, emissive, occlusion, tsNormal);
 }

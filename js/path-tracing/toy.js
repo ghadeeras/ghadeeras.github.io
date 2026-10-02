@@ -53,7 +53,7 @@ class Toy {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.projection(1, Math.SQRT2), -1))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.identity(), -1))
                 }
             },
             keys: {

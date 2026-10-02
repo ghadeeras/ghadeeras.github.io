@@ -98,7 +98,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     } satisfies gear.loops.LoopDescriptor
 
     readonly contourTarget = gear.loops.draggingTarget(gear.property(this, "contourValue"), dragging.LinearDragging.dragger(-0.5, 0.8, 1))
-    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.projectionViewMatrix, 4))
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.matView))
     readonly focalLengthDragging = gear.loops.draggingTarget(gear.property(this.view, "focalLength"), dragging.RatioDragging.dragger())
     readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
     readonly lightRadiusDragging = gear.loops.draggingTarget(gear.property(this.view, "lightRadius"), dragging.RatioDragging.dragger())

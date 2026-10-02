@@ -28,7 +28,7 @@ class Toy {
         this.radiusScaleDragging = this.draggingTarget("radiusScale", dragging.RatioDragging.dragger(0.001, 1));
         this.positionDragging = this.draggingTarget("position", dragging.LinearDragging.dragger(-64, -1, 16));
         this.zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100));
-        this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix));
+        this.rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.viewMatrix));
         this.currentRenderer = 0;
     }
     inputWiring(inputs, outputs, controller) {

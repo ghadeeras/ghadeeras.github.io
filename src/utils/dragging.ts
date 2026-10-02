@@ -15,9 +15,10 @@ export abstract class ModelMatrixDragging implements gear.loops.Dragger<aether.M
             [0, 0, 0, 1],
         ]
         const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix())
-        const actualFrom = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1]))
+        const origin = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [0, 0, 0, 1]))
+        const actualFrom = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1])), origin)
         return to => {
-            const actualTo = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1]))
+            const actualTo = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1])), origin)
             const delta = this.delta(actualFrom, actualTo, this.speed)
             const newMatrix = aether.mat4.mul(delta, rotation)
             newMatrix[3][3] = 0
@@ -45,7 +46,7 @@ export class RotationDragging extends ModelMatrixDragging {
     }
 
     protected delta(actualFrom: aether.Vec<3>, actualTo: aether.Vec<3>, speed: number): aether.Mat<4> {
-        return aether.mat4.crossProdRotation(actualFrom, actualTo, -speed)
+        return aether.mat4.crossProdRotation(actualFrom, actualTo, speed)
     }
 
     static dragger(projViewMatrix: gear.Supplier<aether.Mat<4>>, speed: number = 1) {

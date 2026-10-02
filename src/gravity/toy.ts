@@ -107,7 +107,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private radiusScaleDragging = this.draggingTarget("radiusScale", dragging.RatioDragging.dragger(0.001, 1))
     private positionDragging = this.draggingTarget("position", dragging.LinearDragging.dragger(-64, -1, 16))
     private zoomDragging = this.draggingTarget("zoom", dragging.RatioDragging.dragger(0.01, 100))
-    private rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.projectionViewMatrix))
+    private rotationDragging = this.draggingTarget("modelMatrix", dragging.RotationDragging.dragger(() => this.visuals.viewMatrix))
 
     private currentRenderer = 0;
 

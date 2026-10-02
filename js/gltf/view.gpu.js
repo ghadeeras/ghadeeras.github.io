@@ -39,16 +39,24 @@ export class GPUView {
                         baseColorFactor: aether.vec4.of(1.0, 1.0, 1.0, 1.0),
                         emissiveFactor: aether.vec3.of(1.0, 1.0, 1.0),
                         metallicFactor: 1.0,
-                        roughnessFactor: 1.0
+                        roughnessFactor: 1.0,
+                        alphaCutoff: 0.0
                     }
                 }])
         });
+        this.clock = device.dataBuffer({ usage: ["STORAGE"], data: gpu.u32.view([1]) });
         this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
             entries: [{
                     binding: 0,
                     visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                     buffer: {
                         type: "uniform",
+                    },
+                }, {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: "storage",
                     },
                 }],
         });
@@ -57,6 +65,9 @@ export class GPUView {
             entries: [{
                     binding: 0,
                     resource: this.uniforms.gpuBuffer.wrapped
+                }, {
+                    binding: 1,
+                    resource: this.clock.wrapped
                 }]
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TANGENT: 2, TEXCOORD_BASE_COLOR: 3, TEXCOORD_METALLIC_ROUGHNESS: 4, TEXCOORD_TEXCOORD_EMISSIVE: 5, TEXCOORD_TEXCOORD_OCCLUSION: 6, TEXCOORD_TEXCOORD_NORMAL: 7 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));

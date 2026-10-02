@@ -34,6 +34,7 @@ export class GPUView implements View {
     private depthTexture: gpu.Texture
 
     private uniforms: gpu.SyncBuffer
+    private clock: gpu.DataBuffer
     private uniformsGroupLayout: GPUBindGroupLayout
     private uniformsGroup: GPUBindGroup
 
@@ -74,16 +75,24 @@ export class GPUView implements View {
                     baseColorFactor: aether.vec4.of(1.0, 1.0, 1.0, 1.0),
                     emissiveFactor: aether.vec3.of(1.0, 1.0, 1.0),
                     metallicFactor: 1.0,
-                    roughnessFactor: 1.0
+                    roughnessFactor: 1.0,
+                    alphaCutoff: 0.0
                 }
             }])
         });
+        this.clock = device.dataBuffer({ usage: ["STORAGE"], data: gpu.u32.view([1]) })
         this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
             entries: [{
                 binding: 0,
                 visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
                 buffer: {
                     type: "uniform",
+                },
+            }, {
+                binding: 1,
+                visibility: GPUShaderStage.FRAGMENT,
+                buffer: {
+                    type: "storage",
                 },
             }],
         })
@@ -92,6 +101,9 @@ export class GPUView implements View {
             entries: [{
                 binding: 0,
                 resource: this.uniforms.gpuBuffer.wrapped
+            }, {
+                binding: 1,
+                resource: this.clock.wrapped
             }]
         });
 

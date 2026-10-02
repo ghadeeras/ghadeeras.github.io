@@ -15,6 +15,7 @@ export const gltfMaterialsStruct = gpu.struct({
     metallicFactor: gpu.f32,
     roughnessFactor: gpu.f32,
     emissiveFactor: gpu.f32.x3,
+    alphaCutoff: gpu.f32
 }).clone(0, 256, false)
 
 export function gltfMatrixGroupLayout() {
@@ -179,7 +180,13 @@ class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLev
     }
 
     primitiveLevelResources(materials: renderer.Material<gpu.Texture, gpu.Sampler>[]): PrimitiveLevelResources {
-        const dataView = gltfMaterialsStruct.view(materials)
+        const dataView = gltfMaterialsStruct.view(materials.map(m => ({
+            ...m,
+            alphaCutoff: 
+                  m.alphaMode === "OPAQUE" ? 0.0
+                : m.alphaMode === "BLEND" ? 2.0
+                : m.alphaCutoff
+        })))
         const buffer = this.device.dataBuffer({
             label: "materials",
             usage: ["UNIFORM"],
