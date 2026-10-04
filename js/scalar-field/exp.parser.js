@@ -1,5 +1,10 @@
 import * as L from "languasaurus";
 import { Expression } from "aether";
+const constants = {
+    phi: (Math.sqrt(5) + 1) / 2,
+    pi: Math.PI,
+    e: Math.E
+};
 export function parse(e) {
     const field = parser(new L.TextInputStream(e)).simplified;
     const dF_dX = field.partialDerivative("x").simplified;
@@ -10,16 +15,16 @@ export function parse(e) {
     console.log("dF_dY", dF_dY.toString());
     console.log("dF_dZ", dF_dZ.toString());
     return [(x, y, z) => [
-            dF_dX.evaluate({ x, y, z }),
-            dF_dY.evaluate({ x, y, z }),
-            dF_dZ.evaluate({ x, y, z }),
-            field.evaluate({ x, y, z }),
+            dF_dX.evaluate({ x, y, z, ...constants }),
+            dF_dY.evaluate({ x, y, z, ...constants }),
+            dF_dZ.evaluate({ x, y, z, ...constants }),
+            field.evaluate({ x, y, z, ...constants }),
         ], field.toString(), dF_dX.toString(), dF_dY.toString(), dF_dZ.toString()];
 }
 const digit = L.charIn("0-9");
 const int = L.oneOrMore(digit);
 const tokens = {
-    varName: L.keywords("x", "y", "z"),
+    varName: L.keywords("x", "y", "z", "phi", "pi", "e"),
     funName: L.keywords("neg", "inv", "sin", "cos", "exp", "log", "sqrt"),
     number: L.float(int.then(L.char('.').then(int).optional())),
     opnParen: L.delimiter("("),
