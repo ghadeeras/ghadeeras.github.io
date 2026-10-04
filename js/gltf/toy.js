@@ -27,6 +27,7 @@ class GLTFToy {
         this.modelNameElement = gear.required(document.getElementById("model-name"));
         this.statusElement = gear.required(document.getElementById("status"));
         this.cameraElement = gear.required(document.getElementById("camera"));
+        this.modelSelectorElement = gear.required(document.getElementById("model-selector"));
         this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix, 1));
         this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix, 1));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
@@ -42,7 +43,18 @@ class GLTFToy {
         this._cameraIndex = 0;
         this._model = null;
         this.xrSession = null;
-        this.modelIndex = Math.abs(models.findIndex(([n, _]) => n === "ABeautifulGame"));
+        const modelIndex = Math.abs(models.findIndex(([n, _]) => n === "DamagedHelmet"));
+        models.forEach(([modelName, _], i) => {
+            const option = new Option(modelName, modelName, i === modelIndex, i === modelIndex);
+            this.modelSelectorElement.appendChild(option);
+        });
+        this.modelIndex = modelIndex;
+        this.modelSelectorElement.onchange = () => {
+            const modelIndex = models.findIndex(([modelName, _]) => modelName === this.modelSelectorElement.value);
+            if (modelIndex >= 0) {
+                this.modelIndex = modelIndex;
+            }
+        };
         this.view.modelColor = [1, 1, 1, 1];
         this.view.roughnessFactor = 1.0;
         this.view.metallicFactor = 1.0;
@@ -120,6 +132,7 @@ class GLTFToy {
         this._modelIndex = (i + this.models.length) % this.models.length;
         const [name, uri] = this.models[this._modelIndex];
         this.modelNameElement.innerText = name;
+        this.modelSelectorElement.value = name;
         this.statusElement.innerText = "Loading Model ...";
         this.view.loadModel(uri)
             .then(model => {

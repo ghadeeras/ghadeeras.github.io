@@ -136,6 +136,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private readonly modelNameElement = gear.required(document.getElementById("model-name"))
     private readonly statusElement = gear.required(document.getElementById("status"))
     private readonly cameraElement = gear.required(document.getElementById("camera"))
+    private readonly modelSelectorElement = gear.required(document.getElementById("model-selector")) as HTMLSelectElement
 
     readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix, 1))
     readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix, 1))
@@ -156,7 +157,18 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private xrSession: xr.XRealitySession | null = null
 
     private constructor(private models: [string, string][], private view: View, private xrSwitch: xr.XRSwitch | null) {
-        this.modelIndex = Math.abs(models.findIndex(([n, _]) => n === "ABeautifulGame"))
+        const modelIndex = Math.abs(models.findIndex(([n, _]) => n === "DamagedHelmet"));
+        models.forEach(([modelName, _], i) => {
+            const option = new Option(modelName, modelName, i === modelIndex, i === modelIndex);
+            this.modelSelectorElement.appendChild(option)
+        })
+        this.modelIndex = modelIndex
+        this.modelSelectorElement.onchange = () => {
+            const modelIndex = models.findIndex(([modelName, _]) => modelName === this.modelSelectorElement.value)
+            if (modelIndex >= 0) {
+                this.modelIndex = modelIndex
+            }
+        }
         this.view.modelColor = [1, 1, 1, 1]
         this.view.roughnessFactor = 1.0
         this.view.metallicFactor = 1.0
@@ -178,7 +190,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
             ["ScalarFieldOut", new URL("/models/ScalarFieldOut.gltf", window.location.href).href],
             ["SculptTorso", new URL("/models/SculptTorso.gltf", window.location.href).href],
         )
-    
+
         const viewFactory = await newViewFactory("canvas", wires)
         const view = viewFactory()
         const xrSwitch = await xr.XRSwitch.create()
@@ -252,6 +264,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this._modelIndex = (i + this.models.length) % this.models.length
         const [name, uri] = this.models[this._modelIndex]
         this.modelNameElement.innerText = name
+        this.modelSelectorElement.value = name
         this.statusElement.innerText = "Loading Model ..."
         this.view.loadModel(uri)
             .then(model => {
