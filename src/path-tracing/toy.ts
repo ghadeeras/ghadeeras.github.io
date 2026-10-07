@@ -137,7 +137,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.identity(), -1))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.scaling(1, 1, -this.tracer.focalRatio)))
                 }
             },
             keys: {
