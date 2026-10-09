@@ -88,14 +88,6 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyD"]],
                     virtualKeys: "#control-d",
                 },
-                lightRadius: {
-                    physicalKeys: [["KeyL"]],
-                    virtualKeys: "#control-l",
-                },
-                fogginess: {
-                    physicalKeys: [["KeyF"]],
-                    virtualKeys: "#control-f",
-                },
                 nextModel: {
                     physicalKeys: [["ArrowLeft"]],
                     virtualKeys: "#control-left",
@@ -138,21 +130,20 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private readonly cameraElement = gear.required(document.getElementById("camera"))
     private readonly modelSelectorElement = gear.required(document.getElementById("model-selector")) as HTMLSelectElement
 
-    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix, 1))
-    readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix, 1))
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix))
+    readonly translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix))
     readonly scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
     readonly zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
     readonly colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
-    readonly lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging)
-    readonly lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
+    readonly lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
     readonly roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
     readonly metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
-    readonly fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
     private _perspectives: gltf.graph.Perspective[] = []
     private _modelIndex = 0
     private _cameraIndex = 0
     private _model: gltf.graph.Model | null = null
+    private _lightMatrix = aether.mat4.identity()
 
     private xrSession: xr.XRealitySession | null = null
 
@@ -172,9 +163,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.modelColor = [1, 1, 1, 1]
         this.view.roughnessFactor = 1.0
         this.view.metallicFactor = 1.0
-        this.view.fogginess = 0
-        this.view.lightPosition = this.toLightPosition([-0.5, 0.5])
-        this.view.lightRadius = 0.005
+        this.lightMatrix = aether.mat4.identity()
         if (xrSwitch && this.view.xrContext !== null) {
             gear.required(document.getElementById("xr")).style.removeProperty("visibility")
         }
@@ -212,8 +201,6 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging }, 
                 metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging }, 
                 lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
-                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging }, 
-                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging }, 
                 nextModel: { onPressed: () => this.modelIndex-- }, 
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ }, 
@@ -234,13 +221,6 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     animate(): void {
-    }
-
-    toLightPosition(pos: gear.loops.PointerPosition) {
-        const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos
-        const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2)
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
-        return p;
     }
 
     get projectionAndViewMatrices(): [aether.Mat4, aether.Mat4] {
@@ -293,6 +273,15 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`
     }
     
+    get lightMatrix(): aether.Mat4 {
+        return this._lightMatrix;
+    }
+
+    set lightMatrix(m : aether.Mat4) {
+        this._lightMatrix = m
+        this.view.lightPosition = aether.vec3.from(aether.mat4.apply(m, [0, 0, 5, 1]))
+    }
+
     private async toggleXR(controller: gear.loops.LoopController) {
         const gl = this.view.xrContext
         if (this.xrSwitch !== null) {

@@ -26,10 +26,9 @@ export class GLView {
         this.uProjectionMat = program.uniform("projectionMat");
         this.uModelViewMat = program.uniform("modelViewMat");
         this.uLightPosition = program.uniform("lightPosition");
-        this.uLightRadius = program.uniform("lightRadius");
         this.uColor = program.uniform("color");
         this.uShininess = program.uniform("shininess");
-        this.uFogginess = program.uniform("fogginess");
+        this.uMetalness = program.uniform("metalness");
         this.rendererFactory = new gltf_gl.GLRendererFactory(this.context, {
             "POSITION": this.position,
             "NORMAL": this.normal,
@@ -49,17 +48,11 @@ export class GLView {
     set lightPosition(p) {
         this.uLightPosition.data = p;
     }
-    set lightRadius(r) {
-        this.uLightRadius.data = [r];
-    }
     set roughnessFactor(s) {
         this.uShininess.data = [1 - s];
     }
     set metallicFactor(m) {
-        this.uShininess.data = [1 - m];
-    }
-    set fogginess(f) {
-        this.uFogginess.data = [f];
+        this.uMetalness.data = [m];
     }
     get aspectRatio() {
         return this.context.canvas.width / this.context.canvas.height;

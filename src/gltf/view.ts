@@ -31,10 +31,6 @@ export interface View {
 
     set lightPosition(p: aether.Vec<3>)
 
-    set lightRadius(r: number)
-
-    set fogginess(f: number)
-
     set roughnessFactor(s: number)
 
     set metallicFactor(s: number)

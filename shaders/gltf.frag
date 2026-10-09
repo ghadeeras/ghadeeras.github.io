@@ -15,10 +15,9 @@ out vec4 fragColor;
 
 uniform vec4 color;
 uniform float shininess;
+uniform float metalness;
 
 uniform vec3 lightPosition;
-uniform float lightRadius;
-uniform float fogginess;
 
 void main() {
     vec3 materialColor = color.rgb;
@@ -33,15 +32,13 @@ void main() {
     }
                 
     float cosLN = -dot(lightDir, normal);
-    float diffuse = (cosLN + 1.0) / 2.0;
+    float diffuse = max(cosLN, 0.0);
 
     vec3 reflection = lightDir + 2.0 * cosLN * normal;
     
     float cosRP = -dot(reflection, viewDir);
-    float specular = pow((cosRP + 1.0) / 2.0, length(lightRay) / lightRadius);
+    float specular = pow((cosRP + 1.0) / 2.0, 1.0 / (1.0625 - shininess));
                 
-    float fogFactor = exp2(fragPosition.z * fogginess / 8.0);
-
-    float shade = diffuse * diffuse + specular * shininess;
-    fragColor = vec4(mix(vec3(1.0), shade * materialColor, fogFactor), color.a);
+    float shade = (diffuse * diffuse * (1.0625 - metalness) + specular * (shininess + 0.0625)) / (1.125 + shininess - metalness);
+    fragColor = vec4(shade * materialColor, color.a);
 }

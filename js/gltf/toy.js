@@ -28,20 +28,19 @@ class GLTFToy {
         this.statusElement = gear.required(document.getElementById("status"));
         this.cameraElement = gear.required(document.getElementById("camera"));
         this.modelSelectorElement = gear.required(document.getElementById("model-selector"));
-        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix, 1));
-        this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix, 1));
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.RotationDragging.dragger(() => this.view.viewMatrix));
+        this.translationDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.TranslationDragging.dragger(() => this.view.viewMatrix));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
         this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
         this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
-        this.lightPositionDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightPosition"), this.toLightPosition.bind(this)), dragging.positionDragging);
-        this.lightRadiusDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "lightRadius"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
+        this.lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
         this.roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
-        this.fogginessDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "fogginess"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._perspectives = [];
         this._modelIndex = 0;
         this._cameraIndex = 0;
         this._model = null;
+        this._lightMatrix = aether.mat4.identity();
         this.xrSession = null;
         const modelIndex = Math.abs(models.findIndex(([n, _]) => n === "DamagedHelmet"));
         models.forEach(([modelName, _], i) => {
@@ -58,9 +57,7 @@ class GLTFToy {
         this.view.modelColor = [1, 1, 1, 1];
         this.view.roughnessFactor = 1.0;
         this.view.metallicFactor = 1.0;
-        this.view.fogginess = 0;
-        this.view.lightPosition = this.toLightPosition([-0.5, 0.5]);
-        this.view.lightRadius = 0.005;
+        this.lightMatrix = aether.mat4.identity();
         if (xrSwitch && this.view.xrContext !== null) {
             gear.required(document.getElementById("xr")).style.removeProperty("visibility");
         }
@@ -89,8 +86,6 @@ class GLTFToy {
                 roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging },
                 metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging },
                 lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
-                lightRadius: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightRadiusDragging },
-                fogginess: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.fogginessDragging },
                 nextModel: { onPressed: () => this.modelIndex-- },
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ },
@@ -108,12 +103,6 @@ class GLTFToy {
         };
     }
     animate() {
-    }
-    toLightPosition(pos) {
-        const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
-        const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2);
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
-        return p;
     }
     get projectionAndViewMatrices() {
         return [this.view.projectionMatrix, this.view.viewMatrix];
@@ -157,6 +146,13 @@ class GLTFToy {
         this.view.projectionMatrix = perspective.camera.matrix(this.view.aspectRatio, this.view.focalLength);
         this.view.viewMatrix = perspective.matrix;
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
+    }
+    get lightMatrix() {
+        return this._lightMatrix;
+    }
+    set lightMatrix(m) {
+        this._lightMatrix = m;
+        this.view.lightPosition = aether.vec3.from(aether.mat4.apply(m, [0, 0, 5, 1]));
     }
     async toggleXR(controller) {
         const gl = this.view.xrContext;
@@ -260,14 +256,6 @@ GLTFToy.descriptor = {
             lightDirection: {
                 physicalKeys: [["KeyD"]],
                 virtualKeys: "#control-d",
-            },
-            lightRadius: {
-                physicalKeys: [["KeyL"]],
-                virtualKeys: "#control-l",
-            },
-            fogginess: {
-                physicalKeys: [["KeyF"]],
-                virtualKeys: "#control-f",
             },
             nextModel: {
                 physicalKeys: [["ArrowLeft"]],

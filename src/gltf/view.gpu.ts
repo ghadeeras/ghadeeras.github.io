@@ -23,8 +23,6 @@ const uniformsStruct = gpu.struct({
     }),
     projectionMat: gpu.mat4x4,
     lightPos: gpu.f32.x4,
-    lightRadius: gpu.f32,
-    fogginess: gpu.f32,
     material: gltfMaterialsStruct,
 })
 
@@ -63,9 +61,7 @@ export class GPUView implements View {
             label: "uniforms",
             usage: ["UNIFORM"], 
             data: uniformsStruct.view([{
-                fogginess: 0,
                 lightPos: aether.vec4.of(-1.0, 1.0, 1.0, 1.0),
-                lightRadius: 0.0,
                 mat: {
                     positions: aether.mat4.identity(),
                     normals: aether.mat4.identity(),
@@ -144,20 +140,12 @@ export class GPUView implements View {
         this.uniforms.set(uniformsStruct.members.lightPos, [...p, 1])
     }
 
-    set lightRadius(r: number) {
-        this.uniforms.set(uniformsStruct.members.lightRadius, r)
-    }
-    
     set roughnessFactor(r: number) {
         this.uniforms.set(uniformsStruct.members.material.members.roughnessFactor, r)
     }
 
     set metallicFactor(m: number) {
         this.uniforms.set(uniformsStruct.members.material.members.metallicFactor, m)
-    }
-
-    set fogginess(f: number) {
-        this.uniforms.set(uniformsStruct.members.fogginess, f)
     }
 
     get projectionMatrix() {
@@ -231,7 +219,7 @@ export class GPUView implements View {
 
     draw() {
         this.device.enqueueCommands("render", encoder => {
-            const c = 0.125 * 0.125
+            const c = 0.5 * 0.0625 * 0.0625
             const passDescriptor: GPURenderPassDescriptor = {
                 colorAttachments: [this.gpuCanvas.attachment({ r: c, g: c, b: c, a: 1 }, true)],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
