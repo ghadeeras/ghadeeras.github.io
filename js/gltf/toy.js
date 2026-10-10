@@ -33,14 +33,13 @@ class GLTFToy {
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
         this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
         this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
-        this.lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
+        this.lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.mul(aether.mat4.scaling(1, 1, -1), this.view.viewMatrix)));
         this.roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._perspectives = [];
         this._modelIndex = 0;
         this._cameraIndex = 0;
         this._model = null;
-        this._lightMatrix = aether.mat4.identity();
         this.xrSession = null;
         const modelIndex = Math.abs(models.findIndex(([n, _]) => n === "DamagedHelmet"));
         models.forEach(([modelName, _], i) => {
@@ -85,7 +84,7 @@ class GLTFToy {
                 color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging },
                 roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging },
                 metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging },
-                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
+                skyRotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging },
                 nextModel: { onPressed: () => this.modelIndex-- },
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ },
@@ -148,11 +147,10 @@ class GLTFToy {
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
     }
     get lightMatrix() {
-        return this._lightMatrix;
+        return aether.mat4.crossProdRotation([0, 0, 1], this.view.lightPosition);
     }
     set lightMatrix(m) {
-        this._lightMatrix = m;
-        this.view.lightPosition = aether.vec3.from(aether.mat4.apply(m, [0, 0, 5, 1]));
+        this.view.lightPosition = aether.vec3.from(m[2]);
     }
     async toggleXR(controller) {
         const gl = this.view.xrContext;
@@ -253,9 +251,9 @@ GLTFToy.descriptor = {
                 physicalKeys: [["KeyT"]],
                 virtualKeys: "#control-t",
             },
-            lightDirection: {
-                physicalKeys: [["KeyD"]],
-                virtualKeys: "#control-d",
+            skyRotation: {
+                physicalKeys: [["KeyK"]],
+                virtualKeys: "#control-k",
             },
             nextModel: {
                 physicalKeys: [["ArrowLeft"]],

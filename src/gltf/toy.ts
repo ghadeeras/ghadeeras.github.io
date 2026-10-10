@@ -84,9 +84,9 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                     physicalKeys: [["KeyT"]],
                     virtualKeys: "#control-t",
                 },
-                lightDirection: {
-                    physicalKeys: [["KeyD"]],
-                    virtualKeys: "#control-d",
+                skyRotation: {
+                    physicalKeys: [["KeyK"]],
+                    virtualKeys: "#control-k",
                 },
                 nextModel: {
                     physicalKeys: [["ArrowLeft"]],
@@ -135,7 +135,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     readonly scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
     readonly zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
     readonly colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
-    readonly lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()))
+    readonly lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.mul(aether.mat4.scaling(1, 1, -1), this.view.viewMatrix)))
     readonly roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
     readonly metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
@@ -143,7 +143,6 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     private _modelIndex = 0
     private _cameraIndex = 0
     private _model: gltf.graph.Model | null = null
-    private _lightMatrix = aether.mat4.identity()
 
     private xrSession: xr.XRealitySession | null = null
 
@@ -200,7 +199,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
                 color: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.colorDragging }, 
                 roughnessFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.roughnessFactorDragging }, 
                 metallicFactor: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.metallicFactorDragging }, 
-                lightDirection: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
+                skyRotation: { onPressed: () => inputs.pointers.canvas.draggingTarget = this.lightPositionDragging }, 
                 nextModel: { onPressed: () => this.modelIndex-- }, 
                 previousModel: { onPressed: () => this.modelIndex++ },
                 nextCamera: { onPressed: () => this.cameraIndex++ }, 
@@ -274,12 +273,11 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
     
     get lightMatrix(): aether.Mat4 {
-        return this._lightMatrix;
+        return aether.mat4.crossProdRotation([0, 0, 1], this.view.lightPosition)
     }
 
     set lightMatrix(m : aether.Mat4) {
-        this._lightMatrix = m
-        this.view.lightPosition = aether.vec3.from(aether.mat4.apply(m, [0, 0, 5, 1]))
+        this.view.lightPosition = aether.vec3.from(m[2])
     }
 
     private async toggleXR(controller: gear.loops.LoopController) {

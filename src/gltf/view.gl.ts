@@ -36,8 +36,9 @@ export class GLView implements View {
     private rendererFactory: gltf_gl.GLRendererFactory
     private renderer: GLTFRenderer<any, any, any, any, any, any, any> | null = null
 
-    private _viewMatrix: aether.Mat<4> = aether.mat4.identity()
-    private _modelMatrix: aether.Mat<4> = aether.mat4.identity()
+    private _viewMatrix: aether.Mat4 = aether.mat4.identity()
+    private _modelMatrix: aether.Mat4 = aether.mat4.identity()
+    private _lightPosition: aether.Vec4 = [0, 0, 1, 0]
 
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective(true)
 
@@ -80,7 +81,7 @@ export class GLView implements View {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
         gl.clearDepth(0);
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(0.0625, 0.0625, 0.0625, 1);
     }
 
     get canvas(): HTMLCanvasElement {
@@ -91,8 +92,13 @@ export class GLView implements View {
         this.uColor.data = color
     }
 
+    get lightPosition() {
+        return aether.vec3.from(this._lightPosition)
+    }
+
     set lightPosition(p: [number, number, number]) {
-        this.uLightPosition.data = p
+        this._lightPosition = [...p, 0]
+        this.uLightPosition.data = aether.mat4.apply(this._viewMatrix, this._lightPosition)
     }
 
     set roughnessFactor(s: number) {
@@ -127,6 +133,7 @@ export class GLView implements View {
 
     set viewMatrix(m: aether.Mat4) {
         this._viewMatrix = m
+        this.lightPosition = this.lightPosition
         this.updateModelViewMatrix();
     }
 
@@ -147,6 +154,7 @@ export class GLView implements View {
         const model = await gltf.graph.Model.create(modelUri, true);
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
+        this._lightPosition = aether.mat4.apply(aether.mat4.inverse(this.perspective.matrix), aether.vec4.from(this.uLightPosition.data))
         this._viewMatrix = this.perspective.matrix;
         this._modelMatrix = this.perspective.modelMatrix;
         this.updateModelViewMatrix();

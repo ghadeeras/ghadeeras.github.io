@@ -7,6 +7,7 @@ export class GLView {
         this.renderer = null;
         this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
+        this._lightPosition = [0, 0, 1, 0];
         this.perspective = gltf.graph.defaultPerspective(true);
         try {
             this.context = wgl.Context.of(canvasId, { xrCompatible: true });
@@ -37,7 +38,7 @@ export class GLView {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
         gl.clearDepth(0);
-        gl.clearColor(1, 1, 1, 1);
+        gl.clearColor(0.0625, 0.0625, 0.0625, 1);
     }
     get canvas() {
         return this.context.canvas;
@@ -45,8 +46,12 @@ export class GLView {
     set modelColor(color) {
         this.uColor.data = color;
     }
+    get lightPosition() {
+        return aether.vec3.from(this._lightPosition);
+    }
     set lightPosition(p) {
-        this.uLightPosition.data = p;
+        this._lightPosition = [...p, 0];
+        this.uLightPosition.data = aether.mat4.apply(this._viewMatrix, this._lightPosition);
     }
     set roughnessFactor(s) {
         this.uShininess.data = [1 - s];
@@ -73,6 +78,7 @@ export class GLView {
     }
     set viewMatrix(m) {
         this._viewMatrix = m;
+        this.lightPosition = this.lightPosition;
         this.updateModelViewMatrix();
     }
     get modelMatrix() {
@@ -89,6 +95,7 @@ export class GLView {
         const model = await gltf.graph.Model.create(modelUri, true);
         this.perspective = model.scene.perspectives[0];
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio);
+        this._lightPosition = aether.mat4.apply(aether.mat4.inverse(this.perspective.matrix), aether.vec4.from(this.uLightPosition.data));
         this._viewMatrix = this.perspective.matrix;
         this._modelMatrix = this.perspective.modelMatrix;
         this.updateModelViewMatrix();

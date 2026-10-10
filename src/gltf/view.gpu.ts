@@ -26,6 +26,21 @@ const uniformsStruct = gpu.struct({
     material: gltfMaterialsStruct,
 })
 
+type UniformGroupLayout = ReturnType<typeof uniformsGroupLayout>
+function uniformsGroupLayout(device: gpu.Device) {
+    return device.groupLayout({
+        uniforms: gpu.uniform(uniformsStruct).asEntry(0, "VERTEX", "FRAGMENT"),
+        clock: gpu.storage("read_write", gpu.u32).asEntry(1, "FRAGMENT"),
+    });
+}
+
+type SkyPipelineLayout = ReturnType<typeof skyPipelineLayout>
+function skyPipelineLayout(device: gpu.Device, layout: UniformGroupLayout) {
+    return device.pipelineLayout({
+        uniforms: { group: 0, layout: layout }
+    }, "sky pipeline layout");
+}
+
 export class GPUView implements View {
 
     private gpuCanvas: gpu.Canvas
@@ -33,10 +48,12 @@ export class GPUView implements View {
 
     private uniforms: gpu.SyncBuffer
     private clock: gpu.DataBuffer
-    private uniformsGroupLayout: GPUBindGroupLayout
-    private uniformsGroup: GPUBindGroup
+    private uniformsGroupLayout: UniformGroupLayout
+    private uniformsGroup: gpu.CompatibleBindGroup<UniformGroupLayout>
 
     private pipelineLayout: GPUPipelineLayout
+    private skyPipelineLayout: SkyPipelineLayout
+    private skyPipeline: GPURenderPipeline
 
     private depthState: GPUDepthStencilState
 
@@ -45,6 +62,8 @@ export class GPUView implements View {
 
     private _viewMatrix = aether.mat4.identity()
     private _modelMatrix = aether.mat4.identity()
+
+    private _lightPosition = aether.vec4.of(0, 0, 1, 0)
 
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective()
 
@@ -61,7 +80,7 @@ export class GPUView implements View {
             label: "uniforms",
             usage: ["UNIFORM"], 
             data: uniformsStruct.view([{
-                lightPos: aether.vec4.of(-1.0, 1.0, 1.0, 1.0),
+                lightPos: this._lightPosition,
                 mat: {
                     positions: aether.mat4.identity(),
                     normals: aether.mat4.identity(),
@@ -77,30 +96,10 @@ export class GPUView implements View {
             }])
         });
         this.clock = device.dataBuffer({ usage: ["STORAGE"], data: gpu.u32.view([1]) })
-        this.uniformsGroupLayout = device.wrapped.createBindGroupLayout({
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: {
-                    type: "uniform",
-                },
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.FRAGMENT,
-                buffer: {
-                    type: "storage",
-                },
-            }],
-        })
-        this.uniformsGroup = device.wrapped.createBindGroup({
-            layout: this.uniformsGroupLayout,
-            entries: [{
-                binding: 0,
-                resource: this.uniforms.gpuBuffer.wrapped
-            }, {
-                binding: 1,
-                resource: this.clock.wrapped
-            }]
+        this.uniformsGroupLayout = uniformsGroupLayout(device)
+        this.uniformsGroup = this.uniformsGroupLayout.bindGroup({
+            uniforms: this.uniforms,
+            clock: this.clock
         });
 
         this.rendererFactory = new gltf_gpu.GPURendererFactory(
@@ -112,8 +111,27 @@ export class GPUView implements View {
         )
 
         this.pipelineLayout = this.device.wrapped.createPipelineLayout({
-            bindGroupLayouts: [this.uniformsGroupLayout, this.rendererFactory.matricesGroupLayout, this.rendererFactory.materialsGroupLayout],
+            bindGroupLayouts: [this.uniformsGroupLayout.wrapped, this.rendererFactory.matricesGroupLayout, this.rendererFactory.materialsGroupLayout],
         });
+
+        this.skyPipelineLayout = skyPipelineLayout(device, this.uniformsGroupLayout)
+        this.skyPipeline = device.wrapped.createRenderPipeline({
+            layout: this.skyPipelineLayout.wrapped,
+            vertex: {
+                module: this.shaderModule.wrapped,
+                entryPoint: "v_sky",
+            },
+            fragment: {
+                module: this.shaderModule.wrapped,
+                entryPoint: "f_sky",
+                targets: [{
+                    format: this.gpuCanvas.srgbFormat
+                }],
+            },
+            multisample: {
+                count: this.gpuCanvas.sampleCount
+            },
+        })
 
         this.depthState = this.depthTexture.depthState({ depthCompare: "greater" })    
     }
@@ -136,8 +154,13 @@ export class GPUView implements View {
         this.uniforms.set(uniformsStruct.members.material.members.baseColorFactor, color)
     }
 
+    get lightPosition() {
+        return aether.vec3.from(this._lightPosition)
+    }
+
     set lightPosition(p: [number, number, number]) {
-        this.uniforms.set(uniformsStruct.members.lightPos, [...p, 1])
+        this._lightPosition = [...p, 0]
+        this.uniforms.set(uniformsStruct.members.lightPos, aether.mat4.apply(this._viewMatrix, this._lightPosition))
     }
 
     set roughnessFactor(r: number) {
@@ -162,6 +185,7 @@ export class GPUView implements View {
 
     set viewMatrix(m: aether.Mat4) {
         this._viewMatrix = m
+        this.lightPosition = this.lightPosition
         this.resetModelViewMatrix();
     }
 
@@ -183,8 +207,9 @@ export class GPUView implements View {
         const model = await gltf.graph.Model.create(modelUri);
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
-        this._viewMatrix = this.perspective.matrix
-        this._modelMatrix = this.perspective.modelMatrix
+        this._lightPosition = aether.mat4.apply(aether.mat4.inverse(this.perspective.matrix), this.uniforms.get(uniformsStruct.members.lightPos))
+        this.viewMatrix = this.perspective.matrix
+        this.modelMatrix = this.perspective.modelMatrix
         this.resetModelViewMatrix()
         if (this.renderer !== null) {
             this.renderer.destroy();
@@ -219,14 +244,24 @@ export class GPUView implements View {
 
     draw() {
         this.device.enqueueCommands("render", encoder => {
-            const c = 0.5 * 0.0625 * 0.0625
+            const skyColorAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true)
+            const colorAttachment: GPURenderPassColorAttachment = {
+                ...skyColorAttachment,
+                loadOp: "load",
+            }
+            skyColorAttachment.storeOp = "store"
             const passDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [this.gpuCanvas.attachment({ r: c, g: c, b: c, a: 1 }, true)],
+                colorAttachments: [colorAttachment],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
             };
+            encoder.renderPass({ colorAttachments: [skyColorAttachment] }, pass => {
+                pass.setPipeline(this.skyPipeline)
+                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
+                pass.draw(3)
+            })
             encoder.renderPass(passDescriptor, pass => {
                 if (this.renderer !== null) {
-                    pass.setBindGroup(0, this.uniformsGroup)
+                    pass.setBindGroup(0, this.uniformsGroup.wrapped)
                     this.renderer.render(pass)
                 }
             })

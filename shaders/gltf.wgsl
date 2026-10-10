@@ -150,7 +150,46 @@ fn f_main(
     let emissive_factor = textureSample(emissive_factor_texture, emissive_factor_sampler, vertex.texcoord_emissive_factor);
     let occlusion = textureSample(occlusion_texture, occlusion_sampler, vertex.texcoord_occlusion);
     let sampled_normal = textureSample(normal_texture, normal_sampler, vertex.texcoord_normal);
-    return color(vertex.position, normal, tangent, base_color_factor, metallic_roughness, emissive_factor, occlusion, sampled_normal);
+
+    let dither = vec4((vec3(next(), next(), next()) - 0.5) / 128.0, 0.0);
+    return color(vertex.position, normal, tangent, base_color_factor, metallic_roughness, emissive_factor, occlusion, sampled_normal) + dither;
+}
+
+// ####################################
+
+const vertices = array(
+    vec2(-1.0, -1.0),
+    vec2( 3.0, -1.0),
+    vec2(-1.0,  3.0),
+);
+
+struct SkyPos {
+    @builtin(position) clip_position: vec4f,
+    @location(0) direction: vec3f,
+}
+
+@vertex 
+fn v_sky(@builtin(vertex_index) index: u32) -> SkyPos {
+    let clip_position = vec4(vertices[index], 0.0, 1.0);
+    let scaling = vec2(uniforms.projection_mat[0][0], uniforms.projection_mat[1][1]); 
+    let focal_length = max(scaling.x, scaling.y);
+    let aspect_ratio = scaling.yx / min(scaling.x, scaling.y);
+    return SkyPos(
+        clip_position,
+        vec3(clip_position.xy * aspect_ratio, -focal_length)
+    );
+}
+
+@fragment
+fn f_sky(sky_pos: SkyPos) -> @location(0) vec4f {
+    let view_dir = normalize(sky_pos.direction);
+    let light_dir = normalize(uniforms.light_pos.xyz);
+    let glow = pow(0.5 * dot(view_dir, light_dir) + 0.5, 64.0);
+
+    seedRNG(sky_pos.clip_position.xy);
+    let dither = (next() - 0.5) / 128.0;
+
+    return vec4f(vec3(glow + dither), 1.0);
 }
 
 // ####################################
@@ -183,7 +222,7 @@ fn color(
             final_metallic_factor, 
             final_roughness_factor, 
             cosines,
-        ) * cosines.l_n
+        ) * cosines.l_n * occlusion.r
         + ambientLight * final_base_color_factor.rgb * occlusion.r
         + final_emissive_factor;
     
@@ -252,14 +291,14 @@ fn calc_cosines(n: vec3f, v: vec3f, l: vec3f) -> Cosines {
   );
 }
 
-fn brdf(baseColor: vec3f, metallic: f32, roughness: f32, cosines: Cosines) -> vec3f {
+fn brdf(base_color: vec3f, metallic: f32, roughness: f32, cosines: Cosines) -> vec3f {
   let safe_roughness = mix(min_roughness, 1.0, roughness);
   let alpha = safe_roughness * safe_roughness;
 
-  let f_0 = mix(dielectric_base_color, baseColor, metallic);
+  let f_0 = mix(dielectric_base_color, base_color, metallic);
   let reflectance = fresnel_reflectance(cosines.v_h, f_0);
   let absorption = 1.0 - reflectance;
-  let diffusion = (1.0 - metallic) * baseColor; 
+  let diffusion = (1.0 - metallic) * base_color; 
 
   let specular = reflectance 
     * normal_distribution(cosines.h_n, alpha) 
