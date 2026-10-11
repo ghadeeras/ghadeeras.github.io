@@ -19,6 +19,8 @@ export type ModelIndexEntry = {
 export class GLView implements View {
 
     private context: wgl.Context;
+    private program: wgl.Program;
+    private skyRenderer: SkyRenderer;
     private xrCompatible: boolean
 
     private position: wgl.Attribute;
@@ -42,7 +44,7 @@ export class GLView implements View {
 
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective(true)
 
-    constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string) {
+    constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string, skyVertexShaderCode: string, skyFragmentShaderCode: string) {
         try {
             this.context = wgl.Context.of(canvasId, { xrCompatible: true });
             this.xrCompatible = true
@@ -51,26 +53,27 @@ export class GLView implements View {
             this.xrCompatible = false
         }
 
-        const program = this.context.link(
+        this.skyRenderer = new SkyRenderer(this.context, skyVertexShaderCode, skyFragmentShaderCode)
+        this.program = this.context.link(
             this.context.vertexShader(vertexShaderCode),
             this.context.fragmentShader(fragmentShaderCode)
         )
-        program.use();
+        this.program.use()
 
-        this.position = program.attribute("position");
-        this.normal = program.attribute("normal");
+        this.position = this.program.attribute("position");
+        this.normal = this.program.attribute("normal");
 
         this.normal.setTo(0, 0, 1)
 
-        this.uPositionsMat = program.uniform("positionsMat");
-        this.uNormalsMat = program.uniform("normalsMat");
-        this.uProjectionMat = program.uniform("projectionMat");
-        this.uModelViewMat = program.uniform("modelViewMat");
+        this.uPositionsMat = this.program.uniform("positionsMat");
+        this.uNormalsMat = this.program.uniform("normalsMat");
+        this.uProjectionMat = this.program.uniform("projectionMat");
+        this.uModelViewMat = this.program.uniform("modelViewMat");
 
-        this.uLightPosition = program.uniform("lightPosition");
-        this.uColor = program.uniform("color");
-        this.uShininess = program.uniform("shininess");
-        this.uMetalness = program.uniform("metalness");
+        this.uLightPosition = this.program.uniform("lightPosition");
+        this.uColor = this.program.uniform("color");
+        this.uShininess = this.program.uniform("shininess");
+        this.uMetalness = this.program.uniform("metalness");
 
         this.rendererFactory = new gltf_gl.GLRendererFactory(this.context, {
             "POSITION": this.position,
@@ -81,7 +84,6 @@ export class GLView implements View {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
         gl.clearDepth(0);
-        gl.clearColor(0.0625, 0.0625, 0.0625, 1);
     }
 
     get canvas(): HTMLCanvasElement {
@@ -89,6 +91,7 @@ export class GLView implements View {
     }
 
     set modelColor(color: [number, number, number, number]) {
+        this.program.use()
         this.uColor.data = color
     }
 
@@ -98,14 +101,19 @@ export class GLView implements View {
 
     set lightPosition(p: [number, number, number]) {
         this._lightPosition = [...p, 0]
+        this.program.use()
         this.uLightPosition.data = aether.mat4.apply(this._viewMatrix, this._lightPosition)
+        this.skyRenderer.program.use()
+        this.skyRenderer.uLightPosition.data = this.uLightPosition.data
     }
 
     set roughnessFactor(s: number) {
+        this.program.use()
         this.uShininess.data = [1 - s]
     }
 
     set metallicFactor(m: number) {
+        this.program.use()
         this.uMetalness.data = [m]
     }
 
@@ -124,7 +132,10 @@ export class GLView implements View {
     }
 
     set projectionMatrix(m: aether.Mat4) {
+        this.program.use()
         this.uProjectionMat.data = aether.mat4.columnMajorArray(m)
+        this.skyRenderer.program.use()
+        this.skyRenderer.uProjectionMat.data = this.uProjectionMat.data
     }
 
     get viewMatrix() {
@@ -147,6 +158,7 @@ export class GLView implements View {
     }
 
     private updateModelViewMatrix() {
+        this.program.use()
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
 
@@ -173,11 +185,22 @@ export class GLView implements View {
 
     draw(eye: number = 0) {
         const gl = this.context.gl;
+
+        this.program.use()
+        this.context.gl.disableVertexAttribArray(this.position.location)
+        this.context.gl.disableVertexAttribArray(this.normal.location)
+
+        this.skyRenderer.render(eye)
+
+        this.program.use()
+        gl.enable(gl.DEPTH_TEST)
         if (eye === 0) {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+            gl.clear(gl.DEPTH_BUFFER_BIT)
         }
-        this.normal.setTo(0, 1, 0)
         if (this.renderer) {
+            this.context.gl.enableVertexAttribArray(this.position.location)
+            this.context.gl.enableVertexAttribArray(this.normal.location)
+            this.normal.setTo(0, 0, 0)
             this.renderer.render(this.context)
         }
         gl.flush();
@@ -192,7 +215,37 @@ export class GLView implements View {
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {
     const shaders = await gear.fetchTextFiles({
         vertexShaderCode: "gltf.vert",
-        fragmentShaderCode: "gltf.frag"
+        fragmentShaderCode: "gltf.frag",
+        skyVertexShaderCode: "gltf.sky.vert",
+        skyFragmentShaderCode: "gltf.sky.frag",
     }, "/shaders")
-    return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode)
+    return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, shaders.skyVertexShaderCode, shaders.skyFragmentShaderCode)
+}
+
+class SkyRenderer {
+
+    readonly program: wgl.Program 
+    readonly uProjectionMat: wgl.Uniform;
+    readonly uLightPosition: wgl.Uniform;
+
+    constructor(private context: wgl.Context, vertexShader: string, fragmentShader: string) {
+        this.program = context.link(
+            context.vertexShader(vertexShader),
+            context.fragmentShader(fragmentShader)
+        )
+        this.program.use()
+        this.uProjectionMat = this.program.uniform("projectionMat");
+        this.uLightPosition = this.program.uniform("lightPosition");
+        context.gl.clearColor(0.0625, 0.0625, 0.0625, 1);
+    }
+
+    render(eye: number = 0) {
+        this.program.use()
+        this.context.gl.disable(WebGL2RenderingContext.DEPTH_TEST)
+        if (eye === 0) {
+            this.context.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT)
+        }
+        this.context.gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, 3)
+    }
+
 }

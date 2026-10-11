@@ -3,6 +3,7 @@ import * as gear from "gear";
 import * as dragging from "../utils/dragging.js";
 import { newViewFactory } from "./view.js";
 import * as xr from "../utils/xr.js";
+import { Palette2D } from "../utils/palette.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
 export const huds = {
     "monitor": "monitor-button"
@@ -301,14 +302,12 @@ function mapped(property, mapper) {
         }
     };
 }
-const third = 2 * Math.PI / 3;
-const redVec = [1, 0];
-const greenVec = [Math.cos(third), Math.sin(third)];
-const blueVec = [Math.cos(2 * third), Math.sin(2 * third)];
+const redVec = [-1, -1];
+const greenVec = [0, 1];
+const blueVec = [1, -1];
+const palette = new Palette2D(redVec, greenVec, blueVec);
 function positionToColor(vec) {
-    const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
-    const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
-    const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
-    return [red, green, blue, 1.0];
+    const [red, green, blue] = palette.toColor(vec);
+    return [...aether.vec3.scale([red, green, blue], 1 / Math.max(red, green, blue)), 1.0];
 }
 //# sourceMappingURL=toy.js.map

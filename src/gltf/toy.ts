@@ -5,6 +5,7 @@ import { newViewFactory, View } from "./view.js";
 import { Toy } from "../initializer.js";
 import { gltf } from "../djee/index.js";
 import * as xr from "../utils/xr.js";
+import { Palette2D } from "../utils/palette.js";
 
 type ModelIndexEntry = {
     name: string,
@@ -363,14 +364,12 @@ function mapped<A>(property: gear.Property<A>, mapper: gear.Mapper<gear.loops.Po
     }
 }
 
-const third = 2 * Math.PI / 3
-const redVec: aether.Vec<2> = [1, 0];
-const greenVec: aether.Vec<2> = [Math.cos(third), Math.sin(third)];
-const blueVec: aether.Vec<2> = [Math.cos(2 * third), Math.sin(2 * third)];
+const redVec  : aether.Vec<2> = [-1, -1];
+const greenVec: aether.Vec<2> = [ 0,  1];
+const blueVec : aether.Vec<2> = [ 1, -1];
+const palette = new Palette2D(redVec, greenVec, blueVec)
 
 function positionToColor(vec: gear.loops.PointerPosition): aether.Vec4 {
-    const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
-    const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
-    const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
-    return [red, green, blue, 1.0];
+    const [red, green, blue] = palette.toColor(vec)
+    return [...aether.vec3.scale([red, green, blue], 1 / Math.max(red, green, blue)), 1.0];
 }

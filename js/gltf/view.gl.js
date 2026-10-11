@@ -3,7 +3,7 @@ import * as gear from "gear";
 import { wgl } from "lumen";
 import { gltf, gltf_gl } from "../djee/index.js";
 export class GLView {
-    constructor(canvasId, vertexShaderCode, fragmentShaderCode) {
+    constructor(canvasId, vertexShaderCode, fragmentShaderCode, skyVertexShaderCode, skyFragmentShaderCode) {
         this.renderer = null;
         this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
@@ -17,19 +17,20 @@ export class GLView {
             this.context = wgl.Context.of(canvasId);
             this.xrCompatible = false;
         }
-        const program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
-        program.use();
-        this.position = program.attribute("position");
-        this.normal = program.attribute("normal");
+        this.skyRenderer = new SkyRenderer(this.context, skyVertexShaderCode, skyFragmentShaderCode);
+        this.program = this.context.link(this.context.vertexShader(vertexShaderCode), this.context.fragmentShader(fragmentShaderCode));
+        this.program.use();
+        this.position = this.program.attribute("position");
+        this.normal = this.program.attribute("normal");
         this.normal.setTo(0, 0, 1);
-        this.uPositionsMat = program.uniform("positionsMat");
-        this.uNormalsMat = program.uniform("normalsMat");
-        this.uProjectionMat = program.uniform("projectionMat");
-        this.uModelViewMat = program.uniform("modelViewMat");
-        this.uLightPosition = program.uniform("lightPosition");
-        this.uColor = program.uniform("color");
-        this.uShininess = program.uniform("shininess");
-        this.uMetalness = program.uniform("metalness");
+        this.uPositionsMat = this.program.uniform("positionsMat");
+        this.uNormalsMat = this.program.uniform("normalsMat");
+        this.uProjectionMat = this.program.uniform("projectionMat");
+        this.uModelViewMat = this.program.uniform("modelViewMat");
+        this.uLightPosition = this.program.uniform("lightPosition");
+        this.uColor = this.program.uniform("color");
+        this.uShininess = this.program.uniform("shininess");
+        this.uMetalness = this.program.uniform("metalness");
         this.rendererFactory = new gltf_gl.GLRendererFactory(this.context, {
             "POSITION": this.position,
             "NORMAL": this.normal,
@@ -38,12 +39,12 @@ export class GLView {
         gl.enable(gl.DEPTH_TEST);
         gl.depthFunc(gl.GREATER);
         gl.clearDepth(0);
-        gl.clearColor(0.0625, 0.0625, 0.0625, 1);
     }
     get canvas() {
         return this.context.canvas;
     }
     set modelColor(color) {
+        this.program.use();
         this.uColor.data = color;
     }
     get lightPosition() {
@@ -51,12 +52,17 @@ export class GLView {
     }
     set lightPosition(p) {
         this._lightPosition = [...p, 0];
+        this.program.use();
         this.uLightPosition.data = aether.mat4.apply(this._viewMatrix, this._lightPosition);
+        this.skyRenderer.program.use();
+        this.skyRenderer.uLightPosition.data = this.uLightPosition.data;
     }
     set roughnessFactor(s) {
+        this.program.use();
         this.uShininess.data = [1 - s];
     }
     set metallicFactor(m) {
+        this.program.use();
         this.uMetalness.data = [m];
     }
     get aspectRatio() {
@@ -71,7 +77,10 @@ export class GLView {
         return aether.mat4.from(this.uProjectionMat.data);
     }
     set projectionMatrix(m) {
+        this.program.use();
         this.uProjectionMat.data = aether.mat4.columnMajorArray(m);
+        this.skyRenderer.program.use();
+        this.skyRenderer.uProjectionMat.data = this.uProjectionMat.data;
     }
     get viewMatrix() {
         return this._viewMatrix;
@@ -89,6 +98,7 @@ export class GLView {
         this.updateModelViewMatrix();
     }
     updateModelViewMatrix() {
+        this.program.use();
         this.uModelViewMat.data = aether.mat4.columnMajorArray(aether.mat4.mul(this._viewMatrix, this._modelMatrix));
     }
     async loadModel(modelUri) {
@@ -112,11 +122,19 @@ export class GLView {
     }
     draw(eye = 0) {
         const gl = this.context.gl;
+        this.program.use();
+        this.context.gl.disableVertexAttribArray(this.position.location);
+        this.context.gl.disableVertexAttribArray(this.normal.location);
+        this.skyRenderer.render(eye);
+        this.program.use();
+        gl.enable(gl.DEPTH_TEST);
         if (eye === 0) {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
         }
-        this.normal.setTo(0, 1, 0);
         if (this.renderer) {
+            this.context.gl.enableVertexAttribArray(this.position.location);
+            this.context.gl.enableVertexAttribArray(this.normal.location);
+            this.normal.setTo(0, 0, 0);
             this.renderer.render(this.context);
         }
         gl.flush();
@@ -128,8 +146,28 @@ export class GLView {
 export async function newViewFactory(canvasId) {
     const shaders = await gear.fetchTextFiles({
         vertexShaderCode: "gltf.vert",
-        fragmentShaderCode: "gltf.frag"
+        fragmentShaderCode: "gltf.frag",
+        skyVertexShaderCode: "gltf.sky.vert",
+        skyFragmentShaderCode: "gltf.sky.frag",
     }, "/shaders");
-    return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
+    return () => new GLView(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode, shaders.skyVertexShaderCode, shaders.skyFragmentShaderCode);
+}
+class SkyRenderer {
+    constructor(context, vertexShader, fragmentShader) {
+        this.context = context;
+        this.program = context.link(context.vertexShader(vertexShader), context.fragmentShader(fragmentShader));
+        this.program.use();
+        this.uProjectionMat = this.program.uniform("projectionMat");
+        this.uLightPosition = this.program.uniform("lightPosition");
+        context.gl.clearColor(0.0625, 0.0625, 0.0625, 1);
+    }
+    render(eye = 0) {
+        this.program.use();
+        this.context.gl.disable(WebGL2RenderingContext.DEPTH_TEST);
+        if (eye === 0) {
+            this.context.gl.clear(WebGL2RenderingContext.COLOR_BUFFER_BIT);
+        }
+        this.context.gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, 3);
+    }
 }
 //# sourceMappingURL=view.gl.js.map

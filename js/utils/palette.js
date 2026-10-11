@@ -111,7 +111,7 @@ export class Palette {
         this.hueCanvas.style.backgroundColor = "#" + this.newColor.hex;
         this.colorInput.value = this.newColor.hex;
         const h = this.newColor.hue;
-        const xy = pallete2D.fromColor(aether.vec3.scale(h, 1 / (h[0] + h[1] + h[2])));
+        const xy = palette2D.fromColor(aether.vec3.scale(h, 1 / (h[0] + h[1] + h[2])));
         const c = canvasCoords(this.hueCanvas, ...xy);
         this.hueSliderDiv.style.left = `${c.x - this.hueSliderDiv.clientWidth / 2}px`;
         this.hueSliderDiv.style.top = `${c.y - this.hueSliderDiv.clientHeight / 2}px`;
@@ -181,12 +181,12 @@ function canvasCoords(canvas, cx, cy) {
     return { x, y };
 }
 function hue(x, y, defaultColor) {
-    let color = pallete2D.toColor([x, y]);
+    let color = palette2D.toColor([x, y]);
     return color.every(v => v >= 0)
         ? [...hueOf(color), 1]
         : defaultColor(color);
 }
-export class Pallette2D {
+export class Palette2D {
     constructor(red, green, blue) {
         this.bary = new aether.Bary([...red, 0], [...green, 0], [...blue, 0]);
     }
@@ -198,5 +198,5 @@ export class Pallette2D {
         return aether.vec2.from(cartesian);
     }
 }
-const pallete2D = new Pallette2D([-1, -Math.sqrt(0.75)], [0, Math.sqrt(0.75)], [1, -Math.sqrt(0.75)]);
+const palette2D = new Palette2D([-1, -Math.sqrt(0.75)], [0, Math.sqrt(0.75)], [1, -Math.sqrt(0.75)]);
 //# sourceMappingURL=palette.js.map

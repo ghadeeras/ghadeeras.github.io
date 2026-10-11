@@ -96,6 +96,15 @@ vec4 calc_color(vec3 position, vec3 normal) {
 }
 
 void main() {
-    fragColor = calc_color(fragPosition, normalize(gl_FrontFacing ? fragNormal: -fragNormal));
+    // Begin: Normal Defaulting
+    vec3 gradX = dFdx(fragPosition);
+    vec3 gradY = dFdy(fragPosition);
+    vec3 normal = normalize(fragNormal != vec3(0.0)
+        ? gl_FrontFacing ? fragNormal : -fragNormal
+        : cross(gradX, gradY)
+    );
+    // End: Normal Defaulting
+
+    fragColor = calc_color(fragPosition, normal);
 }
 

@@ -189,7 +189,7 @@ fn f_sky(sky_pos: SkyPos) -> @location(0) vec4f {
     seedRNG(sky_pos.clip_position.xy);
     let dither = (next() - 0.5) / 128.0;
 
-    return vec4f(vec3(glow + dither), 1.0);
+    return vec4(vec3(glow + dither), 1.0);
 }
 
 // ####################################
