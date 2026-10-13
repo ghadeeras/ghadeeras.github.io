@@ -12,66 +12,25 @@ export const gltfMaterialsStruct = gpu.struct({
     emissiveFactor: gpu.f32.x3,
     alphaCutoff: gpu.f32
 }).clone(0, 256, false);
-export function gltfMatrixGroupLayout() {
-    return {
-        entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: {
-                    type: "uniform",
-                    hasDynamicOffset: true,
-                },
-            }],
-    };
-}
-export function gltfMaterialGroupLayout() {
-    return {
-        entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                buffer: { type: "uniform" },
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: "float" }
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            }, {
-                binding: 3,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: "float" }
-            }, {
-                binding: 4,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            }, {
-                binding: 5,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: "float" }
-            }, {
-                binding: 6,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            }, {
-                binding: 7,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: "float" }
-            }, {
-                binding: 8,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            }, {
-                binding: 9,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: "float" }
-            }, {
-                binding: 10,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: "filtering" },
-            }],
-    };
+export function layouts(device) {
+    return device.groupLayouts({
+        node: {
+            matrices: gpu.uniform(gltfMatricesStruct, true).asEntry(0, "VERTEX", "FRAGMENT")
+        },
+        material: {
+            uniform: gpu.uniform(gltfMaterialsStruct).asEntry(0, "FRAGMENT"),
+            baseColorTexture: gpu.texture_2d("float").asEntry(1, "FRAGMENT"),
+            baseColorSampler: gpu.sampler("filtering").asEntry(2, "FRAGMENT"),
+            metallicRoughnessTexture: gpu.texture_2d("float").asEntry(3, "FRAGMENT"),
+            metallicRoughnessSampler: gpu.sampler("filtering").asEntry(4, "FRAGMENT"),
+            emissiveFactorTexture: gpu.texture_2d("float").asEntry(5, "FRAGMENT"),
+            emissiveFactorSampler: gpu.sampler("filtering").asEntry(6, "FRAGMENT"),
+            occlusionTexture: gpu.texture_2d("float").asEntry(7, "FRAGMENT"),
+            occlusionSampler: gpu.sampler("filtering").asEntry(8, "FRAGMENT"),
+            normalTexture: gpu.texture_2d("float").asEntry(9, "FRAGMENT"),
+            normalSampler: gpu.sampler("filtering").asEntry(10, "FRAGMENT"),
+        }
+    });
 }
 export class NodeLevelResources {
     constructor(group, matricesBuffer) {
@@ -103,16 +62,17 @@ class PrimitiveLevelResources {
 }
 export class GPURendererFactory {
     constructor(device, matricesGroupIndex, materialsGroupIndex, attributeLocations, pipelineSupplier) {
-        this.adapter = new GPUAdapter(device, device.wrapped.createBindGroupLayout(gltfMatrixGroupLayout()), device.wrapped.createBindGroupLayout(gltfMaterialGroupLayout()), matricesGroupIndex, materialsGroupIndex, attributeLocations, caching(pipelineSupplier));
+        const l = layouts(device);
+        this.adapter = new GPUAdapter(device, l.node, l.material, matricesGroupIndex, materialsGroupIndex, attributeLocations, caching(pipelineSupplier));
     }
     async newInstance(model) {
         return await renderer.GLTFRenderer.create(model, this.adapter);
     }
     get matricesGroupLayout() {
-        return this.adapter.matricesGroupLayout;
+        return this.adapter.matricesGroupLayout.wrapped;
     }
     get materialsGroupLayout() {
-        return this.adapter.materialsGroupLayout;
+        return this.adapter.materialsGroupLayout.wrapped;
     }
 }
 class GPUAdapter {
@@ -132,18 +92,10 @@ class GPUAdapter {
             usage: ["UNIFORM"],
             data: dataView
         });
-        const group = this.device.wrapped.createBindGroup({
-            label: "nodeLevelResources",
-            layout: this.matricesGroupLayout,
-            entries: [{
-                    binding: 0,
-                    resource: {
-                        buffer: buffer.wrapped,
-                        size: gltfMatricesStruct.paddedSize,
-                    }
-                }]
-        });
-        return new NodeLevelResources(group, buffer);
+        const group = this.matricesGroupLayout.bindGroup({
+            matrices: buffer.view({ size: gltfMatricesStruct.paddedSize })
+        }, "nodeLevelResources");
+        return new NodeLevelResources(group.wrapped, buffer);
     }
     primitiveLevelResources(materials) {
         const dataView = gltfMaterialsStruct.view(materials.map(m => ({
@@ -157,48 +109,19 @@ class GPUAdapter {
             usage: ["UNIFORM"],
             data: dataView
         });
-        const groups = materials.map((m, i) => this.device.wrapped.createBindGroup({
-            label: "primitiveLevelResources",
-            layout: this.materialsGroupLayout,
-            entries: [{
-                    binding: 0,
-                    resource: {
-                        buffer: buffer.wrapped,
-                        size: gltfMaterialsStruct.paddedSize,
-                        offset: i * gltfMaterialsStruct.stride
-                    }
-                }, {
-                    binding: 1,
-                    resource: m.baseColorTexture[0].wrapped.createView({ format: "rgba8unorm" })
-                }, {
-                    binding: 2,
-                    resource: m.baseColorTexture[1].wrapped
-                }, {
-                    binding: 3,
-                    resource: m.metallicRoughnessTexture[0].wrapped.createView({ format: "rgba8unorm" })
-                }, {
-                    binding: 4,
-                    resource: m.metallicRoughnessTexture[1].wrapped
-                }, {
-                    binding: 5,
-                    resource: m.emissiveTexture[0].wrapped.createView({ format: "rgba8unorm" })
-                }, {
-                    binding: 6,
-                    resource: m.emissiveTexture[1].wrapped
-                }, {
-                    binding: 7,
-                    resource: m.occlusionTexture[0].wrapped.createView({ format: "rgba8unorm" })
-                }, {
-                    binding: 8,
-                    resource: m.occlusionTexture[1].wrapped
-                }, {
-                    binding: 9,
-                    resource: m.normalTexture[0].wrapped.createView({ format: "rgba8unorm" })
-                }, {
-                    binding: 10,
-                    resource: m.normalTexture[1].wrapped
-                }]
-        }));
+        const groups = materials.map((m, i) => this.materialsGroupLayout.bindGroup({
+            uniform: buffer.view({ size: gltfMaterialsStruct.paddedSize, offset: i * gltfMaterialsStruct.stride }),
+            baseColorTexture: m.baseColorTexture[0].createView({ format: "rgba8unorm" }),
+            baseColorSampler: m.baseColorTexture[1],
+            metallicRoughnessTexture: m.metallicRoughnessTexture[0].createView({ format: "rgba8unorm" }),
+            metallicRoughnessSampler: m.metallicRoughnessTexture[1],
+            emissiveFactorTexture: m.emissiveTexture[0].createView({ format: "rgba8unorm" }),
+            emissiveFactorSampler: m.emissiveTexture[1],
+            occlusionTexture: m.occlusionTexture[0].createView({ format: "rgba8unorm" }),
+            occlusionSampler: m.occlusionTexture[1],
+            normalTexture: m.normalTexture[0].createView({ format: "rgba8unorm" }),
+            normalSampler: m.normalTexture[1],
+        }, `material${i}`).wrapped);
         return new PrimitiveLevelResources(groups, buffer, materials.map(m => m.doubleSided));
     }
     vertexBuffer(dataView, stride) {

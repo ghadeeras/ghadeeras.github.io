@@ -33,7 +33,7 @@ export const bodyDescriptionAsVertex = gpu.vertex({
 
 export const bodyPosition = bodyState.asVertex(['position'])
 
-export async function appDefinition(device: gpu.Device, workgroupSize: number, workgroupSizeX: number, workgroupSizeY: number) {
+export async function appDefinition(device: gpu.Device, workgroup_size: number, workgroup_size_x: number, workgroup_size_y: number) {
     const groupLayouts = device.groupLayouts({
         sampledTexture: {
             textureSampler: gpu.sampler("non-filtering").asEntry(0, "FRAGMENT"),
@@ -73,7 +73,7 @@ export async function appDefinition(device: gpu.Device, workgroupSize: number, w
             visuals: groupLayouts.visuals.asEntry(0)
         }
     })
-    const modules = await shaders(device, workgroupSize, workgroupSizeX, workgroupSizeY)
+    const modules = await shaders(device)
     return {
         device,
         shaders: modules, 
@@ -81,23 +81,19 @@ export async function appDefinition(device: gpu.Device, workgroupSize: number, w
             groupLayouts, pipelineLayouts
         },
         pipelines: {
-            filter1D: await pipelineLayouts.filtering.computePipeline({ module: modules.bloom }),
-            physics: await pipelineLayouts.physics.computePipeline({ module: modules.physics }),
+            filter1D: await pipelineLayouts.filtering.computePipeline({ module: modules.bloom, constants: { workgroup_size_x, workgroup_size_y } }),
+            physics: await pipelineLayouts.physics.computePipeline({ module: modules.physics, constants: { workgroup_size } }),
         }
     }
 }
 
-async function shaders(device: gpu.Device, workgroupSize: number, workgroupSizeX: number, workgroupSizeY: number) {
-    const templateFunction: (code: string) => string = code => code
-        .replace(/\[\[workgroup_size\]\]/g, `${workgroupSize}`)
-        .replace(/\[\[workgroup_size_x\]\]/g, `${workgroupSizeX}`)
-        .replace(/\[\[workgroup_size_y\]\]/g, `${workgroupSizeY}`)
+async function shaders(device: gpu.Device) {
     return await device.shaderModules({
         baseTexture: { code: BaseTexture.shaderCode },
-        bloom: { path: "shaders/filter-1d.wgsl", templateFunction },
-        physics: { path: "shaders/gravity-compute.wgsl", templateFunction },
-        meshRenderer: { path: "shaders/gravity-render.wgsl", templateFunction },
-        pointsRenderer: { path: "shaders/gravity-render.points.wgsl", templateFunction },
+        bloom: { path: "shaders/filter-1d.wgsl" },
+        physics: { path: "shaders/gravity-compute.wgsl" },
+        meshRenderer: { path: "shaders/gravity-render.wgsl" },
+        pointsRenderer: { path: "shaders/gravity-render.points.wgsl" },
     })
 }
 

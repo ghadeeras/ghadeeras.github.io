@@ -71,11 +71,8 @@ export class TesselationShader {
     static async create(device) {
         const layout = tesselationPipelineLayout(tesselationGroupLayout(device));
         const workGroupSize = device.suggestedGroupSizes()[0][0];
-        const module = await device.shaderModule({
-            code: tesselationShader,
-            templateFunction: code => code.replace(/\[\[workgroup_size\]\]/g, workGroupSize.toFixed(0))
-        });
-        const pipeline = await layout.computePipeline({ module }, "Tesselation Pipeline");
+        const module = await device.shaderModule({ code: tesselationShader });
+        const pipeline = await layout.computePipeline({ module, constants: { workgroup_size: workGroupSize } }, "Tesselation Pipeline");
         return new TesselationShader(pipeline, workGroupSize);
     }
     tesselationGroup(strokeAttributes, inputStrokePoints, segmentsCount) {
@@ -136,8 +133,10 @@ const tesselationShader = /* wgsl */ `
     @group(0) @binding(2)
     var<storage, read_write> output_stroke_points: array<StrokePointsPair>;
     
+    override workgroup_size = 256;
+
     @compute
-    @workgroup_size([[workgroup_size]])
+    @workgroup_size(workgroup_size)
     fn tesselate_stroke(@builtin(global_invocation_id) id: vec3<u32>) {
         let points_count = arrayLength(&output_stroke_points);
         let index = id.x;

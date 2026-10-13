@@ -18,8 +18,11 @@ fn colorAt(xy: vec2<u32>) -> vec3<f32> {
     return select(vec3(1024.0), color, color < vec3(1024.0)); // avoid infinities and/or NaNs
 }
 
+override workgroup_size_x: u32;
+override workgroup_size_y: u32;
+
 @compute
-@workgroup_size([[workgroup_size_x]], [[workgroup_size_y]], 1)
+@workgroup_size(workgroup_size_x, workgroup_size_y, 1)
 fn c_main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
     let dims = min(textureDimensions(sourceTexture), textureDimensions(targetTexture));
     let xy = global_invocation_id.xy;
