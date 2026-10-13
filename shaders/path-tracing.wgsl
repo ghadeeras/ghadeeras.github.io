@@ -317,7 +317,7 @@ fn lightDirection(lightId: u32, fromSP: vec3<f32>, normal: vec3<f32>) -> Directi
 }
 
 fn lightPDF(lightId: u32, fromSP: vec3<f32>, direction: Direction) -> f32 {
-    if ((lightId == NIL) | (lightId == direction.lightId)) {
+    if ((lightId == NIL) || (lightId == direction.lightId)) {
         return select(direction.lightPDF, direction.diffusePDF, lightId == NIL);
     }
 
@@ -340,7 +340,7 @@ fn lightPDF(lightId: u32, fromSP: vec3<f32>, direction: Direction) -> f32 {
     let distance = -localFrom.z / localDirection.z;
     
     let localTo = localFrom.xy + distance * localDirection.xy;
-    let hit = (area > 0.0) & all(abs(localTo) <= (localSize.xy * 0.5));
+    let hit = (area > 0.0) && all(abs(localTo) <= (localSize.xy * 0.5));
 
     return select(0.0, distance * distance  / area, hit);
 }
@@ -349,7 +349,7 @@ fn importantDirection(importantLights: vec4<u32>, fromSP: vec3<f32>, normal: vec
     let bias = select(0.0, 1.0, firstHit);
     let r = next_unorm() * (4.0 + bias) - bias;
     let lightId = importantLights[i32(r) & 3];
-    if ((r < 0.0) | (lightId == NIL)) {
+    if ((r < 0.0) || (lightId == NIL)) {
         return diffuseDirection(normal);
     } else {
         return lightDirection(lightId, fromSP, normal);
@@ -426,11 +426,11 @@ fn shootInGrid(ray: Ray) -> Hit {
     traverser = newTraverser(ray);
     var hit = shootObserver(ray);
     var done = false;
-    for (var i = 0; (i < 128) & !done; i = i + 1) {
+    for (var i = 0; (i < 128) && !done; i = i + 1) {
         let cell = grid[traverser.cell.x + traverser.cell.y + traverser.cell.z];
         let distance = next();
         hit = shoot(cell, ray, hit);
-        done = (hit.boxId < OBSERVER) | any(traverser.cell == traverser.limit) | (distance >= hit.distance);
+        done = (hit.boxId < OBSERVER) || any(traverser.cell == traverser.limit) || (distance >= hit.distance);
     }
     return hit;
 }
@@ -460,7 +460,7 @@ fn trace(ray: Ray) -> Result {
             return Result(ZERO_F3D, select(normal, vec4(-ray.direction, 128.0), i == 0));
         }
         let hitDetails = detailsOf(hit, weightedRay.ray);
-        normal = select(normal, vec4(reflect(hitDetails.normal, normal.xyz), normal.w + hit.distance), reflection | (i == 0));
+        normal = select(normal, vec4(reflect(hitDetails.normal, normal.xyz), normal.w + hit.distance), reflection || (i == 0));
         color = color * hitDetails.material.xyz * weightedRay.weight;
         if (hitDetails.material.w < 0.0) {
             if (hit.distance < 8.0 && weightedRay.lightId == NIL && prevBoxId < OBSERVER) {
@@ -477,7 +477,7 @@ fn trace(ray: Ray) -> Result {
         prevBoxId = hitDetails.boxId;
         prevFaceId = hitDetails.faceId;
         weightedRay = scatterRay(hitDetails, reflection);
-        reflection &= weightedRay.reflection;
+        reflection = reflection && weightedRay.reflection;
     }
     return Result(ZERO_F3D, normal);
 }

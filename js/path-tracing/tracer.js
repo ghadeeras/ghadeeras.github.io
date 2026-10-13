@@ -1,40 +1,9 @@
 import * as aether from "aether";
 import { gpu } from "lumen";
 import { NULL } from './scene.js';
-export const uniformsStruct = gpu.struct({
-    matrix: gpu.mat3x3,
-    position: gpu.f32.x3,
-    focalLength: gpu.f32,
-    aspectRatio: gpu.f32,
-    samplesPerPixel: gpu.u32,
-}, ["matrix", "position", "focalLength", "aspectRatio", "samplesPerPixel"]);
-export const volumeStruct = gpu.struct({
-    min: gpu.f32.x3,
-    max: gpu.f32.x3,
-    invSize: gpu.f32.x3,
-}, ["min", "max", "invSize"]);
-export const faceDirectionsStruct = gpu.struct({
-    lights: gpu.u32.times(4),
-}, ["lights"]);
-export const boxStruct = gpu.struct({
-    volume: volumeStruct,
-    faceMaterials: gpu.u32.times(6),
-}, ["volume", "faceMaterials"]);
-export const boxDirectionsStruct = gpu.struct({
-    faces: faceDirectionsStruct.times(6),
-}, ["faces"]);
-export const rectangleStruct = gpu.struct({
-    position: gpu.f32.x3,
-    size: gpu.f32.x2,
-    face: gpu.i32,
-    area: gpu.f32,
-}, ["position", "size", "face", "area"]);
-export const cellStruct = gpu.struct({
-    boxes: gpu.u32.times(8),
-    size: gpu.u32,
-}, ["boxes", "size"]);
+import { boxDirectionsStruct, boxStruct, cellStruct, uniformsStruct } from "./toy.gpu.js";
 export class Tracer {
-    constructor(shaderModule, canvas, scene, colorFormat, normalsFormat) {
+    constructor(gpuToy, canvas, scene, colorFormat, normalsFormat) {
         this.canvas = canvas;
         this.scene = scene;
         this.colorFormat = colorFormat;
@@ -43,10 +12,11 @@ export class Tracer {
         this._position = aether.vec3.of(32, 32, 32);
         this._samplesPerPixel = 1;
         this._focalLength = Math.SQRT2;
-        this.device = shaderModule.device;
+        this.device = gpuToy.device;
+        this.groupLayout = gpuToy.groupLayouts.tracer;
         this.pipeline = this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [
+            vertex: gpuToy.shaders.tracer.vertexState("v_main", []),
+            fragment: gpuToy.shaders.tracer.fragmentState("f_main", [
                 colorFormat,
                 normalsFormat
             ]),
@@ -54,36 +24,26 @@ export class Tracer {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: "auto"
+            layout: gpuToy.pipelineLayouts.tracer.wrapped
         });
-        this.groupLayout = this.pipeline.getBindGroupLayout(0);
         this.uniformsBuffer = this.createUniformsBuffer();
         this.materialsBuffer = this.createMaterialsBuffer();
         this.boxesBuffer = this.createBoxesBuffer();
         this.gridBuffer = this.createGridBuffer();
         this.clockBuffer = this.createClockBuffer();
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer();
-        this.group = this.device.wrapped.createBindGroup({
-            layout: this.groupLayout,
-            entries: [
-                this.uniformsBuffer,
-                this.materialsBuffer,
-                this.boxesBuffer,
-                this.gridBuffer,
-                this.importantDirectionsBuffer,
-                this.clockBuffer,
-            ].map((r, i) => ({
-                binding: i,
-                resource: r.asBindingResource()
-            }))
+        this.group = this.groupLayout.bindGroup({
+            uniformsBuffer: this.uniformsBuffer,
+            materialsBuffer: this.materialsBuffer,
+            boxesBuffer: this.boxesBuffer,
+            gridBuffer: this.gridBuffer,
+            importantDirectionsBuffer: this.importantDirectionsBuffer,
+            clockBuffer: this.clockBuffer,
         });
-    }
-    static async create(device, canvas, scene, colorFormat, normalsFormat) {
-        return new Tracer(await device.shaderModule({ path: "shaders/path-tracing.wgsl" }), canvas, scene, colorFormat, normalsFormat);
     }
     render(encoder, colorAttachment, normalsAttachment) {
         encoder.renderPass({ colorAttachments: [colorAttachment, normalsAttachment] }, pass => {
-            pass.setBindGroup(0, this.group);
+            pass.setBindGroup(0, this.group.wrapped);
             pass.setPipeline(this.pipeline);
             pass.draw(4);
         });

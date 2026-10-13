@@ -1,5 +1,5 @@
 import { gpu } from "lumen"
-import { uniformsStruct } from "./tracer.js"
+import { GPUToy, StackerGroupLayout, uniformsStruct } from "./toy.gpu.js"
 
 export class Stacker {
 
@@ -7,20 +7,20 @@ export class Stacker {
     private readonly maxLayersCount: number
 
     private readonly pipeline: GPURenderPipeline
-    private readonly groupLayout: GPUBindGroupLayout
+    private readonly groupLayout: StackerGroupLayout
 
     private readonly texture: gpu.Texture
     private readonly sampler: gpu.Sampler
 
     readonly frameViews: gpu.DataBuffer
 
-    private _group: GPUBindGroup
+    private _group: gpu.CompatibleBindGroup<StackerGroupLayout>
     private _layersCount: number
 
     private _layer: number
 
-    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly uniforms: gpu.DataBuffer, readonly normalsTexture: gpu.Texture, readonly inputFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
-        this.device = shaderModule.device
+    constructor(gpuToy: GPUToy, readonly size: GPUExtent3DDictStrict, readonly uniforms: gpu.DataBuffer, readonly normalsTexture: gpu.Texture, readonly inputFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
+        this.device = gpuToy.device
         this.maxLayersCount = size.depthOrArrayLayers ?? this.device.wrapped.limits.maxTextureArrayLayers
 
         this.texture = this.device.texture({
@@ -44,50 +44,18 @@ export class Stacker {
             size: uniformsStruct.paddedSize * 256
         })
 
-        this.groupLayout = this.device.wrapped.createBindGroupLayout({
-            label: "stacker-bind-group",
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
-                buffer: {
-                    type: "read-only-storage",
-                    minBindingSize: uniformsStruct.paddedSize * 256,
-                }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: {
-                    sampleType: "float",
-                    viewDimension: "2d-array"
-                }
-            }, {
-                binding: 2,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: {
-                    sampleType: "unfilterable-float",
-                    viewDimension: "2d"
-                }
-            }, {
-                binding: 3,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: {
-                    type: "filtering"
-                }
-            }]
-        })
+        this.groupLayout = gpuToy.groupLayouts.stacker
 
         this.pipeline =  this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [
+            vertex: gpuToy.shaders.stacker.vertexState("v_main", []),
+            fragment: gpuToy.shaders.stacker.fragmentState("f_main", [
                 outputFormat
             ]),
             primitive: {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: this.device.wrapped.createPipelineLayout({
-                bindGroupLayouts: [this.groupLayout]
-            })
+            layout: gpuToy.pipelineLayouts.stacker.wrapped
         })
 
         this._layersCount = this.maxLayersCount
@@ -96,26 +64,16 @@ export class Stacker {
         this._layer = this.layersCount - 1
     }
 
-    private newGroup(layersCount: number): GPUBindGroup {
-        return this.device.wrapped.createBindGroup({
-            layout: this.groupLayout, 
-            entries: [{
-                binding: 0,
-                resource: this.frameViews.asBindingResource(),
-            }, {
-                binding: 1,
-                resource: this.texture.createView({
-                    dimension: "2d-array",
-                    baseArrayLayer: 0,
-                    arrayLayerCount: layersCount
-                }).asBindingResource(),
-            }, {
-                binding: 2,
-                resource: this.normalsTexture.createView().asBindingResource(),
-            }, {
-                binding: 3,
-                resource: this.sampler.asBindingResource(),
-            }]
+    private newGroup(layersCount: number) {
+        return this.groupLayout.bindGroup({
+            frameViews: this.frameViews,
+            stack: this.texture.createView({
+                dimension: "2d-array",
+                baseArrayLayer: 0,
+                arrayLayerCount: layersCount
+            }),
+            normals: this.normalsTexture.createView(),
+            sampler: this.sampler
         })
     }
 
@@ -148,14 +106,10 @@ export class Stacker {
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment) {
         encoder.renderPass({ colorAttachments: [ colorAttachment ] }, pass => {
-            pass.setBindGroup(0, this._group)
+            pass.setBindGroup(0, this._group.wrapped)
             pass.setPipeline(this.pipeline)
             pass.draw(4, 1, 0, this._layer)
         })
-    }
-
-    static async create(device: gpu.Device, size: GPUExtent3DDictStrict, uniforms: gpu.DataBuffer, normalsTexture: gpu.Texture, inputFormat: GPUTextureFormat, outputFormat: GPUTextureFormat): Promise<Stacker> {
-        return new Stacker(await device.shaderModule({ path: "shaders/stacker.wgsl" }), size, uniforms, normalsTexture, inputFormat, outputFormat)
     }
 
 }

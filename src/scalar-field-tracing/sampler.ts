@@ -1,28 +1,21 @@
 import { gpu } from "lumen"
 import * as aether from "aether"
+import { GPUToy, SamplerGroup, SamplerPipeline, fieldParamsStruct } from "./toy.gpu.js";
 
 export class FieldSampler {
 
-    private static uniformsStruct = gpu.struct({
-        matrix: gpu.mat3x3,
-        displacement: gpu.f32.x3,
-        scale: gpu.f32,
-        depth: gpu.u32,
-    }) 
-
     private static SIZE = 128;
 
-    private pipeline: GPUComputePipeline
-    private bindGroup: GPUBindGroup
+    private pipeline: SamplerPipeline
+    private bindGroup: SamplerGroup
 
     private uniformsBuffer: gpu.SyncBuffer
 
     readonly fieldTexture: gpu.Texture
 
-    constructor(private shader: gpu.ShaderModule) {
-        const device = shader.device
-        this.pipeline = shader.computePipeline("c_main")
-        const fieldComputeBidGroupLayout = this.pipeline.getBindGroupLayout(0)
+    constructor(gpuToy: GPUToy) {
+        const device = gpuToy.device
+        this.pipeline = gpuToy.pipelines.sampler
         this.fieldTexture = device.texture({
             label: "scalar-field",
             format: "rgba16float",
@@ -37,67 +30,52 @@ export class FieldSampler {
         this.uniformsBuffer = device.syncBuffer({
             label: "uniforms-buffer",
             usage: ["UNIFORM"], 
-            data: FieldSampler.uniformsStruct.view([{
+            data: fieldParamsStruct.view([{
                 matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
                 displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
                 scale: Math.SQRT1_2,
                 depth: 5
             }])
         })
-        this.bindGroup = device.wrapped.createBindGroup({
-            layout: fieldComputeBidGroupLayout, 
-            entries: [{
-                binding: 0,
-                resource: this.fieldTexture.createView({ dimension: "3d" }).asBindingResource(), 
-            }, {
-                binding: 1,
-                resource: this.uniformsBuffer.asBindingResource()
-            }]
+        this.bindGroup = gpuToy.groupLayouts.sampler.bindGroup({
+            field: this.fieldTexture,
+            params: this.uniformsBuffer,
         })
     }
 
     get matrix() {
-        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.matrix)
+        return this.uniformsBuffer.get(fieldParamsStruct.members.matrix)
     }
 
     set matrix(m: aether.Mat3) {
-        this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.matrix, m)
+        this.uniformsBuffer.set(fieldParamsStruct.members.matrix, m)
     }
 
     get depth() {
-        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.depth)
+        return this.uniformsBuffer.get(fieldParamsStruct.members.depth)
     }
 
     set depth(d: number) {
         if (d >= 0 && d <= 9) {
-            this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.depth, d)
+            this.uniformsBuffer.set(fieldParamsStruct.members.depth, d)
         }
     }
 
     get scale() {
-        return this.uniformsBuffer.get(FieldSampler.uniformsStruct.members.scale)
+        return this.uniformsBuffer.get(fieldParamsStruct.members.scale)
     }
 
     set scale(s: number) {
         if (s >= Math.SQRT1_2 && s <= Math.SQRT2) {
-            this.uniformsBuffer.set(FieldSampler.uniformsStruct.members.scale, s)
+            this.uniformsBuffer.set(fieldParamsStruct.members.scale, s)
         }
     }
 
     sample() {
-        const device = this.shader.device
-        device.enqueueCommands("field-sampler-command", encoder => {
-            encoder.computePass(pass => {
-                pass.setPipeline(this.pipeline)
-                pass.setBindGroup(0, this.bindGroup)
-                pass.dispatchWorkgroups(FieldSampler.SIZE / 4, FieldSampler.SIZE / 4, FieldSampler.SIZE / 4)
-            })
-        })
-    }
-
-    static async create(device: gpu.Device): Promise<FieldSampler> {
-        const shader = await device.shaderModule({ path: "shaders/field-sampler.wgsl" })
-        return new FieldSampler(shader)
+        this.pipeline
+            .withGroups({ group: this.bindGroup })
+            .dispatchWorkGroups(FieldSampler.SIZE / 4, FieldSampler.SIZE / 4, FieldSampler.SIZE / 4)
+            .enqueue()
     }
 
 }

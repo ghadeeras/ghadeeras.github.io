@@ -1,5 +1,5 @@
 import * as aether from "aether";
-import { cellStruct } from "./tracer.js";
+import { cellStruct } from "./toy.gpu.js";
 export const NULL = 0xFFFFFFFF;
 export class Scene {
     constructor(gridSize) {

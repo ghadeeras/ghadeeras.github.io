@@ -7,6 +7,7 @@ import { Tracer } from "./tracer.js";
 import { volume } from "./scene.js";
 import { buildScene } from "./scene-builder.js";
 import { Denoiser } from "./denoiser.js";
+import { newGPUToy } from "./toy.gpu.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/path-tracing";
 export const video = "https://youtu.be/xlMvArfR2do";
 export const huds = {
@@ -44,9 +45,10 @@ class Toy {
         const scene = buildScene();
         const device = await gpuDevice();
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
-        const tracer = await Tracer.create(device, canvas, scene, canvas.format, "rgba32float");
-        const denoiser = await Denoiser.create(device, canvas.size, canvas.format, "rgba32float", canvas.format);
-        const stacker = await Stacker.create(device, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.srgbFormat);
+        const gpuToy = await newGPUToy(device);
+        const tracer = new Tracer(gpuToy, canvas, scene, canvas.format, "rgba32float");
+        const denoiser = new Denoiser(gpuToy, canvas.size, canvas.format, "rgba32float", canvas.format);
+        const stacker = new Stacker(gpuToy, canvas.size, tracer.uniformsBuffer, denoiser.normalsTexture, canvas.format, canvas.srgbFormat);
         return gear.loops.newLoop(new Toy(canvas, tracer, denoiser, stacker, scene), Toy.descriptor);
     }
     inputWiring(_, outputs) {

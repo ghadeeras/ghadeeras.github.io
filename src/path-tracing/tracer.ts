@@ -1,59 +1,14 @@
 import * as aether from "aether"
 import { gpu } from "lumen"
 import { NULL, Scene } from './scene.js'
-
-export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>
-export const uniformsStruct = gpu.struct({
-    matrix: gpu.mat3x3,
-    position: gpu.f32.x3,
-    focalLength: gpu.f32,
-    aspectRatio: gpu.f32,
-    samplesPerPixel: gpu.u32,
-}, ["matrix", "position", "focalLength", "aspectRatio", "samplesPerPixel"])
-
-export type VolumeStruct = gpu.DataTypeOf<typeof volumeStruct>
-export const volumeStruct = gpu.struct({
-    min: gpu.f32.x3,
-    max: gpu.f32.x3,
-    invSize: gpu.f32.x3,
-}, ["min", "max", "invSize"])
-
-export type FaceDirectionsStruct = gpu.DataTypeOf<typeof faceDirectionsStruct>
-export const faceDirectionsStruct = gpu.struct({
-    lights: gpu.u32.times(4),
-}, ["lights"])
-
-export type BoxStruct = gpu.DataTypeOf<typeof boxStruct>
-export const boxStruct = gpu.struct({
-    volume: volumeStruct,
-    faceMaterials: gpu.u32.times(6),
-}, ["volume", "faceMaterials"])
-
-export type BoxDirectionsStruct = gpu.DataTypeOf<typeof boxStruct>
-export const boxDirectionsStruct = gpu.struct({
-    faces: faceDirectionsStruct.times(6),
-}, ["faces"])
-
-export type RectangleStruct = gpu.DataTypeOf<typeof rectangleStruct>
-export const rectangleStruct = gpu.struct({
-    position: gpu.f32.x3,
-    size: gpu.f32.x2,
-    face: gpu.i32,
-    area: gpu.f32,
-}, ["position", "size", "face", "area"])
-
-export type CellStruct = gpu.DataTypeOf<typeof cellStruct>
-export const cellStruct = gpu.struct({
-    boxes: gpu.u32.times(8),
-    size: gpu.u32,
-}, ["boxes", "size"])
+import { boxDirectionsStruct, boxStruct, cellStruct, GPUToy, TracerGroupLayout, uniformsStruct } from "./toy.gpu.js"
 
 export class Tracer {
 
     private readonly device: gpu.Device
 
     private readonly pipeline: GPURenderPipeline
-    private readonly groupLayout: GPUBindGroupLayout
+    private readonly groupLayout: TracerGroupLayout
 
     readonly materialsBuffer: gpu.DataBuffer
     readonly boxesBuffer: gpu.DataBuffer
@@ -64,19 +19,20 @@ export class Tracer {
 
     private readonly importantDirectionsBuffer: gpu.DataBuffer
 
-    private readonly group: GPUBindGroup
+    private readonly group: gpu.CompatibleBindGroup<TracerGroupLayout>
 
     private _matrix = aether.mat3.identity()
     private _position = aether.vec3.of(32, 32, 32)
     private _samplesPerPixel = 1
     private _focalLength = Math.SQRT2
 
-    constructor(shaderModule: gpu.ShaderModule, private canvas: gpu.Canvas, readonly scene: Scene, readonly colorFormat: GPUTextureFormat | null, readonly normalsFormat: GPUTextureFormat | null) {
-        this.device = shaderModule.device
+    constructor(gpuToy: GPUToy, private canvas: gpu.Canvas, readonly scene: Scene, readonly colorFormat: GPUTextureFormat | null, readonly normalsFormat: GPUTextureFormat | null) {
+        this.device = gpuToy.device
 
+        this.groupLayout = gpuToy.groupLayouts.tracer
         this.pipeline = this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [
+            vertex: gpuToy.shaders.tracer.vertexState("v_main", []),
+            fragment: gpuToy.shaders.tracer.fragmentState("f_main", [
                 colorFormat,
                 normalsFormat
             ]),
@@ -84,9 +40,8 @@ export class Tracer {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: "auto"
+            layout: gpuToy.pipelineLayouts.tracer.wrapped
         })
-        this.groupLayout = this.pipeline.getBindGroupLayout(0)
 
         this.uniformsBuffer = this.createUniformsBuffer()
         this.materialsBuffer = this.createMaterialsBuffer()
@@ -96,31 +51,21 @@ export class Tracer {
 
         this.importantDirectionsBuffer = this.createImportantDirectionsBuffer()
 
-        this.group = this.device.wrapped.createBindGroup({
-            layout: this.groupLayout, 
-            entries: [
-                this.uniformsBuffer,
-                this.materialsBuffer,
-                this.boxesBuffer,
-                this.gridBuffer,
-                this.importantDirectionsBuffer,
-                this.clockBuffer,
-            ].map((r, i) => ({
-                binding: i,
-                resource: r.asBindingResource()
-            }))
+        this.group = this.groupLayout.bindGroup({
+            uniformsBuffer: this.uniformsBuffer,
+            materialsBuffer: this.materialsBuffer,
+            boxesBuffer: this.boxesBuffer,
+            gridBuffer: this.gridBuffer,
+            importantDirectionsBuffer: this.importantDirectionsBuffer,
+            clockBuffer: this.clockBuffer,
         })
-    }
-
-    static async create(device: gpu.Device, canvas: gpu.Canvas, scene: Scene, colorFormat: GPUTextureFormat | null, normalsFormat: GPUTextureFormat | null) {
-        return new Tracer(await device.shaderModule({ path: "shaders/path-tracing.wgsl" }), canvas, scene, colorFormat, normalsFormat)
     }
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment | null, normalsAttachment: GPURenderPassColorAttachment | null) {
         encoder.renderPass(
             { colorAttachments: [ colorAttachment, normalsAttachment ] },
             pass => {
-                pass.setBindGroup(0, this.group)
+                pass.setBindGroup(0, this.group.wrapped)
                 pass.setPipeline(this.pipeline)
                 pass.draw(4)
             }

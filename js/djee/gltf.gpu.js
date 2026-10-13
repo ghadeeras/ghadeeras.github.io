@@ -15,7 +15,7 @@ export const gltfMaterialsStruct = gpu.struct({
 export function layouts(device) {
     return device.groupLayouts({
         node: {
-            matrices: gpu.uniform(gltfMatricesStruct, true).asEntry(0, "VERTEX", "FRAGMENT")
+            matrices: gpu.uniform(gltfMatricesStruct, 1, true).asEntry(0, "VERTEX", "FRAGMENT")
         },
         material: {
             uniform: gpu.uniform(gltfMaterialsStruct).asEntry(0, "FRAGMENT"),

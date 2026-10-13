@@ -60,7 +60,7 @@ fn f_main(vertex: Vertex) -> @location(0) vec4<f32> {
     for (var i = -filterWidth; i <= filterWidth; i = i + 1) {
         for (var j = -filterWidth; j <= filterWidth; j = j + 1) {
             let sXY = xy + vec2(i, j);
-            if (((i | j) == 0) | any(sXY < vec2(0)) | any(sXY > maxXY)) {
+            if (((i | j) == 0) || any(sXY < vec2(0)) || any(sXY > maxXY)) {
                 continue;
             }
             let sPos = vertex.pos + pixelSize * vec2(f32(i), f32(j)); 

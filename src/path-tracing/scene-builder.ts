@@ -1,6 +1,6 @@
 import * as aether from "aether"
 import { Scene, volume } from "./scene.js"
-import { VolumeStruct } from './tracer.js'
+import { VolumeStruct } from './toy.gpu.js'
 
 export function buildScene(): Scene {
     const scene = new Scene(64)

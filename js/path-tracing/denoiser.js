@@ -1,10 +1,10 @@
 export class Denoiser {
-    constructor(shaderModule, size, inputColorsFormat, inputNormalsFormat, outputFormat) {
+    constructor(gpuToy, size, inputColorsFormat, inputNormalsFormat, outputFormat) {
         this.size = size;
         this.inputColorsFormat = inputColorsFormat;
         this.inputNormalsFormat = inputNormalsFormat;
         this.outputFormat = outputFormat;
-        this.device = shaderModule.device;
+        this.device = gpuToy.device;
         this.colorsTexture = this.device.texture({
             format: inputColorsFormat,
             size: size,
@@ -15,46 +15,20 @@ export class Denoiser {
             size: size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
-        this.groupLayout = this.device.wrapped.createBindGroupLayout({
-            label: "denoiser-bind-group",
-            entries: [{
-                    binding: 0,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: {
-                        sampleType: "unfilterable-float",
-                        viewDimension: "2d"
-                    }
-                }, {
-                    binding: 1,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    texture: {
-                        sampleType: "unfilterable-float",
-                        viewDimension: "2d"
-                    }
-                }]
-        });
         this.pipeline = this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [
+            vertex: gpuToy.shaders.denoiser.vertexState("v_main", []),
+            fragment: gpuToy.shaders.denoiser.fragmentState("f_main", [
                 outputFormat
             ]),
             primitive: {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: this.device.wrapped.createPipelineLayout({
-                bindGroupLayouts: [this.groupLayout]
-            })
+            layout: gpuToy.pipelineLayouts.denoiser.wrapped
         });
-        this._group = this.device.wrapped.createBindGroup({
-            layout: this.groupLayout,
-            entries: [{
-                    binding: 0,
-                    resource: this.colorsTexture.createView().asBindingResource(),
-                }, {
-                    binding: 1,
-                    resource: this.normalsTexture.createView().asBindingResource(),
-                }]
+        this._group = gpuToy.groupLayouts.denoiser.bindGroup({
+            colors: this.colorsTexture.createView(),
+            normals: this.normalsTexture.createView(),
         });
     }
     attachments(clearColor, clearNormal) {
@@ -65,13 +39,10 @@ export class Denoiser {
     }
     render(encoder, colorAttachment) {
         encoder.renderPass({ colorAttachments: [colorAttachment] }, pass => {
-            pass.setBindGroup(0, this._group);
+            pass.setBindGroup(0, this._group.wrapped);
             pass.setPipeline(this.pipeline);
             pass.draw(4);
         });
-    }
-    static async create(device, size, inputColorsFormat, inputNormalsFormat, outputFormat) {
-        return new Denoiser(await device.shaderModule({ path: "shaders/denoiser.wgsl" }), size, inputColorsFormat, inputNormalsFormat, outputFormat);
     }
 }
 //# sourceMappingURL=denoiser.js.map

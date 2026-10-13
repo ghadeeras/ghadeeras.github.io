@@ -5,11 +5,13 @@ import { gpu } from "lumen";
 import { Resource } from "lumen";
 import { failure } from "./utils.js";
 
+export type MatricesStruct = gpu.DataTypeOf<typeof gltfMatricesStruct>
 export const gltfMatricesStruct = gpu.struct({
     matrix: gpu.mat4x4,
     antiMatrix: gpu.mat4x4,
 }, ["matrix", "antiMatrix"]).clone(0, 256, false)
 
+export type MaterialsStruct = gpu.DataTypeOf<typeof gltfMaterialsStruct>
 export const gltfMaterialsStruct = gpu.struct({
     baseColorFactor: gpu.f32.x4,
     metallicFactor: gpu.f32,
@@ -18,10 +20,13 @@ export const gltfMaterialsStruct = gpu.struct({
     alphaCutoff: gpu.f32
 }).clone(0, 256, false)
 
+export type MatricesGroupLayout = ReturnType<typeof layouts>["node"];
+export type MaterialsGroupLayout = ReturnType<typeof layouts>["material"];
+
 export function layouts(device: gpu.Device) {
     return device.groupLayouts({
         node: {
-            matrices: gpu.uniform(gltfMatricesStruct, true).asEntry(0, "VERTEX", "FRAGMENT")
+            matrices: gpu.uniform(gltfMatricesStruct, 1, true).asEntry(0, "VERTEX", "FRAGMENT")
         },
         material: {
             uniform: gpu.uniform(gltfMaterialsStruct).asEntry(0, "FRAGMENT"),
@@ -110,8 +115,8 @@ class GPUAdapter implements renderer.APIAdapter<NodeLevelResources, PrimitiveLev
 
     constructor(
         private device: gpu.Device, 
-        readonly matricesGroupLayout: ReturnType<typeof layouts>["node"],
-        readonly materialsGroupLayout: ReturnType<typeof layouts>["material"],
+        readonly matricesGroupLayout: MatricesGroupLayout,
+        readonly materialsGroupLayout: MaterialsGroupLayout,
         private matricesGroupIndex: number,
         private materialsGroupIndex: number,
         private attributeLocations: Partial<Record<string, number>>, 

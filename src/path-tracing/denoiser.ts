@@ -1,19 +1,18 @@
 import { gpu } from "lumen"
+import { GPUToy, DenoiserGroupLayout } from "./toy.gpu.js"
 
 export class Denoiser {
 
     private readonly device: gpu.Device
-
     private readonly pipeline: GPURenderPipeline
-    private readonly groupLayout: GPUBindGroupLayout
 
-    private readonly colorsTexture: gpu.Texture
+    readonly colorsTexture: gpu.Texture
     readonly normalsTexture: gpu.Texture
 
-    private _group: GPUBindGroup
+    private _group: gpu.CompatibleBindGroup<DenoiserGroupLayout>
 
-    constructor(shaderModule: gpu.ShaderModule, readonly size: GPUExtent3DDictStrict, readonly inputColorsFormat: GPUTextureFormat, readonly inputNormalsFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
-        this.device = shaderModule.device
+    constructor(gpuToy: GPUToy, readonly size: GPUExtent3DDictStrict, readonly inputColorsFormat: GPUTextureFormat, readonly inputNormalsFormat: GPUTextureFormat, readonly outputFormat: GPUTextureFormat) {
+        this.device = gpuToy.device
 
         this.colorsTexture = this.device.texture({
             format: inputColorsFormat,
@@ -26,48 +25,21 @@ export class Denoiser {
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         })
 
-        this.groupLayout = this.device.wrapped.createBindGroupLayout({
-            label: "denoiser-bind-group",
-            entries: [{
-                binding: 0,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: {
-                    sampleType: "unfilterable-float",
-                    viewDimension: "2d"
-                }
-            }, {
-                binding: 1,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: {
-                    sampleType: "unfilterable-float",
-                    viewDimension: "2d"
-                }
-            }]
-        })
-
         this.pipeline =  this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [
+            vertex: gpuToy.shaders.denoiser.vertexState("v_main", []),
+            fragment: gpuToy.shaders.denoiser.fragmentState("f_main", [
                 outputFormat
             ]),
             primitive: {
                 topology: "triangle-strip",
                 stripIndexFormat: "uint32"
             },
-            layout: this.device.wrapped.createPipelineLayout({
-                bindGroupLayouts: [this.groupLayout]
-            })
+            layout: gpuToy.pipelineLayouts.denoiser.wrapped
         })
 
-        this._group = this.device.wrapped.createBindGroup({
-            layout: this.groupLayout, 
-            entries: [{
-                binding: 0,
-                resource: this.colorsTexture.createView().asBindingResource(),
-            }, {
-                binding: 1,
-                resource: this.normalsTexture.createView().asBindingResource(),
-            }]
+        this._group = gpuToy.groupLayouts.denoiser.bindGroup({
+            colors: this.colorsTexture.createView(),
+            normals: this.normalsTexture.createView(),
         })
     }
 
@@ -80,14 +52,10 @@ export class Denoiser {
 
     render(encoder: gpu.CommandEncoder, colorAttachment: GPURenderPassColorAttachment) {
         encoder.renderPass({ colorAttachments: [ colorAttachment ] }, pass => {
-            pass.setBindGroup(0, this._group)
+            pass.setBindGroup(0, this._group.wrapped)
             pass.setPipeline(this.pipeline)
             pass.draw(4)
         })
-    }
-
-    static async create(device: gpu.Device, size: GPUExtent3DDictStrict, inputColorsFormat: GPUTextureFormat, inputNormalsFormat: GPUTextureFormat, outputFormat: GPUTextureFormat): Promise<Denoiser> {
-        return new Denoiser(await device.shaderModule({ path: "shaders/denoiser.wgsl" }), size, inputColorsFormat, inputNormalsFormat, outputFormat)
     }
 
 }

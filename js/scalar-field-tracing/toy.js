@@ -4,6 +4,7 @@ import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";
 import * as aether from "aether";
 import * as gear from "gear";
+import { newGPUToy } from "./toy.gpu.js";
 export const huds = {
     "monitor": "monitor-button"
 };
@@ -29,8 +30,9 @@ class Toy {
     static async create() {
         const device = await gpuDevice();
         const canvas = device.canvas(Toy.descriptor.output.canvases.scene.element);
-        const sampler = await FieldSampler.create(device);
-        const renderer = await FieldRenderer.create(sampler.fieldTexture, canvas.srgbFormat);
+        const gpuToy = await newGPUToy(device);
+        const sampler = new FieldSampler(gpuToy);
+        const renderer = new FieldRenderer(gpuToy, sampler.fieldTexture, canvas.srgbFormat);
         return new Toy(canvas, renderer, sampler);
     }
     get scale() {
@@ -162,15 +164,5 @@ async function gpuDevice() {
         gpuStatus.innerHTML = "\u{1F62D} Not Supported!";
         throw e;
     }
-}
-function mapped(property, mapper) {
-    const pos = [[0, 0]];
-    return {
-        getter: () => pos[0],
-        setter: b => {
-            pos[0] = b;
-            property.setter(mapper(b));
-        }
-    };
 }
 //# sourceMappingURL=toy.js.map

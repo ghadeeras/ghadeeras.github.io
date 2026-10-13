@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import { BoxStruct, cellStruct, CellStruct, VolumeStruct } from "./tracer.js"
+import { BoxStruct, cellStruct, CellStruct, VolumeStruct } from "./toy.gpu.js"
 
 export const NULL = 0xFFFFFFFF
 
