@@ -1,7 +1,8 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import { gpu } from "lumen";
+import { gpu, wgl } from "lumen";
 import { View } from "./view.js";
+import { glWebGPU } from "webgxx";
 
 export class ViewGPU implements View {
 
@@ -22,7 +23,8 @@ export class ViewGPU implements View {
     constructor(
         private device: gpu.Device,
         canvasId: string,
-        shaderModule: gpu.ShaderModule,
+        vertexShader: gpu.ShaderModule,
+        fragmentShader: gpu.ShaderModule,
         center: aether.Vec<2>,
         scale: number
     ) {
@@ -39,11 +41,11 @@ export class ViewGPU implements View {
             }])
         });
 
-        this.gpuCanvas = device.canvas(canvasId, 4)
+        this.gpuCanvas = new gpu.Canvas(device, canvasId, 1)
 
         this.pipeline = device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", []),
-            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
+            vertex: vertexShader.vertexState("v_main", []),
+            fragment: fragmentShader.fragmentState("f_main", [this.gpuCanvas]),
             primitive: {
                 stripIndexFormat: "uint16",
                 topology: "triangle-strip"
@@ -139,7 +141,7 @@ export class ViewGPU implements View {
             encoder.renderPass(passDescriptor, pass => {
                 pass.setPipeline(this.pipeline)
                 pass.setBindGroup(0, this.paramsGroup)
-                pass.draw(4)
+                pass.draw(3)
             })
         })
     }
@@ -153,12 +155,20 @@ export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: nu
         code: gpu.renderingShaders.fullScreenPass(code), 
         label: "mandelbrot" 
     })
-    return new ViewGPU(device, canvasId, shaderModule, center, scale)
+    return new ViewGPU(device, canvasId, shaderModule, shaderModule, center, scale)
 }
 
-export function required<T>(value: T | null | undefined): T {
-    if (!value) {
-        throw new Error(`Required value is ${value}!`)
-    }
-    return value
+export async function viewGL(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+    const canvas = document.getElementById(canvasId) as HTMLCanvasElement
+    const device = await gpu.Device.instance({}, glWebGPU(canvas))
+    const code = await gear.fetchTextFile("/shaders/mandelbrot.frag")
+    const vertexShaderModule = await device.shaderModule( { 
+        code: wgl.vertexShaders.fullScreenPass, 
+        label: "mandelbrot" 
+    })
+    const fragmentShaderModule = await device.shaderModule( { 
+        code: wgl.fragmentShaders.fullScreenPass(code), 
+        label: "mandelbrot" 
+    })
+    return new ViewGPU(device, canvasId, vertexShaderModule, fragmentShaderModule, center, scale)
 }

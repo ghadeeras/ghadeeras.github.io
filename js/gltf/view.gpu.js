@@ -2,6 +2,7 @@ import * as aether from "aether";
 import { gpu } from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
+import { glWebGPU } from "webgxx";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
         positions: gpu.mat4x4,
@@ -23,9 +24,12 @@ function skyPipelineLayout(device, layout) {
     }, "sky pipeline layout");
 }
 export class GPUView {
-    constructor(device, shaderModule, canvasId) {
+    constructor(device, vertexShader, fragmentShader, skyVertexShader, skyFragmentShader, canvasId) {
         this.device = device;
-        this.shaderModule = shaderModule;
+        this.vertexShader = vertexShader;
+        this.fragmentShader = fragmentShader;
+        this.skyVertexShader = skyVertexShader;
+        this.skyFragmentShader = skyFragmentShader;
         this.renderer = null;
         this._viewMatrix = aether.mat4.identity();
         this._modelMatrix = aether.mat4.identity();
@@ -52,7 +56,7 @@ export class GPUView {
                     }
                 }])
         });
-        this.clock = device.dataBuffer({ usage: ["STORAGE"], data: gpu.u32.view([1]) });
+        this.clock = device.dataBuffer({ usage: ["STORAGE", "UNIFORM"], data: gpu.u32.view([1]) });
         this.uniformsGroupLayout = uniformsGroupLayout(device);
         this.uniformsGroup = this.uniformsGroupLayout.bindGroup({
             uniforms: this.uniforms,
@@ -66,11 +70,11 @@ export class GPUView {
         this.skyPipeline = device.wrapped.createRenderPipeline({
             layout: this.skyPipelineLayout.wrapped,
             vertex: {
-                module: this.shaderModule.wrapped,
+                module: this.skyVertexShader.wrapped,
                 entryPoint: "v_sky",
             },
             fragment: {
-                module: this.shaderModule.wrapped,
+                module: this.skyFragmentShader.wrapped,
                 entryPoint: "f_sky",
                 targets: [{
                         format: this.gpuCanvas.srgbFormat
@@ -153,12 +157,12 @@ export class GPUView {
         return this.device.wrapped.createRenderPipeline({
             layout: this.pipelineLayout,
             vertex: {
-                module: this.shaderModule.wrapped,
+                module: this.vertexShader.wrapped,
                 entryPoint: "v_main",
                 buffers: vertexLayouts
             },
             primitive: primitiveState,
-            fragment: this.shaderModule.fragmentState("f_main", [this.gpuCanvas.srgbFormat]),
+            fragment: this.fragmentShader.fragmentState("f_main", [this.gpuCanvas.srgbFormat]),
             depthStencil: this.depthState,
             multisample: {
                 count: this.gpuCanvas.sampleCount
@@ -171,6 +175,7 @@ export class GPUView {
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
     }
     draw() {
+        this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]));
         this.device.enqueueCommands("render", encoder => {
             const skyColorAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
             const colorAttachment = {
@@ -206,6 +211,18 @@ export async function newViewFactory(canvasId) {
     }
     const device = await gpu.Device.instance();
     const shaderModule = await device.shaderModule({ path: "shaders/gltf.wgsl" });
-    return () => new GPUView(device, shaderModule, canvasId);
+    return () => new GPUView(device, shaderModule, shaderModule, shaderModule, shaderModule, canvasId);
+}
+export async function newGLViewFactory(canvasId) {
+    const gpuParam = new URL(location.href).searchParams.get("gpu");
+    if (gpuParam && gpuParam?.toUpperCase() == 'N') {
+        throw new Error("Unsupported by choice");
+    }
+    const device = await gpu.Device.instance({}, glWebGPU(document.getElementById(canvasId)));
+    const vertexShader = await device.shaderModule({ path: "shaders/gltf.vert" });
+    const fragmentShader = await device.shaderModule({ path: "shaders/gltf.frag" });
+    const skyVertexShader = await device.shaderModule({ path: "shaders/gltf.sky.vert" });
+    const skyFragmentShader = await device.shaderModule({ path: "shaders/gltf.sky.frag" });
+    return () => new GPUView(device, vertexShader, fragmentShader, skyVertexShader, skyFragmentShader, canvasId);
 }
 //# sourceMappingURL=view.gpu.js.map

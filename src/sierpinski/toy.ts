@@ -9,12 +9,8 @@ export const huds = {
 }
 
 export async function init() {
-
-    window.onload = () => {
-        const model = newSierpinski()
-        const view = new View(Controller.descriptor.output.canvases.canvas.element, "division-depth", "twist", "scale");
-        const controller = new Controller(view, model);
-        gear.loops.newLoop(controller, Controller.descriptor).run()
-    }
-
+    const model = newSierpinski()
+    const view = await View.create(Controller.descriptor.output.canvases.canvas.element, "division-depth", "twist", "scale");
+    const controller = new Controller(view, model);
+    gear.loops.newLoop(controller, Controller.descriptor).run()
 }

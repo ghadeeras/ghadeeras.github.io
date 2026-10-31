@@ -1,13 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-#endif
-
 in vec4 fragColor;
 in vec3 fragPosition;
 in vec3 fragNormal;

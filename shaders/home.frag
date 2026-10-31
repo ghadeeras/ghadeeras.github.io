@@ -1,6 +1,9 @@
-uniform int effect;
-uniform vec2 mousePos;
-uniform sampler2D sampler;
+uniform U_0_0 {
+    int effect;
+    vec2 mousePos;
+};
+
+uniform sampler2D sampler_0_1_0_2;
 
 const float PI = atan(0.0, -1.0);
 const float PI2 = PI * PI;
@@ -63,7 +66,7 @@ vec4 colorAt(vec2 pos, float aspect, float pixelSize) {
 
     if (inVisibleArea(newPos)) {
         vec2 texturePos = (newPos + vec2(1.0, -1.0)) / vec2(2.0, -2.0);
-        return texture(sampler, texturePos);
+        return texture(sampler_0_1_0_2, texturePos);
     } else {
         return vec4(1.0);
     }

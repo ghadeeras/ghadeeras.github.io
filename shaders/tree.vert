@@ -1,20 +1,20 @@
-#version 300 es
-
-precision highp float;
-
 in vec3 position;
 in vec3 normal;
 
-uniform vec3 lightPosition;
-                
-uniform mat4 matModel;
-uniform mat4 matSubModel;
-uniform mat4 matView;
-uniform mat4 matProjection;
+uniform U_0_0 {
+    mat4 matModel;
+    mat4 matView;
+    mat4 matProjection;
+    vec3 lightPosition;
+    vec3 color;
+    float shininess;
+    float twist;
+    float fogginess;
+};
 
-uniform float shininess;
-
-uniform float twist;
+uniform U_1_0 {
+    mat4 matSubModel;
+};
 
 out float shade;
 out float depth;
@@ -68,5 +68,10 @@ void main() {
                 
     shade = diffuse + shine * shininess;
     depth = length(viewedPosition) + length(viewedPosition - viewedLightPosition);
-    gl_Position = matProjection * viewedPosition;
+    gl_Position = mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 2, 0,
+        0, 0, -1, 1
+    ) * matProjection * viewedPosition;
 }

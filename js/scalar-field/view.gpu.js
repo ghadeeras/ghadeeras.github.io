@@ -1,9 +1,10 @@
 import * as aether from "aether";
 import { gpu } from "lumen";
-import { picker } from "./picker.gpu.js";
+import { picker, pickerGL } from "./picker.gpu.js";
+import { glWebGPU } from "webgxx";
 const projection = new aether.PerspectiveProjection(1, null, false, false);
 export class GPUView {
-    constructor(device, canvasId, shaderModule) {
+    constructor(device, canvasId, vertexShaderModule, fragmentShaderModule) {
         this.device = device;
         this.uniformsStruct = gpu.struct({
             mat: gpu.struct({
@@ -39,11 +40,11 @@ export class GPUView {
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
         this.pipeline = device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
+            vertex: vertexShaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
+            fragment: fragmentShaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil: this.depthTexture.depthState(),
             primitive: {
-                topology: "triangle-list"
+                topology: "triangle-list",
             },
             multisample: {
                 count: this.gpuCanvas.sampleCount
@@ -59,7 +60,7 @@ export class GPUView {
         });
     }
     async picker() {
-        return await picker(this.gpuCanvas, () => this.vertices);
+        return this.device.wrapped.adapterInfo.architecture === "WebGL2" ? await pickerGL(this.gpuCanvas, () => this.vertices) : await picker(this.gpuCanvas, () => this.vertices);
     }
     resize() {
         this._aspectRatio = this.gpuCanvas.element.width / this.gpuCanvas.element.height;
@@ -172,6 +173,12 @@ GPUView.vertex = gpu.vertex({
 export async function newView(canvasId) {
     const device = await gpu.Device.instance();
     const shaderModule = await device.shaderModule({ path: "shaders/generic.wgsl" });
-    return new GPUView(device, canvasId, shaderModule);
+    return new GPUView(device, canvasId, shaderModule, shaderModule);
+}
+export async function newGLView(canvasId) {
+    const device = await gpu.Device.instance({}, glWebGPU(document.getElementById(canvasId)));
+    const vertexShaderModule = await device.shaderModule({ path: "shaders/generic.vert" });
+    const fragmentShaderModule = await device.shaderModule({ path: "shaders/generic.frag" });
+    return new GPUView(device, canvasId, vertexShaderModule, fragmentShaderModule);
 }
 //# sourceMappingURL=view.gpu.js.map

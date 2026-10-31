@@ -126,6 +126,27 @@ export class LinearDragging implements gear.loops.Dragger<number> {
 
 }
 
+export class Linear2DDragging implements gear.loops.Dragger<aether.Vec2> {
+
+    private constructor(private min: aether.Vec2, private max: aether.Vec2, public speed: aether.Vec2) {
+    }
+
+    begin(value: aether.Vec2, position: gear.loops.PointerPosition): gear.loops.DraggingFunction<aether.Vec2> {
+        return to => aether.vec2.min(aether.vec2.max(
+            aether.vec2.add(value, aether.vec2.mul(this.speed, aether.vec2.sub(to, position))), 
+        this.min), this.max);
+    }
+
+    end(value: aether.Vec2): aether.Vec2 {
+        return value
+    }
+
+    static dragger(min: aether.Vec2 = [-1, -1], max: aether.Vec2 = [1, 1], speed: aether.Vec2 = [1, 1]) {
+        return new Linear2DDragging(min, max, speed)
+    }
+
+}
+
 class PositionDragging implements gear.loops.Dragger<gear.loops.PointerPosition> {
 
     begin(): gear.loops.DraggingFunction<gear.loops.PointerPosition> {

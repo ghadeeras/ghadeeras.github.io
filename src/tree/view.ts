@@ -1,62 +1,100 @@
 import * as aether from 'aether';
 import * as gear from 'gear';
-import { wgl } from "lumen"
+import { gpu } from "lumen"
+import { glWebGPU } from 'webgxx';
+
+const uniformsStruct = gpu.struct({
+    matModel: gpu.f32.x4.x4,
+    matView: gpu.f32.x4.x4,
+    matProjection: gpu.f32.x4.x4,
+    lightPosition: gpu.f32.x3,
+    color: gpu.f32.x3,
+    shininess: gpu.f32,
+    twist: gpu.f32,
+    fogginess: gpu.f32,
+})
+
+const vertexStruct = gpu.vertex({ 
+    position: gpu.f32.x3, 
+    normal: gpu.f32.x3 
+})
+
+const matricesStruct = gpu.mat4x4.clone(0, 256, false)
+
+const projection = new aether.PerspectiveProjection(1, null, false, false)
 
 export class View {
 
-    private context: wgl.Context;
-    private buffer: wgl.AttributesBuffer;
+    private buffer: gpu.DataBuffer;
     
-    private _projectionMatrix: wgl.Uniform;
-    private _viewMatrix: wgl.Uniform;
-    private _modelMatrix: wgl.Uniform;
+    private uniformsBuffer: gpu.SyncBuffer;
+    private uniformsGroup: GPUBindGroup;
 
-    private _lightPosition: wgl.Uniform;
-    private _color: wgl.Uniform;
-    private _shininess: wgl.Uniform;
-    private _fogginess: wgl.Uniform;
-    private _twist: wgl.Uniform;
+    private matricesBuffer: gpu.DataBuffer;
+    private matricesGroup: GPUBindGroup;
+    private _matrices: aether.Mat4[] = [aether.mat4.identity()]
 
-    private matSubModelUniform: wgl.Uniform;
-    private _matrices: number[][];
+    private depthTexture: gpu.Texture
 
-    constructor(canvasId: string, vertexShaderCode: string, fragmentShaderCode: string) {
-        this.context = wgl.Context.of(canvasId);
+    private pipeline: GPURenderPipeline
 
-        this.buffer = this.context.newAttributesBuffer(6 * 4);
-        this.buffer.float32Data = this.vertexData();
+    constructor(private canvas: gpu.Canvas, private device: gpu.Device,  private vertexShader: gpu.ShaderModule, private fragmentShader: gpu.ShaderModule) {
+        this.buffer = device.dataBuffer({
+            usage: ["VERTEX"],
+            data: new DataView(new Float32Array(this.vertexData()).buffer)
+        });
 
-        const vertexShader = this.context.vertexShader(vertexShaderCode);
-        const fragmentShader = this.context.fragmentShader(fragmentShaderCode);
-        const program = this.context.link(vertexShader, fragmentShader);
-        program.use();
+        this.matricesBuffer = device.dataBuffer({
+            usage: ["UNIFORM"],
+            data: matricesStruct.view(this._matrices)
+        });
 
-        const position = program.attribute("position");
-        const normal = program.attribute("normal");
-        position.pointTo(this.buffer, 0 * this.buffer.word);
-        normal.pointTo(this.buffer, 3 * this.buffer.word);
+        this.depthTexture = canvas.depthTexture()
 
-        this._projectionMatrix = program.uniform("matProjection");
-        this._viewMatrix = program.uniform("matView");
-        this._modelMatrix = program.uniform("matModel");
-        this.matSubModelUniform = program.uniform("matSubModel");
+        this.pipeline = device.wrapped.createRenderPipeline({
+            layout: "auto",
+            vertex: vertexShader.vertexState("main", [
+                vertexStruct.asBufferLayout()
+            ]),
+            primitive: {
+                topology: "triangle-strip",
+                stripIndexFormat: "uint32",
+            },
+            fragment: fragmentShader.fragmentState("main", [canvas]),
+            depthStencil: this.depthTexture.depthState(),
+        });
 
-        this._lightPosition = program.uniform("lightPosition");
-        this._color = program.uniform("color");
-        this._shininess = program.uniform("shininess");
-        this._fogginess = program.uniform("fogginess");
-        this._twist = program.uniform("twist");
+        this.uniformsBuffer = device.syncBuffer({
+            usage: ["UNIFORM"],
+            data: uniformsStruct.view([{
+                matModel: aether.mat4.identity(),
+                matView: aether.mat4.lookAt([-1, 2, 10], [0, 1, 0]),
+                matProjection: projection.matrix(2, this.canvas.element.width / this.canvas.element.height),
+                lightPosition: [-8, 8, 8],
+                color: [0.8, 0.8, 0.8],
+                shininess: 1,
+                twist: 0,
+                fogginess: 0,
+            }])
+        })
+        this.uniformsGroup = device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [{
+                binding: 0,
+                resource: this.uniformsBuffer.asBindingResource()
+            }]
+        })
+        this.matricesGroup = this.newMatricesGroup()
+    }
 
-        this.projectionMatrix = aether.mat4.projection(2);
-        this.viewMatrix = aether.mat4.lookAt([-1, 2, 10], [0, 1, 0]);
-        this.modelMatrix = aether.mat4.identity();
-        this._matrices = [];
-
-        this.color = [0.8, 0.8, 0.8];
-        this.lightPosition = [-8, 8, 8];
-        this.twist = 0;
-        this.shininess = 1;
-        this.fogginess = 0;
+    private newMatricesGroup(): GPUBindGroup {
+        return this.device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(1),
+            entries: [{
+                binding: 0,
+                resource: this.matricesBuffer.asBindingResource()
+            }]
+        });
     }
 
     private vertexData(): number[] {
@@ -70,95 +108,101 @@ export class View {
     }
 
     draw() {
-        const gl = this.context.gl;
-        gl.enable(gl.DEPTH_TEST);
-
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        for (const matrix of this._matrices) {
-            this.matSubModelUniform.data = matrix;
-            gl.drawArrays(WebGL2RenderingContext.TRIANGLE_STRIP, 0, this.buffer.data.byteLength / (6 * 4));
-        }
-        
-        gl.flush();
+        this.device.enqueueCommands("draw", encoder => {
+            encoder.renderPass({ 
+                colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })],
+                depthStencilAttachment: this.depthTexture.createView().depthAttachment()
+            }, pass => {
+                pass.setPipeline(this.pipeline)
+                pass.setVertexBuffer(0, this.buffer.wrapped)
+                pass.setBindGroup(0, this.uniformsGroup)
+                for (const [index, matrix] of this._matrices.entries()) {
+                    pass.setBindGroup(1, this.matricesGroup, [index * matricesStruct.stride])
+                    pass.draw(this.buffer.size / vertexStruct.struct.size)
+                }
+            })
+        })
     }
 
     resize() {
         const scale = this.projectionMatrix[1][1];
-        this.projectionMatrix = aether.mat4.projection(scale, 1, 128, this.context.canvas.width / this.context.canvas.height);
-        this.context.gl.viewport(0, 0, this.context.canvas.width, this.context.canvas.height);
+        this.projectionMatrix = projection.matrix(scale, this.canvas.element.width / this.canvas.element.height);
+        this.canvas.resize()
+        this.depthTexture.size = this.canvas.size
     }
 
     get projectionMatrix(): aether.Mat4 {
-        return aether.mat4.from(this._projectionMatrix.data);
+        return this.uniformsBuffer.get(uniformsStruct.members.matProjection)
     }
 
     set projectionMatrix(value: aether.Mat4) {
-        this._projectionMatrix.data = aether.mat4.columnMajorArray(value);
+        this.uniformsBuffer.set(uniformsStruct.members.matProjection, value);
     }
 
     get viewMatrix(): aether.Mat4 {
-        return aether.mat4.from(this._viewMatrix.data);
+        return this.uniformsBuffer.get(uniformsStruct.members.matView)
     }
 
     set viewMatrix(value: aether.Mat4) {
-        this._viewMatrix.data = aether.mat4.columnMajorArray(value);
+        this.uniformsBuffer.set(uniformsStruct.members.matView, value);
     }
 
     get modelMatrix(): aether.Mat4 {
-        return aether.mat4.from(this._modelMatrix.data);
+        return this.uniformsBuffer.get(uniformsStruct.members.matModel)
     }
 
     set modelMatrix(value: aether.Mat4) {
-        this._modelMatrix.data = aether.mat4.columnMajorArray(value);
+        this.uniformsBuffer.set(uniformsStruct.members.matModel, value);
     }
 
     get matrices(): aether.Mat4[] {
-        return this._matrices.map(m => aether.mat4.from(m));
+        return this._matrices
     }
 
     set matrices(value: aether.Mat4[]) {
-        this._matrices = value.map(m => aether.mat4.columnMajorArray(m));
+        this._matrices = value
+        this.matricesBuffer.setData(matricesStruct.view(value))
+        this.matricesGroup = this.newMatricesGroup()
     }
 
     get color(): aether.Vec3 {
-        return aether.vec3.from(this._color.data);
+        return this.uniformsBuffer.get(uniformsStruct.members.color)
     }
 
     set color(value: aether.Vec3) {
-        this._color.data = value;
+        this.uniformsBuffer.set(uniformsStruct.members.color, value);
     }
 
     get lightPosition(): aether.Vec3 {
-        return aether.vec3.from(this._lightPosition.data);
+        return this.uniformsBuffer.get(uniformsStruct.members.lightPosition)
     }
 
     set lightPosition(value: aether.Vec3) {
-        this._lightPosition.data = value;
+        this.uniformsBuffer.set(uniformsStruct.members.lightPosition, value);
     }
 
     get twist(): number {
-        return this._twist.data[0]
+        return this.uniformsBuffer.get(uniformsStruct.members.twist)
     }
 
     set twist(value: number) {
-        this._twist.data = [value];
+        this.uniformsBuffer.set(uniformsStruct.members.twist, value);
     }
 
     get shininess(): number {
-        return this._shininess.data[0];
+        return this.uniformsBuffer.get(uniformsStruct.members.shininess)
     }
 
     set shininess(value: number) {
-        this._shininess.data = [value];
+        this.uniformsBuffer.set(uniformsStruct.members.shininess, value);
     }
 
     get fogginess(): number {
-        return this._fogginess.data[0];
+        return this.uniformsBuffer.get(uniformsStruct.members.fogginess)
     }
 
     set fogginess(value: number) {
-        this._fogginess.data = [value];
+        this.uniformsBuffer.set(uniformsStruct.members.fogginess, value);
     }
 
 }
@@ -190,5 +234,10 @@ export async function view(canvasId: string) {
         vertexShaderCode: "tree.vert",
         fragmentShaderCode: "tree.frag"
     }, "/shaders")
-    return new View(canvasId, shaders.vertexShaderCode, shaders.fragmentShaderCode);
+    const canvas = document.getElementById(canvasId) as HTMLCanvasElement
+    const webgpuAPI = glWebGPU(canvas)
+    const device = await gpu.Device.instance({}, webgpuAPI)
+    const vertexShader = await device.shaderModule({ code: shaders.vertexShaderCode }) 
+    const fragmentShader = await device.shaderModule({ code: shaders.fragmentShaderCode }) 
+    return new View(device.canvas(canvas, 4), device, vertexShader, fragmentShader);
 }

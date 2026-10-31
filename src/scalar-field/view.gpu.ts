@@ -1,7 +1,8 @@
 import * as aether from "aether"
 import { gpu } from "lumen"
 import * as v from "./view.js"
-import { picker } from "./picker.gpu.js"
+import { picker, pickerGL } from "./picker.gpu.js"
+import { glWebGPU } from "webgxx"
 
 const projection = new aether.PerspectiveProjection(1, null, false, false)
 
@@ -45,7 +46,8 @@ export class GPUView implements v.View {
     constructor(
         private device: gpu.Device,
         canvasId: string,
-        shaderModule: gpu.ShaderModule,
+        vertexShaderModule: gpu.ShaderModule,
+        fragmentShaderModule: gpu.ShaderModule,
     ) {
         this.uniforms = device.syncBuffer({
             label: "uniforms",
@@ -63,11 +65,11 @@ export class GPUView implements v.View {
         this.depthTexture = this.gpuCanvas.depthTexture()
 
         this.pipeline = device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.gpuCanvas]),
+            vertex: vertexShaderModule.vertexState("v_main", [GPUView.vertex.asBufferLayout()]),
+            fragment: fragmentShaderModule.fragmentState("f_main", [this.gpuCanvas]),
             depthStencil : this.depthTexture.depthState(),
             primitive: {
-                topology: "triangle-list"
+                topology: "triangle-list",
             },
             multisample: {
                 count: this.gpuCanvas.sampleCount
@@ -85,7 +87,7 @@ export class GPUView implements v.View {
     }
 
     async picker(): Promise<v.Picker> {
-        return await picker(this.gpuCanvas, () => this.vertices)  
+        return this.device.wrapped.adapterInfo.architecture === "WebGL2" ? await pickerGL(this.gpuCanvas, () => this.vertices) : await picker(this.gpuCanvas, () => this.vertices)  
     }
 
     resize() {
@@ -223,5 +225,12 @@ export class GPUView implements v.View {
 export async function newView(canvasId: string): Promise<v.View> {
     const device = await gpu.Device.instance()
     const shaderModule = await device.shaderModule({ path: "shaders/generic.wgsl" })
-    return new GPUView(device, canvasId, shaderModule)
+    return new GPUView(device, canvasId, shaderModule, shaderModule)
+}
+
+export async function newGLView(canvasId: string): Promise<v.View> {
+    const device = await gpu.Device.instance({}, glWebGPU(document.getElementById(canvasId) as HTMLCanvasElement))
+    const vertexShaderModule = await device.shaderModule({ path: "shaders/generic.vert" })
+    const fragmentShaderModule = await device.shaderModule({ path: "shaders/generic.frag" })
+    return new GPUView(device, canvasId, vertexShaderModule, fragmentShaderModule)
 }

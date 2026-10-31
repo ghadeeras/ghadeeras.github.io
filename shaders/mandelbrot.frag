@@ -1,9 +1,11 @@
-uniform vec2 center;
-uniform float scale;
-uniform vec2 color;
-uniform float intensity;
-uniform int xray;
-uniform int crosshairs;
+uniform U_0_0 {
+    vec2 center;
+    vec2 color;
+    float scale;
+    float intensity;
+    int xray;
+    int crosshairs;
+};
 
 const int depth = 1024; 
 

@@ -1,6 +1,6 @@
 import * as aether from "aether"
-import { viewGL } from "./view.gl.js"
-import { required, viewGPU } from "./view.gpu.js"
+import { viewGPU, viewGL } from "./view.gpu.js"
+import { required } from "gear"
 
 export interface View {
 
@@ -30,6 +30,10 @@ export interface View {
 
 export async function view(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
     const apiElement = required(document.getElementById("graphics-api"))
+    if (new URL(location.href).searchParams.has("webgl")) {
+        apiElement.innerHTML = "WebGL"
+        return await viewGL(canvasId, center, scale)
+    }
     try {
         const view = await viewGPU(canvasId, center, scale)
         apiElement.innerHTML = "WebGPU"

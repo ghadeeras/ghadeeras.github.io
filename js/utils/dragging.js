@@ -98,6 +98,22 @@ export class LinearDragging {
         return new LinearDragging(min, max, speed);
     }
 }
+export class Linear2DDragging {
+    constructor(min, max, speed) {
+        this.min = min;
+        this.max = max;
+        this.speed = speed;
+    }
+    begin(value, position) {
+        return to => aether.vec2.min(aether.vec2.max(aether.vec2.add(value, aether.vec2.mul(this.speed, aether.vec2.sub(to, position))), this.min), this.max);
+    }
+    end(value) {
+        return value;
+    }
+    static dragger(min = [-1, -1], max = [1, 1], speed = [1, 1]) {
+        return new Linear2DDragging(min, max, speed);
+    }
+}
 class PositionDragging {
     begin() {
         return to => [clamp(to[0], -1, 1), clamp(to[1], -1, 1)];

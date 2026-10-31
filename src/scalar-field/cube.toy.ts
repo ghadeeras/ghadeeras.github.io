@@ -1,7 +1,8 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import { wgl } from "lumen"
+import { gpu } from "lumen"
 import * as dragging from "../utils/dragging.js"
+import { glWebGPU } from "webgxx"
 
 export const huds = {
     "monitor": "monitor-button"
@@ -12,6 +13,24 @@ export async function init() {
     const loop = gear.loops.newLoop(toy, Toy.descriptor)
     loop.run()
 }
+
+const vertexStruct = gpu.vertex({ 
+    position: gpu.f32.x3,
+    normal: gpu.f32.x3,
+    color: gpu.f32.x4,
+})
+
+const vertexGeometry = gpu.vertex({ 
+    position: gpu.f32.x3,
+    normal: gpu.f32.x3,
+})
+
+const uniformsStruct = gpu.struct({
+    matModel: gpu.mat4x4,
+    matView: gpu.mat4x4,
+    matProjection: gpu.mat4x4,
+    lightPosition: gpu.f32.x3,
+});
 
 type ToyDescriptor = typeof Toy.descriptor
 
@@ -83,7 +102,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     } satisfies gear.loops.LoopDescriptor
 
     readonly contourTarget = gear.loops.draggingTarget(mapped(gear.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging)
-    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.matView))
+    readonly rotationDragging = gear.loops.draggingTarget(gear.property(this, "matModel"), dragging.RotationDragging.dragger(() => this.matView))
     readonly value1Target = gear.loops.draggingTarget(mapped(gear.property(this, "value1"), ([_, y]) => y), dragging.positionDragging)
     readonly value2Target = gear.loops.draggingTarget(mapped(gear.property(this, "value2"), ([_, y]) => y), dragging.positionDragging)
     readonly value3Target = gear.loops.draggingTarget(mapped(gear.property(this, "value3"), ([_, y]) => y), dragging.positionDragging)
@@ -101,23 +120,89 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private _value6 = -1
     private _value7 = -1
     private _value8 = -1
-    private _cubeData: (data: Float32Array) => void = () => {}
-    private _contourData: (data: Float32Array) => void = () => {}
-    private _matProjectionData: (data: Float32Array) => void = () => {}
-    private _matPositionsData: (data: Float32Array) => void = () => {}
 
     private cube: Cube = newCube(0, 0, 0, 0, 0, 0, 0, 0)
     private focalLength = Math.pow(2, 1.5)
-    private matProjection = aether.mat4.projection(this.focalLength, 1, 0.1, 100)
     private matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
-    private matPositions = aether.mat4.identity()
+
+    private cubeBuffer: gpu.DataBuffer
+    private contourSurfaceBuffer: gpu.DataBuffer
+    private uniformsBuffer: gpu.SyncBuffer
+    private cubeVerticesCount = 0
+    private contourSurfaceVerticesCount = 0
+
+    private uniformsGroup: gpu.BindGroup
+
+    private backFacePipeline: GPURenderPipeline
+    private frontFacePipeline: GPURenderPipeline
+    private contourPipeline: GPURenderPipeline
 
     constructor(
-        private shaders: { vertexShaderCode: string, fragmentShaderCode: string }, 
+        private device: gpu.Device,
+        private canvas: gpu.Canvas,
+        private shaders: { vertexShader: gpu.ShaderModule, fragmentShader: gpu.ShaderModule }, 
         private scalarFieldInstance: aether.ScalarFieldInstance
     ) {
-        this.modelMatrix = aether.mat4.identity()
-        this.contourValue = 0.0
+        const groupLayout = this.device.groupLayout({
+            data: gpu.uniform(uniformsStruct).asEntry(0, "VERTEX")
+        })
+        const layout = this.device.pipelineLayout({
+            uniforms: groupLayout.asEntry(0)
+        }).wrapped
+        const vertex = this.shaders.vertexShader.vertexState("main", [vertexStruct.asBufferLayout()])
+        const fragment = this.shaders.fragmentShader.fragmentState("main", [{
+            format: this.canvas.format,
+            blend: {
+                color: {
+                    srcFactor: "src-alpha",
+                    dstFactor: "one-minus-src-alpha",
+                    operation: "add"
+                },
+                alpha: {
+                    srcFactor: "src-alpha",
+                    dstFactor: "one-minus-src-alpha",
+                    operation: "add"
+                },
+            }
+        }])
+        function primitive(cullMode: GPUCullMode): GPUPrimitiveState {
+            return {
+                topology: "triangle-list",
+                frontFace: "ccw",
+                cullMode,
+            }
+        }
+        this.backFacePipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("front")
+        })
+        this.frontFacePipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("back")
+        })
+        this.contourPipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("none")
+        })
+
+        this.cubeBuffer = this.device.dataBuffer({
+            usage: ["VERTEX"],
+            size: vertexStruct.struct.size
+        });
+        this.contourSurfaceBuffer = this.device.dataBuffer({
+            usage: ["VERTEX"],
+            size: vertexStruct.struct.size
+        });
+        this.uniformsBuffer = this.device.syncBuffer({
+            usage: ["UNIFORM"],
+            data: uniformsStruct.view([{
+                matModel: aether.mat4.identity(),
+                matView: this.matView,
+                matProjection: aether.mat4.projection(this.focalLength, 1, 0.1, 100),
+                lightPosition: [2, 2, 2],
+            }])
+        })
+        this.uniformsGroup = groupLayout.bindGroup({
+            data: this.uniformsBuffer
+        })
+        this.refreshCube()
     }
 
     static async create() {
@@ -125,9 +210,30 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             vertexShaderCode: "vertexColors.vert",
             fragmentShaderCode: "vertexColors.frag"
         }, "/shaders")
+        const canvasElement = document.getElementById(Toy.descriptor.output.canvases.scene.element) as HTMLCanvasElement
+        const webgpuAPI = glWebGPU(canvasElement)
+        const device = await gpu.Device.instance({}, webgpuAPI)
+        const canvas = device.canvas(canvasElement, 4)
+        const shaderModules = {
+            vertexShader: await device.shaderModule({ code: shaders.vertexShaderCode }),
+            fragmentShader: await device.shaderModule({ code: shaders.fragmentShaderCode }),
+        }
+
         const scalarFieldModule = await aether.loadScalarFieldModule()
         const scalarFieldInstance = scalarFieldModule.newInstance()
-        return new Toy(shaders, scalarFieldInstance)
+        scalarFieldInstance.contourValue = 0.0
+
+        return new Toy(device, canvas, shaderModules, scalarFieldInstance)
+    }
+
+    private set cubeData(data: Float32Array) {
+        this.cubeBuffer.setData(new DataView(data.buffer, data.byteOffset, data.byteLength));
+        this.cubeVerticesCount = data.byteLength / vertexStruct.struct.stride
+    }
+
+    private set contourData(data: Float32Array) {
+        this.contourSurfaceBuffer.setData(new DataView(data.buffer, data.byteOffset, data.byteLength));
+        this.contourSurfaceVerticesCount = data.byteLength / vertexStruct.struct.stride
     }
 
     inputWiring(inputs: gear.loops.LoopInputs<ToyDescriptor>): gear.loops.LoopInputWiring<ToyDescriptor> {
@@ -153,66 +259,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     outputWiring(outputs: gear.loops.LoopOutputs<ToyDescriptor>): gear.loops.LoopOutputWiring<ToyDescriptor> {
-        const context = wgl.Context.of(outputs.canvases.scene.element.id);
-
-        const program = context.link(
-            context.vertexShader(this.shaders.vertexShaderCode),
-            context.fragmentShader(this.shaders.fragmentShaderCode)
-        )
-        program.use();
-
-        const cubeBuffer = context.newAttributesBuffer(10 * 4);
-        const contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
-
-        const position = program.attribute("position");
-        const normal = program.attribute("normal");
-        const color = program.attribute("color");
-
-        const matModel = program.uniform("matModel");
-        const matView = program.uniform("matView");
-        const matProjection = program.uniform("matProjection");
-
-        const lightPosition = program.uniform("lightPosition");
-
-        matModel.data = aether.mat4.columnMajorArray(this.matPositions)
-        matView.data = aether.mat4.columnMajorArray(this.matView);
-        matProjection.data = aether.mat4.columnMajorArray(this.matProjection);
-
-        lightPosition.data = [2, 2, 2];
-
-        const gl = context.gl;
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.clearColor(1, 1, 1, 1);
-        gl.enable(gl.CULL_FACE)
-        gl.frontFace(gl.CCW)
-
-        this._cubeData = (data: Float32Array) => cubeBuffer.data = data;
-        this._contourData = (data: Float32Array) => contourSurfaceBuffer.data = data;
-        this._matProjectionData = (data: Float32Array) => matProjection.data = data;
-        this._matPositionsData = (data: Float32Array) => matModel.data = data;
-
-        const drawCube = () => {
-            position.pointTo(cubeBuffer, 0 * cubeBuffer.word);
-            normal.pointTo(cubeBuffer, 3 * cubeBuffer.word);
-            color.pointTo(cubeBuffer, 6 * cubeBuffer.word);
-            gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, cubeBuffer.data.length / 10);
-        }
-
-        const drawContour = () => {
-            position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
-            normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
-            color.setTo(...fieldColor(this.contourValue, 0.8));
-            gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-        }
-
-        this.refreshCube()
-
         return {
-            onRender: () => this.render(context, drawCube, drawContour),
+            onRender: () => this.render(),
             canvases: {
                 scene: {
-                    onResize: () => this.resize(context),
+                    onResize: () => this.resize(),
                 }
             }
         }
@@ -221,37 +272,49 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     animate(): void {
     }
 
-    render(context: wgl.Context, drawCube: () => void, drawContour: () => void): void {
-        const gl = context.gl
-        gl.clear(gl.COLOR_BUFFER_BIT)
+    render(): void {
+        this.device.enqueueCommands("render", encoder => {
+            encoder.renderPass({
+                colorAttachments: [ this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })]
+            }, pass => {
+                pass.setBindGroup(0, this.uniformsGroup.wrapped)
 
-        gl.cullFace(gl.FRONT)
-        drawCube()
-        drawContour()
+                pass.setVertexBuffer(0, this.cubeBuffer.wrapped)
+                pass.setPipeline(this.backFacePipeline)
+                pass.draw(this.cubeVerticesCount)
 
-        gl.cullFace(gl.BACK)
-        drawContour()
-        drawCube()
+                pass.setVertexBuffer(0, this.contourSurfaceBuffer.wrapped)
+                pass.setPipeline(this.contourPipeline)
+                pass.draw(this.contourSurfaceVerticesCount)
+
+                pass.setVertexBuffer(0, this.cubeBuffer.wrapped)
+                pass.setPipeline(this.frontFacePipeline)
+                pass.draw(this.cubeVerticesCount)
+            })
+
+        })
     }
 
-    resize(context: wgl.Context): void {
-        const aspectRatio = context.canvas.width / context.canvas.height
+    resize(): void {
+        const aspectRatio = this.canvas.element.width / this.canvas.element.height
         this.matProjection = aether.mat4.projection(2, 0.1, 100, aspectRatio)
-        this._matProjectionData(new Float32Array(aether.mat4.columnMajorArray(this.matProjection)))
-        context.gl.viewport(0, 0, context.canvas.width, context.canvas.height)
+        this.canvas.resize()
     }
 
     get projectionViewMatrix() {
         return aether.mat4.mul(this.matProjection, this.matView)
     }
 
-    get modelMatrix() {
-        return this.matPositions
+    set matProjection(m: aether.Mat4) {
+        this.uniformsBuffer.set(uniformsStruct.members.matProjection, m);
     }
 
-    set modelMatrix(m: aether.Mat4) {
-        this.matPositions = m
-        this._matPositionsData(new Float32Array(aether.mat4.columnMajorArray(m)))
+    get matModel() {
+        return this.uniformsBuffer.get(uniformsStruct.members.matModel);
+    }
+
+    set matModel(m: aether.Mat4) {
+        this.uniformsBuffer.set(uniformsStruct.members.matModel, m);
     }
 
     get contourValue() {
@@ -337,12 +400,18 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private refreshCube() {
         this.cube = newCube(this._value1, this._value2, this._value3, this._value4, this._value5, this._value6, this._value7, this._value8)
-        this._cubeData(cubeData(this.cube))
+        this.cubeData = cubeData(this.cube)
         this.refreshContour()
     }
 
     private refreshContour() {
-        this._contourData(contourSurfaceData(this.scalarFieldInstance, this.cube, this.contourValue))
+        const data = contourSurfaceData(this.scalarFieldInstance, this.cube, this.contourValue)
+        const verticesCount = data.byteLength / vertexGeometry.struct.stride
+        const color = fieldColor(this.contourValue, 0.8)
+        const vertices = vertexGeometry.struct.readMulti(new DataView(data.buffer, data.byteOffset, data.byteLength), 0, verticesCount).map(v => ({
+            ...v, color
+        }))
+        this.contourData = new Float32Array(vertexStruct.struct.view(vertices).buffer)
     }
 
 }

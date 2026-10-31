@@ -22,7 +22,8 @@ export class GPUPicker implements Picker {
 
     constructor(
         readonly canvas: gpu.Canvas,
-        shaderModule: gpu.ShaderModule,
+        vertexShader: gpu.ShaderModule,
+        fragmentShader: gpu.ShaderModule,
         private vertices: () => gpu.DataBuffer
     ) {
         this.device = canvas.device
@@ -31,10 +32,10 @@ export class GPUPicker implements Picker {
             usage: ["UNIFORM"], 
             size: this.uniformsStruct.paddedSize
         });
-        this.pickDestination = this.device.readBuffer(16, "pickDestination")
+        this.pickDestination = this.device.readBuffer(4, "pickDestination")
 
         this.colorTexture = this.device.texture({
-            format: "rgba32float",
+            format: "rgba8unorm",
             size: canvas.size,
             usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC
         })
@@ -45,8 +46,8 @@ export class GPUPicker implements Picker {
         })
 
         this.pipeline = this.device.wrapped.createRenderPipeline({
-            vertex: shaderModule.vertexState("v_main", [this.vertex.asBufferLayout()]),
-            fragment: shaderModule.fragmentState("f_main", [this.colorTexture]),
+            vertex: vertexShader.vertexState("v_main", [this.vertex.asBufferLayout()]),
+            fragment: fragmentShader.fragmentState("f_main", [this.colorTexture]),
             depthStencil : this.depthTexture.depthState(),
             primitive: {
                 topology: "triangle-list"
@@ -95,8 +96,9 @@ export class GPUPicker implements Picker {
             )
         })
 
-        const view = await this.pickDestination.get(gpu.f32.x4).asData()
-        return aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.float32Array(view)), 2), [1, 1, 1, 1])
+        const view = await this.pickDestination.get(gpu.u32).asData()
+        const result = aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.uint8Array(view)), 2 / 255), [1, 1, 1, 1])
+        return result
     }
 
     resize(): void {
@@ -107,5 +109,11 @@ export class GPUPicker implements Picker {
 
 export async function picker(canvas: gpu.Canvas, vertices: () => gpu.DataBuffer): Promise<Picker> {
     const shaderModule = await canvas.device.shaderModule({ path: "shaders/picker.wgsl" })
-    return new GPUPicker(canvas, shaderModule, vertices)
+    return new GPUPicker(canvas, shaderModule, shaderModule, vertices)
+}
+
+export async function pickerGL(canvas: gpu.Canvas, vertices: () => gpu.DataBuffer): Promise<Picker> {
+    const vertexShader = await canvas.device.shaderModule({ path: "shaders/picker.vert" })
+    const fragmentShader = await canvas.device.shaderModule({ path: "shaders/picker.frag" })
+    return new GPUPicker(canvas, vertexShader, fragmentShader, vertices)
 }

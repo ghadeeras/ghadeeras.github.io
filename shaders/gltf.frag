@@ -1,23 +1,44 @@
-#version 300 es
-
-#ifdef GL_ES
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-#endif
-
 in vec3 fragPosition;
 in vec3 fragNormal;
+in vec3 fragTangent;
+in vec2 fragCoordBaseColor;
+in vec2 fragCoordMetallicRoughness;
+in vec2 fragCoordEmissive;
+in vec2 fragCoordOcclusion;
+in vec2 fragCoordNormal;
 
 out vec4 fragColor; 
 
-uniform vec4 color;
-uniform float shininess;
-uniform float metalness;
+uniform U_0_0 {
+    mat4 globalPositionsMat;
+    mat4 globalNormalsMat;
+    mat4 projectionMat;
+    vec4 lightPosition;
+    vec4 color;
+    float metalness;
+    float roughness;
+    vec3 emissive_factor;
+    float alpha_cutoff;
+};
 
-uniform vec4 lightPosition;
+uniform U_0_1 {
+    uint clock; 
+};
+
+uniform U_2_0 {
+    vec4 color;
+    float metalness;
+    float roughness;
+    vec2 gap;
+    vec3 emissive_factor;
+    float alpha_cutoff;
+} material;
+
+uniform sampler2D base_color_texture_2_1_2_2;
+uniform sampler2D metallic_roughness_texture_2_3_2_4;
+uniform sampler2D emissive_factor_texture_2_5_2_6;
+uniform sampler2D occlusion_texture_2_7_2_8;
+uniform sampler2D normal_texture_2_9_2_10;
 
 // ####################################
 // Physically based rendering GGX routines (Cook-Torrance Reflectance Model). See: https://graphicscompendium.com/references/cook-torrance
@@ -76,35 +97,107 @@ vec3 brdf(vec3 base_color, float metallic, float roughness, Cosines cosines) {
   return diffuse + specular;
 }
 
+vec3 calcMicroNormal(vec3 macro_normal, vec3 macro_tangent_x, vec3 tsNormal) {
+    vec3 macro_tangent_y = cross(macro_normal, macro_tangent_x);
+    mat3 tangent_space = mat3(macro_tangent_x, macro_tangent_y, macro_normal);
+    return normalize(tangent_space * (tsNormal.xyz - 127.0 / 255.0));
+}
+
+
 // ####################################
 
 const float ambientLight = 0.0625 * 0.0625;
 
-vec4 calc_color(vec3 position, vec3 normal) {
+vec4 calc_color(vec3 position, vec3 normal, vec3 tangent, vec4 tex_base_color_factor) {
     vec3 view_dir = normalize(-position);
     vec3 light_dir = normalize(lightPosition.xyz);
 
-    Cosines cosines = calc_cosines(normal, view_dir, light_dir);
-    vec3 result = brdf(
-        color.rgb, 
-        metalness, 
-        1.0 - shininess, 
+    vec4 tex_metallic_roughness = texture(metallic_roughness_texture_2_3_2_4, fragCoordMetallicRoughness);
+    vec4 tex_emissive_factor = texture(emissive_factor_texture_2_5_2_6, fragCoordEmissive);
+    vec4 tex_occlusion = texture(occlusion_texture_2_7_2_8, fragCoordOcclusion);
+    vec4 tex_sampled_normal = texture(normal_texture_2_9_2_10, fragCoordNormal);
+
+    vec3 microNormal = calcMicroNormal(normal, tangent, tex_sampled_normal.xyz);
+
+    Cosines cosines = calc_cosines(microNormal, view_dir, light_dir);
+    vec3 result = (brdf(
+        color.rgb * material.color.rgb * tex_base_color_factor.rgb, 
+        metalness * material.metalness * tex_metallic_roughness.b, 
+        roughness * material.roughness * tex_metallic_roughness.g, 
         cosines
-    ) * cosines.l_n + ambientLight * color.rgb;
+    ) * cosines.l_n + ambientLight * color.rgb) * tex_occlusion.r + emissive_factor * material.emissive_factor * tex_emissive_factor.rgb;
     
-    return vec4(sqrt(max(result, 0.0)), color.a);
+    return vec4(result, color.a);
+}
+
+// ####################################
+// Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
+
+const float RND_PRECISION = exp2(-22.0);
+
+uvec4 rng;
+
+uint next_u32() {
+    uint t = rng.w;
+    uint s = rng.x;
+
+    t = t ^ (t << 11u);
+	  t = t ^ (t >> 8u);
+    s = s ^ (s >> 19u);
+
+    rng = uvec4(t ^ s, rng.xyz);
+    return rng.x;
+}
+
+float next() {
+    uint n = (next_u32() + 0x1FFu) >> 10u;
+    return float(n) * RND_PRECISION;
+}
+
+void seedRNG(vec3 position) {
+    uvec3 p = floatBitsToUint(position);
+    rng = (p.xyzx * p.yzxy + p.zxyz * uvec4(3u, 5u, 7u, 11u)) | uvec4(23u, 19u, 17u, 13u) * clock;
+    next(); next(); next(); next();
+}
+
+// ####################################
+
+vec3 srgb(vec3 color) {
+    vec3 c = max(color, 0.0); 
+    return mix(
+        c * 12.92,
+        1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
+        step(vec3(0.0031308), c)
+    );
 }
 
 void main() {
-    // Begin: Normal Defaulting
+    vec4 tex_base_color_factor = texture(base_color_texture_2_1_2_2, fragCoordBaseColor);
+
+    // Begin: Transparency Hack
+    seedRNG(fragPosition); 
+    float opacity = tex_base_color_factor.a * material.color.a;
+    float cutoff = material.alpha_cutoff > 1.0 ? next() : material.alpha_cutoff;
+    if (opacity < cutoff) {
+        discard;
+    }
+    // End: Transparency Hack
+
+    // Begin: Normal?tangent Defaulting
     vec3 gradX = dFdx(fragPosition);
     vec3 gradY = dFdy(fragPosition);
     vec3 normal = normalize(fragNormal != vec3(0.0)
         ? gl_FrontFacing ? fragNormal : -fragNormal
         : cross(gradX, gradY)
     );
-    // End: Normal Defaulting
+    vec3 tangent = normalize(fragTangent == vec3(0.0)
+        ? gradX + gradY
+        : fragTangent
+    );
+    // End: Normal/Tangent Defaulting
 
-    fragColor = calc_color(fragPosition, normal);
+    vec4 c = calc_color(fragPosition, normal, tangent, tex_base_color_factor);
+    float dither = (next() - 0.5) / 128.0;
+    fragColor = vec4(srgb(c.rgb + dither), c.a);
 }
 

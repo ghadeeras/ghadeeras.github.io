@@ -5,9 +5,17 @@ precision highp float;
 in vec3 position;
 in vec3 normal;
 
-uniform mat4 positionsMat;
-uniform mat4 normalsMat;
-uniform mat4 projectionMat;
+uniform U_0_0 {
+    mat4 positionsMat;
+    mat4 normalsMat;
+    mat4 projectionMat;
+    vec4 color;
+    vec4 backgroundColor;
+    vec4 lightPosition;
+    float shininess;
+    float lightRadius;
+    float fogginess;
+};
 
 out vec3 fragPosition;
 out vec3 fragNormal;

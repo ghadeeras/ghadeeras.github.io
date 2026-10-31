@@ -1,20 +1,18 @@
-#version 300 es
-
-#ifdef GL_ES
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-#endif
-
 in float shade;
 in float depth;
                 
 out vec4 fragColor; 
 
-uniform vec3 color;
-uniform float fogginess;
+uniform U_0_0 {
+    mat4 matModel;
+    mat4 matView;
+    mat4 matProjection;
+    vec3 lightPosition;
+    vec3 color;
+    float shininess;
+    float twist;
+    float fogginess;
+};
 
 const vec3 white = vec3(1.0, 1.0, 1.0); 
 

@@ -6,7 +6,7 @@ export type FilteredKeysOf<O, K, V> = K extends keyof O
 
 export type Supplier<T> = () => T
 
-export function failure<T>(message: string): T {
+export function failure<T>(message: string): Exclude<T, null | undefined> {
     throw new Error(message)
 }
 

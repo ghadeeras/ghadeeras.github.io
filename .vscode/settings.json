@@ -4,7 +4,8 @@
         "Denoiser",
         "Denoising",
         "Djee",
-        "gltf"
+        "gltf",
+        "webgpu"
     ],
     "deno.lint": true,
     "emojisense.languages": {

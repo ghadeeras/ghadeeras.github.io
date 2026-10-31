@@ -4,7 +4,9 @@ precision highp float;
 
 in vec3 aModelPos;
 
-uniform mat4 mvpMat;
+uniform U_0_0 {
+    mat4 mvpMat;
+};
 
 out vec4 vModelPos;
 

@@ -111,11 +111,11 @@ class GPUAdapter {
         });
         const groups = materials.map((m, i) => this.materialsGroupLayout.bindGroup({
             uniform: buffer.view({ size: gltfMaterialsStruct.paddedSize, offset: i * gltfMaterialsStruct.stride }),
-            baseColorTexture: m.baseColorTexture[0].createView({ format: "rgba8unorm" }),
+            baseColorTexture: m.baseColorTexture[0].createView({ format: "rgba8unorm-srgb" }),
             baseColorSampler: m.baseColorTexture[1],
             metallicRoughnessTexture: m.metallicRoughnessTexture[0].createView({ format: "rgba8unorm" }),
             metallicRoughnessSampler: m.metallicRoughnessTexture[1],
-            emissiveFactorTexture: m.emissiveTexture[0].createView({ format: "rgba8unorm" }),
+            emissiveFactorTexture: m.emissiveTexture[0].createView({ format: "rgba8unorm-srgb" }),
             emissiveFactorSampler: m.emissiveTexture[1],
             occlusionTexture: m.occlusionTexture[0].createView({ format: "rgba8unorm" }),
             occlusionSampler: m.occlusionTexture[1],
@@ -134,7 +134,7 @@ class GPUAdapter {
     indexBuffer(dataView, stride) {
         return this.device.dataBuffer({
             label: "index",
-            usage: ["INDEX", "VERTEX"],
+            usage: ["INDEX"],
             data: this.adapt(dataView, stride)
         });
     }
@@ -146,7 +146,9 @@ class GPUAdapter {
             usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
         });
         this.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
-        texture.generateMipmaps();
+        if (texture.device.wrapped.adapterInfo.architecture !== "WebGL2") {
+            texture.generateMipmaps();
+        }
         return texture;
     }
     sampler(sampler) {

@@ -247,7 +247,7 @@ fn next_u32() -> u32 {
     var s = rng.x;
 
     t = t ^ (t << 11u);
-	t = t ^ (t >> 8u);
+    t = t ^ (t >> 8u);
     s = s ^ (s >> 19u);
 
     rng = vec4(t ^ s, rng.xyz);

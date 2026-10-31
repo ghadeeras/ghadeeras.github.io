@@ -1,87 +1,135 @@
-import { wgl } from "lumen";
+import { gpu, wgl } from "lumen";
 import * as gear from "gear";
+import { glWebGPU } from "webgxx";
 const mySketch = new Image();
+const uniformsStruct = gpu.struct({
+    effect: gpu.u32,
+    mousePos: gpu.f32.x2,
+});
+function property(buffer, type) {
+    return {
+        getter: () => buffer.get(type),
+        setter: (value) => buffer.set(type, value)
+    };
+}
 export async function init() {
     const vertexShaderCode = wgl.vertexShaders.fullScreenPass;
     const fragmentShaderCode = await gear.fetchTextFile("/shaders/home.frag");
-    const context = wgl.Context.of("canvas");
-    const vertexShader = context.shader(wgl.ShaderType.VertexShader, vertexShaderCode);
-    const fragmentShader = context.shader(wgl.ShaderType.FragmentShader, wgl.fragmentShaders.fullScreenPass(fragmentShaderCode));
-    const program = vertexShader.linkTo(fragmentShader);
-    program.use();
-    const texture = context.newTexture2D();
-    texture.setRawImage({
-        format: WebGL2RenderingContext.RGBA,
-        width: 2,
-        height: 2,
-        pixels: new Uint8Array([
-            0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF,
-            0x00, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF
-        ])
+    const canvasElement = document.getElementById("canvas");
+    const webgpuAPI = glWebGPU(canvasElement);
+    const device = await gpu.Device.instance({}, webgpuAPI);
+    const canvas = device.canvas(canvasElement);
+    const vertexShader = await device.shaderModule({ code: vertexShaderCode });
+    const fragmentShader = await device.shaderModule({ code: wgl.fragmentShaders.fullScreenPass(fragmentShaderCode) });
+    const pipeline = device.wrapped.createRenderPipeline({
+        layout: "auto",
+        vertex: vertexShader.vertexState("main", []),
+        fragment: fragmentShader.fragmentState("main", [canvas])
     });
-    const effect = program.uniform("effect");
-    effect.data = [0];
-    const mousePos = program.uniform("mousePos");
-    mousePos.data = [0x10000, 0x10000];
-    const sampler = program.uniform("sampler");
-    sampler.data = [texture.unit];
-    draw(context);
-    mySketch.onload = () => updateTexture(texture);
+    const uniformsBuffer = device.syncBuffer({
+        usage: ["UNIFORM"],
+        data: uniformsStruct.view([{
+                effect: 0,
+                mousePos: [0x10000, 0x10000]
+            }])
+    });
+    const texture = device.texture({
+        format: canvas.format,
+        size: canvas.size,
+        usage: GPUTextureUsage.TEXTURE_BINDING
+    });
+    const sampler = device.sampler({
+        minFilter: "linear",
+        magFilter: "linear",
+        mipmapFilter: "linear"
+    });
+    const bindGroup = device.wrapped.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [{
+                binding: 0,
+                resource: uniformsBuffer.asBindingResource()
+            }, {
+                binding: 1,
+                resource: texture.asBindingResource()
+            }, {
+                binding: 2,
+                resource: sampler.asBindingResource()
+            }]
+    });
+    const toy = {
+        device,
+        canvas,
+        pipeline,
+        bindGroup,
+        uniformsBuffer,
+        texture,
+        effect: property(uniformsBuffer, uniformsStruct.members.effect),
+        mousePos: property(uniformsBuffer, uniformsStruct.members.mousePos),
+    };
+    mySketch.onload = () => {
+        updateTexture(toy);
+        frame();
+    };
     mySketch.src = "/MySketch.png";
-    context.canvas.ontouchmove = event => event.preventDefault();
-    context.canvas.onpointermove = event => distortImage(event, mousePos);
-    context.canvas.onpointerleave = () => restoreImage(mousePos, effect);
-    context.canvas.onclick = event => useCurrentImage(event, mousePos, texture);
-    context.canvas.ondblclick = event => restoreOriginalImage(event, texture);
-    context.canvas.ondragover = event => tearImage(event, mousePos, effect);
-    context.canvas.ondrop = event => loadImage(event, effect);
+    canvas.element.ontouchmove = event => event.preventDefault();
+    canvas.element.onpointermove = event => distortImage(event, toy);
+    canvas.element.onpointerleave = () => restoreImage(toy);
+    canvas.element.onclick = event => useCurrentImage(event, toy);
+    canvas.element.ondblclick = event => restoreOriginalImage(event, toy);
+    canvas.element.ondragover = event => tearImage(event, toy);
+    canvas.element.ondrop = event => loadImage(event, toy);
+    const frame = () => {
+        draw(toy);
+        requestAnimationFrame(frame);
+    };
 }
-function draw(context) {
-    const gl = context.gl;
-    gl.viewport(0, 0, context.canvas.width, context.canvas.height);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
-    gl.flush();
-}
-async function updateTexture(texture) {
-    const context = texture.context;
-    const canvas = context.canvas;
-    const image = await createImageBitmap(mySketch, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight, {
-        resizeWidth: canvas.width,
-        resizeHeight: canvas.height
+function draw(toy) {
+    requestAnimationFrame(() => {
+        toy.device.enqueueCommands("draw", encoder => {
+            encoder.renderPass({
+                colorAttachments: [toy.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })]
+            }, pass => {
+                pass.setPipeline(toy.pipeline);
+                pass.setBindGroup(0, toy.bindGroup);
+                pass.draw(3);
+            });
+        });
     });
-    texture.setImageSource(image);
-    draw(context);
 }
-async function useCurrentImage(e, mousePos, texture) {
-    distortImage(e, mousePos);
-    const image = await createImageBitmap(texture.context.canvas, 0, 0, mySketch.naturalWidth, mySketch.naturalHeight);
-    texture.setImageSource(image);
+async function updateTexture(toy) {
+    const imageBitmap = await createImageBitmap(mySketch, {
+        resizeWidth: toy.texture.size.width,
+        resizeHeight: toy.texture.size.height
+    });
+    toy.texture.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: toy.texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
 }
-function distortImage(e, mousePos) {
+async function useCurrentImage(e, toy) {
+    distortImage(e, toy);
+    const imageBitmap = await createImageBitmap(toy.canvas.element);
+    toy.texture.device.wrapped.queue.copyExternalImageToTexture({ source: imageBitmap }, { texture: toy.texture.wrapped }, [imageBitmap.width, imageBitmap.height]);
+}
+function distortImage(e, toy) {
     e.preventDefault();
-    mousePos.data = normalizePosition(e);
-    draw(mousePos.program.context);
+    toy.mousePos.setter(normalizePosition(e));
 }
-function restoreImage(mousePos, effect) {
-    mousePos.data = [0x10000, 0x10000];
-    effect.data = [(effect.data[0] + 1) % 3];
-    draw(mousePos.program.context);
+function restoreImage(toy) {
+    toy.mousePos.setter([0x10000, 0x10000]);
+    toy.effect.setter((toy.effect.getter() + 1) % 3);
 }
-function restoreOriginalImage(e, texture) {
+function restoreOriginalImage(e, toy) {
     e.preventDefault();
-    updateTexture(texture);
+    updateTexture(toy);
 }
-function tearImage(e, mousePos, effect) {
+function tearImage(e, toy) {
     e.preventDefault();
-    mousePos.data = normalizePosition(e);
-    if (effect.data[0] < 3) {
-        effect.data = [effect.data[0] + 3];
+    toy.mousePos.setter(normalizePosition(e));
+    if (toy.effect.getter() < 3) {
+        toy.effect.setter(toy.effect.getter() + 3);
     }
-    draw(mousePos.program.context);
 }
-function loadImage(e, effect) {
+function loadImage(e, toy) {
     e.preventDefault();
-    effect.data = [effect.data[0] - 3];
+    toy.effect.setter(toy.effect.getter() - 3);
     if (e.dataTransfer) {
         const item = e.dataTransfer.items[0];
         if (item.kind == 'file') {

@@ -1,6 +1,6 @@
 import * as gear from "gear"
 import { View } from "./view.js";
-import { positionDragging } from "../utils/dragging.js";
+import { Linear2DDragging } from "../utils/dragging.js";
 import { Sierpinski } from "./model.js";
 
 type Descriptor = typeof Controller.descriptor;
@@ -56,10 +56,9 @@ export class Controller implements gear.loops.LoopLogic<Descriptor> {
         }
     } satisfies gear.loops.LoopDescriptor
 
-    private twistEnabled: boolean = true
-    private scaleEnabled: boolean = true
     private showCorners: boolean = true
     private showCenters: boolean = true
+    private twistAndScaleDragger = Linear2DDragging.dragger([-6, -2], [6, 2], [6, 2])
     
     constructor(private view: View, private sierpinski: Sierpinski) {
         this.view.setSierpinski(this.sierpinski.tessellated)
@@ -70,14 +69,14 @@ export class Controller implements gear.loops.LoopLogic<Descriptor> {
             keys: {
                 centers: { onPressed: () => this.view.setShowCenters(this.showCenters = !this.showCenters) },
                 corners: { onPressed: () => this.view.setShowCorners(this.showCorners = !this.showCorners) },
-                twist: { onPressed: () => this.twistEnabled = !this.twistEnabled },
-                scale: { onPressed: () => this.scaleEnabled = !this.scaleEnabled },
+                twist: { onPressed: () => this.twistAndScaleDragger.speed[0] = 6 - this.twistAndScaleDragger.speed[0] },
+                scale: { onPressed: () => this.twistAndScaleDragger.speed[1] = 2 - this.twistAndScaleDragger.speed[1] },
                 incDepth: { onPressed: () => this.depth += 1 },
                 decDepth: { onPressed: () => this.depth -= 1 },
             },
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "position"), positionDragging)
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "twistAndScale"), this.twistAndScaleDragger)
                 }
             }
         }
@@ -106,19 +105,13 @@ export class Controller implements gear.loops.LoopLogic<Descriptor> {
 
     private _position: [number, number] = [0, 0]
 
-    get position(): [number, number] {
-        return this._position
+    get twistAndScale(): [number, number] {
+        return [this.view.twist, this.view.scale]
     }
 
-    set position([x, y]: [number, number]) {
-        if (this.twistEnabled) {
-            this._position[0] = x
-            this.view.setTwist(2 * Math.PI * x)
-        }
-        if (this.scaleEnabled) {
-            this._position[1] = y
-            this.view.setScale(2 * Math.PI * y)
-        }
+    set twistAndScale([x, y]: [number, number]) {
+        this.view.twist = x 
+        this.view.scale = y 
     }
 
 }

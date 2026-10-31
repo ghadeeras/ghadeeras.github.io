@@ -1,7 +1,8 @@
 import * as aether from "aether";
 import * as gear from "gear";
-import { wgl } from "lumen";
+import { gpu } from "lumen";
 import * as dragging from "../utils/dragging.js";
+import { glWebGPU } from "webgxx";
 export const huds = {
     "monitor": "monitor-button"
 };
@@ -10,12 +11,29 @@ export async function init() {
     const loop = gear.loops.newLoop(toy, Toy.descriptor);
     loop.run();
 }
+const vertexStruct = gpu.vertex({
+    position: gpu.f32.x3,
+    normal: gpu.f32.x3,
+    color: gpu.f32.x4,
+});
+const vertexGeometry = gpu.vertex({
+    position: gpu.f32.x3,
+    normal: gpu.f32.x3,
+});
+const uniformsStruct = gpu.struct({
+    matModel: gpu.mat4x4,
+    matView: gpu.mat4x4,
+    matProjection: gpu.mat4x4,
+    lightPosition: gpu.f32.x3,
+});
 class Toy {
-    constructor(shaders, scalarFieldInstance) {
+    constructor(device, canvas, shaders, scalarFieldInstance) {
+        this.device = device;
+        this.canvas = canvas;
         this.shaders = shaders;
         this.scalarFieldInstance = scalarFieldInstance;
         this.contourTarget = gear.loops.draggingTarget(mapped(gear.property(this, "contourValue"), ([_, y]) => y), dragging.positionDragging);
-        this.rotationDragging = gear.loops.draggingTarget(gear.property(this, "modelMatrix"), dragging.RotationDragging.dragger(() => this.matView));
+        this.rotationDragging = gear.loops.draggingTarget(gear.property(this, "matModel"), dragging.RotationDragging.dragger(() => this.matView));
         this.value1Target = gear.loops.draggingTarget(mapped(gear.property(this, "value1"), ([_, y]) => y), dragging.positionDragging);
         this.value2Target = gear.loops.draggingTarget(mapped(gear.property(this, "value2"), ([_, y]) => y), dragging.positionDragging);
         this.value3Target = gear.loops.draggingTarget(mapped(gear.property(this, "value3"), ([_, y]) => y), dragging.positionDragging);
@@ -24,26 +42,96 @@ class Toy {
         this._value2 = -1;
         this._value3 = -1;
         this._value4 = -1;
-        this._tetrahedronData = () => { };
-        this._contourData = () => { };
-        this._matProjectionData = () => { };
-        this._matPositionsData = () => { };
         this.tetrahedron = newTetrahedron(0, 0, 0, 0);
         this.focalLength = Math.pow(2, 1.5);
-        this.matProjection = aether.mat4.projection(this.focalLength, 1, 0.1, 100);
         this.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
-        this.matPositions = aether.mat4.identity();
-        this.modelMatrix = aether.mat4.identity();
-        this.contourValue = 0.0;
+        this.tetrahedronVerticesCount = 0;
+        this.contourSurfaceVerticesCount = 0;
+        const groupLayout = this.device.groupLayout({
+            data: gpu.uniform(uniformsStruct).asEntry(0, "VERTEX")
+        });
+        const layout = this.device.pipelineLayout({
+            uniforms: groupLayout.asEntry(0)
+        }).wrapped;
+        const vertex = this.shaders.vertexShader.vertexState("main", [vertexStruct.asBufferLayout()]);
+        const fragment = this.shaders.fragmentShader.fragmentState("main", [{
+                format: this.canvas.format,
+                blend: {
+                    color: {
+                        srcFactor: "src-alpha",
+                        dstFactor: "one-minus-src-alpha",
+                        operation: "add"
+                    },
+                    alpha: {
+                        srcFactor: "src-alpha",
+                        dstFactor: "one-minus-src-alpha",
+                        operation: "add"
+                    },
+                }
+            }]);
+        function primitive(cullMode) {
+            return {
+                topology: "triangle-list",
+                frontFace: "ccw",
+                cullMode,
+            };
+        }
+        this.backFacePipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("front")
+        });
+        this.frontFacePipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("back")
+        });
+        this.contourPipeline = this.device.wrapped.createRenderPipeline({
+            layout, vertex, fragment, primitive: primitive("none")
+        });
+        this.tetrahedronBuffer = this.device.dataBuffer({
+            usage: ["VERTEX"],
+            size: vertexStruct.struct.size
+        });
+        this.contourSurfaceBuffer = this.device.dataBuffer({
+            usage: ["VERTEX"],
+            size: vertexStruct.struct.size
+        });
+        this.uniformsBuffer = this.device.syncBuffer({
+            usage: ["UNIFORM"],
+            data: uniformsStruct.view([{
+                    matModel: aether.mat4.identity(),
+                    matView: this.matView,
+                    matProjection: aether.mat4.projection(this.focalLength, 1, 0.1, 100),
+                    lightPosition: [2, 2, 2],
+                }])
+        });
+        this.uniformsGroup = groupLayout.bindGroup({
+            data: this.uniformsBuffer
+        });
+        this.refreshTetrahedron();
     }
     static async create() {
         const shaders = await gear.fetchTextFiles({
             vertexShaderCode: "vertexColors.vert",
             fragmentShaderCode: "vertexColors.frag"
         }, "/shaders");
+        const canvasElement = document.getElementById(Toy.descriptor.output.canvases.scene.element);
+        const webgpuAPI = glWebGPU(canvasElement);
+        const device = await gpu.Device.instance({}, webgpuAPI);
+        const canvas = device.canvas(canvasElement, 4);
+        const shaderModules = {
+            vertexShader: await device.shaderModule({ code: shaders.vertexShaderCode }),
+            fragmentShader: await device.shaderModule({ code: shaders.fragmentShaderCode }),
+        };
         const scalarFieldModule = await aether.loadScalarFieldModule();
         const scalarFieldInstance = scalarFieldModule.newInstance();
-        return new Toy(shaders, scalarFieldInstance);
+        scalarFieldInstance.contourValue = 0.0;
+        return new Toy(device, canvas, shaderModules, scalarFieldInstance);
+    }
+    set tetrahedronData(data) {
+        this.tetrahedronBuffer.setData(new DataView(data.buffer, data.byteOffset, data.byteLength));
+        this.tetrahedronVerticesCount = data.byteLength / vertexStruct.struct.stride;
+    }
+    set contourData(data) {
+        this.contourSurfaceBuffer.setData(new DataView(data.buffer, data.byteOffset, data.byteLength));
+        this.contourSurfaceVerticesCount = data.byteLength / vertexStruct.struct.stride;
     }
     inputWiring(inputs) {
         return {
@@ -63,82 +151,51 @@ class Toy {
         };
     }
     outputWiring(outputs) {
-        const context = wgl.Context.of(outputs.canvases.scene.element.id);
-        const program = context.link(context.vertexShader(this.shaders.vertexShaderCode), context.fragmentShader(this.shaders.fragmentShaderCode));
-        program.use();
-        const tetrahedronBuffer = context.newAttributesBuffer(10 * 4);
-        const contourSurfaceBuffer = context.newAttributesBuffer(6 * 4);
-        const position = program.attribute("position");
-        const normal = program.attribute("normal");
-        const color = program.attribute("color");
-        const matModel = program.uniform("matModel");
-        const matView = program.uniform("matView");
-        const matProjection = program.uniform("matProjection");
-        const lightPosition = program.uniform("lightPosition");
-        matModel.data = aether.mat4.columnMajorArray(this.matPositions);
-        matView.data = aether.mat4.columnMajorArray(this.matView);
-        matProjection.data = aether.mat4.columnMajorArray(this.matProjection);
-        lightPosition.data = [2, 2, 2];
-        const gl = context.gl;
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.clearColor(1, 1, 1, 1);
-        gl.frontFace(gl.CCW);
-        this._tetrahedronData = (data) => tetrahedronBuffer.data = data;
-        this._contourData = (data) => contourSurfaceBuffer.data = data;
-        this._matProjectionData = (data) => matProjection.data = data;
-        this._matPositionsData = (data) => matModel.data = data;
-        const drawTetrahedron = () => {
-            position.pointTo(tetrahedronBuffer, 0 * tetrahedronBuffer.word);
-            normal.pointTo(tetrahedronBuffer, 3 * tetrahedronBuffer.word);
-            color.pointTo(tetrahedronBuffer, 6 * tetrahedronBuffer.word);
-            gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, tetrahedronBuffer.data.length / 10);
-        };
-        const drawContour = () => {
-            position.pointTo(contourSurfaceBuffer, 0 * contourSurfaceBuffer.word);
-            normal.pointTo(contourSurfaceBuffer, 3 * contourSurfaceBuffer.word);
-            color.setTo(...fieldColor(this.contourValue, 1.0));
-            gl.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, contourSurfaceBuffer.data.length / 6);
-        };
-        this.refreshTetrahedron();
         return {
-            onRender: () => this.render(context, drawTetrahedron, drawContour),
+            onRender: () => this.render(),
             canvases: {
                 scene: {
-                    onResize: () => this.resize(context),
+                    onResize: () => this.resize(),
                 }
             }
         };
     }
     animate() {
     }
-    render(context, drawTetrahedron, drawContour) {
-        const gl = context.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.FRONT);
-        drawTetrahedron();
-        gl.disable(gl.CULL_FACE);
-        drawContour();
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
-        drawTetrahedron();
+    render() {
+        this.device.enqueueCommands("render", encoder => {
+            encoder.renderPass({
+                colorAttachments: [this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 })]
+            }, pass => {
+                pass.setBindGroup(0, this.uniformsGroup.wrapped);
+                pass.setVertexBuffer(0, this.tetrahedronBuffer.wrapped);
+                pass.setPipeline(this.backFacePipeline);
+                pass.draw(this.tetrahedronVerticesCount);
+                pass.setVertexBuffer(0, this.contourSurfaceBuffer.wrapped);
+                pass.setPipeline(this.contourPipeline);
+                pass.draw(this.contourSurfaceVerticesCount);
+                pass.setVertexBuffer(0, this.tetrahedronBuffer.wrapped);
+                pass.setPipeline(this.frontFacePipeline);
+                pass.draw(this.tetrahedronVerticesCount);
+            });
+        });
     }
-    resize(context) {
-        const aspectRatio = context.canvas.width / context.canvas.height;
+    resize() {
+        const aspectRatio = this.canvas.element.width / this.canvas.element.height;
         this.matProjection = aether.mat4.projection(4, 0.1, 100, aspectRatio);
-        this._matProjectionData(new Float32Array(aether.mat4.columnMajorArray(this.matProjection)));
-        context.gl.viewport(0, 0, context.canvas.width, context.canvas.height);
+        this.canvas.resize();
     }
     get projectionViewMatrix() {
         return aether.mat4.mul(this.matProjection, this.matView);
     }
-    get modelMatrix() {
-        return this.matPositions;
+    set matProjection(m) {
+        this.uniformsBuffer.set(uniformsStruct.members.matProjection, m);
     }
-    set modelMatrix(m) {
-        this.matPositions = m;
-        this._matPositionsData(new Float32Array(aether.mat4.columnMajorArray(m)));
+    get matModel() {
+        return this.uniformsBuffer.get(uniformsStruct.members.matModel);
+    }
+    set matModel(m) {
+        this.uniformsBuffer.set(uniformsStruct.members.matModel, m);
     }
     get contourValue() {
         return this.scalarFieldInstance.contourValue;
@@ -177,11 +234,17 @@ class Toy {
     }
     refreshTetrahedron() {
         this.tetrahedron = newTetrahedron(this._value1, this._value2, this._value3, this._value4);
-        this._tetrahedronData(tetrahedronData(this.tetrahedron));
+        this.tetrahedronData = tetrahedronData(this.tetrahedron);
         this.refreshContour();
     }
     refreshContour() {
-        this._contourData(contourSurfaceData(this.scalarFieldInstance, this.tetrahedron, this.contourValue));
+        const data = contourSurfaceData(this.scalarFieldInstance, this.tetrahedron, this.contourValue);
+        const verticesCount = data.byteLength / vertexGeometry.struct.stride;
+        const color = fieldColor(this.contourValue, 1);
+        const vertices = vertexGeometry.struct.readMulti(new DataView(data.buffer, data.byteOffset, data.byteLength), 0, verticesCount).map(v => ({
+            ...v, color
+        }));
+        this.contourData = new Float32Array(vertexStruct.struct.view(vertices).buffer);
     }
 }
 Toy.descriptor = {

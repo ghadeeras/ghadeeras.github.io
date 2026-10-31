@@ -6,11 +6,12 @@ in vec3 position;
 in vec3 normal;
 in vec4 color;
 
-uniform vec3 lightPosition;
-                
-uniform mat4 matModel;
-uniform mat4 matView;
-uniform mat4 matProjection;
+uniform U_0_0 {
+    uniform mat4 matModel;
+    uniform mat4 matView;
+    uniform mat4 matProjection;
+    uniform vec3 lightPosition;
+};
 
 out vec4 fragColor;
 out vec3 fragPosition;
@@ -26,5 +27,10 @@ void main() {
     fragColor = color;
     fragLightRay = fragPosition - viewedLightPosition;
 
-    gl_Position = matProjection * vec4(fragPosition, 1.0);
+    gl_Position = mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 2, 0,
+        0, 0, -1, 1
+    ) * matProjection * vec4(fragPosition, 1.0);
 }

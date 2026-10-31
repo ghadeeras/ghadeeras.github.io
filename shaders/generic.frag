@@ -1,29 +1,23 @@
-#version 300 es
-
-#ifdef GL_ES
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-#endif
-
 in vec3 fragPosition;
 in vec3 fragNormal;
 
 out vec4 fragColor; 
 
-uniform vec4 color;
-uniform vec4 backgroundColor;
-uniform float shininess;
-
-uniform vec3 lightPosition;
-uniform float lightRadius;
-uniform float fogginess;
+uniform U_0_0 {
+    mat4 positionsMat;
+    mat4 normalsMat;
+    mat4 projectionMat;
+    vec4 color;
+    vec4 backgroundColor;
+    vec4 lightPosition;
+    float shininess;
+    float lightRadius;
+    float fogginess;
+};
 
 void main() {
     vec3 materialColor = color.rgb;
-    vec3 lightRay = fragPosition - lightPosition;
+    vec3 lightRay = fragPosition - lightPosition.xyz;
     
     vec3 viewDir = normalize(fragPosition);
     vec3 normal = normalize(fragNormal);

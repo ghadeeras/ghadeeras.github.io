@@ -1,16 +1,19 @@
 import * as gear from "gear"
-import { wgl } from "lumen"
+import { gpu } from "lumen"
 import { FlattenedSierpinski } from "./model.js"
+import { glWebGPU } from "webgxx";
 
-const vertexShader = /*glsl*/`
-    attribute vec2 vPosition;
+const vertexShaderCode = /*glsl*/`
+    layout(location = 0) in vec2 vPosition;
     
-    uniform float twist;
-    uniform float scale;
+    uniform U_0_0 {
+        float twist;
+        float scale;
+    };
     
     void main() {
         vec2 p = scale * vPosition;
-        float angle = twist * length(p);
+        float angle = twist * length(vPosition);
         float s = sin(angle);
         float c = cos(angle);
         mat2 rotation = mat2(vec2(c, s), vec2(-s, c));
@@ -18,83 +21,121 @@ const vertexShader = /*glsl*/`
     }
 `;
 
-const fragmentShader = /*glsl*/`
-    precision mediump float;
-    
+const fragmentShaderCode = /*glsl*/`
+    layout(location = 0) out vec4 fragColor;
+
     void main() {
-        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        fragColor = vec4(0.0, 0.0, 1.0, 1.0);
     }
 `
 
-const ST = wgl.ShaderType;
+const uniformsStruct = gpu.struct({
+    twist: gpu.f32,
+    scale: gpu.f32,
+})
 
+const vertexStruct = gpu.vertex({ _: gpu.f32.x2 });
 export class View {
     
-    private readonly context: wgl.Context;
-    private readonly vertexShader: wgl.Shader;
-    private readonly fragmentShader: wgl.Shader;
-    private readonly program: wgl.Program;
+    private readonly uniformsBuffer: gpu.SyncBuffer;
+    private readonly uniformsGroup: GPUBindGroup;
+    private readonly pipeline: GPURenderPipeline;
 
-    private readonly shaderPosition: wgl.Attribute;
-    private readonly shaderTwist: wgl.Uniform;
-    private readonly shaderScale: wgl.Uniform;
-    private readonly cornersBuffer: wgl.AttributesBuffer;
-    private readonly centersBuffer: wgl.AttributesBuffer;
+    private readonly cornersBuffer: gpu.DataBuffer;
+    private readonly centersBuffer: gpu.DataBuffer;
+    private vertexCount = { centers: 0, corners: 0 }
 
     private mustShowCorners = true;
     private mustShowCenters = true;
-    private stride = 0;
 
     private depthElement: HTMLElement
     private twistElement: HTMLElement
     private scaleElement: HTMLElement
 
     constructor(
-        canvasId: string, 
+        private readonly device: gpu.Device,
+        private readonly canvas: gpu.Canvas, 
+        vertexShader: gpu.ShaderModule,
+        fragmentShader: gpu.ShaderModule,
         depthId: string, 
         twistId: string, 
         scaleId: string,
     ) {
-        this.context = wgl.Context.of(canvasId);
+        this.pipeline = device.wrapped.createRenderPipeline({
+            layout: "auto",
+            vertex: vertexShader.vertexState("main", [
+                vertexStruct.asBufferLayout()
+            ]),
+            fragment: fragmentShader.fragmentState("main", [{
+                format: canvas.format
+            }])
+        })
 
-        this.vertexShader = this.context.shader(ST.VertexShader, vertexShader);
-        this.fragmentShader = this.context.shader(ST.FragmentShader, fragmentShader);
-        this.program = this.context.link(this.vertexShader, this.fragmentShader);
-        this.program.use();
+        this.uniformsBuffer = device.syncBuffer({
+            usage: ["UNIFORM"],
+            data: uniformsStruct.view([{
+                twist: 0,
+                scale: 1 
+            }])
+        })
+        this.uniformsGroup = device.wrapped.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [{
+                binding: 0,
+                resource: this.uniformsBuffer.gpuBuffer.wrapped
+            }]
+        })
 
-        this.shaderPosition = this.program.attribute("vPosition");
-        this.shaderTwist = this.program.uniform("twist");
-        this.shaderScale = this.program.uniform("scale");
+        this.cornersBuffer = device.dataBuffer({
+            usage: ["VERTEX"],
+            size: gpu.f32.x2.size * 9,
+        });
+        this.centersBuffer = device.dataBuffer({
+            usage: ["VERTEX"],
+            size: gpu.f32.x2.size * 3,
+        });
 
-        this.cornersBuffer = this.context.newAttributesBuffer();
-        this.centersBuffer = this.context.newAttributesBuffer();
-
-        this.context.gl.clearColor(1, 1, 1, 1);
 
         this.depthElement = gear.htmlElement(depthId)
         this.twistElement = gear.htmlElement(twistId)
         this.scaleElement = gear.htmlElement(scaleId)
+    }
 
-        this.setTwist(0)
-        this.setScale(1)
-        this.setShowCorners(true)
-        this.setShowCenters(true)
+    static async create(canvasId: string, depthId: string, twistId: string, scaleId: string) {
+        const canvasElement = document.getElementById(canvasId) as HTMLCanvasElement
+        const webgpuAPI = glWebGPU(canvasElement)
+        const device = await gpu.Device.instance({}, webgpuAPI)
+        const canvas = device.canvas(canvasElement, 4)
+        const vertexShader = await device.shaderModule({ code: vertexShaderCode });
+        const fragmentShader = await device.shaderModule({ code: fragmentShaderCode });
+        return new View(device, canvas, vertexShader, fragmentShader, depthId, twistId, scaleId)
     }
 
     setSierpinski(flattenedSierpinski: FlattenedSierpinski) {
-        this.cornersBuffer.float32Data = flattenedSierpinski.corners;
-        this.centersBuffer.float32Data = flattenedSierpinski.centers;
-        this.stride = flattenedSierpinski.stride;
+        this.cornersBuffer.setData(new DataView(new Float32Array(flattenedSierpinski.corners).buffer));
+        this.centersBuffer.setData(new DataView(new Float32Array(flattenedSierpinski.centers).buffer));
+        this.vertexCount = { 
+            corners: flattenedSierpinski.corners.length / flattenedSierpinski.stride ,
+            centers: flattenedSierpinski.centers.length / flattenedSierpinski.stride ,
+        }
         this.depthElement.innerText = flattenedSierpinski.depth.toFixed(0)
     }
     
-    setTwist(twist: number) {
-        this.shaderTwist.data = [twist];
+    get twist() {
+        return this.uniformsBuffer.get(uniformsStruct.members.twist);
+    }
+
+    set twist(twist: number) {
+        this.uniformsBuffer.set(uniformsStruct.members.twist, twist);
         this.twistElement.innerText = twist.toFixed(3)
     }
 
-    setScale(scale: number) {
-        this.shaderScale.data = [scale];
+    get scale() {
+        return this.uniformsBuffer.get(uniformsStruct.members.scale);
+    }
+
+    set scale(scale: number) {
+        this.uniformsBuffer.set(uniformsStruct.members.scale, scale);
         this.scaleElement.innerText = scale.toFixed(3)
     }
 
@@ -107,20 +148,22 @@ export class View {
     }
 
     draw() {
-        setTimeout(() => {
-            const gl = this.context.gl;
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            if (this.mustShowCorners) {
-                this.shaderPosition.pointTo(this.cornersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.cornersBuffer.data.length / this.stride);
-            }
-
-            if (this.mustShowCenters) {
-                this.shaderPosition.pointTo(this.centersBuffer);
-                gl.drawArrays(gl.TRIANGLES, 0, this.centersBuffer.data.length / this.stride);
-            }
-        });
+        this.device.enqueueCommands("draw", encoder => {
+            encoder.renderPass({ 
+                colorAttachments: [ this.canvas.attachment({ r: 1, g: 1, b: 1, a: 1 }) ] 
+            }, pass => {
+                pass.setPipeline(this.pipeline)
+                pass.setBindGroup(0, this.uniformsGroup)
+                if (this.mustShowCorners) {
+                    pass.setVertexBuffer(0, this.cornersBuffer.wrapped)
+                    pass.draw(this.vertexCount.corners)
+                }
+                if (this.mustShowCenters) {
+                    pass.setVertexBuffer(0, this.centersBuffer.wrapped)
+                    pass.draw(this.vertexCount.centers)
+                }
+            })
+        })
     }
 
 }

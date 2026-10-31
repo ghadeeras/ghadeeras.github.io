@@ -1,7 +1,6 @@
 import * as gear from "gear";
 import * as gpuView from "./view.gpu.js";
 import * as gpuWiresView from "./view.wires.gpu.js";
-import * as glView from "./view.gl.js";
 export async function newViewFactory(canvasId, wires = false) {
     const apiElement = gear.required(document.getElementById("graphics-api"));
     if (new URL(location.href).searchParams.has("webgl")) {
@@ -17,11 +16,11 @@ export async function newViewFactory(canvasId, wires = false) {
         return newGLFactory(wires, apiElement, canvasId);
     }
 }
-function newGLFactory(wires, apiElement, canvasId) {
+async function newGLFactory(wires, apiElement, canvasId) {
     if (wires) {
         throw "Wire frame rendering is not supported yet in WebGL!";
     }
     apiElement.innerHTML = "WebGL";
-    return glView.newViewFactory(canvasId);
+    return await gpuView.newGLViewFactory(canvasId);
 }
 //# sourceMappingURL=view.js.map

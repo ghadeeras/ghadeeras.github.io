@@ -1,6 +1,16 @@
 #version 300 es
 
-uniform mat4 projectionMat;
+uniform U_0_0 {
+    mat4 globalPositionsMat;
+    mat4 globalNormalsMat;
+    mat4 projectionMat;
+    vec4 lightPosition;
+    vec4 color;
+    float metalness;
+    float roughness;
+    vec3 emissive_factor;
+    float alpha_cutoff;
+};
 
 out vec3 direction;
 
