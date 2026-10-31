@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as v from "./view.js"
 import { picker, pickerGL } from "./picker.gpu.js"
 import { glWebGPU } from "webgxx"

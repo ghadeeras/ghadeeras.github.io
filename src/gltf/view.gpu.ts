@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";

@@ -1,5 +1,5 @@
 import * as aether from "aether";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
     constructor(canvas, vertexShader, fragmentShader, vertices) {

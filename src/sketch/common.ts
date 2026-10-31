@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 
 export type StrokeAttributes = gpu.DataTypeOf<typeof strokeAttributesStruct>
 export const strokeAttributesStruct = gpu.struct({

@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as gear from "gear"
 import * as aether from "aether"
 import { LinearDragging, TranslationDragging } from "../utils/dragging.js"

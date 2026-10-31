@@ -1,4 +1,4 @@
-import { gpu, wgl } from "lumen";
+import * as gpu from "lumen";
 import * as gear from "gear";
 import { glWebGPU } from "webgxx";
 const mySketch = new Image();
@@ -13,14 +13,14 @@ function property(buffer, type) {
     };
 }
 export async function init() {
-    const vertexShaderCode = wgl.vertexShaders.fullScreenPass;
+    const vertexShaderCode = gpu.glsl.vertexShaders.fullScreenPass;
     const fragmentShaderCode = await gear.fetchTextFile("/shaders/home.frag");
     const canvasElement = document.getElementById("canvas");
     const webgpuAPI = glWebGPU(canvasElement);
     const device = await gpu.Device.instance({}, webgpuAPI);
     const canvas = device.canvas(canvasElement);
     const vertexShader = await device.shaderModule({ code: vertexShaderCode });
-    const fragmentShader = await device.shaderModule({ code: wgl.fragmentShaders.fullScreenPass(fragmentShaderCode) });
+    const fragmentShader = await device.shaderModule({ code: gpu.glsl.fragmentShaders.fullScreenPass(fragmentShaderCode) });
     const pipeline = device.wrapped.createRenderPipeline({
         layout: "auto",
         vertex: vertexShader.vertexState("main", []),

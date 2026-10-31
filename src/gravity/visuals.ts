@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import { gpu } from 'lumen'
+import * as gpu from "lumen"
 import * as meta from './meta.js'
 
 const projection = new aether.PerspectiveProjection(1, null, false, false)

@@ -1,4 +1,4 @@
-import { gpu } from 'lumen';
+import * as gpu from "lumen";
 import { BaseTexture } from './base.texture.js';
 export const visualsUniforms = gpu.struct({
     mvpMatrix: gpu.f32.x4.x4,

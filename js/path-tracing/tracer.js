@@ -1,5 +1,5 @@
 import * as aether from "aether";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { NULL } from './scene.js';
 import { boxDirectionsStruct, boxStruct, cellStruct, uniformsStruct } from "./toy.gpu.js";
 export class Tracer {

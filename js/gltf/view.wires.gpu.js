@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { NormalsRenderer } from "./normals.gpu.js";
 import { NormalsFilter } from "./filter.gpu.js";
 export class GPUView {

@@ -1,5 +1,5 @@
 import * as aether from "aether";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({

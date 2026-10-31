@@ -26,6 +26,7 @@
   ],
   "devDependencies": {
     "typescript": "^7.0.2",
-    "@webgpu/types": "^0.1.74"
+    "@webgpu/types": "^0.1.74",
+    "webgxx": "git+https://github.com/ghadeeras/webgxx"
   }
 }

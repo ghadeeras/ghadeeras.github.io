@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 export const strokeAttributesStruct = gpu.struct({
     color: gpu.f32.x4,
     thickness: gpu.f32,

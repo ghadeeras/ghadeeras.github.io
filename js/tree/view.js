@@ -1,6 +1,6 @@
 import * as aether from 'aether';
 import * as gear from 'gear';
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { glWebGPU } from 'webgxx';
 const uniformsStruct = gpu.struct({
     matModel: gpu.f32.x4.x4,

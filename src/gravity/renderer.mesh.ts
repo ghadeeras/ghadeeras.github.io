@@ -1,4 +1,4 @@
-import { gpu } from 'lumen'
+import * as gpu from "lumen"
 import * as geo from './geo.js'
 import { Universe } from './universe.js'
 import { Visuals } from './visuals.js'

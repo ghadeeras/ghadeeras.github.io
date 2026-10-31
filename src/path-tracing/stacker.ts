@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import { GPUToy, StackerGroupLayout, uniformsStruct } from "./toy.gpu.js"
 
 export class Stacker {

@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as dragging from "../utils/dragging.js"
 import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";

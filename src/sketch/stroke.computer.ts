@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as aether from "aether"
 import { StrokeAttributes, strokeAttributesStruct, commonWGSL, strokePointsPairStruct } from "./common.js"
 

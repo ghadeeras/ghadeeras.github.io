@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import * as aether from "aether";
 import { strokeAttributesStruct, commonWGSL, strokePointsPairStruct } from "./common.js";
 // TODO Make the class stateless and use the attributes cache in the Brush class.

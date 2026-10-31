@@ -1,5 +1,5 @@
 import * as gear from "gear";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { glWebGPU } from "webgxx";
 const vertexShaderCode = /*glsl*/ `
     layout(location = 0) in vec2 vPosition;

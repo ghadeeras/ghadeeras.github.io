@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 export const volumeStruct = gpu.struct({
     min: gpu.f32.x3,
     max: gpu.f32.x3,

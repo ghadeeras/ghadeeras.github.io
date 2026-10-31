@@ -1,6 +1,6 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import { gpu, wgl } from "lumen";
+import * as gpu from "lumen";
 import { View } from "./view.js";
 import { glWebGPU } from "webgxx";
 
@@ -152,7 +152,7 @@ export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: nu
     const device = await gpu.Device.instance()
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl")
     const shaderModule = await device.shaderModule( { 
-        code: gpu.renderingShaders.fullScreenPass(code), 
+        code: gpu.wgsl.renderingShaders.fullScreenPass(code), 
         label: "mandelbrot" 
     })
     return new ViewGPU(device, canvasId, shaderModule, shaderModule, center, scale)
@@ -163,11 +163,11 @@ export async function viewGL(canvasId: string, center: aether.Vec<2>, scale: num
     const device = await gpu.Device.instance({}, glWebGPU(canvas))
     const code = await gear.fetchTextFile("/shaders/mandelbrot.frag")
     const vertexShaderModule = await device.shaderModule( { 
-        code: wgl.vertexShaders.fullScreenPass, 
+        code: gpu.glsl.vertexShaders.fullScreenPass, 
         label: "mandelbrot" 
     })
     const fragmentShaderModule = await device.shaderModule( { 
-        code: wgl.fragmentShaders.fullScreenPass(code), 
+        code: gpu.glsl.fragmentShaders.fullScreenPass(code), 
         label: "mandelbrot" 
     })
     return new ViewGPU(device, canvasId, vertexShaderModule, fragmentShaderModule, center, scale)

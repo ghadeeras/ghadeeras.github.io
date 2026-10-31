@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import * as gear from "gear";
 export const fieldParamsStruct = gpu.struct({
     matrix: gpu.mat3x3,
@@ -35,7 +35,7 @@ export async function newGPUToy(device) {
     const shaderCode = await gear.fetchTextFile("/shaders/field-renderer.wgsl");
     const shaders = await device.shaderModules({
         sampler: { path: "shaders/field-sampler.wgsl" },
-        renderer: { code: gpu.renderingShaders.fullScreenPass(shaderCode) },
+        renderer: { code: gpu.wgsl.renderingShaders.fullScreenPass(shaderCode) },
     });
     const pipelines = {
         sampler: await pipelineLayouts.sampler.computePipeline({ module: shaders.sampler })

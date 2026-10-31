@@ -1,5 +1,5 @@
 import * as renderer from "./gltf/gltf.renderer.js";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { failure } from "./utils.js";
 export const gltfMatricesStruct = gpu.struct({
     matrix: gpu.mat4x4,

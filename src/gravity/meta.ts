@@ -1,4 +1,4 @@
-import { gpu } from 'lumen'
+import * as gpu from "lumen"
 import { BaseTexture } from './base.texture.js'
 
 export type BodyDescriptionStruct = gpu.DataTypeOf<typeof bodyDescription>

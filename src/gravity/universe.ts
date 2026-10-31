@@ -1,4 +1,4 @@
-import { gpu } from 'lumen'
+import * as gpu from "lumen"
 import * as meta from './meta.js'
 
 export class Universe {

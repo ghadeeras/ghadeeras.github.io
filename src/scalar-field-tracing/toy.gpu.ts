@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as gear from "gear"
 
 export type FieldParamsStruct = gpu.DataTypeOf<typeof fieldParamsStruct>
@@ -54,7 +54,7 @@ export async function newGPUToy(device: gpu.Device) {
     const shaderCode = await gear.fetchTextFile("/shaders/field-renderer.wgsl")
     const shaders = await device.shaderModules({
         sampler: { path: "shaders/field-sampler.wgsl" },
-        renderer: { code: gpu.renderingShaders.fullScreenPass(shaderCode) },
+        renderer: { code: gpu.wgsl.renderingShaders.fullScreenPass(shaderCode) },
     })
 
     const pipelines = {

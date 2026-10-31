@@ -1,5 +1,5 @@
 import * as gear from "gear"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import { FlattenedSierpinski } from "./model.js"
 import { glWebGPU } from "webgxx";
 

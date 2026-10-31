@@ -1,7 +1,7 @@
 import * as gltf from "./gltf/gltf.js";
 import * as graph from "./gltf/gltf.graph.js";
 import * as renderer from "./gltf/gltf.renderer.js";
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import { Resource } from "lumen";
 import { failure } from "./utils.js";
 

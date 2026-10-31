@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as cmn from "./common.js"
 
 export class BackgroundRenderer {
@@ -89,7 +89,7 @@ function groupLayouts(viewGroupLayout: cmn.GroupLayouts["view"]) {
     }
 }
 
-const shader = gpu.renderingShaders.fullScreenPassVertex(/* wgsl */ `
+const shader = gpu.wgsl.renderingShaders.fullScreenPassVertex(/* wgsl */ `
 
     ${cmn.commonWGSL}
 

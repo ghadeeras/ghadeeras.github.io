@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import * as gear from "gear";
 export function init() {
     window.onload = doInit;

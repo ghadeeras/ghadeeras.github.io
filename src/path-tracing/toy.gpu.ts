@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 
 export type UniformsStruct = gpu.DataTypeOf<typeof uniformsStruct>
 export type VolumeStruct = gpu.DataTypeOf<typeof volumeStruct>

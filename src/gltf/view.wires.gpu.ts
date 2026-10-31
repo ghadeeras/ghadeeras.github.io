@@ -1,5 +1,5 @@
 import * as aether from "aether"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import { View, ViewFactory } from "./view.js";
 import { NormalsRenderer } from "./normals.gpu.js";
 import { NormalsFilter } from "./filter.gpu.js";

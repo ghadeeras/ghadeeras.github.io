@@ -1,6 +1,6 @@
 import * as gear from "gear"
 import * as aether from "aether"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
 import { Color, toHex } from "../utils/color.js"
 

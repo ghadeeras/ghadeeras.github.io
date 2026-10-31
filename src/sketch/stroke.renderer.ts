@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as cmn from "./common.js"
 
 export class Renderer {

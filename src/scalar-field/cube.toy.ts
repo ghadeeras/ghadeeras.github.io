@@ -1,6 +1,6 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as dragging from "../utils/dragging.js"
 import { glWebGPU } from "webgxx"
 

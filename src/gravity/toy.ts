@@ -1,7 +1,7 @@
 import * as aether from "aether"
 import * as gear from "gear"
 import * as dragging from '../utils/dragging.js'
-import { gpu } from 'lumen'
+import * as gpu from "lumen"
 import { Universe } from './universe.js'
 import * as meshRenderer from './renderer.mesh.js'
 import * as pointsRenderer from './renderer.points.js'

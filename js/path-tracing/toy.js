@@ -1,4 +1,4 @@
-import { gpu } from "lumen";
+import * as gpu from "lumen";
 import * as aether from "aether";
 import * as gear from "gear";
 import { RotationDragging } from "../utils/dragging.js";

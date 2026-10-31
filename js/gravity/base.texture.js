@@ -1,4 +1,4 @@
-import { gpu } from 'lumen';
+import * as gpu from "lumen";
 export class BaseTexture {
     constructor(app, target) {
         this.app = app;
@@ -28,7 +28,7 @@ export class BaseTexture {
         });
     }
 }
-BaseTexture.shaderCode = gpu.renderingShaders.fullScreenPassVertex(/*wgsl*/ `
+BaseTexture.shaderCode = gpu.wgsl.renderingShaders.fullScreenPassVertex(/*wgsl*/ `
         
         @group(0) @binding(0)
         var textureSampler: sampler;

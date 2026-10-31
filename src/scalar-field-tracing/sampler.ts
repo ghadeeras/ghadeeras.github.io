@@ -1,4 +1,4 @@
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import * as aether from "aether"
 import { GPUToy, SamplerGroup, SamplerPipeline, fieldParamsStruct } from "./toy.gpu.js";
 

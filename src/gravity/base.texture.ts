@@ -1,9 +1,9 @@
-import { gpu } from 'lumen';
+import * as gpu from "lumen";
 import * as meta from './meta.js';
 
 export class BaseTexture {
 
-    static shaderCode = gpu.renderingShaders.fullScreenPassVertex(/*wgsl*/`
+    static shaderCode = gpu.wgsl.renderingShaders.fullScreenPassVertex(/*wgsl*/`
         
         @group(0) @binding(0)
         var textureSampler: sampler;

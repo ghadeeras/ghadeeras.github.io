@@ -1,6 +1,6 @@
 import * as aether from "aether"
 import * as gear from "gear"
-import { gpu } from "lumen"
+import * as gpu from "lumen"
 import { Picker } from "./view.js"
 import { GPUView } from "./view.gpu.js"
 
