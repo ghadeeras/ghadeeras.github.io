@@ -39,7 +39,7 @@ export type XRealitySessionListeners = {
 
 export type XRealityFrame = {
     time: number
-    frame: XRFrame
+    wrapped: XRFrame
     layer: XRWebGLLayer
     spaceType: XRReferenceSpaceType
     space: XRReferenceSpace
@@ -140,7 +140,7 @@ export class XRealitySession {
                 continue
             }
             this.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height)
-            renderer({ time, frame, layer, spaceType, space, viewerPose, view })
+            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view })
         }
     }
 

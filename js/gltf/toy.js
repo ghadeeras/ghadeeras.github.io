@@ -34,7 +34,7 @@ class GLTFToy {
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4));
         this.zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2));
         this.colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging);
-        this.lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.mul(aether.mat4.scaling(1, 1, -1), this.view.viewMatrix)));
+        this.lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.scaling(1, 1, -1)));
         this.roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this.metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging);
         this._perspectives = [];
@@ -42,6 +42,12 @@ class GLTFToy {
         this._cameraIndex = 0;
         this._model = null;
         this.xrSession = null;
+        this.xrMatrix = aether.mat4.from([
+            1, 0, 0.0, 0,
+            0, 1, 0.0, 0,
+            0, 0, -0.5, 0,
+            0, 0, 0.5, 1
+        ]);
         const modelIndex = Math.abs(models.findIndex(([n, _]) => n === "DamagedHelmet"));
         models.forEach(([modelName, _], i) => {
             const option = new Option(modelName, modelName, i === modelIndex, i === modelIndex);
@@ -148,15 +154,15 @@ class GLTFToy {
         this.cameraElement.innerText = `${this._cameraIndex + 1} / ${this._perspectives.length}`;
     }
     get lightMatrix() {
-        return aether.mat4.crossProdRotation([0, 0, 1], this.view.lightPosition);
+        return aether.mat4.crossProdRotation([0, 0, 1], aether.vec3.from(this.view.lightPosition));
     }
     set lightMatrix(m) {
-        this.view.lightPosition = aether.vec3.from(m[2]);
+        this.view.lightPosition = m[2];
     }
     async toggleXR(controller) {
         const gl = this.view.xrContext;
         if (this.xrSwitch !== null) {
-            if (this.xrSession) {
+            if (this.xrSession !== null) {
                 this.xrSession.end();
                 this.xrSession = null;
             }
@@ -181,21 +187,25 @@ class GLTFToy {
         xrSession.startAnimation(frame => this.xrRender(frame));
     }
     xrRender(frame) {
-        const projectionMat = aether.mat4.from(frame.view.projectionMatrix);
-        projectionMat.forEach(c => c[2] = -c[2]); // reverse Z
-        this.view.projectionMatrix = projectionMat;
-        this.view.viewMatrix = aether.mat4.from(frame.view.transform.inverse.matrix);
-        const inputSource = [...frame.frame.session.inputSources]
+        const projectionMat = aether.mat4.mul(this.xrMatrix, aether.mat4.from(frame.view.projectionMatrix));
+        const viewMat = aether.mat4.from(frame.view.transform.inverse.matrix);
+        const modelMat = this._model ? this._model.scene.matrix : aether.mat4.identity();
+        const poses = [...frame.wrapped.session.inputSources]
             .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
-            .find(s => s.gripSpace);
-        const pose = inputSource
-            ? inputSource.gripSpace
-                ? frame.frame.getPose(inputSource.gripSpace, frame.space)
-                : undefined
-            : undefined;
-        this.view.modelMatrix = aether.mat4.mul(pose
-            ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
-            : aether.mat4.translation([0, 0, -4]), this._model ? this._model.scene.matrix : aether.mat4.identity());
+            .map(s => frame.wrapped.getPose(s.targetRaySpace, frame.space))
+            .map((p, i) => p !== undefined
+            ? aether.mat4.from(p.transform.matrix)
+            : aether.mat4.translation([0, 0, i === 0 ? -2 : 100]));
+        const modelPose = poses[0] !== undefined
+            ? aether.mat4.mul(poses[0], aether.mat4.scaling(0.125, 0.125, 0.125))
+            : aether.mat4.translation([0, 0, -2]);
+        const lightPose = poses[1] !== undefined
+            ? aether.mat4.mul(viewMat, poses[1])
+            : aether.mat4.translation([0, 0, 100]);
+        this.view.projectionMatrix = projectionMat;
+        this.view.viewMatrix = viewMat;
+        this.view.modelMatrix = aether.mat4.mul(modelPose, modelMat);
+        this.view.lightPosition = lightPose[3];
         this.view.draw(frame.viewerPose.views.indexOf(frame.view));
     }
     snapshot(controller) {
@@ -203,6 +213,7 @@ class GLTFToy {
             projectionMat: this.view.projectionMatrix,
             viewMat: this.view.viewMatrix,
             modelMat: this.view.modelMatrix,
+            lightPosition: this.view.lightPosition,
             cameraIndex: this.cameraIndex,
             animationPaused: controller.animationPaused
         };
@@ -211,6 +222,7 @@ class GLTFToy {
         this.view.projectionMatrix = snapshot.projectionMat;
         this.view.viewMatrix = snapshot.viewMat;
         this.view.modelMatrix = snapshot.modelMat;
+        this.view.lightPosition = snapshot.lightPosition;
         this.cameraIndex = snapshot.cameraIndex;
         controller.animationPaused = snapshot.animationPaused;
         this.view.resize();

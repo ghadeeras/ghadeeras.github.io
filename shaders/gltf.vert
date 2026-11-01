@@ -36,6 +36,7 @@ out vec2 fragCoordMetallicRoughness;
 out vec2 fragCoordEmissive;
 out vec2 fragCoordOcclusion;
 out vec2 fragCoordNormal;
+out vec3 lightDirection;
 
 void main() {
     mat4 m = globalPositionsMat * positionsMat;
@@ -46,7 +47,9 @@ void main() {
     fragCoordMetallicRoughness = coordMetallicRoughness;
     fragCoordEmissive = coordEmissive;         
     fragCoordOcclusion = coordOcclusion;        
-    fragCoordNormal = coordNormal;           
+    fragCoordNormal = coordNormal;
+
+    lightDirection = lightPosition.xyz - lightPosition.w * fragPosition;
 
     gl_Position = mat4(
         1, 0, 0, 0,

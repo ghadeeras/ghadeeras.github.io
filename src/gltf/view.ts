@@ -28,7 +28,7 @@ export interface View {
 
     set modelColor(color: aether.Vec4)
 
-    set lightPosition(p: aether.Vec<3>)
+    set lightPosition(p: aether.Vec<4>)
 
     set roughnessFactor(s: number)
 

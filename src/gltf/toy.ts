@@ -43,6 +43,7 @@ type Snapshot = {
     projectionMat: aether.Mat4
     viewMat: aether.Mat4
     modelMat: aether.Mat4
+    lightPosition: aether.Vec4
     cameraIndex: number;
     animationPaused: boolean;
 };
@@ -136,7 +137,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     readonly scaleDragging = gear.loops.draggingTarget(gear.property(this.view, "modelMatrix"), dragging.ScaleDragging.dragger(4))
     readonly zoomDragging = gear.loops.draggingTarget(gear.property(this, "projectionAndViewMatrices"), dragging.ZoomDragging.dragger(2))
     readonly colorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "modelColor"), positionToColor), dragging.positionDragging)
-    readonly lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.mul(aether.mat4.scaling(1, 1, -1), this.view.viewMatrix)))
+    readonly lightPositionDragging = gear.loops.draggingTarget(gear.property(this, "lightMatrix"), dragging.RotationDragging.dragger(() => aether.mat4.scaling(1, 1, -1)))
     readonly roughnessFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "roughnessFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
     readonly metallicFactorDragging = gear.loops.draggingTarget(mapped(gear.property(this.view, "metallicFactor"), ([_, y]) => (y + 1) / 2), dragging.positionDragging)
 
@@ -274,17 +275,17 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
     
     get lightMatrix(): aether.Mat4 {
-        return aether.mat4.crossProdRotation([0, 0, 1], this.view.lightPosition)
+        return aether.mat4.crossProdRotation([0, 0, 1], aether.vec3.from(this.view.lightPosition))
     }
 
     set lightMatrix(m : aether.Mat4) {
-        this.view.lightPosition = aether.vec3.from(m[2])
+        this.view.lightPosition = m[2]
     }
 
     private async toggleXR(controller: gear.loops.LoopController) {
         const gl = this.view.xrContext
         if (this.xrSwitch !== null) {
-            if (this.xrSession) {
+            if (this.xrSession !== null) {
                 this.xrSession.end()
                 this.xrSession = null
             } else if (gl) {
@@ -310,33 +311,45 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         xrSession.startAnimation(frame => this.xrRender(frame));
     }
 
+    private xrMatrix = aether.mat4.from([
+        1, 0,  0.0, 0,
+        0, 1,  0.0, 0,
+        0, 0, -0.5, 0,
+        0, 0,  0.5, 1
+    ])
+
     private xrRender(frame: xr.XRealityFrame) {
-        const projectionMat = aether.mat4.from(frame.view.projectionMatrix);
-        projectionMat.forEach(c => c[2] = -c[2]); // reverse Z
-        this.view.projectionMatrix = projectionMat;
-        this.view.viewMatrix = aether.mat4.from(frame.view.transform.inverse.matrix);
-        const inputSource = [...frame.frame.session.inputSources]
+        const projectionMat = aether.mat4.mul(this.xrMatrix, aether.mat4.from(frame.view.projectionMatrix));
+        const viewMat = aether.mat4.from(frame.view.transform.inverse.matrix);
+        const modelMat = this._model ? this._model.scene.matrix : aether.mat4.identity();
+
+        const poses = [...frame.wrapped.session.inputSources]
             .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
-            .find(s => s.gripSpace);
-        const pose = inputSource
-            ? inputSource.gripSpace
-                ? frame.frame.getPose(inputSource.gripSpace, frame.space)
-                : undefined
-            : undefined;
-        this.view.modelMatrix = aether.mat4.mul(
-            pose
-                ? aether.mat4.mul(aether.mat4.from(pose.transform.matrix), aether.mat4.scaling(0.125, 0.125, 0.125))
-                : aether.mat4.translation([0, 0, -4]),
-            this._model ? this._model.scene.matrix : aether.mat4.identity()
-        );
+            .map(s => frame.wrapped.getPose(s.targetRaySpace, frame.space))
+            .map((p, i) => p !== undefined 
+                ? aether.mat4.from(p.transform.matrix) 
+                : aether.mat4.translation([0, 0, i === 0 ? -2 : 100])
+            )
+        const modelPose = poses[0] !== undefined 
+            ? aether.mat4.mul(poses[0], aether.mat4.scaling(0.125, 0.125, 0.125)) 
+            : aether.mat4.translation([0, 0, -2])
+        const lightPose = poses[1] !== undefined 
+            ? aether.mat4.mul(viewMat, poses[1]) 
+            : aether.mat4.translation([0, 0, 100])
+
+        this.view.projectionMatrix = projectionMat;
+        this.view.viewMatrix = viewMat;
+        this.view.modelMatrix = aether.mat4.mul(modelPose, modelMat);
+        this.view.lightPosition = lightPose[3]
         this.view.draw(frame.viewerPose.views.indexOf(frame.view));
     }
 
-    private snapshot(controller: gear.loops.LoopController) {
+    private snapshot(controller: gear.loops.LoopController): Snapshot {
         return {
             projectionMat: this.view.projectionMatrix,
             viewMat: this.view.viewMatrix,
             modelMat: this.view.modelMatrix,
+            lightPosition: this.view.lightPosition,
             cameraIndex: this.cameraIndex,
             animationPaused: controller.animationPaused
         };
@@ -346,6 +359,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.projectionMatrix = snapshot.projectionMat;
         this.view.viewMatrix = snapshot.viewMat;
         this.view.modelMatrix = snapshot.modelMat;
+        this.view.lightPosition = snapshot.lightPosition;
         this.cameraIndex = snapshot.cameraIndex;
         controller.animationPaused = snapshot.animationPaused;
         this.view.resize()

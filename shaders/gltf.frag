@@ -6,6 +6,7 @@ in vec2 fragCoordMetallicRoughness;
 in vec2 fragCoordEmissive;
 in vec2 fragCoordOcclusion;
 in vec2 fragCoordNormal;
+in vec3 lightDirection;
 
 out vec4 fragColor; 
 
@@ -110,7 +111,7 @@ const float ambientLight = 0.0625 * 0.0625;
 
 vec4 calc_color(vec3 position, vec3 normal, vec3 tangent, vec4 tex_base_color_factor) {
     vec3 view_dir = normalize(-position);
-    vec3 light_dir = normalize(lightPosition.xyz);
+    vec3 light_dir = normalize(lightDirection);
 
     vec4 tex_metallic_roughness = texture(metallic_roughness_texture_2_3_2_4, fragCoordMetallicRoughness);
     vec4 tex_emissive_factor = texture(emissive_factor_texture_2_5_2_6, fragCoordEmissive);

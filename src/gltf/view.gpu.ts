@@ -4,7 +4,7 @@ import { gltf, gltf_gpu } from "../djee/index.js"
 import { View, ViewFactory } from "./view.js";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
-import { glWebGPU } from "webgxx";
+import { glWebGPU, xrContext } from "webgxx";
 
 export type ModelIndexEntry = {
     name: string,
@@ -64,8 +64,6 @@ export class GPUView implements View {
     private _viewMatrix = aether.mat4.identity()
     private _modelMatrix = aether.mat4.identity()
 
-    private _lightPosition = aether.vec4.of(0, 0, 1, 0)
-
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective()
 
     constructor(
@@ -84,7 +82,7 @@ export class GPUView implements View {
             label: "uniforms",
             usage: ["UNIFORM"], 
             data: uniformsStruct.view([{
-                lightPos: this._lightPosition,
+                lightPos: aether.vec4.of(0, 0, 1, 0),
                 mat: {
                     positions: aether.mat4.identity(),
                     normals: aether.mat4.identity(),
@@ -159,12 +157,11 @@ export class GPUView implements View {
     }
 
     get lightPosition() {
-        return aether.vec3.from(this._lightPosition)
+        return this.uniforms.get(uniformsStruct.members.lightPos)
     }
 
-    set lightPosition(p: [number, number, number]) {
-        this._lightPosition = [...p, 0]
-        this.uniforms.set(uniformsStruct.members.lightPos, aether.mat4.apply(this._viewMatrix, this._lightPosition))
+    set lightPosition(p: [number, number, number, number]) {
+        this.uniforms.set(uniformsStruct.members.lightPos, p)
     }
 
     set roughnessFactor(r: number) {
@@ -211,7 +208,6 @@ export class GPUView implements View {
         const model = await gltf.graph.Model.create(modelUri);
         this.perspective = model.scene.perspectives[0]
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio)
-        this._lightPosition = aether.mat4.apply(aether.mat4.inverse(this.perspective.matrix), this.uniforms.get(uniformsStruct.members.lightPos))
         this.viewMatrix = this.perspective.matrix
         this.modelMatrix = this.perspective.modelMatrix
         this.resetModelViewMatrix()
@@ -249,22 +245,26 @@ export class GPUView implements View {
     draw() {
         this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]))
         this.device.enqueueCommands("render", encoder => {
-            const skyColorAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true)
-            const colorAttachment: GPURenderPassColorAttachment = {
-                ...skyColorAttachment,
-                loadOp: "load",
-            }
-            skyColorAttachment.storeOp = "store"
-            const passDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [colorAttachment],
+            const clearAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
+            const clearAndStoreAttachment: GPURenderPassColorAttachment = { ...clearAttachment, storeOp: "store" }
+            const noClearAttachment: GPURenderPassColorAttachment = { ...clearAttachment, loadOp: "load" }
+            
+            const spotLight = this.lightPosition[3] !== 0; // No sky rendering if light is spot light
+
+            const skyPassDescriptor = { colorAttachments: [clearAndStoreAttachment] };
+            const modelPassDescriptor: GPURenderPassDescriptor = {
+                colorAttachments: [spotLight ? clearAttachment : noClearAttachment],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
             };
-            encoder.renderPass({ colorAttachments: [skyColorAttachment] }, pass => {
-                pass.setPipeline(this.skyPipeline)
-                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
-                pass.draw(3)
-            })
-            encoder.renderPass(passDescriptor, pass => {
+
+            if (!spotLight) {
+                encoder.renderPass(skyPassDescriptor, pass => {
+                    pass.setPipeline(this.skyPipeline)
+                    this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
+                    pass.draw(3)
+                })
+            }
+            encoder.renderPass(modelPassDescriptor, pass => {
                 if (this.renderer !== null) {
                     pass.setBindGroup(0, this.uniformsGroup.wrapped)
                     this.renderer.render(pass)
@@ -274,7 +274,7 @@ export class GPUView implements View {
     }
 
     get xrContext(): WebGL2RenderingContext | null {
-        return null
+        return xrContext(this.device.wrapped)
     }
 
 }
@@ -294,7 +294,7 @@ export async function newGLViewFactory(canvasId: string): Promise<ViewFactory> {
     if (gpuParam && gpuParam?.toUpperCase() == 'N') {
         throw new Error("Unsupported by choice")
     }
-    const device = await gpu.Device.instance({}, glWebGPU(document.getElementById(canvasId) as HTMLCanvasElement))
+    const device = await gpu.Device.instance({ xrCompatible: true }, glWebGPU(document.getElementById(canvasId) as HTMLCanvasElement))
     const vertexShader = await device.shaderModule({ path: "shaders/gltf.vert" })
     const fragmentShader = await device.shaderModule({ path: "shaders/gltf.frag" })
     const skyVertexShader = await device.shaderModule({ path: "shaders/gltf.sky.vert" })

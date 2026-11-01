@@ -95,7 +95,7 @@ export class XRealitySession {
                 continue;
             }
             this.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height);
-            renderer({ time, frame, layer, spaceType, space, viewerPose, view });
+            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view });
         }
     }
 }

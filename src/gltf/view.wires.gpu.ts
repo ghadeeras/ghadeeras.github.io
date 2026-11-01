@@ -31,7 +31,7 @@ export class GPUView implements View {
     set modelColor(color: [number, number, number, number]) {
     }
 
-    set lightPosition(p: [number, number, number]) {
+    set lightPosition(p: [number, number, number, number]) {
     }
 
     set lightRadius(r: number) {
