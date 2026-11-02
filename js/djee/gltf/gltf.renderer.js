@@ -1,6 +1,6 @@
-import * as aether from "aether";
-import { failure } from "../utils.js";
+import { mat4 } from "aether";
 import * as graph from "../gltf/gltf.graph.js";
+import { failure } from "../utils.js";
 // Layout of Zero Vertex Buffer (for missing vertex attributes)
 const ZERO_VERTEX_BUFFER_STRIDE = 22 * 4;
 const ZERO_VERTEX_BUFFER_LAYOUT = {
@@ -230,8 +230,8 @@ function u8Shade(s) {
 }
 function collectNodeLevelData(scene) {
     const matrix = {
-        matrix: aether.mat4.identity(),
-        antiMatrix: aether.mat4.identity()
+        matrix: mat4.identity(),
+        antiMatrix: mat4.identity()
     };
     const resources = {
         matrices: [],
@@ -248,8 +248,8 @@ function collectNodeLevelData(scene) {
 }
 function doCollectNodeLevelData(node, parentMatrix, parentIndex, resources) {
     const matrix = node.isIdentityMatrix ? parentMatrix : {
-        matrix: aether.mat4.mul(parentMatrix.matrix, node.matrix),
-        antiMatrix: aether.mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
+        matrix: mat4.mul(parentMatrix.matrix, node.matrix),
+        antiMatrix: mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
     };
     let index = node.isIdentityMatrix ? parentIndex : null;
     if (index === null && node.meshes.length > 0) {

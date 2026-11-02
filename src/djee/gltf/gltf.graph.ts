@@ -1,7 +1,8 @@
-import * as gltf from './gltf.js'
-import * as utils from '../utils.js'
-import * as aether from "aether"
+import type { Mat4, Vec3, Vec4 } from "aether"
+import { isIdentity, mat4, PerspectiveProjection, vec3, vec4 } from "aether"
 import * as aetherX from '../../utils/aether.js'
+import * as utils from '../utils.js'
+import * as gltf from './gltf.js'
 
 export class Model {
 
@@ -78,7 +79,7 @@ export class Scene extends IdentifiableObject {
 
     readonly nodes: Node[] = []
     readonly range: aetherX.Range3D
-    readonly matrix: aether.Mat4
+    readonly matrix: Mat4
     readonly perspectives: Perspective[]
 
     constructor(scene: gltf.Scene, i: number, nodes: Node[], legacyPerspective: boolean) {
@@ -101,8 +102,8 @@ export class Node extends IdentifiableObject {
     readonly cameras: [Camera] | []
     readonly meshes: [Mesh] | []
     readonly children: Node[]
-    readonly matrix: aether.Mat4
-    readonly antiMatrix: aether.Mat4
+    readonly matrix: Mat4
+    readonly antiMatrix: Mat4
     readonly isIdentityMatrix: boolean
     readonly range: aetherX.Range3D
 
@@ -110,7 +111,7 @@ export class Node extends IdentifiableObject {
         super(`node#${i}`)
         this.matrix = gltf.matrixOf(node)
         this.antiMatrix = comatrix(this.matrix)
-        this.isIdentityMatrix = aether.isIdentity(this.matrix)
+        this.isIdentityMatrix = isIdentity(this.matrix)
         this.cameras = node.camera !== undefined ? [cameras[node.camera]] : []
         this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : []
         this.children = node.children !== undefined ? node.children.map(child => nodes[child]()) : []
@@ -159,9 +160,9 @@ export type TextureImage = {
 
 export class Perspective {
 
-    readonly antiMatrix: aether.Mat4
+    readonly antiMatrix: Mat4
     
-    constructor(readonly camera: Camera, readonly matrix: aether.Mat4, readonly modelMatrix = aether.mat4.identity()) {
+    constructor(readonly camera: Camera, readonly matrix: Mat4, readonly modelMatrix = mat4.identity()) {
         this.antiMatrix = comatrix(matrix)
     }
 
@@ -172,9 +173,9 @@ export abstract class Camera {
     constructor(readonly zNear: number, readonly zFar: number | null) {
     }
 
-    abstract matrix(aspectRatio?: number, mag?: number): aether.Mat4
+    abstract matrix(aspectRatio?: number, mag?: number): Mat4
 
-    abstract inverseMatrix(aspectRatio?: number, mag?: number): aether.Mat4
+    abstract inverseMatrix(aspectRatio?: number, mag?: number): Mat4
 
     static create(camera: gltf.Camera, legacy: boolean): Camera {
         return camera.type == "perspective"
@@ -186,22 +187,22 @@ export abstract class Camera {
 
 export class PerspectiveCamera extends Camera {
 
-    readonly projection: aether.PerspectiveProjection
+    readonly projection: PerspectiveProjection
     readonly focalLength: number
     readonly aspectRatio: number
 
     constructor(camera: gltf.PerspectiveCamera["perspective"], legacy = false) {
         super(camera.znear, camera.zfar ?? null)
-        this.projection = new aether.PerspectiveProjection(this.zNear, this.zFar, true, legacy)
+        this.projection = new PerspectiveProjection(this.zNear, this.zFar, true, legacy)
         this.focalLength = 1.0 / Math.tan(0.5 * camera.yfov)
         this.aspectRatio = camera.aspectRatio ?? 1.0
     }
 
-    matrix(aspectRatio: number = this.aspectRatio, mag: number = this.focalLength): aether.Mat4 {
+    matrix(aspectRatio: number = this.aspectRatio, mag: number = this.focalLength): Mat4 {
         return this.projection.matrix(mag, aspectRatio)
     }
 
-    inverseMatrix(aspectRatio: number = this.aspectRatio, mag: number = this.focalLength): aether.Mat4 {
+    inverseMatrix(aspectRatio: number = this.aspectRatio, mag: number = this.focalLength): Mat4 {
         return this.projection.inverseMatrix(mag, aspectRatio)
     }
 
@@ -222,11 +223,11 @@ export class OrthographicCamera extends Camera {
         }, legacy)
     }
 
-    matrix(aspectRatio: number = this.camera.aspectRatio, mag: number = this.camera.focalLength): aether.Mat4 {
+    matrix(aspectRatio: number = this.camera.aspectRatio, mag: number = this.camera.focalLength): Mat4 {
         return this.camera.matrix(aspectRatio, mag)
     }
 
-    inverseMatrix(aspectRatio: number = this.camera.aspectRatio, mag: number = this.camera.focalLength): aether.Mat4 {
+    inverseMatrix(aspectRatio: number = this.camera.aspectRatio, mag: number = this.camera.focalLength): Mat4 {
         return this.camera.inverseMatrix(aspectRatio, mag)
     }
 
@@ -295,8 +296,8 @@ export class Accessor extends IdentifiableObject {
         this.count = accessor.count
         this.type = accessor.type
         this.range = [
-            accessor.min !== undefined ? aether.vec3.from(accessor.min) : aetherX.maxVecEver(), 
-            accessor.max !== undefined ? aether.vec3.from(accessor.max) : aetherX.minVecEver()
+            accessor.min !== undefined ? vec3.from(accessor.min) : aetherX.maxVecEver(), 
+            accessor.max !== undefined ? vec3.from(accessor.max) : aetherX.minVecEver()
         ] 
     }
 
@@ -332,12 +333,12 @@ export class BufferView extends IdentifiableObject {
 
 export class Material extends IdentifiableObject {
     
-    readonly baseColorFactor: aether.Vec4
+    readonly baseColorFactor: Vec4
     readonly baseColorTexture: TextureInfo | null
     readonly metallicFactor: number
     readonly roughnessFactor: number
     readonly metallicRoughnessTexture: TextureInfo | null
-    readonly emissiveFactor: aether.Vec3
+    readonly emissiveFactor: Vec3
     readonly emissiveTexture: TextureInfo | null
     readonly occlusionTexture: TextureInfo | null
     readonly normalTexture: TextureInfo | null
@@ -348,12 +349,12 @@ export class Material extends IdentifiableObject {
     constructor(material: gltf.Material, readonly index: number, textures: Texture[]) {
         super(`material${index}`)
         const pbr = material.pbrMetallicRoughness ?? {}
-        this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1)
+        this.baseColorFactor = pbr.baseColorFactor ?? vec4.fromScalar(1)
         this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0, textures[pbr.baseColorTexture.index]) : null
         this.metallicFactor = pbr.metallicFactor ?? 1.0
         this.roughnessFactor = pbr.roughnessFactor ?? 1.0
         this.metallicRoughnessTexture = pbr.metallicRoughnessTexture !== undefined ? new TextureInfo(pbr.metallicRoughnessTexture.texCoord ?? 0, textures[pbr.metallicRoughnessTexture.index]) : null
-        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0)
+        this.emissiveFactor = material.emissiveFactor ?? vec3.fromScalar(0)
         this.emissiveTexture = material.emissiveTexture !== undefined ? new TextureInfo(material.emissiveTexture.texCoord ?? 0, textures[material.emissiveTexture.index]) : null
         this.occlusionTexture = material.occlusionTexture !== undefined ? new TextureInfo(material.occlusionTexture.texCoord ?? 0, textures[material.occlusionTexture.index]) : null
         this.normalTexture = material.normalTexture !== undefined ? new TextureInfo(material.normalTexture.texCoord ?? 0, textures[material.normalTexture.index]) : null
@@ -370,13 +371,13 @@ export class TextureInfo {
 
 }
 
-function comatrix(matrix: aether.Mat4): aether.Mat4 {
-    const m: aether.Mat4 = [...matrix]
+function comatrix(matrix: Mat4): Mat4 {
+    const m: Mat4 = [...matrix]
     m[3] = [0, 0, 0, 1]  
-    return aether.mat4.comatrix(m)
+    return mat4.comatrix(m)
 }
 
-export function defaultPerspective(legacyPerspective: boolean = false, matrix = aether.mat4.identity()): Perspective {
+export function defaultPerspective(legacyPerspective: boolean = false, matrix = mat4.identity()): Perspective {
     return new Perspective(
         defaultCamera(legacyPerspective),
         defaultViewMatrix(),
@@ -391,8 +392,8 @@ export function defaultCamera(legacyPerspective = false): Camera {
     }, legacyPerspective)
 }
 
-export function defaultViewMatrix(): aether.Mat4 {
-    return aether.mat4.lookAt([2, 2, 2])
+export function defaultViewMatrix(): Mat4 {
+    return mat4.lookAt([2, 2, 2])
 }
 
 function sizeOf(accessor: gltf.Accessor): number {
@@ -428,15 +429,15 @@ function componentSize(componentType: gltf.ScalarType): number {
 function collectScenePerspectives(scene: Scene): Perspective[] {
     const perspectives: Perspective[] = []
     for (const node of scene.nodes) {
-        collectNodePerspectives(node, aether.mat4.identity(), perspectives)
+        collectNodePerspectives(node, mat4.identity(), perspectives)
     }
     return perspectives
 }
 
-function collectNodePerspectives(node: Node, parentMatrix: aether.Mat4, perspectives: Perspective[]) {
-    const matrix = node.isIdentityMatrix ? parentMatrix : aether.mat4.mul(parentMatrix, node.matrix)
+function collectNodePerspectives(node: Node, parentMatrix: Mat4, perspectives: Perspective[]) {
+    const matrix = node.isIdentityMatrix ? parentMatrix : mat4.mul(parentMatrix, node.matrix)
     if (node.cameras[0]) {
-        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix), true)
+        const m = mat4.orthogonal(mat4.inverse(matrix), true)
         perspectives.push(new Perspective(node.cameras[0], m))
     }
     for (const child of node.children) {

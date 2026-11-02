@@ -1,34 +1,34 @@
-import * as aether from "aether"
+import type { Mat4, Vec4 } from "aether"
 import * as gear from "gear"
-import * as gpuView from './view.gpu.js' 
+import * as gpuView from './view.gpu.js'
 
 export interface View {
 
     readonly canvas: HTMLCanvasElement
 
-    readonly matProjection: aether.Mat<4>
+    readonly matProjection: Mat4
 
-    readonly matPositions: aether.Mat<4>
+    readonly matPositions: Mat4
 
-    readonly matNormals: aether.Mat<4>
+    readonly matNormals: Mat4
 
-    matView: aether.Mat<4>
+    matView: Mat4
 
     focalLength: number
 
-    color: aether.Vec<4>
+    color: Vec4
 
-    backgroundColor: aether.Vec<4>
+    backgroundColor: Vec4
 
     shininess: number
 
-    lightPosition: aether.Vec<4>
+    lightPosition: Vec4
 
     lightRadius: number
 
     fogginess: number
 
-    setMatModel(modelPositions: aether.Mat<4>, modelNormals?: aether.Mat<4>): void
+    setMatModel(modelPositions: Mat4, modelNormals?: Mat4): void
 
     setMesh(primitives: GLenum, vertices: Float32Array): void
 
@@ -42,7 +42,7 @@ export interface View {
 
 export interface Picker {
 
-    pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4>
+    pick(matModelViewProjection: Mat4, x: number, y: number): Promise<Vec4>
 
     resize(): void
 

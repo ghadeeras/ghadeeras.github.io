@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { loadScalarFieldModule, mat4, vec3, vec4 } from "aether";
 import * as gear from "gear";
 import * as gpu from "lumen";
-import * as dragging from "../utils/dragging.js";
 import { glWebGPU } from "webgxx";
+import * as dragging from "../utils/dragging.js";
 export const huds = {
     "monitor": "monitor-button"
 };
@@ -44,7 +44,7 @@ class Toy {
         this._value4 = -1;
         this.tetrahedron = newTetrahedron(0, 0, 0, 0);
         this.focalLength = Math.pow(2, 1.5);
-        this.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+        this.matView = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
         this.tetrahedronVerticesCount = 0;
         this.contourSurfaceVerticesCount = 0;
         const groupLayout = this.device.groupLayout({
@@ -96,9 +96,9 @@ class Toy {
         this.uniformsBuffer = this.device.syncBuffer({
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                    matModel: aether.mat4.identity(),
+                    matModel: mat4.identity(),
                     matView: this.matView,
-                    matProjection: aether.mat4.projection(this.focalLength, 1, 0.1, 100),
+                    matProjection: mat4.projection(this.focalLength, 1, 0.1, 100),
                     lightPosition: [2, 2, 2],
                 }])
         });
@@ -120,7 +120,7 @@ class Toy {
             vertexShader: await device.shaderModule({ code: shaders.vertexShaderCode }),
             fragmentShader: await device.shaderModule({ code: shaders.fragmentShaderCode }),
         };
-        const scalarFieldModule = await aether.loadScalarFieldModule();
+        const scalarFieldModule = await loadScalarFieldModule();
         const scalarFieldInstance = scalarFieldModule.newInstance();
         scalarFieldInstance.contourValue = 0.0;
         return new Toy(device, canvas, shaderModules, scalarFieldInstance);
@@ -182,11 +182,11 @@ class Toy {
     }
     resize() {
         const aspectRatio = this.canvas.element.width / this.canvas.element.height;
-        this.matProjection = aether.mat4.projection(4, 0.1, 100, aspectRatio);
+        this.matProjection = mat4.projection(4, 0.1, 100, aspectRatio);
         this.canvas.resize();
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.matProjection, this.matView);
+        return mat4.mul(this.matProjection, this.matView);
     }
     set matProjection(m) {
         this.uniformsBuffer.set(uniformsStruct.members.matProjection, m);
@@ -310,9 +310,9 @@ const mat = [
     [points.point2[0], points.point2[1], points.point2[2], 1],
     [points.point3[0], points.point3[1], points.point3[2], 1]
 ];
-const matInv = aether.mat4.inverse(mat);
+const matInv = mat4.inverse(mat);
 function newTetrahedron(field0, field1, field2, field3) {
-    const gradient = aether.vec3.swizzle(aether.vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
+    const gradient = vec3.swizzle(vec4.prod([field0, field1, field2, field3], matInv), 0, 1, 2);
     const gradients = {
         gradient0: gradient,
         gradient1: gradient,
@@ -383,9 +383,9 @@ function fieldColor(fieldValue, alpha = 0.5) {
     return [(1 + fieldValue) / m, 0, (1 - fieldValue) / m, alpha];
 }
 function normalFrom(p1, p2, p3) {
-    const v12 = aether.vec3.sub(p2, p1);
-    const v23 = aether.vec3.sub(p3, p2);
-    return aether.vec3.unit(aether.vec3.cross(v12, v23));
+    const v12 = vec3.sub(p2, p1);
+    const v23 = vec3.sub(p3, p2);
+    return vec3.unit(vec3.cross(v12, v23));
 }
 function mapped(property, mapper) {
     const pos = [[0, 0]];

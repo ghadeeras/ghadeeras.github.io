@@ -1,6 +1,7 @@
-import * as aether from "aether"
+import type { Vec2, Vec3, Vec4 } from "aether"
+import { Bary, vec2, vec3, vec4 } from "aether"
 import { required } from "gear"
-import { Color, fromHex, hueOf, toHex } from "./color.js"
+import { Color, fromHex, hueOf } from "./color.js"
 
 function template(id: string) { return /*html*/`
 <div id="${id}-palette">
@@ -34,8 +35,8 @@ function template(id: string) { return /*html*/`
 
 export class Palette {
 
-    private callback: (result: aether.Vec4 | Error) => void = () => {}
-    private oldColor: aether.Vec4 = [0, 0, 0, 0]
+    private callback: (result: Vec4 | Error) => void = () => {}
+    private oldColor: Vec4 = [0, 0, 0, 0]
     private newColor: Color = new Color([0, 0, 0, 0], () => this.refresh())
 
     private colorInput = required(document.getElementById(this.parent.id + "-input")) as HTMLInputElement
@@ -58,7 +59,7 @@ export class Palette {
         okButton.onclick = () => this.callback(this.newColor.rgba)
         this.parent.oncancel = cancelButton.onclick = () => this.cancel()
         this.shadeCanvas.onpointerup = () => this.mouseDownTarget = null
-        this.onDrag(this.hueCanvas, (({ x, y }) => { this.newColor.hue = aether.vec3.from(hue(x, y, c => [...hueOf(aether.vec3.max(c, [0, 0, 0])), 1])) }))
+        this.onDrag(this.hueCanvas, (({ x, y }) => { this.newColor.hue = vec3.from(hue(x, y, c => [...hueOf(vec3.max(c, [0, 0, 0])), 1])) }))
         this.onDrag(this.shadeCanvas, (({ x, y: _ }) => { this.newColor.shade = 0.05 * (x + 10) }))
         this.onDrag(this.alphaCanvas, (({ x, y: _ }) => { this.newColor.alpha = 0.05 * (x + 10) }))
         this.colorInput.onkeydown = e => {
@@ -80,7 +81,7 @@ export class Palette {
         return new Palette(p, hueCanvas, element(id + "-hue-slider"), shadeCanvas, element(id + "-shade-slider"), alphaCanvas, element(id + "-alpha-slider"), visibilitySetter)
     }
 
-    pick(currentColor: aether.Vec4): Promise<aether.Vec4> {
+    pick(currentColor: Vec4): Promise<Vec4> {
         return new Promise((resolve, reject) => {
             this.newColor.rgba = this.oldColor = currentColor
             this.visibilitySetter(true)
@@ -121,7 +122,7 @@ export class Palette {
         this.colorInput.value = this.newColor.hex
 
         const h = this.newColor.hue
-        const xy = palette2D.fromColor(aether.vec3.scale(h, 1 / (h[0] + h[1] + h[2])))
+        const xy = palette2D.fromColor(vec3.scale(h, 1 / (h[0] + h[1] + h[2])))
         const c = canvasCoords(this.hueCanvas, ...xy)
         this.hueSliderDiv.style.left = `${c.x - this.hueSliderDiv.clientWidth / 2}px`
         this.hueSliderDiv.style.top = `${c.y - this.hueSliderDiv.clientHeight / 2}px`
@@ -145,25 +146,25 @@ async function newCanvas(id: string, data: ImageData): Promise<HTMLCanvasElement
     return result
 }
 
-function huesTriangle(defaultColor: aether.Vec4 = [0, 0, 0, 0]): ImageData {
+function huesTriangle(defaultColor: Vec4 = [0, 0, 0, 0]): ImageData {
     return imageData(360, 320, (x, y) => hue(x, y, () => defaultColor));
 }
 
 function shadesBar(): ImageData {
     return imageData(360, 36, (x, _) => {
         const s = 0.05 * (x + 10)
-        return aether.vec4.of(s, s, s, 1.0)
+        return vec4.of(s, s, s, 1.0)
     })
 }
 
 function alphaBar(): ImageData {
     return imageData(360, 36, (x, _) => {
         const s = 0.05 * (x + 10)
-        return aether.vec4.of(s, s, s, s)
+        return vec4.of(s, s, s, s)
     })
 }
 
-function imageData(width: number, height: number, shader: (x: number, y: number) => aether.Vec4): ImageData {
+function imageData(width: number, height: number, shader: (x: number, y: number) => Vec4): ImageData {
     const rawData = new Uint8ClampedArray(width * height * 4)
     const result = new ImageData(rawData, width, height, { colorSpace: "srgb", pixelFormat: "rgba-unorm8" })
     const s = 1 / (Math.min(width, height) - 1)
@@ -201,7 +202,7 @@ function canvasCoords(canvas: HTMLCanvasElement, cx: number, cy: number) {
     return { x, y }
 }
 
-function hue(x: number, y: number, defaultColor: (c: aether.Vec3) => aether.Vec4): aether.Vec4 {
+function hue(x: number, y: number, defaultColor: (c: Vec3) => Vec4): Vec4 {
     let color = palette2D.toColor([x, y])
     return color.every(v => v >= 0) 
         ? [...hueOf(color), 1]
@@ -210,23 +211,23 @@ function hue(x: number, y: number, defaultColor: (c: aether.Vec3) => aether.Vec4
 
 export class Palette2D {
 
-    private bary: aether.Bary
+    private bary: Bary
 
     constructor(
-        red: aether.Vec2,
-        green: aether.Vec2,
-        blue: aether.Vec2
+        red: Vec2,
+        green: Vec2,
+        blue: Vec2
     ) {
-        this.bary = new aether.Bary([...red, 0], [...green, 0], [...blue, 0])
+        this.bary = new Bary([...red, 0], [...green, 0], [...blue, 0])
     }
 
-    toColor(position: aether.Vec2): aether.Vec3 {
+    toColor(position: Vec2): Vec3 {
         return this.bary.fromCartesian([...position, 0])
     }
 
-    fromColor(color: aether.Vec3): aether.Vec2 {
+    fromColor(color: Vec3): Vec2 {
         const cartesian = this.bary.toCartesian(color)
-        return aether.vec2.from(cartesian)
+        return vec2.from(cartesian)
     }
 
 }

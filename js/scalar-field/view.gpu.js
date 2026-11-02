@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { mat4, PerspectiveProjection, vec4 } from "aether";
 import * as gpu from "lumen";
-import { picker, pickerGL } from "./picker.gpu.js";
 import { glWebGPU } from "webgxx";
-const projection = new aether.PerspectiveProjection(1, null, false, false);
+import { picker, pickerGL } from "./picker.gpu.js";
+const projection = new PerspectiveProjection(1, null, false, false);
 export class GPUView {
     constructor(device, canvasId, vertexShaderModule, fragmentShaderModule) {
         this.device = device;
@@ -19,9 +19,9 @@ export class GPUView {
             lightRadius: gpu.f32,
             fogginess: gpu.f32,
         });
-        this._matPositions = aether.mat4.identity();
-        this._matNormals = aether.mat4.identity();
-        this._matView = aether.mat4.identity();
+        this._matPositions = mat4.identity();
+        this._matNormals = mat4.identity();
+        this._matView = mat4.identity();
         this._lightPosition = [2, 2, 2, 1];
         this._focalLength = 2;
         this._aspectRatio = 1;
@@ -83,13 +83,13 @@ export class GPUView {
             });
         });
     }
-    setMatModel(modelPositions, modelNormals = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions, modelNormals = mat4.comatrix(modelPositions)) {
         this._matPositions = modelPositions;
         this._matNormals = modelNormals;
-        const matPositions = aether.mat4.mul(this.matView, modelPositions);
+        const matPositions = mat4.mul(this.matView, modelPositions);
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            aether.mat4.mul(this.matView, modelNormals);
+            mat4.mul(this.matView, modelNormals);
         this.uniforms.set(this.uniformsStruct.members.mat, {
             positions: matPositions,
             normals: matNormals
@@ -145,7 +145,7 @@ export class GPUView {
     }
     set lightPosition(p) {
         this._lightPosition = p;
-        this.uniforms.set(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p));
+        this.uniforms.set(this.uniformsStruct.members.lightPos, vec4.add(this._matView[3], p));
     }
     get shininess() {
         return this.uniforms.get(this.uniformsStruct.members.shininess);

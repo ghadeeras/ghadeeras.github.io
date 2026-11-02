@@ -1,4 +1,5 @@
-import * as aether from "aether"
+import type { Mat4, Quat, Vec3, Vec4 } from "aether"
+import { mat4, quat } from "aether"
 import { failure } from "../utils.js"
 
 export type Model = {
@@ -49,11 +50,11 @@ export type Node = {
 
     matrix?: number[]
 
-    translation?: aether.Vec3
+    translation?: Vec3
 
-    rotation?: aether.Quat
+    rotation?: Quat
 
-    scale?: aether.Vec3
+    scale?: Vec3
 
 }
 
@@ -165,7 +166,7 @@ export type MeshPrimitive = {
 
 export type Material = {
         pbrMetallicRoughness?: {
-            baseColorFactor?: aether.Vec4,
+            baseColorFactor?: Vec4,
             baseColorTexture?: TextureInfo,
             metallicFactor?: number,
             roughnessFactor?: number,
@@ -174,7 +175,7 @@ export type Material = {
         normalTexture?: TextureInfo,
         occlusionTexture?: TextureInfo,
         emissiveTexture?: TextureInfo,
-        emissiveFactor?: aether.Vec3,
+        emissiveFactor?: Vec3,
         alphaMode?: "OPAQUE" | "MASK" | "BLEND",
         alphaCutoff?: number,
         doubleSided?: boolean
@@ -254,18 +255,18 @@ async function fetchImageBitmap(image: Image, bufferViews: BufferView[], buffers
     }
 }
 
-export function matrixOf(node: Node): aether.Mat4 {
+export function matrixOf(node: Node): Mat4 {
     let matrix = node.matrix !== undefined ?
-        aether.mat4.from(node.matrix) :
-        aether.mat4.identity()
+        mat4.from(node.matrix) :
+        mat4.identity()
     matrix = node.translation !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.translation(node.translation)) :
+        mat4.mul(matrix, mat4.translation(node.translation)) :
         matrix
     matrix = node.rotation !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.cast(aether.quat.toMatrix(node.rotation))) :
+        mat4.mul(matrix, quat.toMat4(node.rotation)) :
         matrix
     matrix = node.scale !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.scaling(...node.scale)) :
+        mat4.mul(matrix, mat4.scaling(...node.scale)) :
         matrix
     return matrix
 }

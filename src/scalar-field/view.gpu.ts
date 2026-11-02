@@ -1,10 +1,11 @@
-import * as aether from "aether"
+import type { Mat4, Vec4 } from "aether"
+import { mat4, PerspectiveProjection, vec4 } from "aether"
 import * as gpu from "lumen"
-import * as v from "./view.js"
-import { picker, pickerGL } from "./picker.gpu.js"
 import { glWebGPU } from "webgxx"
+import { picker, pickerGL } from "./picker.gpu.js"
+import * as v from "./view.js"
 
-const projection = new aether.PerspectiveProjection(1, null, false, false)
+const projection = new PerspectiveProjection(1, null, false, false)
 
 export class GPUView implements v.View {
 
@@ -34,10 +35,10 @@ export class GPUView implements v.View {
         fogginess: gpu.f32,
     })
 
-    private _matPositions: aether.Mat<4> = aether.mat4.identity()
-    private _matNormals: aether.Mat<4> = aether.mat4.identity()
-    private _matView: aether.Mat<4> = aether.mat4.identity()
-    private _lightPosition: aether.Vec<4> = [2, 2, 2, 1]
+    private _matPositions: Mat4 = mat4.identity()
+    private _matNormals: Mat4 = mat4.identity()
+    private _matView: Mat4 = mat4.identity()
+    private _lightPosition: Vec4 = [2, 2, 2, 1]
 
     private _focalLength = 2
     private _aspectRatio = 1
@@ -113,14 +114,14 @@ export class GPUView implements v.View {
         })
     }
 
-    setMatModel(modelPositions: aether.Mat<4>, modelNormals: aether.Mat<4> = aether.mat4.transpose(aether.mat4.inverse(modelPositions))) {
+    setMatModel(modelPositions: Mat4, modelNormals: Mat4 = mat4.comatrix(modelPositions)) {
         this._matPositions = modelPositions
         this._matNormals = modelNormals
 
-        const matPositions = aether.mat4.mul(this.matView, modelPositions)
+        const matPositions = mat4.mul(this.matView, modelPositions)
         const matNormals = modelPositions === modelNormals ?
             matPositions :
-            aether.mat4.mul(this.matView, modelNormals)
+            mat4.mul(this.matView, modelNormals)
 
         this.uniforms.set(this.uniformsStruct.members.mat, {
             positions: matPositions,
@@ -137,19 +138,19 @@ export class GPUView implements v.View {
         return this.gpuCanvas.element
     }
 
-    get matPositions(): aether.Mat<4> {
+    get matPositions(): Mat4 {
         return this._matPositions
     }
 
-    get matNormals(): aether.Mat<4> {
+    get matNormals(): Mat4 {
         return this._matNormals
     }
 
-    get matView(): aether.Mat<4> {
+    get matView(): Mat4 {
         return this._matView
     }    
 
-    set matView(m: aether.Mat<4>) {
+    set matView(m: Mat4) {
         this._matView = m
         this.lightPosition = this._lightPosition
     }    
@@ -163,37 +164,37 @@ export class GPUView implements v.View {
         this.matProjection = projection.matrix(this._focalLength, this._aspectRatio)
     }
 
-    get matProjection(): aether.Mat<4> {
+    get matProjection(): Mat4 {
         return this.uniforms.get(this.uniformsStruct.members.projectionMat)
     }
 
-    private set matProjection(m: aether.Mat<4>) {
+    private set matProjection(m: Mat4) {
         this.uniforms.set(this.uniformsStruct.members.projectionMat, m)
     }
 
-    get color(): aether.Vec<4> {
+    get color(): Vec4 {
         return this.uniforms.get(this.uniformsStruct.members.color)
     }
 
-    set color(c: aether.Vec<4>) {
+    set color(c: Vec4) {
         this.uniforms.set(this.uniformsStruct.members.color, c)
     }
 
-    get backgroundColor(): aether.Vec<4> {
+    get backgroundColor(): Vec4 {
         return this.uniforms.get(this.uniformsStruct.members.backgroundColor)
     }
 
-    set backgroundColor(c: aether.Vec<4>) {
+    set backgroundColor(c: Vec4) {
         this.uniforms.set(this.uniformsStruct.members.backgroundColor, c)
     }
 
-    get lightPosition(): aether.Vec<4> {
+    get lightPosition(): Vec4 {
         return this._lightPosition
     }
 
-    set lightPosition(p: aether.Vec<4>) {
+    set lightPosition(p: Vec4) {
         this._lightPosition = p
-        this.uniforms.set(this.uniformsStruct.members.lightPos, aether.vec4.add(this._matView[3], p))
+        this.uniforms.set(this.uniformsStruct.members.lightPos, vec4.add(this._matView[3], p))
     }
 
     get shininess(): number {

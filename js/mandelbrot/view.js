@@ -1,5 +1,5 @@
-import { viewGPU, viewGL } from "./view.gpu.js";
 import { required } from "gear";
+import { viewGL, viewGPU } from "./view.gpu.js";
 export async function view(canvasId, center, scale) {
     const apiElement = required(document.getElementById("graphics-api"));
     if (new URL(location.href).searchParams.has("webgl")) {

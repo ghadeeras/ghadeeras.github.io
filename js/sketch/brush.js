@@ -1,6 +1,6 @@
 import * as gear from "gear";
-import { strokeAttributesStruct } from "./common.js";
 import { Color, toHex } from "../utils/color.js";
+import { strokeAttributesStruct } from "./common.js";
 export class Brush {
     constructor(device, canvas) {
         this.device = device;

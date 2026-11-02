@@ -1,7 +1,7 @@
-import * as gltf from './gltf.js';
-import * as utils from '../utils.js';
-import * as aether from "aether";
+import { isIdentity, mat4, PerspectiveProjection, vec3, vec4 } from "aether";
 import * as aetherX from '../../utils/aether.js';
+import * as utils from '../utils.js';
+import * as gltf from './gltf.js';
 export class Model {
     constructor(model, buffers, images, legacyPerspective) {
         this.buffers = buffers;
@@ -61,7 +61,7 @@ export class Node extends IdentifiableObject {
         super(`node#${i}`);
         this.matrix = gltf.matrixOf(node);
         this.antiMatrix = comatrix(this.matrix);
-        this.isIdentityMatrix = aether.isIdentity(this.matrix);
+        this.isIdentityMatrix = isIdentity(this.matrix);
         this.cameras = node.camera !== undefined ? [cameras[node.camera]] : [];
         this.meshes = node.mesh !== undefined ? [meshes[node.mesh]] : [];
         this.children = node.children !== undefined ? node.children.map(child => nodes[child]()) : [];
@@ -88,7 +88,7 @@ export class Sampler extends IdentifiableObject {
     }
 }
 export class Perspective {
-    constructor(camera, matrix, modelMatrix = aether.mat4.identity()) {
+    constructor(camera, matrix, modelMatrix = mat4.identity()) {
         this.camera = camera;
         this.matrix = matrix;
         this.modelMatrix = modelMatrix;
@@ -109,7 +109,7 @@ export class Camera {
 export class PerspectiveCamera extends Camera {
     constructor(camera, legacy = false) {
         super(camera.znear, camera.zfar ?? null);
-        this.projection = new aether.PerspectiveProjection(this.zNear, this.zFar, true, legacy);
+        this.projection = new PerspectiveProjection(this.zNear, this.zFar, true, legacy);
         this.focalLength = 1.0 / Math.tan(0.5 * camera.yfov);
         this.aspectRatio = camera.aspectRatio ?? 1.0;
     }
@@ -176,8 +176,8 @@ export class Accessor extends IdentifiableObject {
         this.count = accessor.count;
         this.type = accessor.type;
         this.range = [
-            accessor.min !== undefined ? aether.vec3.from(accessor.min) : aetherX.maxVecEver(),
-            accessor.max !== undefined ? aether.vec3.from(accessor.max) : aetherX.minVecEver()
+            accessor.min !== undefined ? vec3.from(accessor.min) : aetherX.maxVecEver(),
+            accessor.max !== undefined ? vec3.from(accessor.max) : aetherX.minVecEver()
         ];
     }
 }
@@ -203,12 +203,12 @@ export class Material extends IdentifiableObject {
         super(`material${index}`);
         this.index = index;
         const pbr = material.pbrMetallicRoughness ?? {};
-        this.baseColorFactor = pbr.baseColorFactor ?? aether.vec4.of(1, 1, 1, 1);
+        this.baseColorFactor = pbr.baseColorFactor ?? vec4.fromScalar(1);
         this.baseColorTexture = pbr.baseColorTexture !== undefined ? new TextureInfo(pbr.baseColorTexture.texCoord ?? 0, textures[pbr.baseColorTexture.index]) : null;
         this.metallicFactor = pbr.metallicFactor ?? 1.0;
         this.roughnessFactor = pbr.roughnessFactor ?? 1.0;
         this.metallicRoughnessTexture = pbr.metallicRoughnessTexture !== undefined ? new TextureInfo(pbr.metallicRoughnessTexture.texCoord ?? 0, textures[pbr.metallicRoughnessTexture.index]) : null;
-        this.emissiveFactor = material.emissiveFactor ?? aether.vec3.of(0, 0, 0);
+        this.emissiveFactor = material.emissiveFactor ?? vec3.fromScalar(0);
         this.emissiveTexture = material.emissiveTexture !== undefined ? new TextureInfo(material.emissiveTexture.texCoord ?? 0, textures[material.emissiveTexture.index]) : null;
         this.occlusionTexture = material.occlusionTexture !== undefined ? new TextureInfo(material.occlusionTexture.texCoord ?? 0, textures[material.occlusionTexture.index]) : null;
         this.normalTexture = material.normalTexture !== undefined ? new TextureInfo(material.normalTexture.texCoord ?? 0, textures[material.normalTexture.index]) : null;
@@ -226,9 +226,9 @@ export class TextureInfo {
 function comatrix(matrix) {
     const m = [...matrix];
     m[3] = [0, 0, 0, 1];
-    return aether.mat4.comatrix(m);
+    return mat4.comatrix(m);
 }
-export function defaultPerspective(legacyPerspective = false, matrix = aether.mat4.identity()) {
+export function defaultPerspective(legacyPerspective = false, matrix = mat4.identity()) {
     return new Perspective(defaultCamera(legacyPerspective), defaultViewMatrix(), matrix);
 }
 export function defaultCamera(legacyPerspective = false) {
@@ -238,7 +238,7 @@ export function defaultCamera(legacyPerspective = false) {
     }, legacyPerspective);
 }
 export function defaultViewMatrix() {
-    return aether.mat4.lookAt([2, 2, 2]);
+    return mat4.lookAt([2, 2, 2]);
 }
 function sizeOf(accessor) {
     return elementSize(accessor.type) * componentSize(accessor.componentType);
@@ -270,14 +270,14 @@ function componentSize(componentType) {
 function collectScenePerspectives(scene) {
     const perspectives = [];
     for (const node of scene.nodes) {
-        collectNodePerspectives(node, aether.mat4.identity(), perspectives);
+        collectNodePerspectives(node, mat4.identity(), perspectives);
     }
     return perspectives;
 }
 function collectNodePerspectives(node, parentMatrix, perspectives) {
-    const matrix = node.isIdentityMatrix ? parentMatrix : aether.mat4.mul(parentMatrix, node.matrix);
+    const matrix = node.isIdentityMatrix ? parentMatrix : mat4.mul(parentMatrix, node.matrix);
     if (node.cameras[0]) {
-        const m = aether.mat4.orthogonal(aether.mat4.inverse(matrix), true);
+        const m = mat4.orthogonal(mat4.inverse(matrix), true);
         perspectives.push(new Perspective(node.cameras[0], m));
     }
     for (const child of node.children) {

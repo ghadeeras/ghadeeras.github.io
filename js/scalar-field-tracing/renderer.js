@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { mat3, mat4, vec3 } from "aether";
 import { uniformsStruct } from "./toy.gpu.js";
 export class FieldRenderer {
     constructor(gpuToy, field, targetFormat) {
@@ -18,10 +18,10 @@ export class FieldRenderer {
             label: "renderer-uniforms",
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                    modelMatrix: aether.mat3.identity(),
-                    orientation: aether.mat3.transpose(aether.mat3.lookTowards(aether.vec3.unit([0, 0, -1]))),
-                    position: aether.vec3.of(0.0, 0.0, 4),
-                    lightDirection: aether.vec3.unit(aether.vec3.of(-1, 1, 1)),
+                    modelMatrix: mat3.identity(),
+                    orientation: mat3.transpose(mat3.lookTowards(vec3.unit([0, 0, -1]))),
+                    position: vec3.of(0.0, 0.0, 4),
+                    lightDirection: vec3.unit(vec3.of(-1, 1, 1)),
                     lightNarrowness: 1024,
                     contourValue: 0.05,
                     focalLength: Math.sqrt(5),
@@ -58,26 +58,18 @@ export class FieldRenderer {
         this.uniforms.set(uniformsStruct.members.contourValue, v);
     }
     get modelMatrix() {
-        return aether.mat4.cast(this.uniforms.get(uniformsStruct.members.modelMatrix));
+        return mat4.cast(this.uniforms.get(uniformsStruct.members.modelMatrix));
     }
     set modelMatrix(m) {
-        this.uniforms.set(uniformsStruct.members.modelMatrix, aether.mat3.from([
-            ...aether.vec3.from(m[0]),
-            ...aether.vec3.from(m[1]),
-            ...aether.vec3.from(m[2]),
-        ]));
+        this.uniforms.set(uniformsStruct.members.modelMatrix, mat3.linearComponent(m));
     }
     get orientation() {
-        const m = aether.mat4.cast(this.uniforms.get(uniformsStruct.members.orientation));
-        return aether.mat4.transpose(m);
+        const m = mat4.cast(this.uniforms.get(uniformsStruct.members.orientation));
+        return mat4.transpose(m);
     }
     set orientation(m) {
-        const o = aether.mat4.transpose(m);
-        this.uniforms.set(uniformsStruct.members.orientation, aether.mat3.from([
-            ...aether.vec3.from(o[0]),
-            ...aether.vec3.from(o[1]),
-            ...aether.vec3.from(o[2]),
-        ]));
+        const o = mat4.transpose(m);
+        this.uniforms.set(uniformsStruct.members.orientation, mat3.linearComponent(o));
     }
     get position() {
         return this.uniforms.get(uniformsStruct.members.position);
@@ -92,24 +84,20 @@ export class FieldRenderer {
         this.uniforms.set(uniformsStruct.members.focalLength, v);
     }
     get viewMatrix() {
-        const m = aether.mat4.cast(this.uniforms.get(uniformsStruct.members.orientation));
+        const m = mat4.cast(this.uniforms.get(uniformsStruct.members.orientation));
         m[3] = [...this.uniforms.get(uniformsStruct.members.position), 1.0];
-        return aether.mat4.inverse(m);
+        return mat4.inverse(m);
     }
     set viewMatrix(m) {
-        const o = aether.mat4.inverse(m);
-        this.uniforms.set(uniformsStruct.members.orientation, aether.mat3.from([
-            ...aether.vec3.from(o[0]),
-            ...aether.vec3.from(o[1]),
-            ...aether.vec3.from(o[2]),
-        ]));
-        this.uniforms.set(uniformsStruct.members.position, aether.vec3.from(o[3]));
+        const o = mat4.inverse(m);
+        this.uniforms.set(uniformsStruct.members.orientation, mat3.linearComponent(o));
+        this.uniforms.set(uniformsStruct.members.position, vec3.from(o[3]));
     }
     get projectionMatrix() {
-        return aether.mat4.projection(this.focalLength);
+        return mat4.projection(this.focalLength);
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.projectionMatrix, this.viewMatrix);
+        return mat4.mul(this.projectionMatrix, this.viewMatrix);
     }
     render(attachment) {
         const device = this.gpuToy.device;

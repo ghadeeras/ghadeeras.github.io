@@ -1,9 +1,9 @@
-import * as aether from "aether";
+import { loadScalarFieldModule, mat4, vec2, vec3 } from "aether";
 import * as gear from "gear";
 import { gltf } from "../djee/index.js";
-import * as v from "./view.js";
 import * as dragging from "../utils/dragging.js";
 import { parse } from "./exp.parser.js";
+import * as v from "./view.js";
 export const huds = {
     "monitor": "monitor-button",
     "exp-hud": "exp-button",
@@ -32,9 +32,9 @@ class Toy {
         this.dF_dXElem = gear.required(document.getElementById("dF_dX"));
         this.dF_dYElem = gear.required(document.getElementById("dF_dY"));
         this.dF_dZElem = gear.required(document.getElementById("dF_dZ"));
-        view.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+        view.matView = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
         view.focalLength = Math.pow(2, 1.5);
-        this.modelMatrix = aether.mat4.identity();
+        this.modelMatrix = mat4.identity();
         this.contourValue = 0.01;
         this.resolution = 64;
         this.field = 1;
@@ -43,7 +43,7 @@ class Toy {
         view.backgroundColor = [0.125, 0.0625, 0.125, 1.0];
     }
     static async create() {
-        const scalarFieldModule = await aether.loadScalarFieldModule();
+        const scalarFieldModule = await loadScalarFieldModule();
         const scalarFieldInstance = scalarFieldModule.newInstance();
         const view = await v.newView(Toy.descriptor.output.canvases.scene.element);
         return new Toy(view, scalarFieldInstance);
@@ -94,7 +94,7 @@ class Toy {
     animate() {
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.view.matProjection, this.view.matView);
+        return mat4.mul(this.view.matProjection, this.view.matView);
     }
     get modelMatrix() {
         return this.view.matPositions;
@@ -145,10 +145,10 @@ class Toy {
         gear.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png');
     }
     toLightPosition(pos) {
-        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);
-        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP;
-        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2);
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+        const unclampedP = vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);
+        const clampedP = vec2.length(unclampedP) > 1 ? vec2.unit(unclampedP) : unclampedP;
+        const [x, y] = vec2.scale(clampedP, Math.PI / 2);
+        const p = vec3.polarY(x, Math.PI / 2 - y, 2);
         return [...p, 1];
     }
 }

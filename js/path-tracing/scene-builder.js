@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec3 } from "aether";
 import { Scene, volume } from "./scene.js";
 export function buildScene() {
     const scene = new Scene(64);
@@ -33,12 +33,12 @@ function populateGrid(scene) {
     }
 }
 function bigBox(scene, min, max, materials) {
-    const size = aether.vec3.sub(max, min);
+    const size = vec3.sub(max, min);
     if (size.some(c => c > 4)) {
         const cx = size[0] > 4 ? Math.ceil(size[0] / 4) : 1;
         const cy = size[1] > 4 ? Math.ceil(size[1] / 4) : 1;
         const cz = size[2] > 4 ? Math.ceil(size[2] / 4) : 1;
-        const s = aether.vec3.div(size, [cx, cy, cz]);
+        const s = vec3.div(size, [cx, cy, cz]);
         for (let i = 0; i < cx; i++) {
             const x1 = Math.floor(min[0] + i * s[0]);
             const x2 = Math.ceil(min[0] + (i + 1) * s[0]);
@@ -81,15 +81,15 @@ function addWall(scene, pos, orientation, luminousOrientation) {
     switch (orientation) {
         case 1:
             volumes.forEach(v => {
-                v.min = aether.vec3.swizzle(v.min, 1, 2, 0);
-                v.max = aether.vec3.swizzle(v.max, 1, 2, 0);
+                v.min = vec3.swizzle(v.min, 1, 2, 0);
+                v.max = vec3.swizzle(v.max, 1, 2, 0);
             });
             luminousFace = 0;
             break;
         case 2:
             volumes.forEach(v => {
-                v.min = aether.vec3.swizzle(v.min, 2, 0, 1);
-                v.max = aether.vec3.swizzle(v.max, 2, 0, 1);
+                v.min = vec3.swizzle(v.min, 2, 0, 1);
+                v.max = vec3.swizzle(v.max, 2, 0, 1);
             });
             luminousFace = 4;
             break;
@@ -100,6 +100,6 @@ function addWall(scene, pos, orientation, luminousOrientation) {
     if (luminousOrientation === orientation) {
         luminousMaterials[luminousFace] = 4;
     }
-    volumes.forEach((v, i) => scene.box(aether.vec3.max(aether.vec3.add(pos, v.min), [1, 1, 1]), aether.vec3.min(aether.vec3.add(pos, v.max), [63, 63, 63]), i != 2 ? materials : luminousMaterials));
+    volumes.forEach((v, i) => scene.box(vec3.max(vec3.add(pos, v.min), [1, 1, 1]), vec3.min(vec3.add(pos, v.max), [63, 63, 63]), i != 2 ? materials : luminousMaterials));
 }
 //# sourceMappingURL=scene-builder.js.map

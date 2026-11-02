@@ -1,8 +1,9 @@
-import * as aether from "aether"
+import type { Mat4, Vec3, Vec4 } from "aether"
+import { loadScalarFieldModule, mat4, ScalarFieldInstance, vec3 } from "aether"
 import * as gear from "gear"
 import * as gpu from "lumen"
-import * as dragging from "../utils/dragging.js"
 import { glWebGPU } from "webgxx"
+import * as dragging from "../utils/dragging.js"
 
 export const huds = {
     "monitor": "monitor-button"
@@ -123,7 +124,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private cube: Cube = newCube(0, 0, 0, 0, 0, 0, 0, 0)
     private focalLength = Math.pow(2, 1.5)
-    private matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+    private matView = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 
     private cubeBuffer: gpu.DataBuffer
     private contourSurfaceBuffer: gpu.DataBuffer
@@ -141,7 +142,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         private device: gpu.Device,
         private canvas: gpu.Canvas,
         private shaders: { vertexShader: gpu.ShaderModule, fragmentShader: gpu.ShaderModule }, 
-        private scalarFieldInstance: aether.ScalarFieldInstance
+        private scalarFieldInstance: ScalarFieldInstance
     ) {
         const groupLayout = this.device.groupLayout({
             data: gpu.uniform(uniformsStruct).asEntry(0, "VERTEX")
@@ -193,9 +194,9 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.uniformsBuffer = this.device.syncBuffer({
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                matModel: aether.mat4.identity(),
+                matModel: mat4.identity(),
                 matView: this.matView,
-                matProjection: aether.mat4.projection(this.focalLength, 1, 0.1, 100),
+                matProjection: mat4.projection(this.focalLength, 1, 0.1, 100),
                 lightPosition: [2, 2, 2],
             }])
         })
@@ -219,7 +220,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             fragmentShader: await device.shaderModule({ code: shaders.fragmentShaderCode }),
         }
 
-        const scalarFieldModule = await aether.loadScalarFieldModule()
+        const scalarFieldModule = await loadScalarFieldModule()
         const scalarFieldInstance = scalarFieldModule.newInstance()
         scalarFieldInstance.contourValue = 0.0
 
@@ -297,15 +298,15 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     resize(): void {
         const aspectRatio = this.canvas.element.width / this.canvas.element.height
-        this.matProjection = aether.mat4.projection(2, 0.1, 100, aspectRatio)
+        this.matProjection = mat4.projection(2, 0.1, 100, aspectRatio)
         this.canvas.resize()
     }
 
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.matProjection, this.matView)
+        return mat4.mul(this.matProjection, this.matView)
     }
 
-    set matProjection(m: aether.Mat4) {
+    set matProjection(m: Mat4) {
         this.uniformsBuffer.set(uniformsStruct.members.matProjection, m);
     }
 
@@ -313,7 +314,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return this.uniformsBuffer.get(uniformsStruct.members.matModel);
     }
 
-    set matModel(m: aether.Mat4) {
+    set matModel(m: Mat4) {
         this.uniformsBuffer.set(uniformsStruct.members.matModel, m);
     }
 
@@ -419,25 +420,25 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 type Cube = CubePoints & CubeGradients & CubeValues
 
 type CubePoints = {
-    point0: aether.Vec<3>;
-    point1: aether.Vec<3>;
-    point2: aether.Vec<3>;
-    point3: aether.Vec<3>;
-    point4: aether.Vec<3>;
-    point5: aether.Vec<3>;
-    point6: aether.Vec<3>;
-    point7: aether.Vec<3>;
+    point0: Vec3;
+    point1: Vec3;
+    point2: Vec3;
+    point3: Vec3;
+    point4: Vec3;
+    point5: Vec3;
+    point6: Vec3;
+    point7: Vec3;
 }
 
 type CubeGradients = {
-    gradient0: aether.Vec<3>;
-    gradient1: aether.Vec<3>;
-    gradient2: aether.Vec<3>;
-    gradient3: aether.Vec<3>;
-    gradient4: aether.Vec<3>;
-    gradient5: aether.Vec<3>;
-    gradient6: aether.Vec<3>;
-    gradient7: aether.Vec<3>;
+    gradient0: Vec3;
+    gradient1: Vec3;
+    gradient2: Vec3;
+    gradient3: Vec3;
+    gradient4: Vec3;
+    gradient5: Vec3;
+    gradient6: Vec3;
+    gradient7: Vec3;
 }
 
 type CubeValues = {
@@ -461,13 +462,13 @@ const points: CubePoints = {
     point6: [+1, +1, -1],
     point7: [+1, +1, +1],
 };
-const mat: aether.Mat<4> = [
+const mat: Mat4 = [
     [points.point0[0], points.point0[1], points.point0[2], 1],
     [points.point1[0], points.point1[1], points.point1[2], 1],
     [points.point2[0], points.point2[1], points.point2[2], 1],
     [points.point3[0], points.point3[1], points.point3[2], 1]
 ];
-const matInv = aether.mat4.inverse(mat);
+const matInv = mat4.inverse(mat);
 
 function newCube(field0: number, field1: number, field2: number, field3: number, field4: number, field5: number, field6: number, field7: number): Cube {
     const gradients: CubeGradients = {
@@ -493,13 +494,11 @@ function newCube(field0: number, field1: number, field2: number, field3: number,
     return {...points, ...gradients, ...values};
 }
 
-function gradient(point: aether.Vec<3>, value: number, pointX: aether.Vec<3>, valueX: number, pointY: aether.Vec<3>, valueY: number, pointZ: aether.Vec<3>, valueZ: number) {
-    return aether.vec3.add(
-        aether.vec3.scale(aether.vec3.sub(point, pointX), value - valueX),
-        aether.vec3.add(
-            aether.vec3.scale(aether.vec3.sub(point, pointY), value - valueY),
-            aether.vec3.scale(aether.vec3.sub(point, pointZ), value - valueZ)
-        )
+function gradient(point: Vec3, value: number, pointX: Vec3, valueX: number, pointY: Vec3, valueY: number, pointZ: Vec3, valueZ: number) {
+    return vec3.addAll(
+        vec3.scale(vec3.sub(point, pointX), value - valueX),
+        vec3.scale(vec3.sub(point, pointY), value - valueY),
+        vec3.scale(vec3.sub(point, pointZ), value - valueZ)
     )
 }
 
@@ -568,7 +567,7 @@ function cubeData(cube: Cube): Float32Array {
     return new Float32Array(vertexes.reduce<number[]>((a, v) => a.concat(...v), []));
 }
 
-function contourSurfaceData(scalarFieldInstance: aether.ScalarFieldInstance, cube: Cube, contourValue: number): Float32Array {
+function contourSurfaceData(scalarFieldInstance: ScalarFieldInstance, cube: Cube, contourValue: number): Float32Array {
     const stack = scalarFieldInstance.mem;
     const space = scalarFieldInstance.space;
     const scalarField = scalarFieldInstance.scalarField;
@@ -599,7 +598,7 @@ function contourSurfaceData(scalarFieldInstance: aether.ScalarFieldInstance, cub
     return result;
 }
 
-function fieldColor(fieldValue: number, alpha = 0.4): aether.Vec<4> {
+function fieldColor(fieldValue: number, alpha = 0.4): Vec4 {
     const m = Math.max(1 + fieldValue, 1 - fieldValue)
     return [(1 + fieldValue) / m, 0, (1 - fieldValue) / m, alpha]
 }

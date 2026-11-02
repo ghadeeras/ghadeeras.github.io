@@ -1,9 +1,9 @@
+import { mat3, mat4, vec3, vec4 } from "aether";
+import * as gear from "gear";
 import * as gpu from "lumen";
 import * as dragging from "../utils/dragging.js";
 import { FieldRenderer } from "./renderer.js";
 import { FieldSampler } from "./sampler.js";
-import * as aether from "aether";
-import * as gear from "gear";
 import { newGPUToy } from "./toy.gpu.js";
 export const huds = {
     "monitor": "monitor-button"
@@ -20,7 +20,7 @@ class Toy {
         this.fieldSampler = fieldSampler;
         this.contourTarget = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "contourValue"), dragging.LinearDragging.dragger(-1, 1, 1));
         this.rotationDragging = gear.loops.draggingTarget(gear.property(this.fieldRenderer, "modelMatrix"), dragging.RotationDragging.dragger(() => this.fieldRenderer.viewMatrix));
-        this.matrixDragging = gear.loops.draggingTarget(gear.property(this, "matrix"), dragging.RotationDragging.dragger(() => aether.mat4.identity()));
+        this.matrixDragging = gear.loops.draggingTarget(gear.property(this, "matrix"), dragging.RotationDragging.dragger(() => mat4.identity()));
         this.scaleDragging = gear.loops.draggingTarget(gear.property(this, "scale"), dragging.RatioDragging.dragger(Math.SQRT1_2, Math.SQRT2, 0.5));
         this.speeds = [[0, 0], [0, 0], [0, 0]];
         this.resampling = new gear.DeferredComputation(() => this.fieldSampler.sample());
@@ -43,14 +43,10 @@ class Toy {
         this.resampling.perform();
     }
     get matrix() {
-        return aether.mat4.cast(this.fieldSampler.matrix);
+        return mat4.cast(this.fieldSampler.matrix);
     }
     set matrix(m) {
-        this.fieldSampler.matrix = [
-            aether.vec3.from(m[0]),
-            aether.vec3.from(m[1]),
-            aether.vec3.from(m[2]),
-        ];
+        this.fieldSampler.matrix = mat3.linearComponent(m);
         this.resampling.perform();
     }
     changeDepth(delta) {
@@ -94,8 +90,8 @@ class Toy {
             this.speeds[1][0] - this.speeds[1][1],
             this.speeds[2][1] - this.speeds[2][0],
         ];
-        const velocity = aether.vec3.from(aether.vec4.prod([...v, 0], this.fieldRenderer.orientation));
-        this.fieldRenderer.position = aether.vec3.add(this.fieldRenderer.position, velocity);
+        const velocity = vec3.from(vec4.prod([...v, 0], this.fieldRenderer.orientation));
+        this.fieldRenderer.position = vec3.add(this.fieldRenderer.position, velocity);
     }
     render() {
         this.fieldRenderer.render(this.canvas.attachment({ r: 0, g: 0, b: 0, a: 0 }, true));

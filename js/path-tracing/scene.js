@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec3 } from "aether";
 import { cellStruct } from "./toy.gpu.js";
 export const NULL = 0xFFFFFFFF;
 export class Scene {
@@ -70,7 +70,7 @@ export class Scene {
         }
     }
     toGridCoords(v) {
-        return aether.vec3.min(aether.vec3.max([Math.floor(v[0]), Math.floor(v[1]), Math.floor(v[2])], [0, 0, 0]), [this.gridSize - 1, this.gridSize - 1, this.gridSize - 1]);
+        return vec3.clamp(vec3.map(v, Math.floor), vec3.fromScalar(0), vec3.fromScalar(this.gridSize - 1));
     }
     addBoxToCell(box, x, y, z) {
         const cell = this.cell(x, y, z);
@@ -86,7 +86,7 @@ export class Scene {
 export function volume(min, max) {
     return {
         min, max,
-        invSize: aether.vec3.div(aether.vec3.of(2, 2, 2), aether.vec3.sub(max, min))
+        invSize: vec3.div(vec3.fromScalar(2), vec3.sub(max, min))
     };
 }
 //# sourceMappingURL=scene.js.map

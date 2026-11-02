@@ -1,8 +1,9 @@
-import * as aether from "aether"
+import type { Mat4 } from "aether"
+import { mat4, PerspectiveProjection } from "aether"
 import * as gpu from "lumen"
 import * as meta from './meta.js'
 
-const projection = new aether.PerspectiveProjection(1, null, false, false)
+const projection = new PerspectiveProjection(1, null, false, false)
 
 export class Visuals {
 
@@ -12,8 +13,8 @@ export class Visuals {
 
     private _zoom = 1
     private _aspectRatio = 1
-    private _viewMatrix = aether.mat4.lookAt([0, 0, -24])
-    private _modelMatrix = aether.mat4.identity()
+    private _viewMatrix = mat4.lookAt([0, 0, -24])
+    private _modelMatrix = mat4.identity()
 
     constructor(readonly app: meta.App) {
         /* Buffers */
@@ -56,7 +57,7 @@ export class Visuals {
         return this._viewMatrix
     }
 
-    set viewMatrix(m: aether.Mat<4>) {
+    set viewMatrix(m: Mat4) {
         this._viewMatrix = m
         this.updateMvpMatrix()
     }
@@ -65,7 +66,7 @@ export class Visuals {
         return this._modelMatrix
     }
 
-    set modelMatrix(m: aether.Mat<4>) {
+    set modelMatrix(m: Mat4) {
         this._modelMatrix = m
         this.updateMvpMatrix()
     }
@@ -79,21 +80,21 @@ export class Visuals {
     }
 
     get mvpMatrix() {
-        return aether.mat4.mul(
+        return mat4.mul(
             this.projectionViewMatrix,
             this._modelMatrix
         )
     }
 
     get mvMatrix() {
-        return aether.mat4.mul(
+        return mat4.mul(
             this._viewMatrix,
             this._modelMatrix
         )
     }
 
-    get projectionViewMatrix(): aether.Mat4 {
-        return aether.mat4.mul(
+    get projectionViewMatrix(): Mat4 {
+        return mat4.mul(
             projection.matrix(this.zoom, this.aspectRatio),
             this.viewMatrix
         )

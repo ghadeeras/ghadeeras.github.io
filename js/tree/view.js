@@ -1,4 +1,4 @@
-import * as aether from 'aether';
+import { mat4, PerspectiveProjection, vec3 } from "aether";
 import * as gear from 'gear';
 import * as gpu from "lumen";
 import { glWebGPU } from 'webgxx';
@@ -17,14 +17,14 @@ const vertexStruct = gpu.vertex({
     normal: gpu.f32.x3
 });
 const matricesStruct = gpu.mat4x4.clone(0, 256, false);
-const projection = new aether.PerspectiveProjection(1, null, false, false);
+const projection = new PerspectiveProjection(1, null, false, false);
 export class View {
     constructor(canvas, device, vertexShader, fragmentShader) {
         this.canvas = canvas;
         this.device = device;
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
-        this._matrices = [aether.mat4.identity()];
+        this._matrices = [mat4.identity()];
         this.buffer = device.dataBuffer({
             usage: ["VERTEX"],
             data: new DataView(new Float32Array(this.vertexData()).buffer)
@@ -49,8 +49,8 @@ export class View {
         this.uniformsBuffer = device.syncBuffer({
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                    matModel: aether.mat4.identity(),
-                    matView: aether.mat4.lookAt([-1, 2, 10], [0, 1, 0]),
+                    matModel: mat4.identity(),
+                    matView: mat4.lookAt([-1, 2, 10], [0, 1, 0]),
                     matProjection: projection.matrix(2, this.canvas.element.width / this.canvas.element.height),
                     lightPosition: [-8, 8, 8],
                     color: [0.8, 0.8, 0.8],
@@ -176,7 +176,7 @@ function cone(radiusTop, radiusBottom, height, stacks, slices) {
             const r2 = radiusBottom + slope * y2;
             const z = Math.cos(2 * Math.PI * j / slices);
             const x = Math.sin(2 * Math.PI * j / slices);
-            const n = aether.vec3.unit([x, slope, z]);
+            const n = vec3.unit([x, slope, z]);
             result.push(x * r2, y2, z * r2, ...n, x * r1, y1, z * r1, ...n);
         }
     }

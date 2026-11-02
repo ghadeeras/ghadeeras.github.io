@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { Bary, vec2, vec3, vec4 } from "aether";
 import { required } from "gear";
 import { Color, fromHex, hueOf } from "./color.js";
 function template(id) {
@@ -55,7 +55,7 @@ export class Palette {
         okButton.onclick = () => this.callback(this.newColor.rgba);
         this.parent.oncancel = cancelButton.onclick = () => this.cancel();
         this.shadeCanvas.onpointerup = () => this.mouseDownTarget = null;
-        this.onDrag(this.hueCanvas, (({ x, y }) => { this.newColor.hue = aether.vec3.from(hue(x, y, c => [...hueOf(aether.vec3.max(c, [0, 0, 0])), 1])); }));
+        this.onDrag(this.hueCanvas, (({ x, y }) => { this.newColor.hue = vec3.from(hue(x, y, c => [...hueOf(vec3.max(c, [0, 0, 0])), 1])); }));
         this.onDrag(this.shadeCanvas, (({ x, y: _ }) => { this.newColor.shade = 0.05 * (x + 10); }));
         this.onDrag(this.alphaCanvas, (({ x, y: _ }) => { this.newColor.alpha = 0.05 * (x + 10); }));
         this.colorInput.onkeydown = e => {
@@ -111,7 +111,7 @@ export class Palette {
         this.hueCanvas.style.backgroundColor = "#" + this.newColor.hex;
         this.colorInput.value = this.newColor.hex;
         const h = this.newColor.hue;
-        const xy = palette2D.fromColor(aether.vec3.scale(h, 1 / (h[0] + h[1] + h[2])));
+        const xy = palette2D.fromColor(vec3.scale(h, 1 / (h[0] + h[1] + h[2])));
         const c = canvasCoords(this.hueCanvas, ...xy);
         this.hueSliderDiv.style.left = `${c.x - this.hueSliderDiv.clientWidth / 2}px`;
         this.hueSliderDiv.style.top = `${c.y - this.hueSliderDiv.clientHeight / 2}px`;
@@ -137,13 +137,13 @@ function huesTriangle(defaultColor = [0, 0, 0, 0]) {
 function shadesBar() {
     return imageData(360, 36, (x, _) => {
         const s = 0.05 * (x + 10);
-        return aether.vec4.of(s, s, s, 1.0);
+        return vec4.of(s, s, s, 1.0);
     });
 }
 function alphaBar() {
     return imageData(360, 36, (x, _) => {
         const s = 0.05 * (x + 10);
-        return aether.vec4.of(s, s, s, s);
+        return vec4.of(s, s, s, s);
     });
 }
 function imageData(width, height, shader) {
@@ -188,14 +188,14 @@ function hue(x, y, defaultColor) {
 }
 export class Palette2D {
     constructor(red, green, blue) {
-        this.bary = new aether.Bary([...red, 0], [...green, 0], [...blue, 0]);
+        this.bary = new Bary([...red, 0], [...green, 0], [...blue, 0]);
     }
     toColor(position) {
         return this.bary.fromCartesian([...position, 0]);
     }
     fromColor(color) {
         const cartesian = this.bary.toCartesian(color);
-        return aether.vec2.from(cartesian);
+        return vec2.from(cartesian);
     }
 }
 const palette2D = new Palette2D([-1, -Math.sqrt(0.75)], [0, Math.sqrt(0.75)], [1, -Math.sqrt(0.75)]);

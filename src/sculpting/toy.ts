@@ -1,11 +1,12 @@
-import * as aether from "aether"
+import type { Mat4, Vec4 } from "aether"
+import { loadScalarFieldModule, mat4, ScalarFieldInstance, ScalarFieldModule, vec2, vec3, vec4 } from "aether"
 import * as gear from "gear"
 import { gltf } from "../djee/index.js"
-import { Carving } from "./carving.js"
 import * as v from "../scalar-field/view.js"
 import * as dragging from "../utils/dragging.js"
+import { Carving } from "./carving.js"
 
-const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting"
 export const video = "https://youtu.be/eeZ6qSAXo2o"
@@ -17,7 +18,7 @@ export async function init() {
     const view = await v.newView(Toy.descriptor.input.pointers.canvas.element)
     const picker = await view.picker()
 
-    const scalarFieldModule = await aether.loadScalarFieldModule()
+    const scalarFieldModule = await loadScalarFieldModule()
     const stone = scalarFieldModule.newInstance()
     stone.resolution = 64
     stone.sampler = field
@@ -118,7 +119,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private lazyVertices = new gear.DeferredComputation(() => this.currentStone.vertices)
 
-    constructor(private stone: aether.ScalarFieldInstance, private scalarFieldModule: aether.ScalarFieldModule, private view: v.View, private picker: v.Picker) {
+    constructor(private stone: ScalarFieldInstance, private scalarFieldModule: ScalarFieldModule, private view: v.View, private picker: v.Picker) {
         this.carving = new Carving(
             this.stone,
             () => modelViewProjectionMatrixOf(view),
@@ -139,7 +140,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         view.lightPosition = this.toLightPosition([0.0, 0.0])
         view.lightRadius = 0.005
 
-        this.modelMatrix = aether.mat4.identity()
+        this.modelMatrix = mat4.identity()
         this.currentStone = stone
     }
 
@@ -183,14 +184,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
     
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.view.matProjection, this.view.matView)
+        return mat4.mul(this.view.matProjection, this.view.matView)
     }
 
     get modelMatrix() {
         return this.view.matPositions
     }
 
-    set modelMatrix(m: aether.Mat4) {
+    set modelMatrix(m: Mat4) {
         this.view.setMatModel(m, m)
     }
 
@@ -206,7 +207,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return this.stone
     }
 
-    set currentStone(s: aether.ScalarFieldInstance) {
+    set currentStone(s: ScalarFieldInstance) {
         this.stone = s
         this.lodElement.innerText = s.resolution.toFixed(0)
         this.lazyVertices.perform().then(vertices => this.view.setMesh(WebGL2RenderingContext.TRIANGLES, vertices))
@@ -229,11 +230,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         gear.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`)
     }
 
-    toLightPosition(pos: gear.loops.PointerPosition): aether.Vec4 {
-        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
-        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP
-        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2)
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+    toLightPosition(pos: gear.loops.PointerPosition): Vec4 {
+        const unclampedP = vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
+        const clampedP = vec2.length(unclampedP) > 1 ? vec2.unit(unclampedP) : unclampedP
+        const [x, y] = vec2.scale(clampedP, Math.PI / 2)
+        const p = vec3.polarY(x, Math.PI / 2 - y, 2);
         return [...p, 1];
     }
 
@@ -267,7 +268,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return buffer
     }
 
-    private deserializeStone(buffer: ArrayBuffer): aether.ScalarFieldInstance {
+    private deserializeStone(buffer: ArrayBuffer): ScalarFieldInstance {
         const vectorSize = 4
         const headerSize = 4
         const header = new Uint16Array(buffer, 0, headerSize)
@@ -293,8 +294,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
             const k = Math.round((z + 1) * zRes / 2)
             const offset = ((k * yRes + j) * xRes + i) * vectorSize
             return offset < samples.length ? 
-                aether.vec4.from(samples, offset) : 
-                aether.vec4.of(0, 0, 0, 0)
+                vec4.from(samples, offset) : 
+                vec4.fromScalar(0)
         }
         const newStone = this.carving.undo(this.currentStone)
         newStone.resolution = stone.resolution
@@ -337,18 +338,18 @@ async function asURL(transferItem: DataTransferItem): Promise<string> {
 
 const twoPi = 2 * Math.PI
 
-function modelViewProjectionMatrixOf(view: v.View): aether.Mat4 {
-    return aether.mat4.mul(
+function modelViewProjectionMatrixOf(view: v.View): Mat4 {
+    return mat4.mul(
         view.matProjection,
-        aether.mat4.mul(
+        mat4.mul(
             view.matView,
             view.matPositions
         )
     )
 }
 
-function field(x: number, y: number, z: number): aether.Vec<4> {
-    const l = aether.vec3.length([x, y, z])
+function field(x: number, y: number, z: number): Vec4 {
+    const l = vec3.length([x, y, z])
     const f = l <= 1 ? 
         l >= 0.5 ? (1 - Math.cos(twoPi * l)) / 2 : 1 : 
         0
@@ -363,8 +364,8 @@ function field(x: number, y: number, z: number): aether.Vec<4> {
     ]
 }
 
-function brush(x: number, y: number, z: number): aether.Vec<4> {
-    const l = aether.vec3.length([x, y, z])
+function brush(x: number, y: number, z: number): Vec4 {
+    const l = vec3.length([x, y, z])
     const f = l <= 1 ? (1 + Math.cos(Math.PI * l)) / 2 : 0
     const g = l <= 1 ? 
         l > Math.sqrt(Number.EPSILON) ? 

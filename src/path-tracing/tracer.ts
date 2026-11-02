@@ -1,4 +1,5 @@
-import * as aether from "aether"
+import type { Mat3, Vec3 } from "aether"
+import { mat3, vec3 } from "aether"
 import * as gpu from "lumen"
 import { NULL, Scene } from './scene.js'
 import { boxDirectionsStruct, boxStruct, cellStruct, GPUToy, TracerGroupLayout, uniformsStruct } from "./toy.gpu.js"
@@ -21,8 +22,8 @@ export class Tracer {
 
     private readonly group: gpu.CompatibleBindGroup<TracerGroupLayout>
 
-    private _matrix = aether.mat3.identity()
-    private _position = aether.vec3.of(32, 32, 32)
+    private _matrix = mat3.identity()
+    private _position = vec3.fromScalar(32)
     private _samplesPerPixel = 1
     private _focalLength = Math.SQRT2
 
@@ -76,7 +77,7 @@ export class Tracer {
         return this._matrix
     }
 
-    set matrix(m: aether.Mat3) {
+    set matrix(m: Mat3) {
         this._matrix = m
         const v = gpu.mat3x3.view([m])
         this.uniformsBuffer.set(uniformsStruct.members.matrix).fromData(v)
@@ -86,7 +87,7 @@ export class Tracer {
         return this._position
     }
 
-    set position(p: aether.Vec3) {
+    set position(p: Vec3) {
         const position = this.clamp(p)
         this._position = position
         const v = gpu.f32.x3.view([position])
@@ -192,16 +193,10 @@ export class Tracer {
         })
     }
     
-    private clamp(p: aether.Vec3) {
-        const min = 0.5
-        const max = this.scene.gridSize - 0.5
-        return aether.vec3.min(
-            aether.vec3.max(
-                p,
-                aether.vec3.of(min, min, min)
-            ),
-            aether.vec3.of(max, max, max)
-        )
+    private clamp(p: Vec3) {
+        const min = vec3.fromScalar(0.5)
+        const max = vec3.fromScalar(this.scene.gridSize - 0.5)
+        return vec3.clamp(p, min, max)
     }
     
 }

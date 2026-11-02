@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { mat4, vec2, vec3, vec4 } from "aether";
 export class ModelMatrixDragging {
     constructor(projViewMatrix, speed = 1) {
         this.projViewMatrix = projViewMatrix;
@@ -12,24 +12,24 @@ export class ModelMatrixDragging {
             matrix[2],
             [0, 0, 0, 1],
         ];
-        const invProjViewMatrix = aether.mat4.inverse(this.projViewMatrix());
-        const origin = aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [0, 0, 0, 1]));
-        const actualFrom = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...position, 1, 1])), origin);
+        const invProjViewMatrix = mat4.inverse(this.projViewMatrix());
+        const origin = vec3.from(mat4.apply(invProjViewMatrix, [0, 0, 0, 1]));
+        const actualFrom = vec3.sub(vec3.from(mat4.apply(invProjViewMatrix, [...position, 1, 1])), origin);
         return to => {
-            const actualTo = aether.vec3.sub(aether.vec3.from(aether.mat4.apply(invProjViewMatrix, [...to, 1, 1])), origin);
+            const actualTo = vec3.sub(vec3.from(mat4.apply(invProjViewMatrix, [...to, 1, 1])), origin);
             const delta = this.delta(actualFrom, actualTo, this.speed);
-            const newMatrix = aether.mat4.mul(delta, rotation);
+            const newMatrix = mat4.mul(delta, rotation);
             newMatrix[3][3] = 0;
             return [
                 newMatrix[0],
                 newMatrix[1],
                 newMatrix[2],
-                aether.vec4.add(newMatrix[3], translation)
+                vec4.add(newMatrix[3], translation)
             ];
         };
     }
     end(matrix) {
-        return aether.mat4.orthogonal(matrix, true);
+        return mat4.orthogonal(matrix, true);
     }
 }
 export class RotationDragging extends ModelMatrixDragging {
@@ -37,7 +37,7 @@ export class RotationDragging extends ModelMatrixDragging {
         super(projViewMatrix, speed);
     }
     delta(actualFrom, actualTo, speed) {
-        return aether.mat4.crossProdRotation(actualFrom, actualTo, speed);
+        return mat4.crossProdRotation(actualFrom, actualTo, speed);
     }
     static dragger(projViewMatrix, speed = 1) {
         return new RotationDragging(projViewMatrix, speed);
@@ -48,7 +48,7 @@ export class TranslationDragging extends ModelMatrixDragging {
         super(projViewMatrix, speed);
     }
     delta(actualFrom, actualTo, speed) {
-        return aether.mat4.translation(aether.vec3.scale(aether.vec3.sub(actualTo, actualFrom), speed));
+        return mat4.translation(vec3.scale(vec3.sub(actualTo, actualFrom), speed));
     }
     static dragger(projViewMatrix, speed = 1) {
         return new TranslationDragging(projViewMatrix, speed);
@@ -56,11 +56,11 @@ export class TranslationDragging extends ModelMatrixDragging {
 }
 export class ScaleDragging extends ModelMatrixDragging {
     constructor(speed = 1) {
-        super(() => aether.mat4.identity(), speed);
+        super(() => mat4.identity(), speed);
     }
     delta(actualFrom, actualTo, speed) {
         const s = Math.pow(2, speed * (actualTo[1] - actualFrom[1]));
-        return aether.mat4.scaling(s, s, s);
+        return mat4.scaling(s, s, s);
     }
     static dragger(speed = 1) {
         return new ScaleDragging(speed);
@@ -105,7 +105,7 @@ export class Linear2DDragging {
         this.speed = speed;
     }
     begin(value, position) {
-        return to => aether.vec2.min(aether.vec2.max(aether.vec2.add(value, aether.vec2.mul(this.speed, aether.vec2.sub(to, position))), this.min), this.max);
+        return to => vec2.clamp(vec2.add(value, vec2.mul(this.speed, vec2.sub(to, position))), this.min, this.max);
     }
     end(value) {
         return value;
@@ -139,17 +139,17 @@ export class ZoomDragging {
         const actualFrom = toVec3(position);
         return to => {
             const scale = Math.pow(2, this.speed * (to[1] - position[1]));
-            const actualTo = toVec3(aether.vec2.scale(position, 1 / scale));
-            const rotation = aether.mat4.crossProdRotation(actualFrom, actualTo);
-            const scaling = aether.mat4.scaling(scale, scale, 1);
+            const actualTo = toVec3(vec2.scale(position, 1 / scale));
+            const rotation = mat4.rotationBetween(actualFrom, actualTo);
+            const scaling = mat4.scaling(scale, scale, 1);
             return [
-                aether.mat4.mul(projectionMat, scaling),
-                aether.mat4.mul(rotation, viewMat)
+                mat4.mul(projectionMat, scaling),
+                mat4.mul(rotation, viewMat)
             ];
         };
     }
     end([projectionMat, viewMat]) {
-        return [projectionMat, aether.mat4.orthogonal(viewMat, true)];
+        return [projectionMat, mat4.orthogonal(viewMat, true)];
     }
     static dragger(speed = 1) {
         return new ZoomDragging(speed);

@@ -1,6 +1,7 @@
-import * as aether from "aether"
-import { StrokePoint } from "./stroke.computer.js"
+import type { Vec2, Vec4 } from "aether"
+import { vec2 } from "aether"
 import * as cmn from "./common.js"
+import { StrokePoint } from "./stroke.computer.js"
 
 export class Stroke {
 
@@ -80,7 +81,7 @@ export class Stroke {
         return this._attributes.color
     }
 
-    set color(color: aether.Vec4) {
+    set color(color: Vec4) {
         this.destroy()
         this._attributes.color = color
     }
@@ -122,7 +123,7 @@ export class Stroke {
         this._finalized = true
     }
 
-    addPoint(position: aether.Vec2) {
+    addPoint(position: Vec2) {
         if (this._finalized) {
             throw new Error("Cannot add point to a finalized stroke")
         }
@@ -130,13 +131,13 @@ export class Stroke {
         if (this.points.length > 0) {
             const lastPoint = this.points[this.points.length - 1]
             const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint
-            const lastDistance = aether.vec2.distance(lastPoint.position, beforeLastPoint.position)
+            const lastDistance = vec2.distance(lastPoint.position, beforeLastPoint.position)
             const prevPoint = lastDistance < this.minDistance ? beforeLastPoint : lastPoint
             if (prevPoint !== lastPoint) {
                 this.points.pop()
                 this._length -= lastDistance
             }
-            const distance = aether.vec2.distance(position, prevPoint.position)
+            const distance = vec2.distance(position, prevPoint.position)
             this._length += distance
         }
         this.points.push({ position: position, linear: [this.length, this.duration] })

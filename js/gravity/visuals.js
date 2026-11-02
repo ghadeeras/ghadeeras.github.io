@@ -1,13 +1,13 @@
-import * as aether from "aether";
+import { mat4, PerspectiveProjection } from "aether";
 import * as meta from './meta.js';
-const projection = new aether.PerspectiveProjection(1, null, false, false);
+const projection = new PerspectiveProjection(1, null, false, false);
 export class Visuals {
     constructor(app) {
         this.app = app;
         this._zoom = 1;
         this._aspectRatio = 1;
-        this._viewMatrix = aether.mat4.lookAt([0, 0, -24]);
-        this._modelMatrix = aether.mat4.identity();
+        this._viewMatrix = mat4.lookAt([0, 0, -24]);
+        this._modelMatrix = mat4.identity();
         /* Buffers */
         this.buffer = app.device.syncBuffer({
             label: "uniforms",
@@ -59,13 +59,13 @@ export class Visuals {
         this.buffer.set(meta.visualsUniforms.members.radiusScale, v);
     }
     get mvpMatrix() {
-        return aether.mat4.mul(this.projectionViewMatrix, this._modelMatrix);
+        return mat4.mul(this.projectionViewMatrix, this._modelMatrix);
     }
     get mvMatrix() {
-        return aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        return mat4.mul(this._viewMatrix, this._modelMatrix);
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);
+        return mat4.mul(projection.matrix(this.zoom, this.aspectRatio), this.viewMatrix);
     }
     updateMvpMatrix() {
         this.buffer.set(meta.visualsUniforms.members.mvpMatrix, this.mvpMatrix);

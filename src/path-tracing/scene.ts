@@ -1,4 +1,5 @@
-import * as aether from "aether"
+import type { Vec3, Vec4 } from "aether"
+import { vec3 } from "aether"
 import { BoxStruct, cellStruct, CellStruct, VolumeStruct } from "./toy.gpu.js"
 
 export const NULL = 0xFFFFFFFF
@@ -8,7 +9,7 @@ export class Scene {
     readonly grid = this.createGrid()
     readonly boxes: BoxStruct[] = []
 
-    readonly materials: aether.Vec4[] = []
+    readonly materials: Vec4[] = []
 
     constructor(readonly gridSize: number) {
     }
@@ -54,11 +55,11 @@ export class Scene {
         return result
     }
 
-    material(m: aether.Vec4) {
+    material(m: Vec4) {
         return this.materials.push(m) - 1
     }
 
-    box(min: aether.Vec3, max: aether.Vec3, materials: number[]) {
+    box(min: Vec3, max: Vec3, materials: number[]) {
         const box = {
             volume: volume(min, max),
             faceMaterials: materials,
@@ -80,13 +81,10 @@ export class Scene {
         }
     }
 
-    private toGridCoords(v: aether.Vec3): aether.Vec3 {
-        return aether.vec3.min(
-            aether.vec3.max(
-                [Math.floor(v[0]), Math.floor(v[1]), Math.floor(v[2])],
-                [0, 0, 0]
-            ), 
-            [this.gridSize - 1, this.gridSize - 1, this.gridSize - 1]
+    private toGridCoords(v: Vec3): Vec3 {
+        return vec3.clamp(
+            vec3.map(v, Math.floor),
+            vec3.fromScalar(0), vec3.fromScalar(this.gridSize - 1)
         )
     }
     
@@ -104,12 +102,12 @@ export class Scene {
 
 }
 
-export function volume(min: aether.Vec3, max: aether.Vec3): VolumeStruct {
+export function volume(min: Vec3, max: Vec3): VolumeStruct {
     return {
         min, max,
-        invSize: aether.vec3.div(
-            aether.vec3.of(2, 2, 2),
-            aether.vec3.sub(max, min)
+        invSize: vec3.div(
+            vec3.fromScalar(2),
+            vec3.sub(max, min)
         )
     }
 }

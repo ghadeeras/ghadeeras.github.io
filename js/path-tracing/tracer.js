@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { mat3, vec3 } from "aether";
 import * as gpu from "lumen";
 import { NULL } from './scene.js';
 import { boxDirectionsStruct, boxStruct, cellStruct, uniformsStruct } from "./toy.gpu.js";
@@ -8,8 +8,8 @@ export class Tracer {
         this.scene = scene;
         this.colorFormat = colorFormat;
         this.normalsFormat = normalsFormat;
-        this._matrix = aether.mat3.identity();
-        this._position = aether.vec3.of(32, 32, 32);
+        this._matrix = mat3.identity();
+        this._position = vec3.fromScalar(32);
         this._samplesPerPixel = 1;
         this._focalLength = Math.SQRT2;
         this.device = gpuToy.device;
@@ -155,9 +155,9 @@ export class Tracer {
         });
     }
     clamp(p) {
-        const min = 0.5;
-        const max = this.scene.gridSize - 0.5;
-        return aether.vec3.min(aether.vec3.max(p, aether.vec3.of(min, min, min)), aether.vec3.of(max, max, max));
+        const min = vec3.fromScalar(0.5);
+        const max = vec3.fromScalar(this.scene.gridSize - 0.5);
+        return vec3.clamp(p, min, max);
     }
 }
 //# sourceMappingURL=tracer.js.map

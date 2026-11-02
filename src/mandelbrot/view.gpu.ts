@@ -1,8 +1,8 @@
-import * as aether from "aether"
-import * as gear from "gear"
+import type { Vec2 } from "aether";
+import * as gear from "gear";
 import * as gpu from "lumen";
-import { View } from "./view.js";
 import { glWebGPU } from "webgxx";
+import { View } from "./view.js";
 
 export class ViewGPU implements View {
 
@@ -25,7 +25,7 @@ export class ViewGPU implements View {
         canvasId: string,
         vertexShader: gpu.ShaderModule,
         fragmentShader: gpu.ShaderModule,
-        center: aether.Vec<2>,
+        center: Vec2,
         scale: number
     ) {
         this.uniforms = device.syncBuffer({
@@ -69,11 +69,11 @@ export class ViewGPU implements View {
         return this.gpuCanvas.element
     }
     
-    get center(): aether.Vec<2> {
+    get center(): Vec2 {
         return this.uniforms.get(this.uniformsStruct.members.center)
     }
 
-    set center(c: aether.Vec<2>) {
+    set center(c: Vec2) {
         this.uniforms.set(this.uniformsStruct.members.center, c)
     }
 
@@ -148,7 +148,7 @@ export class ViewGPU implements View {
 
 }
 
-export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+export async function viewGPU(canvasId: string, center: Vec2, scale: number): Promise<View> {
     const device = await gpu.Device.instance()
     const code = await gear.fetchTextFile("/shaders/mandelbrot.wgsl")
     const shaderModule = await device.shaderModule( { 
@@ -158,7 +158,7 @@ export async function viewGPU(canvasId: string, center: aether.Vec<2>, scale: nu
     return new ViewGPU(device, canvasId, shaderModule, shaderModule, center, scale)
 }
 
-export async function viewGL(canvasId: string, center: aether.Vec<2>, scale: number): Promise<View> {
+export async function viewGL(canvasId: string, center: Vec2, scale: number): Promise<View> {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement
     const device = await gpu.Device.instance({}, glWebGPU(canvas))
     const code = await gear.fetchTextFile("/shaders/mandelbrot.frag")

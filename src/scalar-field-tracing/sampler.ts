@@ -1,5 +1,6 @@
-import * as gpu from "lumen"
-import * as aether from "aether"
+import type { Mat3 } from "aether";
+import { mat3, vec3 } from "aether";
+import * as gpu from "lumen";
 import { GPUToy, SamplerGroup, SamplerPipeline, fieldParamsStruct } from "./toy.gpu.js";
 
 export class FieldSampler {
@@ -31,8 +32,8 @@ export class FieldSampler {
             label: "uniforms-buffer",
             usage: ["UNIFORM"], 
             data: fieldParamsStruct.view([{
-                matrix: aether.mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
-                displacement: aether.vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
+                matrix: mat3.rotation(Math.PI / Math.SQRT2, [1, 2, 3]),
+                displacement: vec3.of(Math.sqrt(1 / 2), Math.sqrt(1 / 3), Math.sqrt(1 / 5)),
                 scale: Math.SQRT1_2,
                 depth: 5
             }])
@@ -47,7 +48,7 @@ export class FieldSampler {
         return this.uniformsBuffer.get(fieldParamsStruct.members.matrix)
     }
 
-    set matrix(m: aether.Mat3) {
+    set matrix(m: Mat3) {
         this.uniformsBuffer.set(fieldParamsStruct.members.matrix, m)
     }
 

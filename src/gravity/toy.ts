@@ -1,14 +1,15 @@
-import * as aether from "aether"
+import type { Mat4 } from "aether"
+import { mat4 } from "aether"
 import * as gear from "gear"
-import * as dragging from '../utils/dragging.js'
 import * as gpu from "lumen"
-import { Universe } from './universe.js'
+import * as dragging from '../utils/dragging.js'
+import * as meta from './meta.js'
+import { Physics } from './physics.js'
+import { Renderer } from './renderer.js'
 import * as meshRenderer from './renderer.mesh.js'
 import * as pointsRenderer from './renderer.points.js'
-import { Physics } from './physics.js'
+import { Universe } from './universe.js'
 import { Visuals } from './visuals.js'
-import { Renderer } from './renderer.js'
-import * as meta from './meta.js'
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity"
 export const video = "https://youtu.be/BrZm6LlOQlI"
@@ -164,13 +165,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     set radiusScale(s: number) { this.visuals.radiusScale = s }
 
     get position() { return this.visuals.viewMatrix[3][2] }
-    set position(z: number) { this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, z]) }
+    set position(z: number) { this.visuals.viewMatrix = mat4.lookAt([0, 0, z]) }
 
     get zoom() { return this.visuals.zoom }
     set zoom(z: number) { this.visuals.zoom = z }
     
     get modelMatrix() { return this.visuals.modelMatrix }
-    set modelMatrix(m: aether.Mat4) { this.visuals.modelMatrix = m }
+    set modelMatrix(m: Mat4) { this.visuals.modelMatrix = m }
 
     private draggingTarget<K extends keyof this>(key: K, dragger: gear.loops.Dragger<this[K]>): gear.loops.DraggingTarget {
         return gear.loops.draggingTarget(gear.property(this, key), dragger)
@@ -181,8 +182,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private resetRendering() {
-        this.visuals.modelMatrix = aether.mat4.identity()
-        this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24])
+        this.visuals.modelMatrix = mat4.identity()
+        this.visuals.viewMatrix = mat4.lookAt([0, 0, -24])
         this.visuals.radiusScale = 0.06
         this.visuals.zoom = 1
         this.resize()

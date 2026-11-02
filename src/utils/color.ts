@@ -1,20 +1,21 @@
-import * as aether from "aether"
+import type { Vec3, Vec4 } from "aether"
+import { vec3 } from "aether"
 import { later } from "gear"
 
 export class Color {
 
     private aspects: ColorAspects
 
-    constructor(rgba: aether.Vec4, private callback: () => void = () => {}) {
+    constructor(rgba: Vec4, private callback: () => void = () => {}) {
         this.aspects = aspectsOf(rgba)
         later(this.callback)()
     }
 
-    get hue(): aether.Vec3 {
+    get hue(): Vec3 {
         return this.aspects.hue
     }
 
-    set hue(hue: aether.Vec3) {
+    set hue(hue: Vec3) {
         this.aspects.hue = hueOf(hue)
         this.callback()
     }
@@ -37,11 +38,11 @@ export class Color {
         this.callback()
     }
 
-    get rgba(): aether.Vec4 {
-        return [...aether.vec3.scale(this.hue, this.shade), this.alpha]
+    get rgba(): Vec4 {
+        return [...vec3.scale(this.hue, this.shade), this.alpha]
     }
 
-    set rgba(rgba: aether.Vec4) {
+    set rgba(rgba: Vec4) {
         this.aspects = aspectsOf(rgba)
         this.callback()
     }
@@ -61,7 +62,7 @@ export class Color {
 }
 
 function aspectsOf(rgba: [number, number, number, number]) {
-    const rgb = aether.vec3.from(rgba)
+    const rgb = vec3.from(rgba)
     return {
         hue: hueOf(rgb),
         shade: Math.max(...rgb),
@@ -69,7 +70,7 @@ function aspectsOf(rgba: [number, number, number, number]) {
     }
 }
 
-export function toHex(color: aether.Vec4): string {
+export function toHex(color: Vec4): string {
     return color
         .map(v => Math.min(Math.max(v, 0), 1))
         .map(v => Math.round(v * 255).toString(16).padStart(2, "0"))
@@ -77,7 +78,7 @@ export function toHex(color: aether.Vec4): string {
         .toUpperCase()
 }
 
-export function fromHex(hex: string, defaultColor: aether.Vec4): aether.Vec4 {
+export function fromHex(hex: string, defaultColor: Vec4): Vec4 {
     if (hex.length != 8) {
         return defaultColor
     }
@@ -89,13 +90,13 @@ export function fromHex(hex: string, defaultColor: aether.Vec4): aether.Vec4 {
     }
 }
 
-export function hueOf(color3D: aether.Vec3): aether.Vec3 {
+export function hueOf(color3D: Vec3): Vec3 {
     const max = Math.max(...color3D)
-    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [1, 1, 1]
+    return max !== 0 ? vec3.scale(color3D, 1 / max) : [1, 1, 1]
 }
 
 type ColorAspects = {
-    hue: aether.Vec3,
+    hue: Vec3,
     shade: number,
     alpha: number
 }

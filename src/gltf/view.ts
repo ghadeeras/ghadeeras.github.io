@@ -1,4 +1,4 @@
-import * as aether from "aether"
+import type { Mat4, Vec4 } from "aether"
 import * as gear from "gear"
 import * as dgee from '../djee/index.js'
 import * as gpuView from "./view.gpu.js"
@@ -12,11 +12,11 @@ export interface View {
     
     draw(eye?: number): void
 
-    projectionMatrix: aether.Mat4
+    projectionMatrix: Mat4
 
-    viewMatrix: aether.Mat4
+    viewMatrix: Mat4
 
-    modelMatrix: aether.Mat4
+    modelMatrix: Mat4
 
     readonly canvas: HTMLCanvasElement
 
@@ -26,9 +26,9 @@ export interface View {
 
     readonly focalLength: number
 
-    set modelColor(color: aether.Vec4)
+    set modelColor(color: Vec4)
 
-    set lightPosition(p: aether.Vec<4>)
+    set lightPosition(p: Vec4)
 
     set roughnessFactor(s: number)
 

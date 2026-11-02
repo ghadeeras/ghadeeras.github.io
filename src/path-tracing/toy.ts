@@ -1,13 +1,14 @@
-import * as gpu from "lumen"
-import * as aether from "aether"
+import type { Mat4, Vec3 } from "aether"
+import { mat3, mat4, vec3 } from "aether"
 import * as gear from "gear"
+import * as gpu from "lumen"
 import { RotationDragging } from "../utils/dragging.js"
-import { Stacker } from "./stacker.js"
-import { Tracer } from "./tracer.js"
-import { Scene, volume } from "./scene.js"
-import { buildScene } from "./scene-builder.js"
 import { Denoiser } from "./denoiser.js"
+import { buildScene } from "./scene-builder.js"
+import { Scene, volume } from "./scene.js"
+import { Stacker } from "./stacker.js"
 import { newGPUToy, VolumeStruct } from "./toy.gpu.js"
+import { Tracer } from "./tracer.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/path-tracing"
 export const video = "https://youtu.be/xlMvArfR2do"
@@ -139,7 +140,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         return {
             pointers: {
                 canvas: {
-                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => aether.mat4.scaling(1, 1, -this.tracer.focalRatio)))
+                    defaultDraggingTarget: gear.loops.draggingTarget(gear.property(this, "viewMatrix"), RotationDragging.dragger(() => mat4.scaling(1, 1, -this.tracer.focalRatio)))
                 }
             },
             keys: {
@@ -199,13 +200,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     animate(t: number, deltaT: number): void {
-        let v: aether.Vec3 = [
+        let v: Vec3 = [
             this.speeds[0][0] - this.speeds[0][1],
             this.speeds[1][0] - this.speeds[1][1],
             this.speeds[2][1] - this.speeds[2][0],
         ]
-        const velocity = aether.vec3.scale(aether.vec3.prod(v, this.tracer.matrix), deltaT * 0.025)
-        const speed = aether.vec3.length(velocity)
+        const velocity = vec3.scale(vec3.prod(v, this.tracer.matrix), deltaT * 0.025)
+        const speed = vec3.length(velocity)
         this.wasAnimating = this.animating
         this.animating = this.minLayersOnly || this.changingView || speed !== 0
         this.changingView = false
@@ -238,16 +239,12 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
     
     get viewMatrix() {
-        return aether.mat4.cast(this.tracer.matrix)
+        return mat4.cast(this.tracer.matrix)
     }
 
-    set viewMatrix(m: aether.Mat4) {
+    set viewMatrix(m: Mat4) {
         this.changingView = true
-        this.tracer.matrix = aether.mat3.from([
-            ...aether.vec3.from(m[0]),
-            ...aether.vec3.from(m[1]),
-            ...aether.vec3.from(m[2]),
-        ])
+        this.tracer.matrix = mat3.linearComponent(m)
     }
 
     get samplesPerPixel() {
@@ -293,58 +290,58 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 }
 
-function move(position: aether.Vec3, velocity: aether.Vec3, scene: Scene) {
+function move(position: Vec3, velocity: Vec3, scene: Scene) {
     let safeV = safeVelocity(position, velocity, scene)
-    let power = aether.vec3.lengthSquared(safeV) 
+    let power = vec3.lengthSquared(safeV) 
     if (power == 0) {
         for (let c = 1; c < 7; c++) {
             const x = c & 1
             const y = (c >> 1) & 1
             const z = (c >> 2) & 1
-            const v = safeVelocity(position, aether.vec3.mul(velocity, [x, y, z]), scene)
-            const p = aether.vec3.lengthSquared(v)
+            const v = safeVelocity(position, vec3.mul(velocity, [x, y, z]), scene)
+            const p = vec3.lengthSquared(v)
             if (p > power) {
                 safeV = v
                 power = p
             }
         }
     }
-    return aether.vec3.add(position, safeV)
+    return vec3.add(position, safeV)
 }
 
-function safeVelocity(position: aether.Vec3, velocity: aether.Vec3, scene: Scene) {
+function safeVelocity(position: Vec3, velocity: Vec3, scene: Scene) {
     const currentVolume = volumeAround(position)
-    const nextPosition = aether.vec3.add(position, velocity)
+    const nextPosition = vec3.add(position, velocity)
     const nextVolume = volumeAround(nextPosition)
     const boxes = scene.volumeBoxes(nextVolume)
     const shortestTimeDistance = boxes
         .filter(b => intersect(b.volume, nextVolume))
         .map(box => timeDistance(currentVolume, box.volume, velocity))
         .reduce((d1, d2) => Math.min(d1, d2), 1)
-    return aether.vec3.scale(velocity, shortestTimeDistance)
+    return vec3.scale(velocity, shortestTimeDistance)
 }
 
 function intersect(v1: VolumeStruct, v2: VolumeStruct): boolean {
-    return aether.vec3.sub(
-        aether.vec3.min(v1.max, v2.max), 
-        aether.vec3.max(v1.min, v2.min)
+    return vec3.sub(
+        vec3.min(v1.max, v2.max), 
+        vec3.max(v1.min, v2.min)
     ).every(c => c > 0)
 }
 
-function volumeAround(position: aether.Vec3) {
+function volumeAround(position: Vec3) {
     return volume(
-        aether.vec3.sub(position, [0.5, 0.5, 0.5]),
-        aether.vec3.add(position, [0.5, 0.5, 0.5])
+        vec3.sub(position, vec3.fromScalar(0.5)),
+        vec3.add(position, vec3.fromScalar(0.5))
     )
 }
 
-function timeDistance(v1: VolumeStruct, v2: VolumeStruct, velocity: aether.Vec3): number {
-    const gap: aether.Vec3 = [
+function timeDistance(v1: VolumeStruct, v2: VolumeStruct, velocity: Vec3): number {
+    const gap: Vec3 = [
         velocity[0] >= 0 ? v2.min[0] - v1.max[0] : v2.max[0] - v1.min[0], 
         velocity[1] >= 0 ? v2.min[1] - v1.max[1] : v2.max[1] - v1.min[1], 
         velocity[2] >= 0 ? v2.min[2] - v1.max[2] : v2.max[2] - v1.min[2], 
     ]
-    const distances = aether.vec3.div(gap, velocity).map(c => !Number.isNaN(c) && c >= 0 ? c : 1)
+    const distances = vec3.div(gap, velocity).map(c => !Number.isNaN(c) && c >= 0 ? c : 1)
     return Math.min(...distances)
 }
 

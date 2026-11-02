@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { mat4 } from "aether";
 import * as gpu from "lumen";
 import { gltf, gltf_gpu } from "../djee/index.js";
 const uniformsStruct = gpu.struct({
@@ -13,8 +13,8 @@ export class NormalsRenderer {
         this.shaderModule = shaderModule;
         this.depthTexture = depthTexture;
         this.renderer = null;
-        this._viewMatrix = aether.mat4.identity();
-        this._modelMatrix = aether.mat4.identity();
+        this._viewMatrix = mat4.identity();
+        this._modelMatrix = mat4.identity();
         this.perspective = gltf.graph.defaultPerspective();
         this.device = shaderModule.device;
         this.uniforms = this.device.syncBuffer({
@@ -76,7 +76,7 @@ export class NormalsRenderer {
         this.resetModelViewMatrix();
     }
     resetModelViewMatrix() {
-        const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
     async loadModel(modelUri) {

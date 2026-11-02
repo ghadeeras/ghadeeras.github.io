@@ -1,4 +1,5 @@
-import * as aether from "aether"
+import type { Vec3 } from "aether"
+import { vec3 } from "aether"
 import { Scene, volume } from "./scene.js"
 import { VolumeStruct } from './toy.gpu.js'
 
@@ -37,13 +38,13 @@ function populateGrid(scene: Scene) {
     }
 }
 
-function bigBox(scene: Scene, min: aether.Vec3, max: aether.Vec3, materials: number[]) {
-    const size = aether.vec3.sub(max, min)
+function bigBox(scene: Scene, min: Vec3, max: Vec3, materials: number[]) {
+    const size = vec3.sub(max, min)
     if (size.some(c => c > 4)) {
         const cx = size[0] > 4 ? Math.ceil(size[0] / 4) : 1
         const cy = size[1] > 4 ? Math.ceil(size[1] / 4) : 1
         const cz = size[2] > 4 ? Math.ceil(size[2] / 4) : 1
-        const s = aether.vec3.div(size, [cx, cy, cz])
+        const s = vec3.div(size, [cx, cy, cz])
         for (let i = 0; i < cx; i++) {
             const x1 = Math.floor(min[0] + i * s[0]) 
             const x2 = Math.ceil(min[0] + (i + 1) * s[0]) 
@@ -60,7 +61,7 @@ function bigBox(scene: Scene, min: aether.Vec3, max: aether.Vec3, materials: num
     }
 }
 
-function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOrientation: number) {
+function addWall(scene: Scene, pos: Vec3, orientation: number, luminousOrientation: number) {
     const config = Math.floor((pos[0] / 8 + pos[1] / 8 + pos[2] / 8) % 3)
     const volumes: VolumeStruct[] = [
         volume([0.0, 0.0, 0.0], [4.0, 4.0, 1.0]),
@@ -82,12 +83,12 @@ function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOr
     let luminousFace = 3
     switch (orientation) {
         case 1: volumes.forEach(v => {
-            v.min = aether.vec3.swizzle(v.min, 1, 2, 0)
-            v.max = aether.vec3.swizzle(v.max, 1, 2, 0)
+            v.min = vec3.swizzle(v.min, 1, 2, 0)
+            v.max = vec3.swizzle(v.max, 1, 2, 0)
         }); luminousFace = 0; break
         case 2: volumes.forEach(v => {
-            v.min = aether.vec3.swizzle(v.min, 2, 0, 1)
-            v.max = aether.vec3.swizzle(v.max, 2, 0, 1)
+            v.min = vec3.swizzle(v.min, 2, 0, 1)
+            v.max = vec3.swizzle(v.max, 2, 0, 1)
         }); luminousFace = 4; break
     }
     const m = orientation
@@ -97,8 +98,8 @@ function addWall(scene: Scene, pos: aether.Vec3, orientation: number, luminousOr
         luminousMaterials[luminousFace] = 4
     }
     volumes.forEach((v, i) => scene.box(
-        aether.vec3.max(aether.vec3.add(pos, v.min), [1, 1, 1]), 
-        aether.vec3.min(aether.vec3.add(pos, v.max), [63, 63, 63]), 
+        vec3.max(vec3.add(pos, v.min), [1, 1, 1]), 
+        vec3.min(vec3.add(pos, v.max), [63, 63, 63]), 
         i != 2 ? materials : luminousMaterials
     ))
 }

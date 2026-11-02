@@ -1,8 +1,9 @@
-import * as aether from "aether"
+import type { Complex, Vec2 } from "aether"
+import { complex, vec2 } from "aether"
 import * as gear from "gear"
-import { view, View } from "./view.js"
-import { LinearDragging, positionDragging } from "../utils/dragging.js"
 import { hideHud, showHud } from "../initializer.js"
+import { LinearDragging, positionDragging } from "../utils/dragging.js"
+import { view, View } from "./view.js"
 
 let audioContext: AudioContext
 
@@ -76,7 +77,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     
     readonly moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(), "innerViewPosition")
     readonly zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(), "innerViewPosition")
-    readonly colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging)
+    readonly colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => vec2.of(x + 1, (y + 1) / 2)), positionDragging)
     readonly intensityTarget = gear.loops.draggingTarget(gear.property(this.mandelbrotView, "intensity"), LinearDragging.dragger(0, 1))
 
     readonly intensityWatch = gear.required(document.getElementById("intensity"))
@@ -136,8 +137,8 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     click(x: number, y: number, soundOn: boolean) {
         this.posWatch.innerText = toFixedVec([x, y])
         if (soundOn) {
-            const c = aether.vec2.add(
-                aether.vec2.scale([x, y], this.mandelbrotView.scale), 
+            const c = vec2.add(
+                vec2.scale([x, y], this.mandelbrotView.scale), 
                 this.mandelbrotView.center
             )
             play(c)
@@ -170,7 +171,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
 }
 
-function toFixedVec<D extends aether.Dim>(v: aether.Vec<D>, digits = 3) {
+function toFixedVec(v: Vec2, digits = 3) {
     const coords = v.map(c => toFixed(c, digits))
     const commaSeparatedCoords = coords[0].concat(...coords.slice(1).map(s => `, ${s}`))
     return `(${commaSeparatedCoords})`
@@ -181,7 +182,7 @@ function toFixed(c: number, digits: number = 3) {
     return s.startsWith("-") ? s : " " + s
 }
 
-function play(c: aether.Vec<2>) {
+function play(c: Complex) {
     if (audioContext == null) {
         audioContext = new window.AudioContext({sampleRate: 8192})
     }
@@ -191,16 +192,17 @@ function play(c: aether.Vec<2>) {
     const channel2 = audioBuffer.getChannelData(1)
     let sum1 = 0
     let sum2 = 0
-    let z: aether.Vec<2> = [0, 0]
-    for (let i = 0; i < audioBuffer.length && aether.vec2.length(z) < 2.0; i++) {
-        const [x, y] = z
-        z = aether.vec2.add([x * x - y * y, 2 * x * y], c)
+    let z = complex.of(0, 0)
+    let l2 = 0
+    for (let i = 0; i < audioBuffer.length && l2 < 4.0; i++) {
+        z = complex.add(complex.mul(z, z), c)
+        l2 = complex.lengthSquared(z)
         channel1[i] = z[0] / 2
         channel2[i] = z[1] / 2
         sum1 += channel1[i]
         sum2 += channel2[i]
     }
-    if (aether.vec2.length(z) < 2.0) {
+    if (l2 < 4.0) {
         const avg1 = sum1 / channel1.length
         const avg2 = sum2 / channel2.length
         for (let i = 0; i < audioBuffer.length; i++) {
@@ -226,7 +228,7 @@ function playBuffer(audioContext: AudioContext, audioBuffer: AudioBuffer) {
 
 type Transformation = {
     scale: number,
-    center: aether.Vec<2>
+    center: Vec2
 }
 
 class Zoom implements gear.loops.Dragger<Transformation> {
@@ -242,9 +244,9 @@ class Zoom implements gear.loops.Dragger<Transformation> {
             const factor = 16 ** power
             return power == 0 ? initial : {
                 scale: initial.scale * factor,
-                center: aether.vec2.sub(
+                center: vec2.sub(
                     initial.center, 
-                    aether.vec2.scale(
+                    vec2.scale(
                         calculateDelta([0, 0], from, initial.scale), 
                         factor - 1
                     )
@@ -273,12 +275,9 @@ class Move implements gear.loops.Dragger<Transformation> {
             const delta = calculateDelta(from, to, initial.scale)
             return {
                 scale: initial.scale,
-                center: aether.vec2.max(
-                    aether.vec2.min(
-                        aether.vec2.sub(initial.center, delta),
-                        [+4, +4]
-                    ),
-                    [-4, -4]
+                center: vec2.clamp(
+                    vec2.sub(initial.center, delta),
+                    [-4, -4], [+4, +4]
                 )
             }
         }
@@ -291,8 +290,8 @@ class Move implements gear.loops.Dragger<Transformation> {
 }
 
 function calculateDelta(pos1: gear.loops.PointerPosition, pos2: gear.loops.PointerPosition, scale = 1) {
-    return aether.vec2.scale(
-        aether.vec2.sub(pos2, pos1), 
+    return vec2.scale(
+        vec2.sub(pos2, pos1), 
         scale
     )
 }

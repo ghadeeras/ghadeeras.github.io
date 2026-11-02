@@ -1,13 +1,13 @@
-import * as aether from "aether";
+import { mat4 } from "aether";
 import * as gear from "gear";
-import * as dragging from '../utils/dragging.js';
 import * as gpu from "lumen";
-import { Universe } from './universe.js';
+import * as dragging from '../utils/dragging.js';
+import * as meta from './meta.js';
+import { Physics } from './physics.js';
 import * as meshRenderer from './renderer.mesh.js';
 import * as pointsRenderer from './renderer.points.js';
-import { Physics } from './physics.js';
+import { Universe } from './universe.js';
 import { Visuals } from './visuals.js';
-import * as meta from './meta.js';
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gravity";
 export const video = "https://youtu.be/BrZm6LlOQlI";
 export const huds = {
@@ -74,7 +74,7 @@ class Toy {
     get radiusScale() { return this.visuals.radiusScale; }
     set radiusScale(s) { this.visuals.radiusScale = s; }
     get position() { return this.visuals.viewMatrix[3][2]; }
-    set position(z) { this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, z]); }
+    set position(z) { this.visuals.viewMatrix = mat4.lookAt([0, 0, z]); }
     get zoom() { return this.visuals.zoom; }
     set zoom(z) { this.visuals.zoom = z; }
     get modelMatrix() { return this.visuals.modelMatrix; }
@@ -86,8 +86,8 @@ class Toy {
         this.renderers.forEach(r => r.resize());
     }
     resetRendering() {
-        this.visuals.modelMatrix = aether.mat4.identity();
-        this.visuals.viewMatrix = aether.mat4.lookAt([0, 0, -24]);
+        this.visuals.modelMatrix = mat4.identity();
+        this.visuals.viewMatrix = mat4.lookAt([0, 0, -24]);
         this.visuals.radiusScale = 0.06;
         this.visuals.zoom = 1;
         this.resize();

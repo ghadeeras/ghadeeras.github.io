@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec3 } from "aether";
 import { later } from "gear";
 export class Color {
     constructor(rgba, callback = () => { }) {
@@ -28,7 +28,7 @@ export class Color {
         this.callback();
     }
     get rgba() {
-        return [...aether.vec3.scale(this.hue, this.shade), this.alpha];
+        return [...vec3.scale(this.hue, this.shade), this.alpha];
     }
     set rgba(rgba) {
         this.aspects = aspectsOf(rgba);
@@ -46,7 +46,7 @@ export class Color {
     }
 }
 function aspectsOf(rgba) {
-    const rgb = aether.vec3.from(rgba);
+    const rgb = vec3.from(rgba);
     return {
         hue: hueOf(rgb),
         shade: Math.max(...rgb),
@@ -74,6 +74,6 @@ export function fromHex(hex, defaultColor) {
 }
 export function hueOf(color3D) {
     const max = Math.max(...color3D);
-    return max !== 0 ? aether.vec3.scale(color3D, 1 / max) : [1, 1, 1];
+    return max !== 0 ? vec3.scale(color3D, 1 / max) : [1, 1, 1];
 }
 //# sourceMappingURL=color.js.map

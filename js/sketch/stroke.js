@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec2 } from "aether";
 export class Stroke {
     constructor(_attributes, attributesDestructor, _skipInitalCap = false, minDistance = 4, time = () => performance.now()) {
         this._attributes = _attributes;
@@ -103,13 +103,13 @@ export class Stroke {
         if (this.points.length > 0) {
             const lastPoint = this.points[this.points.length - 1];
             const beforeLastPoint = this.points.length > 1 ? this.points[this.points.length - 2] : lastPoint;
-            const lastDistance = aether.vec2.distance(lastPoint.position, beforeLastPoint.position);
+            const lastDistance = vec2.distance(lastPoint.position, beforeLastPoint.position);
             const prevPoint = lastDistance < this.minDistance ? beforeLastPoint : lastPoint;
             if (prevPoint !== lastPoint) {
                 this.points.pop();
                 this._length -= lastDistance;
             }
-            const distance = aether.vec2.distance(position, prevPoint.position);
+            const distance = vec2.distance(position, prevPoint.position);
             this._length += distance;
         }
         this.points.push({ position: position, linear: [this.length, this.duration] });

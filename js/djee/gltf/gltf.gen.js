@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec3 } from "aether";
 export function createModel(name, vertices) {
     const indexedVertices = indexVertices(vertices);
     return {
@@ -99,24 +99,15 @@ function indexVertices(vertices) {
     const map = {};
     const stride = 6;
     for (let i = 0; i < vertices.length; i += stride) {
-        const vertex = vertices.slice(i, i + stride);
-        const position = vertex.slice(0, 3);
-        const normal = vertex.slice(3, 6);
+        const position = vec3.from(vertices, i);
+        const normal = vec3.from(vertices, i + 3);
         const nextIndex = indexedVertices.vertices.length / stride;
         const index = lookUp(map, position, nextIndex);
         if (index == nextIndex) {
-            const unitNormal = aether.vec3.unit([normal[0], normal[1], normal[2]]);
+            const unitNormal = vec3.unit(normal);
             indexedVertices.vertices.push(...position, ...unitNormal);
-            indexedVertices.minPos = [
-                Math.min(position[0], indexedVertices.minPos[0]),
-                Math.min(position[1], indexedVertices.minPos[1]),
-                Math.min(position[2], indexedVertices.minPos[2])
-            ];
-            indexedVertices.maxPos = [
-                Math.max(position[0], indexedVertices.maxPos[0]),
-                Math.max(position[1], indexedVertices.maxPos[1]),
-                Math.max(position[2], indexedVertices.maxPos[2])
-            ];
+            indexedVertices.minPos = vec3.min(position, indexedVertices.minPos);
+            indexedVertices.maxPos = vec3.max(position, indexedVertices.maxPos);
         }
         indexedVertices.indices.push(index);
     }

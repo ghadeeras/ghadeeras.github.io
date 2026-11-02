@@ -1,5 +1,5 @@
-import * as L from "languasaurus";
 import { Expression } from "aether";
+import * as L from "languasaurus";
 const constants = {
     phi: (Math.sqrt(5) + 1) / 2,
     pi: Math.PI,

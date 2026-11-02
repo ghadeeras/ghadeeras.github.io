@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { vec4 } from "aether";
 import * as gpu from "lumen";
 import { GPUView } from "./view.gpu.js";
 export class GPUPicker {
@@ -72,7 +72,7 @@ export class GPUPicker {
             });
         });
         const view = await this.pickDestination.get(gpu.u32).asData();
-        const result = aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.uint8Array(view)), 2 / 255), [1, 1, 1, 1]);
+        const result = vec4.sub(vec4.scale(vec4.from(gpu.uint8Array(view)), 2 / 255), vec4.fromScalar(1));
         return result;
     }
     resize() {

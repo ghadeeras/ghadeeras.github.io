@@ -1,16 +1,17 @@
-import * as gpu from "lumen"
+import type { Mat4, Vec2, Vec4 } from "aether"
+import { mat3, mat4, vec2, vec4 } from "aether"
 import * as gear from "gear"
-import * as aether from "aether"
+import * as gpu from "lumen"
+import { hideCurrentHud, showHud } from "../initializer.js"
+import { Color, fromHex, toHex } from "../utils/color.js"
 import { LinearDragging, TranslationDragging } from "../utils/dragging.js"
-import { Renderer } from "./stroke.renderer.js"
+import { Palette } from "../utils/palette.js"
+import { BackgroundGroup, BackgroundRenderer } from "./bg.renderer.js"
+import { Brush } from "./brush.js"
+import * as cmn from "./common.js"
 import { TessellatedStrokeFactory } from "./stroke.computer.js"
 import { Stroke } from "./stroke.js"
-import { Brush } from "./brush.js"
-import { BackgroundGroup, BackgroundRenderer } from "./bg.renderer.js"
-import * as cmn from "./common.js"
-import { hideCurrentHud, showHud } from "../initializer.js"
-import { Palette } from "../utils/palette.js"
-import { Color, fromHex, toHex } from "../utils/color.js"
+import { Renderer } from "./stroke.renderer.js"
 
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sketch"
 export const huds = {
@@ -177,14 +178,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private lines = false
     private backgroundColor = new Color([0, 0, 0, 0], () => {
         const bg = this.backgroundColor.rgba
-        const fg = aether.vec4.mix(0.75, bg, aether.vec4.from(aether.vec4.add(bg, [0.5, 0.5, 0.5, 0]).map(c => c - Math.floor(c))))
+        const fg = vec4.mix(0.75, bg, vec4.map(vec4.add(bg, [0.5, 0.5, 0.5, 0]), c => c - Math.floor(c)))
         this.brush.container.style.setProperty("--bg-color", `#${toHex(bg).substring(0, 6)}FF`)
         this.brush.container.style.setProperty("--fg-color", `#${toHex(fg).substring(0, 6)}FF`)
         this.brush.borderElement.style.setProperty("border-color", `#${toHex(fg).substring(0, 6)}FF`)
     })
     
-    private inverseViewMatrix = aether.mat3.identity()
-    private viewMatrix = aether.mat3.identity()
+    private inverseViewMatrix = mat3.identity()
+    private viewMatrix = mat3.identity()
 
     private strokeTarget = gear.loops.draggingTarget(
         gear.property(this, "stroke"),
@@ -201,7 +202,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private slidingTarget = gear.loops.draggingTarget(
         gear.property(this, "matrix"), 
         TranslationDragging.dragger(() => {
-            return aether.mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1)
+            return mat4.scaling(-2 / this.canvas.element.width, 2 / this.canvas.element.height, 1)
         }, 1)
     )
 
@@ -244,17 +245,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         }
     }
 
-    private infiniteCanvasSpacePos(position: [number, number]): aether.Vec2 {
-        return aether.vec2.from(aether.mat3.apply(this.inverseViewMatrix, [...this.canvasSpacePos(position), 1]))
+    private infiniteCanvasSpacePos(position: [number, number]): Vec2 {
+        return vec2.from(mat3.apply(this.inverseViewMatrix, [...this.canvasSpacePos(position), 1]))
     }
 
-    private canvasSpacePos(position: [number, number]): aether.Vec2 {
-        return aether.vec2.mul(
-            aether.vec2.mul(
-                aether.vec2.add(position, [1, -1]), 
-                [0.5, -0.5]
-            ), 
-            [this.canvas.element.width, this.canvas.element.height]
+    private canvasSpacePos(position: [number, number]): Vec2 {
+        return vec2.mul(
+            vec2.add(position, [1, -1]), 
+            [0.5 * this.canvas.element.width, -0.5 * this.canvas.element.height]
         )
     }
 
@@ -268,13 +266,13 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         ]
     }
 
-    set matrix(matrix: aether.Mat4) {
+    set matrix(matrix: Mat4) {
         const m = matrix
             .filter((_, i) => i != 2)
             .map(r => [r[0], r[1], r[3]])
             .flatMap(r => r)
-        this.inverseViewMatrix = aether.mat3.from(m)
-        this.viewMatrix = aether.mat3.inverse(this.inverseViewMatrix)
+        this.inverseViewMatrix = mat3.from(m)
+        this.viewMatrix = mat3.inverse(this.inverseViewMatrix)
         this.renderer.updateView(this.viewGroup, this.view)
         const vm = this.viewMatrix
         this.brush.borderElement.style.transform = `matrix(${vm[0][0]}, ${vm[0][1]}, ${vm[1][0]}, ${vm[1][1]}, ${vm[2][0]}, ${vm[2][1]})`
@@ -339,7 +337,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
                 loadBackgroundImage: { onReleased: () => this.loadNewBackgroundImage() },
                 clearBackgroundImage: { onPressed: () => this.clearBackgroundImage() },
                 paste: { onReleased:() => this.paste() },
-                resetViewMatrix: { onPressed: () => this.matrix = aether.mat4.identity() },
+                resetViewMatrix: { onPressed: () => this.matrix = mat4.identity() },
                 break: { onPressed: () => this.breakStroke() },
                 mark: { onPressed: () => this.markedStroke = this.targetStroke },
                 windToMark: { onPressed: () => this.windToMark() },
@@ -630,7 +628,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     private widthElement = document.getElementById("canvas-width") as HTMLInputElement
     private heightElement = document.getElementById("canvas-height") as HTMLInputElement
 
-    private resizeCanvas(size: aether.Vec2 | undefined = undefined) {
+    private resizeCanvas(size: Vec2 | undefined = undefined) {
         let width = parseInt((document.getElementById("canvas-width") as HTMLInputElement).value)
         let height = parseInt((document.getElementById("canvas-height") as HTMLInputElement).value)
         if (size !== undefined) {
@@ -652,7 +650,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private startStopRecording(outputs: gear.loops.LoopOutputs<ToyDescriptor>) {
         if (outputs.canvases.scene.recorder.state !== "recording") {
-            this.matrix = aether.mat4.identity()
+            this.matrix = mat4.identity()
         }
         outputs.canvases.scene.recorder.startStop()
     }
@@ -667,16 +665,16 @@ type Distance = {
 type Sketch = {
     strokes: SerializableStroke[]
     strokesAttributes: SerializableStrokeAttributes[]
-    backgroundColor: aether.Vec4 | string
+    backgroundColor: Vec4 | string
 }
 
 type SerializableStroke = {
     attributes: number
-    points: aether.Vec2[]
+    points: Vec2[]
 }
 
 type SerializableStrokeAttributes = {
-    color: aether.Vec4 | string,
+    color: Vec4 | string,
     thickness: number,
     tension: number,
     closed: boolean,
@@ -684,7 +682,7 @@ type SerializableStrokeAttributes = {
 
 class StrokeSampler implements gear.loops.Dragger<Stroke> {
 
-    constructor(private canvasSpacePos: (p: aether.Vec2) => aether.Vec2) {
+    constructor(private canvasSpacePos: (p: Vec2) => Vec2) {
     }
 
     begin(stroke: Stroke): gear.loops.DraggingFunction<Stroke> {

@@ -1,8 +1,8 @@
-import * as aether from "aether"
-import * as gpu from "lumen"
-import { View, ViewFactory } from "./view.js";
-import { NormalsRenderer } from "./normals.gpu.js";
+import type { Mat4 } from "aether";
+import * as gpu from "lumen";
 import { NormalsFilter } from "./filter.gpu.js";
+import { NormalsRenderer } from "./normals.gpu.js";
+import { View, ViewFactory } from "./view.js";
 
 export class GPUView implements View {
 
@@ -50,7 +50,7 @@ export class GPUView implements View {
         return this.normalsRenderer.projectionMatrix
     }
 
-    set projectionMatrix(m: aether.Mat4) {
+    set projectionMatrix(m: Mat4) {
         this.normalsRenderer.projectionMatrix = m
     }
 
@@ -58,7 +58,7 @@ export class GPUView implements View {
         return this.normalsRenderer.viewMatrix
     }
 
-    set viewMatrix(m: aether.Mat4) {
+    set viewMatrix(m: Mat4) {
         this.normalsRenderer.viewMatrix = m
     }
 
@@ -66,7 +66,7 @@ export class GPUView implements View {
         return this.normalsRenderer.modelMatrix
     }
 
-    set modelMatrix(m: aether.Mat4) {
+    set modelMatrix(m: Mat4) {
         this.normalsRenderer.modelMatrix = m
     }
 

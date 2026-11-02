@@ -1,6 +1,7 @@
+import type { Vec4 } from "aether"
+import { vec2 } from "aether"
 import * as gpu from "lumen"
-import * as aether from "aether"
-import { StrokeAttributes, strokeAttributesStruct, commonWGSL, strokePointsPairStruct } from "./common.js"
+import { commonWGSL, StrokeAttributes, strokeAttributesStruct, strokePointsPairStruct } from "./common.js"
 
 // TODO Make the class stateless and use the attributes cache in the Brush class.
 export class TessellatedStrokeFactory {
@@ -32,7 +33,7 @@ export class TessellatedStrokeFactory {
         return this.attributes.color
     }
 
-    set strokeColor(color: aether.Vec4) {
+    set strokeColor(color: Vec4) {
         this.attributes.color = color
     }
 
@@ -51,8 +52,8 @@ export class TessellatedStrokeFactory {
             return this.device.dataBuffer({
                 usage: ["STORAGE"],
                 data: strokePointsPairStruct.view([{
-                    left: aether.vec2.add(p, [0, -r]),
-                    right: aether.vec2.add(p, [0, r]),
+                    left: vec2.add(p, [0, -r]),
+                    right: vec2.add(p, [0, r]),
                     linear: [0, 0]
                 }])
             })
@@ -61,7 +62,7 @@ export class TessellatedStrokeFactory {
         const end = inputStrokePoints[inputStrokePoints.length - 1]
         const startDist = start.linear[0]
         const endDist = end.linear[0]
-        const closingSegmentLength = this.attributes.closed === 1 ? aether.vec2.distance(start.position, end.position) : 0
+        const closingSegmentLength = this.attributes.closed === 1 ? vec2.distance(start.position, end.position) : 0
         const strokeLength = endDist - startDist + closingSegmentLength
         const segmentsCount = Math.max(Math.ceil(strokeLength * segmentsPerUnitLength), 1.0);
         const group = this.shader.tesselationGroup(this.attributes, inputStrokePoints, segmentsCount)

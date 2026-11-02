@@ -1,9 +1,10 @@
-import * as aether from "aether"
+import type { Mat4, Vec4 } from "aether"
+import { loadScalarFieldModule, mat4, ScalarFieldInstance, vec2, vec3 } from "aether"
 import * as gear from "gear"
 import { gltf } from "../djee/index.js"
-import * as v from "./view.js"
 import * as dragging from "../utils/dragging.js"
 import { parse } from "./exp.parser.js"
+import * as v from "./view.js"
 
 export const huds = {
     "monitor": "monitor-button",
@@ -110,10 +111,10 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     private _field = 0
 
-    constructor(private view: v.View, private scalarFieldInstance: aether.ScalarFieldInstance) {
-        view.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
+    constructor(private view: v.View, private scalarFieldInstance: ScalarFieldInstance) {
+        view.matView = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0])
         view.focalLength = Math.pow(2, 1.5)
-        this.modelMatrix = aether.mat4.identity()
+        this.modelMatrix = mat4.identity()
         this.contourValue = 0.01
         this.resolution = 64
         this.field = 1
@@ -123,7 +124,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     static async create() {
-        const scalarFieldModule = await aether.loadScalarFieldModule()
+        const scalarFieldModule = await loadScalarFieldModule()
         const scalarFieldInstance = scalarFieldModule.newInstance()
         const view = await v.newView(Toy.descriptor.output.canvases.scene.element)
         return new Toy(view, scalarFieldInstance)
@@ -185,14 +186,14 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.view.matProjection, this.view.matView)
+        return mat4.mul(this.view.matProjection, this.view.matView)
     }
 
     get modelMatrix() {
         return this.view.matPositions
     }
 
-    set modelMatrix(m: aether.Mat4) {
+    set modelMatrix(m: Mat4) {
         this.view.setMatModel(m, m)
     }
 
@@ -232,7 +233,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.meshComputer.perform()
     }
 
-    fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): aether.Vec<4> {
+    fieldColor(contourValue: number = this.scalarFieldInstance.contourValue): Vec4 {
         return contourValue > 0 ?
             [1, 0, (1 - contourValue) / (1 + contourValue), 1] : 
             [1 - (1 + contourValue) / (1 - contourValue), 1, 0, 1] 
@@ -247,11 +248,11 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         gear.save(canvas.toDataURL("image/png"), 'image/png', 'ScalarField.png')
     }
 
-    toLightPosition(pos: gear.loops.PointerPosition): aether.Vec4 {
-        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
-        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP
-        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2)
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+    toLightPosition(pos: gear.loops.PointerPosition): Vec4 {
+        const unclampedP = vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1])
+        const clampedP = vec2.length(unclampedP) > 1 ? vec2.unit(unclampedP) : unclampedP
+        const [x, y] = vec2.scale(clampedP, Math.PI / 2)
+        const p = vec3.polarY(x, Math.PI / 2 - y, 2);
         return [...p, 1];
     }
 
@@ -261,7 +262,7 @@ const twoPi = 2 * Math.PI
 
 const fields = [xyz, envelopedCosine]
 
-function xyz(x: number, y: number, z: number): aether.Vec<4> {
+function xyz(x: number, y: number, z: number): Vec4 {
     return [
         y * z,
         z * x,
@@ -270,7 +271,7 @@ function xyz(x: number, y: number, z: number): aether.Vec<4> {
     ]
 }
 
-function envelopedCosine(x: number, y: number, z: number): aether.Vec<4> {
+function envelopedCosine(x: number, y: number, z: number): Vec4 {
     const x2 = x * x
     const y2 = y * y
     const z2 = z * z

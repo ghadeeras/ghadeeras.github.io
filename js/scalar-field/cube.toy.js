@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { loadScalarFieldModule, mat4, vec3 } from "aether";
 import * as gear from "gear";
 import * as gpu from "lumen";
-import * as dragging from "../utils/dragging.js";
 import { glWebGPU } from "webgxx";
+import * as dragging from "../utils/dragging.js";
 export const huds = {
     "monitor": "monitor-button"
 };
@@ -52,7 +52,7 @@ class Toy {
         this._value8 = -1;
         this.cube = newCube(0, 0, 0, 0, 0, 0, 0, 0);
         this.focalLength = Math.pow(2, 1.5);
-        this.matView = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+        this.matView = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
         this.cubeVerticesCount = 0;
         this.contourSurfaceVerticesCount = 0;
         const groupLayout = this.device.groupLayout({
@@ -104,9 +104,9 @@ class Toy {
         this.uniformsBuffer = this.device.syncBuffer({
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                    matModel: aether.mat4.identity(),
+                    matModel: mat4.identity(),
                     matView: this.matView,
-                    matProjection: aether.mat4.projection(this.focalLength, 1, 0.1, 100),
+                    matProjection: mat4.projection(this.focalLength, 1, 0.1, 100),
                     lightPosition: [2, 2, 2],
                 }])
         });
@@ -128,7 +128,7 @@ class Toy {
             vertexShader: await device.shaderModule({ code: shaders.vertexShaderCode }),
             fragmentShader: await device.shaderModule({ code: shaders.fragmentShaderCode }),
         };
-        const scalarFieldModule = await aether.loadScalarFieldModule();
+        const scalarFieldModule = await loadScalarFieldModule();
         const scalarFieldInstance = scalarFieldModule.newInstance();
         scalarFieldInstance.contourValue = 0.0;
         return new Toy(device, canvas, shaderModules, scalarFieldInstance);
@@ -194,11 +194,11 @@ class Toy {
     }
     resize() {
         const aspectRatio = this.canvas.element.width / this.canvas.element.height;
-        this.matProjection = aether.mat4.projection(2, 0.1, 100, aspectRatio);
+        this.matProjection = mat4.projection(2, 0.1, 100, aspectRatio);
         this.canvas.resize();
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.matProjection, this.matView);
+        return mat4.mul(this.matProjection, this.matView);
     }
     set matProjection(m) {
         this.uniformsBuffer.set(uniformsStruct.members.matProjection, m);
@@ -367,7 +367,7 @@ const mat = [
     [points.point2[0], points.point2[1], points.point2[2], 1],
     [points.point3[0], points.point3[1], points.point3[2], 1]
 ];
-const matInv = aether.mat4.inverse(mat);
+const matInv = mat4.inverse(mat);
 function newCube(field0, field1, field2, field3, field4, field5, field6, field7) {
     const gradients = {
         gradient0: gradient(points.point0, field0, points.point4, field4, points.point2, field2, points.point1, field1),
@@ -392,7 +392,7 @@ function newCube(field0, field1, field2, field3, field4, field5, field6, field7)
     return { ...points, ...gradients, ...values };
 }
 function gradient(point, value, pointX, valueX, pointY, valueY, pointZ, valueZ) {
-    return aether.vec3.add(aether.vec3.scale(aether.vec3.sub(point, pointX), value - valueX), aether.vec3.add(aether.vec3.scale(aether.vec3.sub(point, pointY), value - valueY), aether.vec3.scale(aether.vec3.sub(point, pointZ), value - valueZ)));
+    return vec3.addAll(vec3.scale(vec3.sub(point, pointX), value - valueX), vec3.scale(vec3.sub(point, pointY), value - valueY), vec3.scale(vec3.sub(point, pointZ), value - valueZ));
 }
 function cubeData(cube) {
     const normals = [

@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { mat4, vec3, vec4 } from "aether";
 import * as gpu from "lumen";
-import { gltf, gltf_gpu } from "../djee/index.js";
-import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { glWebGPU, xrContext } from "webgxx";
+import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
+import { gltf, gltf_gpu } from "../djee/index.js";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
         positions: gpu.mat4x4,
@@ -31,8 +31,8 @@ export class GPUView {
         this.skyVertexShader = skyVertexShader;
         this.skyFragmentShader = skyFragmentShader;
         this.renderer = null;
-        this._viewMatrix = aether.mat4.identity();
-        this._modelMatrix = aether.mat4.identity();
+        this._viewMatrix = mat4.identity();
+        this._modelMatrix = mat4.identity();
         this.perspective = gltf.graph.defaultPerspective();
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
@@ -40,15 +40,15 @@ export class GPUView {
             label: "uniforms",
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
-                    lightPos: aether.vec4.of(0, 0, 1, 0),
+                    lightPos: vec4.of(0, 0, 1, 0),
                     mat: {
-                        positions: aether.mat4.identity(),
-                        normals: aether.mat4.identity(),
+                        positions: mat4.identity(),
+                        normals: mat4.identity(),
                     },
-                    projectionMat: aether.mat4.identity(),
+                    projectionMat: mat4.identity(),
                     material: {
-                        baseColorFactor: aether.vec4.of(1.0, 1.0, 1.0, 1.0),
-                        emissiveFactor: aether.vec3.of(1.0, 1.0, 1.0),
+                        baseColorFactor: vec4.fromScalar(1.0),
+                        emissiveFactor: vec3.fromScalar(1.0),
                         metallicFactor: 1.0,
                         roughnessFactor: 1.0,
                         alphaCutoff: 0.0
@@ -133,7 +133,7 @@ export class GPUView {
         this.resetModelViewMatrix();
     }
     resetModelViewMatrix() {
-        const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
     async loadModel(modelUri) {

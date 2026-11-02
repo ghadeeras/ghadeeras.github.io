@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { mat4, vec2, vec3 } from "aether";
 import * as gear from "gear";
 import * as dragging from "../utils/dragging.js";
-import { view } from "./view.js";
 import { MatricesGenerator } from "./matgen.js";
+import { view } from "./view.js";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/tree";
 export const huds = {
     "monitor": "monitor-button"
@@ -73,7 +73,7 @@ class TreeToy {
         this.view.viewMatrix = viewMatrix;
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.view.projectionMatrix, this.view.viewMatrix);
+        return mat4.mul(this.view.projectionMatrix, this.view.viewMatrix);
     }
     get depth() {
         return this.matricesGenerator.depth;
@@ -177,15 +177,15 @@ const redVec = [1, 0];
 const greenVec = [Math.cos(third), Math.sin(third)];
 const blueVec = [Math.cos(2 * third), Math.sin(2 * third)];
 function positionToColor(vec) {
-    const red = Math.min(2, 1 + aether.vec2.dot(vec, redVec)) / 2;
-    const green = Math.min(2, 1 + aether.vec2.dot(vec, greenVec)) / 2;
-    const blue = Math.min(2, 1 + aether.vec2.dot(vec, blueVec)) / 2;
+    const red = Math.min(2, 1 + vec2.dot(vec, redVec)) / 2;
+    const green = Math.min(2, 1 + vec2.dot(vec, greenVec)) / 2;
+    const blue = Math.min(2, 1 + vec2.dot(vec, blueVec)) / 2;
     return [red, green, blue];
 }
 function toLightPosition(pos) {
-    const clampedP = aether.vec2.length(pos) > 1 ? aether.vec2.unit(pos) : pos;
-    const [x, y] = aether.vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2);
-    const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+    const clampedP = vec2.length(pos) > 1 ? vec2.unit(pos) : pos;
+    const [x, y] = vec2.of(clampedP[0] * Math.PI / 2, clampedP[1] * Math.PI / 2);
+    const p = vec3.polarY(x, Math.PI / 2 - y, 2);
     return p;
 }
 //# sourceMappingURL=toy.js.map

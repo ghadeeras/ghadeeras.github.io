@@ -1,10 +1,10 @@
-import * as L from "languasaurus"
-import * as aether from "aether"
+import type { Vec4 } from "aether"
 import { Expression } from "aether"
+import * as L from "languasaurus"
 
 export type XYZExpression = Expression<"x" | "y" | "z" | "phi" | "pi" | "e">
 
-export type Field = (x: number, y: number, z: number) => aether.Vec<4>
+export type Field = (x: number, y: number, z: number) => Vec4
 
 const constants = {
     phi: (Math.sqrt(5) + 1) / 2,

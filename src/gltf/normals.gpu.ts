@@ -1,7 +1,8 @@
-import * as aether from "aether"
+import type { Mat4 } from "aether"
+import { mat4 } from "aether"
 import * as gpu from "lumen"
-import { gltf, gltf_gpu } from "../djee/index.js"
 import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js"
+import { gltf, gltf_gpu } from "../djee/index.js"
 
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
@@ -26,8 +27,8 @@ export class NormalsRenderer {
     private rendererFactory: gltf_gpu.GPURendererFactory
     private renderer: GLTFRenderer<any, any, any, any, any, any, any> | null = null
 
-    private _viewMatrix = aether.mat4.identity()
-    private _modelMatrix = aether.mat4.identity()
+    private _viewMatrix = mat4.identity()
+    private _modelMatrix = mat4.identity()
 
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective()
 
@@ -90,7 +91,7 @@ export class NormalsRenderer {
         return this.uniforms.get(uniformsStruct.members.projectionMat)
     }
 
-    set projectionMatrix(m: aether.Mat4) {
+    set projectionMatrix(m: Mat4) {
         this.uniforms.set(uniformsStruct.members.projectionMat, m)
     }
 
@@ -98,7 +99,7 @@ export class NormalsRenderer {
         return this._viewMatrix
     }
 
-    set viewMatrix(m: aether.Mat4) {
+    set viewMatrix(m: Mat4) {
         this._viewMatrix = m
         this.resetModelViewMatrix();
     }
@@ -107,13 +108,13 @@ export class NormalsRenderer {
         return this._modelMatrix
     }
 
-    set modelMatrix(m: aether.Mat4) {
+    set modelMatrix(m: Mat4) {
         this._modelMatrix = m
         this.resetModelViewMatrix();
     }
 
     private resetModelViewMatrix() {
-        const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
 

@@ -1,8 +1,8 @@
-import * as aether from "aether";
+import { complex, vec2 } from "aether";
 import * as gear from "gear";
-import { view } from "./view.js";
-import { LinearDragging, positionDragging } from "../utils/dragging.js";
 import { hideHud, showHud } from "../initializer.js";
+import { LinearDragging, positionDragging } from "../utils/dragging.js";
+import { view } from "./view.js";
 let audioContext;
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/mandelbrot";
 export const huds = {
@@ -18,7 +18,7 @@ class Toy {
         this.mandelbrotView = mandelbrotView;
         this.moveTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Move(), "innerViewPosition");
         this.zoomTarget = gear.loops.draggingTarget(gear.property(this, "transformation"), new Zoom(), "innerViewPosition");
-        this.colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => aether.vec2.of(x + 1, (y + 1) / 2)), positionDragging);
+        this.colorTarget = gear.loops.draggingTarget(mapped(gear.property(this, "color"), ([x, y]) => vec2.of(x + 1, (y + 1) / 2)), positionDragging);
         this.intensityTarget = gear.loops.draggingTarget(gear.property(this.mandelbrotView, "intensity"), LinearDragging.dragger(0, 1));
         this.intensityWatch = gear.required(document.getElementById("intensity"));
         this.hueWatch = gear.required(document.getElementById("hue"));
@@ -70,7 +70,7 @@ class Toy {
     click(x, y, soundOn) {
         this.posWatch.innerText = toFixedVec([x, y]);
         if (soundOn) {
-            const c = aether.vec2.add(aether.vec2.scale([x, y], this.mandelbrotView.scale), this.mandelbrotView.center);
+            const c = vec2.add(vec2.scale([x, y], this.mandelbrotView.scale), this.mandelbrotView.center);
             play(c);
         }
     }
@@ -164,16 +164,17 @@ function play(c) {
     const channel2 = audioBuffer.getChannelData(1);
     let sum1 = 0;
     let sum2 = 0;
-    let z = [0, 0];
-    for (let i = 0; i < audioBuffer.length && aether.vec2.length(z) < 2.0; i++) {
-        const [x, y] = z;
-        z = aether.vec2.add([x * x - y * y, 2 * x * y], c);
+    let z = complex.of(0, 0);
+    let l2 = 0;
+    for (let i = 0; i < audioBuffer.length && l2 < 4.0; i++) {
+        z = complex.add(complex.mul(z, z), c);
+        l2 = complex.lengthSquared(z);
         channel1[i] = z[0] / 2;
         channel2[i] = z[1] / 2;
         sum1 += channel1[i];
         sum2 += channel2[i];
     }
-    if (aether.vec2.length(z) < 2.0) {
+    if (l2 < 4.0) {
         const avg1 = sum1 / channel1.length;
         const avg2 = sum2 / channel2.length;
         for (let i = 0; i < audioBuffer.length; i++) {
@@ -207,7 +208,7 @@ class Zoom {
             const factor = 16 ** power;
             return power == 0 ? initial : {
                 scale: initial.scale * factor,
-                center: aether.vec2.sub(initial.center, aether.vec2.scale(calculateDelta([0, 0], from, initial.scale), factor - 1))
+                center: vec2.sub(initial.center, vec2.scale(calculateDelta([0, 0], from, initial.scale), factor - 1))
             };
         };
     }
@@ -227,7 +228,7 @@ class Move {
             const delta = calculateDelta(from, to, initial.scale);
             return {
                 scale: initial.scale,
-                center: aether.vec2.max(aether.vec2.min(aether.vec2.sub(initial.center, delta), [+4, +4]), [-4, -4])
+                center: vec2.clamp(vec2.sub(initial.center, delta), [-4, -4], [+4, +4])
             };
         };
     }
@@ -236,7 +237,7 @@ class Move {
     }
 }
 function calculateDelta(pos1, pos2, scale = 1) {
-    return aether.vec2.scale(aether.vec2.sub(pos2, pos1), scale);
+    return vec2.scale(vec2.sub(pos2, pos1), scale);
 }
 function mapped(property, mapper) {
     const pos = [[0, 0]];

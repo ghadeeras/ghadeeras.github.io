@@ -1,10 +1,10 @@
-import * as aether from "aether";
+import { loadScalarFieldModule, mat4, vec2, vec3, vec4 } from "aether";
 import * as gear from "gear";
 import { gltf } from "../djee/index.js";
-import { Carving } from "./carving.js";
 import * as v from "../scalar-field/view.js";
 import * as dragging from "../utils/dragging.js";
-const viewMatrix = aether.mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
+import { Carving } from "./carving.js";
+const viewMatrix = mat4.lookAt([-1, 1, 4], [0, 0, 0], [0, 1, 0]);
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/sculpting";
 export const video = "https://youtu.be/eeZ6qSAXo2o";
 export const huds = {
@@ -13,7 +13,7 @@ export const huds = {
 export async function init() {
     const view = await v.newView(Toy.descriptor.input.pointers.canvas.element);
     const picker = await view.picker();
-    const scalarFieldModule = await aether.loadScalarFieldModule();
+    const scalarFieldModule = await loadScalarFieldModule();
     const stone = scalarFieldModule.newInstance();
     stone.resolution = 64;
     stone.sampler = field;
@@ -46,7 +46,7 @@ class Toy {
         view.fogginess = 0.0;
         view.lightPosition = this.toLightPosition([0.0, 0.0]);
         view.lightRadius = 0.005;
-        this.modelMatrix = aether.mat4.identity();
+        this.modelMatrix = mat4.identity();
         this.currentStone = stone;
     }
     inputWiring(inputs, outputs) {
@@ -85,7 +85,7 @@ class Toy {
     animate() {
     }
     get projectionViewMatrix() {
-        return aether.mat4.mul(this.view.matProjection, this.view.matView);
+        return mat4.mul(this.view.matProjection, this.view.matView);
     }
     get modelMatrix() {
         return this.view.matPositions;
@@ -121,10 +121,10 @@ class Toy {
         gear.save(URL.createObjectURL(new Blob([buffer])), 'application/binary', `Model.ssf`);
     }
     toLightPosition(pos) {
-        const unclampedP = aether.vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);
-        const clampedP = aether.vec2.length(unclampedP) > 1 ? aether.vec2.unit(unclampedP) : unclampedP;
-        const [x, y] = aether.vec2.scale(clampedP, Math.PI / 2);
-        const p = aether.vec3.of(2 * Math.sin(x) * Math.cos(y), 2 * Math.sin(y), 2 * Math.cos(x) * Math.cos(y));
+        const unclampedP = vec2.mul(pos, [this.view.canvas.width / this.view.canvas.height, 1]);
+        const clampedP = vec2.length(unclampedP) > 1 ? vec2.unit(unclampedP) : unclampedP;
+        const [x, y] = vec2.scale(clampedP, Math.PI / 2);
+        const p = vec3.polarY(x, Math.PI / 2 - y, 2);
         return [...p, 1];
     }
     serializeStone() {
@@ -180,8 +180,8 @@ class Toy {
             const k = Math.round((z + 1) * zRes / 2);
             const offset = ((k * yRes + j) * xRes + i) * vectorSize;
             return offset < samples.length ?
-                aether.vec4.from(samples, offset) :
-                aether.vec4.of(0, 0, 0, 0);
+                vec4.from(samples, offset) :
+                vec4.fromScalar(0);
         };
         const newStone = this.carving.undo(this.currentStone);
         newStone.resolution = stone.resolution;
@@ -293,10 +293,10 @@ async function asURL(transferItem) {
 }
 const twoPi = 2 * Math.PI;
 function modelViewProjectionMatrixOf(view) {
-    return aether.mat4.mul(view.matProjection, aether.mat4.mul(view.matView, view.matPositions));
+    return mat4.mul(view.matProjection, mat4.mul(view.matView, view.matPositions));
 }
 function field(x, y, z) {
-    const l = aether.vec3.length([x, y, z]);
+    const l = vec3.length([x, y, z]);
     const f = l <= 1 ?
         l >= 0.5 ? (1 - Math.cos(twoPi * l)) / 2 : 1 :
         0;
@@ -311,7 +311,7 @@ function field(x, y, z) {
     ];
 }
 function brush(x, y, z) {
-    const l = aether.vec3.length([x, y, z]);
+    const l = vec3.length([x, y, z]);
     const f = l <= 1 ? (1 + Math.cos(Math.PI * l)) / 2 : 0;
     const g = l <= 1 ?
         l > Math.sqrt(Number.EPSILON) ?

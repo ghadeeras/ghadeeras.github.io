@@ -1,8 +1,8 @@
+import type { Vec2 } from "aether"
 import * as gear from "gear"
-import * as aether from "aether"
 import * as gpu from "lumen"
-import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
 import { Color, toHex } from "../utils/color.js"
+import { StrokeAttributes, strokeAttributesStruct } from "./common.js"
 
 export class Brush {
 
@@ -24,7 +24,7 @@ export class Brush {
     private _lines: boolean = false
     private _visible: boolean = true
     
-    private _position: aether.Vec2 = [0, 0]
+    private _position: Vec2 = [0, 0]
 
     constructor(private device: gpu.Device, private canvas: HTMLCanvasElement) {
         this.thickness = this._thickness
@@ -106,7 +106,7 @@ export class Brush {
         return this._position
     }
 
-    set position(pos: aether.Vec2) {
+    set position(pos: Vec2) {
         this._position = pos
         const ratio = this.canvas.clientWidth / this.canvas.width
         this.cursor.style.left = `${this._position[0] * ratio - this.cursor.clientWidth / 2}px`

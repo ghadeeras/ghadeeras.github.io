@@ -27,6 +27,6 @@
     "gear": "git+https://github.com/ghadeeras/gear.git",
     "languasaurus": "git+https://github.com/ghadeeras/languasaurus.git",
     "lumen": "git+https://github.com/ghadeeras/lumen.git",
-    "webgxx": "git+https://github.com/ghadeeras/webgxx"
+    "webgxx": "git+https://github.com/ghadeeras/webgxx.git"
   }
 }

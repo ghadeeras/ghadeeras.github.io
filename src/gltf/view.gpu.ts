@@ -1,10 +1,11 @@
-import * as aether from "aether"
+import type { Mat4 } from "aether";
+import { mat4, vec3, vec4 } from "aether";
 import * as gpu from "lumen";
-import { gltf, gltf_gpu } from "../djee/index.js"
-import { View, ViewFactory } from "./view.js";
+import { glWebGPU, xrContext } from "webgxx";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
-import { glWebGPU, xrContext } from "webgxx";
+import { gltf, gltf_gpu } from "../djee/index.js";
+import { View, ViewFactory } from "./view.js";
 
 export type ModelIndexEntry = {
     name: string,
@@ -61,8 +62,8 @@ export class GPUView implements View {
     private rendererFactory: gltf_gpu.GPURendererFactory
     private renderer: GLTFRenderer<any, any, any, any, any, any, any> | null = null
 
-    private _viewMatrix = aether.mat4.identity()
-    private _modelMatrix = aether.mat4.identity()
+    private _viewMatrix = mat4.identity()
+    private _modelMatrix = mat4.identity()
 
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective()
 
@@ -82,15 +83,15 @@ export class GPUView implements View {
             label: "uniforms",
             usage: ["UNIFORM"], 
             data: uniformsStruct.view([{
-                lightPos: aether.vec4.of(0, 0, 1, 0),
+                lightPos: vec4.of(0, 0, 1, 0),
                 mat: {
-                    positions: aether.mat4.identity(),
-                    normals: aether.mat4.identity(),
+                    positions: mat4.identity(),
+                    normals: mat4.identity(),
                 },
-                projectionMat: aether.mat4.identity(),
+                projectionMat: mat4.identity(),
                 material: {
-                    baseColorFactor: aether.vec4.of(1.0, 1.0, 1.0, 1.0),
-                    emissiveFactor: aether.vec3.of(1.0, 1.0, 1.0),
+                    baseColorFactor: vec4.fromScalar(1.0),
+                    emissiveFactor: vec3.fromScalar(1.0),
                     metallicFactor: 1.0,
                     roughnessFactor: 1.0,
                     alphaCutoff: 0.0
@@ -176,7 +177,7 @@ export class GPUView implements View {
         return this.uniforms.get(uniformsStruct.members.projectionMat)
     }
 
-    set projectionMatrix(m: aether.Mat4) {
+    set projectionMatrix(m: Mat4) {
         this.uniforms.set(uniformsStruct.members.projectionMat, m)
     }
 
@@ -184,7 +185,7 @@ export class GPUView implements View {
         return this._viewMatrix
     }
 
-    set viewMatrix(m: aether.Mat4) {
+    set viewMatrix(m: Mat4) {
         this._viewMatrix = m
         this.lightPosition = this.lightPosition
         this.resetModelViewMatrix();
@@ -194,13 +195,13 @@ export class GPUView implements View {
         return this._modelMatrix
     }
 
-    set modelMatrix(m: aether.Mat4) {
+    set modelMatrix(m: Mat4) {
         this._modelMatrix = m
         this.resetModelViewMatrix();
     }
 
     private resetModelViewMatrix() {
-        const mvMat = aether.mat4.mul(this._viewMatrix, this._modelMatrix);
+        const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
         this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
     }
 

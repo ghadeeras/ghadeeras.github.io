@@ -1,4 +1,4 @@
-import * as aether from "aether";
+import { mat4, quat } from "aether";
 import { failure } from "../utils.js";
 export async function fetchModel(modelUri) {
     const response = await fetch(modelUri, { mode: "cors" });
@@ -46,16 +46,16 @@ async function fetchImageBitmap(image, bufferViews, buffers, baseUri) {
 }
 export function matrixOf(node) {
     let matrix = node.matrix !== undefined ?
-        aether.mat4.from(node.matrix) :
-        aether.mat4.identity();
+        mat4.from(node.matrix) :
+        mat4.identity();
     matrix = node.translation !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.translation(node.translation)) :
+        mat4.mul(matrix, mat4.translation(node.translation)) :
         matrix;
     matrix = node.rotation !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.cast(aether.quat.toMatrix(node.rotation))) :
+        mat4.mul(matrix, quat.toMat4(node.rotation)) :
         matrix;
     matrix = node.scale !== undefined ?
-        aether.mat4.mul(matrix, aether.mat4.scaling(...node.scale)) :
+        mat4.mul(matrix, mat4.scaling(...node.scale)) :
         matrix;
     return matrix;
 }

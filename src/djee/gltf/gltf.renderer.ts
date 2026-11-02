@@ -1,8 +1,9 @@
-import * as aether from "aether"
+import type { Mat4, Vec3, Vec4 } from "aether";
+import { mat4 } from "aether";
 import { Resource } from "lumen";
-import { failure } from "../utils.js";
-import * as gltf from "../gltf/gltf.js";
 import * as graph from "../gltf/gltf.graph.js";
+import * as gltf from "../gltf/gltf.js";
+import { failure } from "../utils.js";
 
 export interface APIAdapter<
     N extends Resource, 
@@ -51,17 +52,17 @@ export type VertexAttribute<V extends Resource> = {
 export type RenderingRoutine<R> = (renderer: R) => void
 
 export type Matrix = {
-    matrix: aether.Mat4,
-    antiMatrix: aether.Mat4,
+    matrix: Mat4,
+    antiMatrix: Mat4,
 }
 
 export type Material<T extends Resource, S> = {
-    baseColorFactor: aether.Vec4
+    baseColorFactor: Vec4
     baseColorTexture: [T, S]
     metallicFactor: number
     roughnessFactor: number
     metallicRoughnessTexture: [T, S]
-    emissiveFactor: aether.Vec3
+    emissiveFactor: Vec3
     emissiveTexture: [T, S]
     occlusionTexture: [T, S]
     normalTexture: [T, S]
@@ -350,8 +351,8 @@ function u8Shade(s: number): number {
 
 function collectNodeLevelData(scene: graph.Scene): NodeLevelResources {
     const matrix: Matrix = {
-        matrix: aether.mat4.identity(),
-        antiMatrix: aether.mat4.identity()
+        matrix: mat4.identity(),
+        antiMatrix: mat4.identity()
     }
     const resources: NodeLevelResources = {
         matrices: [],
@@ -369,8 +370,8 @@ function collectNodeLevelData(scene: graph.Scene): NodeLevelResources {
 
 function doCollectNodeLevelData(node: graph.Node, parentMatrix: Matrix, parentIndex: number | null, resources: NodeLevelResources): number | null {
     const matrix = node.isIdentityMatrix ? parentMatrix : {
-        matrix: aether.mat4.mul(parentMatrix.matrix, node.matrix),
-        antiMatrix: aether.mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
+        matrix: mat4.mul(parentMatrix.matrix, node.matrix),
+        antiMatrix: mat4.mul(parentMatrix.antiMatrix, node.antiMatrix)
     }
     let index = node.isIdentityMatrix ? parentIndex : null
     if (index === null && node.meshes.length > 0) {

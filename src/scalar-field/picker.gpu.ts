@@ -1,8 +1,8 @@
-import * as aether from "aether"
-import * as gear from "gear"
+import type { Mat4, Vec4 } from "aether"
+import { vec4 } from "aether"
 import * as gpu from "lumen"
-import { Picker } from "./view.js"
 import { GPUView } from "./view.gpu.js"
+import { Picker } from "./view.js"
 
 export class GPUPicker implements Picker {
 
@@ -64,7 +64,7 @@ export class GPUPicker implements Picker {
         });
     }
 
-    async pick(matModelViewProjection: aether.Mat<4>, x: number, y: number): Promise<aether.Vec4> {
+    async pick(matModelViewProjection: Mat4, x: number, y: number): Promise<Vec4> {
         this.uniforms.set().fromData(this.uniformsStruct.members.mvpMat.view([matModelViewProjection]))
 
         this.device.enqueueCommands("pick", encoder => {
@@ -97,7 +97,10 @@ export class GPUPicker implements Picker {
         })
 
         const view = await this.pickDestination.get(gpu.u32).asData()
-        const result = aether.vec4.sub(aether.vec4.scale(aether.vec4.from(gpu.uint8Array(view)), 2 / 255), [1, 1, 1, 1])
+        const result = vec4.sub(
+            vec4.scale(vec4.from(gpu.uint8Array(view)), 2 / 255), 
+            vec4.fromScalar(1)
+        )
         return result
     }
 
