@@ -345,7 +345,7 @@ class Toy implements gear.loops.LoopLogic<ToyDescriptor> {
         const data = contourSurfaceData(this.scalarFieldInstance, this.tetrahedron, this.contourValue)
         const verticesCount = data.byteLength / vertexGeometry.struct.stride
         const color = fieldColor(this.contourValue, 1)
-        const vertices = vertexGeometry.struct.readMulti(new DataView(data.buffer, data.byteOffset, data.byteLength), 0, verticesCount).map(v => ({
+        const vertices = vertexGeometry.struct.readMany(new DataView(data.buffer, data.byteOffset, data.byteLength), verticesCount).map(v => ({
             ...v, color
         }))
         this.contourData = new Float32Array(vertexStruct.struct.view(vertices).buffer)

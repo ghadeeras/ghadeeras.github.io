@@ -9,7 +9,7 @@ export class Filter1D {
     private horizontal: gpu.DataBuffer
     private vertical: gpu.DataBuffer
 
-    constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number]) {
+    constructor(private app: meta.App, private weights: number[], private workgroupSize: [number, number], private count: number) {
         const buffers = app.device.dataBuffers({
             horizontal: {
                 usage: ["UNIFORM"], 
@@ -52,20 +52,17 @@ export class Filter1D {
         const wgCountX =  Math.ceil(texture.size.width / this.workgroupSize[0])
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1])
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`)
-        const passWith = (ioGroup: typeof ioGroup1) => this.app.pipelines.filter1D
-            .withGroups({ filter: this.filterGroup, io: ioGroup })
-            .dispatchWorkGroups(wgCountX, wgCountY)
-        const pass1 = passWith(ioGroup1)
-        const pass2 = passWith(ioGroup2)
+        let pass = this.app.pipelines.filter1D
+            .withGroups({ filter: this.filterGroup })
+            .withGroups({ io: ioGroup1 }).dispatchWorkGroups(wgCountX, wgCountY)
+            .withGroups({ io: ioGroup2 }).dispatchWorkGroups(wgCountX, wgCountY)
+        for (let i = 1; i < this.count; i++) {
+            pass = pass
+                .withGroups({ io: ioGroup1 }).dispatchWorkGroups(wgCountX, wgCountY)
+                .withGroups({ io: ioGroup2 }).dispatchWorkGroups(wgCountX, wgCountY)
+        }
         return new Filtering1D(
-            (encoder, count = 1) => {
-                encoder.computePass(passEncoder => {
-                    for (let i = 0; i < count; i++) {
-                        pass1.inlineIn(passEncoder)
-                        pass2.inlineIn(passEncoder)
-                    }
-                })
-            },
+            encoder => encoder.computePass("filter", passEncoder => pass.inlineIn(passEncoder)),
             () => temp.destroy()
         )
 
@@ -75,7 +72,7 @@ export class Filter1D {
 
 export class Filtering1D {
 
-    constructor(readonly apply: (encoder: gpu.CommandEncoder, count?: number) => void, readonly destroy: () => void) {}
+    constructor(readonly apply: (encoder: gpu.CommandEncoder) => void, readonly destroy: () => void) {}
     
 }
 

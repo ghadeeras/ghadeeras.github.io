@@ -161,7 +161,7 @@ export class Tracer {
     private createImportantDirectionsBuffer() {
         const dataView = boxDirectionsStruct.view(this.scene.boxes.length)
         for (let i = 0; i < this.scene.boxes.length; i++) {
-            boxDirectionsStruct.writeOne(dataView, i, {
+            boxDirectionsStruct.write(dataView, {
                 faces: [{
                     lights: [NULL, NULL, NULL, NULL]
                 }, {
@@ -175,7 +175,7 @@ export class Tracer {
                 }, {
                     lights: [NULL, NULL, NULL, NULL]
                 }]
-            })
+            }, i)
         } 
         return this.device.dataBuffer({
             label: "importantDirections",

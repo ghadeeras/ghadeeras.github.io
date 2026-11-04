@@ -1,10 +1,11 @@
 import * as gpu from "lumen";
 import * as gear from "gear";
 export class Filter1D {
-    constructor(app, weights, workgroupSize) {
+    constructor(app, weights, workgroupSize, count) {
         this.app = app;
         this.weights = weights;
         this.workgroupSize = workgroupSize;
+        this.count = count;
         const buffers = app.device.dataBuffers({
             horizontal: {
                 usage: ["UNIFORM"],
@@ -46,19 +47,16 @@ export class Filter1D {
         const wgCountX = Math.ceil(texture.size.width / this.workgroupSize[0]);
         const wgCountY = Math.ceil(gear.required(texture.size.height) / this.workgroupSize[1]);
         console.log(`Filter Workgroups Count: [${wgCountX}, ${wgCountY}]`);
-        const passWith = (ioGroup) => this.app.pipelines.filter1D
-            .withGroups({ filter: this.filterGroup, io: ioGroup })
-            .dispatchWorkGroups(wgCountX, wgCountY);
-        const pass1 = passWith(ioGroup1);
-        const pass2 = passWith(ioGroup2);
-        return new Filtering1D((encoder, count = 1) => {
-            encoder.computePass(passEncoder => {
-                for (let i = 0; i < count; i++) {
-                    pass1.inlineIn(passEncoder);
-                    pass2.inlineIn(passEncoder);
-                }
-            });
-        }, () => temp.destroy());
+        let pass = this.app.pipelines.filter1D
+            .withGroups({ filter: this.filterGroup })
+            .withGroups({ io: ioGroup1 }).dispatchWorkGroups(wgCountX, wgCountY)
+            .withGroups({ io: ioGroup2 }).dispatchWorkGroups(wgCountX, wgCountY);
+        for (let i = 1; i < this.count; i++) {
+            pass = pass
+                .withGroups({ io: ioGroup1 }).dispatchWorkGroups(wgCountX, wgCountY)
+                .withGroups({ io: ioGroup2 }).dispatchWorkGroups(wgCountX, wgCountY);
+        }
+        return new Filtering1D(encoder => encoder.computePass("filter", passEncoder => pass.inlineIn(passEncoder)), () => temp.destroy());
     }
 }
 export class Filtering1D {

@@ -79,7 +79,7 @@ export class Renderer implements r.Renderer {
         }
         this.app.device.enqueueCommands("render", encoder => {
             encoder.renderPass(descriptor1, pass => this.draw(pass, universe))
-            this.filtering.apply(encoder, 4)
+            this.filtering.apply(encoder)
             encoder.renderPass(descriptor2, pass => this.draw(pass, universe))
             this.baseTextureRenderer.render(encoder, this.canvas.attachment({ r: 0, g: 0, b: 0, a: 0 }))
         })
@@ -95,7 +95,7 @@ export class Renderer implements r.Renderer {
 }
 
 export function newRenderer(app: meta.App, canvas: gpu.Canvas, visuals: Visuals, wgX: number, wgY: number) {
-    const filter = new Filter1D(app, gaussianWeights(1 / 8, 8), [wgX, wgY]);
+    const filter = new Filter1D(app, gaussianWeights(1 / 8, 8), [wgX, wgY], 4);
     const baseTexture =  new BaseTexture(app, canvas)
     return new Renderer(app, canvas, visuals, filter, baseTexture)
 }
