@@ -58,11 +58,18 @@ vec3 srgb(vec3 color) {
     );
 }
 
+float lightGlow(vec3 lightPos, vec3 viewDir) {
+    float projection = dot(lightPos, viewDir);
+    vec3 closestToLight = max(projection, 0.0) * viewDir; 
+    vec3 diff = lightPos - closestToLight;
+    return exp(-256.0 * dot(diff, diff));
+}
 
 void main() {
     vec3 view_dir = normalize(direction);
-    vec3 light_dir = normalize(lightPosition.xyz);
-    float glow = pow(0.5 * dot(view_dir, light_dir) + 0.5, 64.0);
+
+    vec3 lightPos = lightPosition.w == 0.0 ? 0.25 * normalize(lightPosition.xyz) : lightPosition.xyz;
+    float glow = lightGlow(lightPos, view_dir);
 
     seedRNG(view_dir);
     float dither = (next() - 0.5) / 128.0;

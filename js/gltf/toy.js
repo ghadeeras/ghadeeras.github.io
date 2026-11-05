@@ -197,7 +197,7 @@ class GLTFToy {
             ? mat4.from(p.transform.matrix)
             : mat4.translation([0, 0, i === 0 ? -2 : 100]));
         const modelPose = poses[0] !== undefined
-            ? mat4.scale(poses[0], 0.125)
+            ? mat4.mul(poses[0], mat4.scaling(0.125, 0.125, 0.125))
             : mat4.translation([0, 0, -2]);
         const lightPose = poses[1] !== undefined
             ? mat4.mul(viewMat, poses[1])

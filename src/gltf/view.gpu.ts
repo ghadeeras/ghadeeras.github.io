@@ -48,7 +48,9 @@ export class GPUView implements View {
     private gpuCanvas: gpu.Canvas
     private depthTexture: gpu.Texture
 
-    private uniforms: gpu.SyncBuffer
+    private uniforms: gpu.DataTypeOf<typeof uniformsStruct>
+
+    private uniformsBuffer: gpu.SyncBuffer
     private clock: gpu.DataBuffer
     private uniformsGroupLayout: UniformGroupLayout
     private uniformsGroup: gpu.CompatibleBindGroup<UniformGroupLayout>
@@ -79,7 +81,7 @@ export class GPUView implements View {
         this.gpuCanvas = device.canvas(canvasId, 4)
         this.depthTexture = this.gpuCanvas.depthTexture()
 
-        this.uniforms = device.syncBuffer({
+        this.uniformsBuffer = device.syncBuffer({
             label: "uniforms",
             usage: ["UNIFORM"], 
             data: uniformsStruct.view([{
@@ -98,10 +100,11 @@ export class GPUView implements View {
                 }
             }])
         });
+        this.uniforms = this.uniformsBuffer.as(uniformsStruct)
         this.clock = device.dataBuffer({ usage: ["STORAGE", "UNIFORM"], data: gpu.u32.view([1]) })
         this.uniformsGroupLayout = uniformsGroupLayout(device)
         this.uniformsGroup = this.uniformsGroupLayout.bindGroup({
-            uniforms: this.uniforms,
+            uniforms: this.uniformsBuffer,
             clock: this.clock
         });
 
@@ -154,31 +157,31 @@ export class GPUView implements View {
     }
 
     set modelColor(color: [number, number, number, number]) {
-        this.uniforms.set(uniformsStruct.members.material.members.baseColorFactor, color)
+        this.uniforms.material.baseColorFactor = color
     }
 
     get lightPosition() {
-        return this.uniforms.get(uniformsStruct.members.lightPos)
+        return this.uniforms.lightPos
     }
 
     set lightPosition(p: [number, number, number, number]) {
-        this.uniforms.set(uniformsStruct.members.lightPos, p)
+        this.uniforms.lightPos = p
     }
 
     set roughnessFactor(r: number) {
-        this.uniforms.set(uniformsStruct.members.material.members.roughnessFactor, r)
+        this.uniforms.material.roughnessFactor = r
     }
 
     set metallicFactor(m: number) {
-        this.uniforms.set(uniformsStruct.members.material.members.metallicFactor, m)
+        this.uniforms.material.metallicFactor = m
     }
 
     get projectionMatrix() {
-        return this.uniforms.get(uniformsStruct.members.projectionMat)
+        return this.uniforms.projectionMat
     }
 
     set projectionMatrix(m: Mat4) {
-        this.uniforms.set(uniformsStruct.members.projectionMat, m)
+        this.uniforms.projectionMat = m
     }
 
     get viewMatrix() {
@@ -187,7 +190,6 @@ export class GPUView implements View {
 
     set viewMatrix(m: Mat4) {
         this._viewMatrix = m
-        this.lightPosition = this.lightPosition
         this.resetModelViewMatrix();
     }
 
@@ -202,7 +204,7 @@ export class GPUView implements View {
 
     private resetModelViewMatrix() {
         const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
-        this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
+        this.uniforms.mat = { normals: mvMat, positions: mvMat };
     }
 
     async loadModel(modelUri: string): Promise<gltf.graph.Model> {
@@ -250,22 +252,17 @@ export class GPUView implements View {
             const clearAndStoreAttachment: GPURenderPassColorAttachment = { ...clearAttachment, storeOp: "store" }
             const noClearAttachment: GPURenderPassColorAttachment = { ...clearAttachment, loadOp: "load" }
             
-            const spotLight = this.lightPosition[3] !== 0; // No sky rendering if light is spot light
-
-            const skyPassDescriptor = { colorAttachments: [clearAndStoreAttachment] };
-            const modelPassDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [spotLight ? clearAttachment : noClearAttachment],
+            encoder.renderPass({
+                colorAttachments: [clearAndStoreAttachment]
+            }, pass => {
+                pass.setPipeline(this.skyPipeline)
+                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
+                pass.draw(3)
+            })
+            encoder.renderPass({
+                colorAttachments: [noClearAttachment],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
-            };
-
-            if (!spotLight) {
-                encoder.renderPass(skyPassDescriptor, pass => {
-                    pass.setPipeline(this.skyPipeline)
-                    this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
-                    pass.draw(3)
-                })
-            }
-            encoder.renderPass(modelPassDescriptor, pass => {
+            }, pass => {
                 if (this.renderer !== null) {
                     pass.setBindGroup(0, this.uniformsGroup.wrapped)
                     this.renderer.render(pass)

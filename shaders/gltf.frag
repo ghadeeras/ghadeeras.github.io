@@ -172,6 +172,15 @@ vec3 srgb(vec3 color) {
     );
 }
 
+float lightGlow(vec3 lightPos, vec3 pos) {
+    float dist = length(pos);
+    vec3 viewDir = pos / dist;
+    float projection = dot(lightPos, viewDir);
+    vec3 closestToLight = clamp(projection, 0.0, dist) * viewDir; 
+    vec3 diff = lightPos - closestToLight;
+    return exp(-256.0 * dot(diff, diff));
+}
+
 void main() {
     vec4 tex_base_color_factor = texture(base_color_texture_2_1_2_2, fragCoordBaseColor);
 
@@ -198,6 +207,10 @@ void main() {
     // End: Normal/Tangent Defaulting
 
     vec4 c = calc_color(fragPosition, normal, tangent, tex_base_color_factor);
+
+    float glow = lightPosition.w * lightGlow(lightPosition.xyz, fragPosition);
+    c = glow + c * (1.0 - glow);
+
     float dither = (next() - 0.5) / 128.0;
     fragColor = vec4(srgb(c.rgb + dither), c.a);
 }

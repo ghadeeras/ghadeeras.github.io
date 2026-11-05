@@ -36,7 +36,7 @@ export class GPUView {
         this.perspective = gltf.graph.defaultPerspective();
         this.gpuCanvas = device.canvas(canvasId, 4);
         this.depthTexture = this.gpuCanvas.depthTexture();
-        this.uniforms = device.syncBuffer({
+        this.uniformsBuffer = device.syncBuffer({
             label: "uniforms",
             usage: ["UNIFORM"],
             data: uniformsStruct.view([{
@@ -55,10 +55,11 @@ export class GPUView {
                     }
                 }])
         });
+        this.uniforms = this.uniformsBuffer.as(uniformsStruct);
         this.clock = device.dataBuffer({ usage: ["STORAGE", "UNIFORM"], data: gpu.u32.view([1]) });
         this.uniformsGroupLayout = uniformsGroupLayout(device);
         this.uniformsGroup = this.uniformsGroupLayout.bindGroup({
-            uniforms: this.uniforms,
+            uniforms: this.uniformsBuffer,
             clock: this.clock
         });
         this.rendererFactory = new gltf_gpu.GPURendererFactory(this.device, 1, 2, { POSITION: 0, NORMAL: 1, TANGENT: 2, TEXCOORD_BASE_COLOR: 3, TEXCOORD_METALLIC_ROUGHNESS: 4, TEXCOORD_TEXCOORD_EMISSIVE: 5, TEXCOORD_TEXCOORD_OCCLUSION: 6, TEXCOORD_TEXCOORD_NORMAL: 7 }, (layouts, primitiveState) => this.primitivePipeline(layouts, primitiveState));
@@ -97,32 +98,31 @@ export class GPUView {
         return this.gpuCanvas.element;
     }
     set modelColor(color) {
-        this.uniforms.set(uniformsStruct.members.material.members.baseColorFactor, color);
+        this.uniforms.material.baseColorFactor = color;
     }
     get lightPosition() {
-        return this.uniforms.get(uniformsStruct.members.lightPos);
+        return this.uniforms.lightPos;
     }
     set lightPosition(p) {
-        this.uniforms.set(uniformsStruct.members.lightPos, p);
+        this.uniforms.lightPos = p;
     }
     set roughnessFactor(r) {
-        this.uniforms.set(uniformsStruct.members.material.members.roughnessFactor, r);
+        this.uniforms.material.roughnessFactor = r;
     }
     set metallicFactor(m) {
-        this.uniforms.set(uniformsStruct.members.material.members.metallicFactor, m);
+        this.uniforms.material.metallicFactor = m;
     }
     get projectionMatrix() {
-        return this.uniforms.get(uniformsStruct.members.projectionMat);
+        return this.uniforms.projectionMat;
     }
     set projectionMatrix(m) {
-        this.uniforms.set(uniformsStruct.members.projectionMat, m);
+        this.uniforms.projectionMat = m;
     }
     get viewMatrix() {
         return this._viewMatrix;
     }
     set viewMatrix(m) {
         this._viewMatrix = m;
-        this.lightPosition = this.lightPosition;
         this.resetModelViewMatrix();
     }
     get modelMatrix() {
@@ -134,7 +134,7 @@ export class GPUView {
     }
     resetModelViewMatrix() {
         const mvMat = mat4.mul(this._viewMatrix, this._modelMatrix);
-        this.uniforms.set(uniformsStruct.members.mat, { normals: mvMat, positions: mvMat });
+        this.uniforms.mat = { normals: mvMat, positions: mvMat };
     }
     async loadModel(modelUri) {
         const model = await gltf.graph.Model.create(modelUri);
@@ -177,20 +177,17 @@ export class GPUView {
             const clearAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
             const clearAndStoreAttachment = { ...clearAttachment, storeOp: "store" };
             const noClearAttachment = { ...clearAttachment, loadOp: "load" };
-            const spotLight = this.lightPosition[3] !== 0; // No sky rendering if light is spot light
-            const skyPassDescriptor = { colorAttachments: [clearAndStoreAttachment] };
-            const modelPassDescriptor = {
-                colorAttachments: [spotLight ? clearAttachment : noClearAttachment],
+            encoder.renderPass({
+                colorAttachments: [clearAndStoreAttachment]
+            }, pass => {
+                pass.setPipeline(this.skyPipeline);
+                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup });
+                pass.draw(3);
+            });
+            encoder.renderPass({
+                colorAttachments: [noClearAttachment],
                 depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
-            };
-            if (!spotLight) {
-                encoder.renderPass(skyPassDescriptor, pass => {
-                    pass.setPipeline(this.skyPipeline);
-                    this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup });
-                    pass.draw(3);
-                });
-            }
-            encoder.renderPass(modelPassDescriptor, pass => {
+            }, pass => {
                 if (this.renderer !== null) {
                     pass.setBindGroup(0, this.uniformsGroup.wrapped);
                     this.renderer.render(pass);
