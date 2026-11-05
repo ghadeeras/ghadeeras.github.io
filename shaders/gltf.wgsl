@@ -238,7 +238,7 @@ fn microNormal(macro_normal: vec3<f32>, macro_tangent_x: vec3<f32>, tsNormal: ve
 // ####################################
 // Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
 
-const RND_PRECISION: f32 = 0x1P-22;
+const RND_PRECISION: f32 = 0x1P-32;
 
 var<private> rng: vec4<u32>;
 
@@ -255,8 +255,7 @@ fn next_u32() -> u32 {
 }
 
 fn next() -> f32 {
-    let n = (next_u32() + 0x1FFu) >> 10u;
-    return f32(n) * RND_PRECISION;
+    return f32(next_u32()) * RND_PRECISION;
 }
 
 fn seedRNG(position: vec2<f32>) {

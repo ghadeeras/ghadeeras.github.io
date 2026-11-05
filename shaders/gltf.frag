@@ -134,7 +134,7 @@ vec4 calc_color(vec3 position, vec3 normal, vec3 tangent, vec4 tex_base_color_fa
 // ####################################
 // Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
 
-const float RND_PRECISION = exp2(-22.0);
+const float RND_PRECISION = exp2(-32.0);
 
 uvec4 rng;
 
@@ -151,8 +151,7 @@ uint next_u32() {
 }
 
 float next() {
-    uint n = (next_u32() + 0x1FFu) >> 10u;
-    return float(n) * RND_PRECISION;
+    return float(next_u32()) * RND_PRECISION;
 }
 
 void seedRNG(vec3 position) {

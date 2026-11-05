@@ -88,6 +88,7 @@ export class XRealitySession {
         if (this.animationRequest !== null) {
             this.animationRequest = this.requestAnimationFrame(renderer);
         }
+        console.log(layer.framebuffer);
         this.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, layer.framebuffer);
         for (const view of viewerPose.views) {
             const viewPort = layer.getViewport(view);

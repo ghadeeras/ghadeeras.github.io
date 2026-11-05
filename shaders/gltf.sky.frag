@@ -20,7 +20,7 @@ uniform U_0_1 {
 // ####################################
 // Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
 
-const float RND_PRECISION = 1.0 / float(0xFFFFFFFFu >> 10u);
+const float RND_PRECISION = exp2(-32.0);
 
 uvec4 rng;
 
@@ -37,8 +37,7 @@ uint next_u32() {
 }
 
 float next() {
-    uint n = (next_u32() + 0x1FFu) >> 10u;
-    return float(n) * RND_PRECISION;
+    return float(next_u32()) * RND_PRECISION;
 }
 
 void seedRNG(vec3 position) {

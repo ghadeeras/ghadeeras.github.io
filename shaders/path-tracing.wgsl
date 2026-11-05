@@ -73,7 +73,6 @@ var<private> rng: vec4<u32>;
 var<private> pixelSize: f32;
 
 const EPSILON: f32 = 0x1P-11;
-const RND_PRECISION: f32 = 0x1P-22;
 const MAX_BOXES_PER_CELL: u32 = 8u;
 const GRID_LIMIT_LO: vec3<i32> = vec3<i32>(-4096, -64, -1);
 const GRID_LIMIT_HI: vec3<i32> = vec3<i32>(262144, 4096, 64);
@@ -88,6 +87,8 @@ const TWO_PI = 6.283185307179586476925286766559;
 const ONE_BY_PI = 0.31830988618379067153776752674503;
 
 // Pseudo Random Generation ... The xorshift128 PRNG algorithm. See: https://en.wikipedia.org/wiki/Xorshift
+const RND_PRECISION: f32 = 0x1P-32;
+
 fn next_u32() -> u32 {
     var t = rng.w;
     var s = rng.x;
@@ -101,8 +102,7 @@ fn next_u32() -> u32 {
 }
 
 fn next_unorm() -> f32 {
-    let n = (next_u32() + 0x1FFu) >> 10u;
-    return f32(n) * RND_PRECISION;
+    return f32(next_u32()) * RND_PRECISION;
 }
 
 fn next_vec2() -> vec2<f32> {
