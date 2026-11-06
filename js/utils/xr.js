@@ -75,13 +75,15 @@ export class XRealitySession {
         if (this.animationRequest !== null) {
             this.animationRequest = this.requestAnimationFrame(renderer);
         }
+        const frames = [];
         for (const view of viewerPose.views) {
             const viewport = layer.getViewport(view);
             if (!viewport) {
                 continue;
             }
-            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport });
+            frames.push({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport });
         }
+        renderer(frames);
     }
 }
 async function findSpace(session, spaceTypes) {

@@ -45,7 +45,7 @@ export type XRealityFrame = {
 export class XRealitySession {
 
     private animationRequest: number | null = null
-    private renderer: ((frame: XRealityFrame) => void) | null = null
+    private renderer: ((frames: XRealityFrame[]) => void) | null = null
 
     private constructor(
         readonly session: XRSession, 
@@ -77,7 +77,7 @@ export class XRealitySession {
         this.session.end()
     }
 
-    startAnimation(renderer: (frame: XRealityFrame) => void) {
+    startAnimation(renderer: (frames: XRealityFrame[]) => void) {
         if (this.animationRequest === null) {
             this.animationRequest = this.requestAnimationFrame(renderer)
             this.renderer = renderer
@@ -97,14 +97,14 @@ export class XRealitySession {
         }
     }
 
-    private requestAnimationFrame(renderer: (frame: XRealityFrame) => void): number | null {
+    private requestAnimationFrame(renderer: (frames: XRealityFrame[]) => void): number | null {
         return this.session.requestAnimationFrame((t, f) => this.renderFrame(t, f, renderer));
     }
 
     private renderFrame(
         time: number, 
         frame: XRFrame,
-        renderer: (frame: XRealityFrame) => void
+        renderer: (frames: XRealityFrame[]) => void
     ): void {
         const spaceType = this.spaceType
         const space = this.space
@@ -120,13 +120,15 @@ export class XRealitySession {
             this.animationRequest = this.requestAnimationFrame(renderer)
         }
         
+        const frames: XRealityFrame[] = []
         for (const view of viewerPose.views) {
             const viewport = layer.getViewport(view)
             if (!viewport) {
                 continue
             }
-            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport })
+            frames.push({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport })
         }
+        renderer(frames)
     }
 
 }

@@ -189,29 +189,60 @@ class GLTFToy {
     xrStartAnimation(xrSession, controller) {
         controller.animationPaused = true;
         this.cameraIndex = -1;
-        xrSession.startAnimation(frame => this.xrRender(frame));
+        const device = this.view.device;
+        const format = device.webgpu.gpu.getPreferredCanvasFormat();
+        xrSession.context.configure({ device: device.wrapped, format: format });
+        const colorTexture = xrSession.context.getCurrentTexture();
+        const xrTarget = {
+            colorTexture,
+            multiSampledTexture: device.wrapped.createTexture({
+                format,
+                size: [colorTexture.width, colorTexture.height],
+                usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                sampleCount: 4,
+            }),
+            depthTexture: device.wrapped.createTexture({
+                format: "depth24plus",
+                size: [colorTexture.width, colorTexture.height],
+                usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                sampleCount: 4,
+            }),
+        };
+        this.xrTarget = xrTarget;
+        xrSession.startAnimation(frames => {
+            xrTarget.colorTexture = xrSession.context.getCurrentTexture();
+            this.xrRender(frames);
+        });
     }
-    xrRender(frame) {
-        const projectionMat = mat4.mul(this.xrMatrix, mat4.from(frame.view.projectionMatrix));
-        const viewMat = mat4.from(frame.view.transform.inverse.matrix);
-        const modelMat = this._model ? this._model.scene.matrix : mat4.identity();
-        const poses = [...frame.wrapped.session.inputSources]
-            .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
-            .map(s => frame.wrapped.getPose(s.targetRaySpace, frame.space))
-            .map((p, i) => p !== undefined
-            ? mat4.from(p.transform.matrix)
-            : mat4.translation([0, 0, i === 0 ? -2 : 100]));
-        const modelPose = poses[0] !== undefined
-            ? mat4.mul(poses[0], mat4.scaling(0.125, 0.125, 0.125))
-            : mat4.translation([0, 0, -2]);
-        const lightPose = poses[1] !== undefined
-            ? mat4.mul(viewMat, poses[1])
-            : mat4.translation([0, 0, 100]);
-        this.view.projectionMatrix = projectionMat;
-        this.view.viewMatrix = viewMat;
-        this.view.modelMatrix = mat4.mul(modelPose, modelMat);
-        this.view.lightPosition = lightPose[3];
-        this.view.draw(frame.viewport, frame.viewerPose.views.indexOf(frame.view));
+    xrRender(frames) {
+        const scenes = frames.map(frame => {
+            const projectionMat = mat4.mul(this.xrMatrix, mat4.from(frame.view.projectionMatrix));
+            const viewMat = mat4.from(frame.view.transform.inverse.matrix);
+            const modelMat = this._model ? this._model.scene.matrix : mat4.identity();
+            const poses = [...frame.wrapped.session.inputSources]
+                .sort((s1, s2) => s1.handedness < s2.handedness ? 1 : s1.handedness == s2.handedness ? 0 : -1)
+                .map(s => frame.wrapped.getPose(s.targetRaySpace, frame.space))
+                .map((p, i) => p !== undefined
+                ? mat4.from(p.transform.matrix)
+                : mat4.translation([0, 0, i === 0 ? -2 : 100]));
+            const modelPose = poses[0] !== undefined
+                ? mat4.mul(poses[0], mat4.scaling(0.125, 0.125, 0.125))
+                : mat4.translation([0, 0, -2]);
+            const lightPose = poses[1] !== undefined
+                ? mat4.mul(viewMat, poses[1])
+                : mat4.translation([0, 0, 100]);
+            return {
+                target: this.xrTarget,
+                state: {
+                    projectionMatrix: projectionMat,
+                    viewMatrix: viewMat,
+                    modelMatrix: mat4.mul(modelPose, modelMat),
+                    lightPosition: lightPose[3],
+                },
+                viewport: [frame.viewport.x, frame.viewport.y, frame.viewport.width, frame.viewport.height]
+            };
+        });
+        this.view.draw(scenes);
     }
     snapshot(controller) {
         return {
@@ -231,6 +262,12 @@ class GLTFToy {
         this.cameraIndex = snapshot.cameraIndex;
         controller.animationPaused = snapshot.animationPaused;
         this.view.resize();
+        if (this.xrTarget !== undefined) {
+            this.xrTarget.multiSampledTexture.destroy();
+            this.xrTarget.colorTexture.destroy();
+            this.xrTarget.depthTexture.destroy();
+            this.xrTarget = undefined;
+        }
     }
 }
 GLTFToy.descriptor = {

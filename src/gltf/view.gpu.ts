@@ -5,7 +5,8 @@ import { glWebGPU } from "webgxx";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
 import { gltf, gltf_gpu } from "../djee/index.js";
-import { View, ViewFactory } from "./view.js";
+import { Scene, View, ViewFactory } from "./view.js";
+import { error } from "gear";
 
 export type ModelIndexEntry = {
     name: string,
@@ -245,38 +246,74 @@ export class GPUView implements View {
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength)
     }
 
-    draw(viewport: XRViewport | undefined = undefined, eye = 0) {
-        this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]))
-        this.device.enqueueCommands("render", encoder => {
-            const clearAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
-            const clearAndStoreAttachment: GPURenderPassColorAttachment = { ...clearAttachment, storeOp: "store" }
-            const noClearAttachment: GPURenderPassColorAttachment = { ...clearAttachment, loadOp: "load" }
-            
-            encoder.renderPass({
-                colorAttachments: [eye === 0 ? clearAndStoreAttachment : noClearAttachment]
-            }, pass => {
-                pass.setPipeline(this.skyPipeline)
-                if (viewport !== undefined) {
-                    pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1)
-                }
-                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
-                pass.draw(3)
-            })
-            encoder.renderPass({
-                colorAttachments: [noClearAttachment],
-                depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
-            }, pass => {
-                if (this.renderer !== null) {
-                    pass.setBindGroup(0, this.uniformsGroup.wrapped)
-                    if (viewport !== undefined) {
-                        pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1)
+    draw(scenes: Scene[] = [{}]) {
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i]
+            const viewport = scene.viewport ?? [0, 0, this.canvas.width, this.canvas.height]
+            if (scene.state !== undefined) {
+                this.projectionMatrix = scene.state.projectionMatrix
+                this.viewMatrix = scene.state.viewMatrix
+                this.modelMatrix = scene.state.modelMatrix
+                this.lightPosition = scene.state.lightPosition
+                this.uniformsBuffer.sync()
+            }
+            this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]))
+            this.device.enqueueCommands("render", encoder => {
+                const attachments = this.defaultAttachments(i === 0, scene.target);
+                encoder.renderPass({
+                    colorAttachments: [attachments.colorAttachment]
+                }, pass => {
+                    pass.setPipeline(this.skyPipeline)
+                    pass.setViewport(...viewport, 0, 1)
+                    this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
+                    pass.draw(3)
+                })
+                encoder.renderPass({
+                    colorAttachments: [attachments.noClearColorAttachment],
+                    depthStencilAttachment: attachments.depthAttachment
+                }, pass => {
+                    if (this.renderer !== null) {
+                        pass.setBindGroup(0, this.uniformsGroup.wrapped)
+                        pass.setViewport(...viewport, 0, 1)
+                        this.renderer.render(pass)
                     }
-                    this.renderer.render(pass)
-                }
+                })
             })
-        })
+        }
     }
 
+    private defaultAttachments(clear: boolean, target: Scene["target"]) {
+        const t: Exclude<typeof target, undefined> = target ?? {
+            multiSampledTexture: (this.gpuCanvas.colorTexture ?? error<gpu.Texture>("Expected multi-sampled texture")).wrapped,
+            colorTexture: this.gpuCanvas.context.getCurrentTexture(),
+            depthTexture: this.depthTexture.wrapped
+        }
+        return createAttachments(this.gpuCanvas.srgbFormat, t.multiSampledTexture, t.colorTexture, t.depthTexture, clear)
+    }
+
+}
+
+function createAttachments(format: GPUTextureFormat, multiSampledTexture: GPUTexture, colorTexture: GPUTexture, depthTexture: GPUTexture, clear: boolean) {
+    const clearAttachment: GPURenderPassColorAttachment = {
+        loadOp: "clear",
+        clearValue: [0, 0, 0, 1],
+        storeOp: "store",
+        view: multiSampledTexture.createView({ format }),
+        resolveTarget: colorTexture.createView({ format })
+    };
+    const clearDepthAttachment: GPURenderPassDepthStencilAttachment = {
+        depthLoadOp: "clear",
+        depthClearValue: 0,
+        depthStoreOp: "store",
+        view: depthTexture,
+    };
+    const noClearColorAttachment = { ...clearAttachment, loadOp: "load", clearValue: undefined } satisfies GPURenderPassColorAttachment;
+    const attachments = {
+        noClearColorAttachment,
+        colorAttachment: clear ? clearAttachment : noClearColorAttachment,
+        depthAttachment: clear ? clearDepthAttachment : { ...clearDepthAttachment, depthLoadOp: "load", depthClearValue: undefined } satisfies GPURenderPassDepthStencilAttachment,
+    } as const;
+    return attachments;
 }
 
 export async function newViewFactory(canvasId: string): Promise<ViewFactory> {

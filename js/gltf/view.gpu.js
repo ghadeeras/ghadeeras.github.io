@@ -3,6 +3,7 @@ import * as gpu from "lumen";
 import { glWebGPU } from "webgxx";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { gltf, gltf_gpu } from "../djee/index.js";
+import { error } from "gear";
 const uniformsStruct = gpu.struct({
     mat: gpu.struct({
         positions: gpu.mat4x4,
@@ -171,36 +172,71 @@ export class GPUView {
         this.depthTexture.size = this.gpuCanvas.size;
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength);
     }
-    draw(viewport = undefined, eye = 0) {
-        this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]));
-        this.device.enqueueCommands("render", encoder => {
-            const clearAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
-            const clearAndStoreAttachment = { ...clearAttachment, storeOp: "store" };
-            const noClearAttachment = { ...clearAttachment, loadOp: "load" };
-            encoder.renderPass({
-                colorAttachments: [eye === 0 ? clearAndStoreAttachment : noClearAttachment]
-            }, pass => {
-                pass.setPipeline(this.skyPipeline);
-                if (viewport !== undefined) {
-                    pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1);
-                }
-                this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup });
-                pass.draw(3);
-            });
-            encoder.renderPass({
-                colorAttachments: [noClearAttachment],
-                depthStencilAttachment: this.depthTexture.createView().depthAttachment(0)
-            }, pass => {
-                if (this.renderer !== null) {
-                    pass.setBindGroup(0, this.uniformsGroup.wrapped);
-                    if (viewport !== undefined) {
-                        pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1);
+    draw(scenes = [{}]) {
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i];
+            const viewport = scene.viewport ?? [0, 0, this.canvas.width, this.canvas.height];
+            if (scene.state !== undefined) {
+                this.projectionMatrix = scene.state.projectionMatrix;
+                this.viewMatrix = scene.state.viewMatrix;
+                this.modelMatrix = scene.state.modelMatrix;
+                this.lightPosition = scene.state.lightPosition;
+                this.uniformsBuffer.sync();
+            }
+            this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]));
+            this.device.enqueueCommands("render", encoder => {
+                const attachments = this.defaultAttachments(i === 0, scene.target);
+                encoder.renderPass({
+                    colorAttachments: [attachments.colorAttachment]
+                }, pass => {
+                    pass.setPipeline(this.skyPipeline);
+                    pass.setViewport(...viewport, 0, 1);
+                    this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup });
+                    pass.draw(3);
+                });
+                encoder.renderPass({
+                    colorAttachments: [attachments.noClearColorAttachment],
+                    depthStencilAttachment: attachments.depthAttachment
+                }, pass => {
+                    if (this.renderer !== null) {
+                        pass.setBindGroup(0, this.uniformsGroup.wrapped);
+                        pass.setViewport(...viewport, 0, 1);
+                        this.renderer.render(pass);
                     }
-                    this.renderer.render(pass);
-                }
+                });
             });
-        });
+        }
     }
+    defaultAttachments(clear, target) {
+        const t = target ?? {
+            multiSampledTexture: (this.gpuCanvas.colorTexture ?? error("Expected multi-sampled texture")).wrapped,
+            colorTexture: this.gpuCanvas.context.getCurrentTexture(),
+            depthTexture: this.depthTexture.wrapped
+        };
+        return createAttachments(this.gpuCanvas.srgbFormat, t.multiSampledTexture, t.colorTexture, t.depthTexture, clear);
+    }
+}
+function createAttachments(format, multiSampledTexture, colorTexture, depthTexture, clear) {
+    const clearAttachment = {
+        loadOp: "clear",
+        clearValue: [0, 0, 0, 1],
+        storeOp: "store",
+        view: multiSampledTexture.createView({ format }),
+        resolveTarget: colorTexture.createView({ format })
+    };
+    const clearDepthAttachment = {
+        depthLoadOp: "clear",
+        depthClearValue: 0,
+        depthStoreOp: "store",
+        view: depthTexture,
+    };
+    const noClearColorAttachment = { ...clearAttachment, loadOp: "load", clearValue: undefined };
+    const attachments = {
+        noClearColorAttachment,
+        colorAttachment: clear ? clearAttachment : noClearColorAttachment,
+        depthAttachment: clear ? clearDepthAttachment : { ...clearDepthAttachment, depthLoadOp: "load", depthClearValue: undefined },
+    };
+    return attachments;
 }
 export async function newViewFactory(canvasId) {
     const gpuParam = new URL(location.href).searchParams.get("gpu");

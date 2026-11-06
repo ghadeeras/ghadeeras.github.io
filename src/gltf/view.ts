@@ -11,7 +11,7 @@ export interface View {
 
     resize(): void
     
-    draw(viewport?: XRViewport, eye?: number): void
+    draw(scenes?: Scene[]): void
 
     projectionMatrix: Mat4
 
@@ -35,6 +35,21 @@ export interface View {
 
     set metallicFactor(s: number)
 
+}
+
+export type Scene = {
+    state?: {
+        projectionMatrix: Mat4
+        viewMatrix: Mat4
+        modelMatrix: Mat4
+        lightPosition: Vec4
+    }
+    viewport?: [number, number, number, number]
+    target?: {
+        multiSampledTexture: GPUTexture,
+        colorTexture: GPUTexture 
+        depthTexture: GPUTexture
+    }
 }
 
 export type ViewFactory = () => View;
