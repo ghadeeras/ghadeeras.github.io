@@ -1,3 +1,5 @@
+import { xrContext } from "webgxx"
+
 export class XRSwitch {
 
     private constructor(
@@ -7,19 +9,11 @@ export class XRSwitch {
 
     static async create(acceptableModes: XRSessionMode[] = ["immersive-vr", "inline"]): Promise<XRSwitch | null> {
         const xr = navigator.xr
-        if (!xr) {
+        if (xr === undefined) {
             return null
         }
 
-        const modeFinder: (i: number) => Promise<XRSessionMode | null> = async i => {
-            return i < acceptableModes.length
-                ? await xr.isSessionSupported(acceptableModes[i])
-                    ? acceptableModes[i]
-                    : await modeFinder(i + 1)
-                : null
-        }
-    
-        const supportedMode = await modeFinder(0)
+        const supportedMode = await findSupportedMode(xr, acceptableModes)
         if (supportedMode === null) {
             return null
         }
@@ -27,8 +21,8 @@ export class XRSwitch {
         return new XRSwitch(xr, supportedMode)
     }
 
-    async turnOn(spaceTypes: XRReferenceSpaceType[], gl: WebGL2RenderingContext, listeners: XRealitySessionListeners): Promise<XRealitySession> {
-        return await XRealitySession.create(this.xr, this.mode, spaceTypes, gl, listeners);
+    async turnOn(spaceTypes: XRReferenceSpaceType[], device: GPUDevice, listeners: XRealitySessionListeners): Promise<XRealitySession> {
+        return await XRealitySession.create(this.xr, this.mode, spaceTypes, device, listeners);
     }
 
 }
@@ -44,7 +38,8 @@ export type XRealityFrame = {
     spaceType: XRReferenceSpaceType
     space: XRReferenceSpace
     viewerPose: XRViewerPose
-    view: XRView
+    view: XRView,
+    viewport: XRViewport
 }
 
 export class XRealitySession {
@@ -56,14 +51,14 @@ export class XRealitySession {
         readonly session: XRSession, 
         readonly spaceType: XRReferenceSpaceType, 
         readonly space: XRReferenceSpace, 
-        readonly gl: WebGL2RenderingContext,
+        readonly context: GPUCanvasContext,
     ) {}
 
     static async create(
         xr: XRSystem, 
         mode: XRSessionMode, 
         spaceTypes: XRReferenceSpaceType[], 
-        gl: WebGL2RenderingContext, 
+        device: GPUDevice, 
         listeners: XRealitySessionListeners
     ): Promise<XRealitySession> {
         const session = await xr.requestSession(mode);
@@ -71,18 +66,10 @@ export class XRealitySession {
             session.addEventListener(k, listeners[k as keyof XRSessionEventMap] as EventListenerOrEventListenerObject)
         }
 
-        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) })
+        const context = await xrContext(session, device)
 
-        const spaceFinder: (i: number) => Promise<[XRReferenceSpaceType, XRReferenceSpace]> = i => {
-            return i < spaceTypes.length 
-                ? session.requestReferenceSpace(spaceTypes[i])
-                    .then(s => [spaceTypes[i], s] as [XRReferenceSpaceType, XRReferenceSpace])
-                    .catch(() => spaceFinder(i + 1))
-                : Promise.reject("")
-        }
-
-        const [spaceType, space] = await spaceFinder(0)
-        return new XRealitySession(session, spaceType, space, gl)
+        const [spaceType, space] = await findSpace(session, spaceTypes)
+        return new XRealitySession(session, spaceType, space, context)
     }
 
     async end(): Promise<void> {
@@ -133,15 +120,35 @@ export class XRealitySession {
             this.animationRequest = this.requestAnimationFrame(renderer)
         }
         
-        this.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, layer.framebuffer)
         for (const view of viewerPose.views) {
-            const viewPort = layer.getViewport(view)
-            if (!viewPort) {
+            const viewport = layer.getViewport(view)
+            if (!viewport) {
                 continue
             }
-            this.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height)
-            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view })
+            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport })
         }
     }
 
+}
+
+async function findSpace(session: XRSession, spaceTypes: XRReferenceSpaceType[]) {
+    for (let i = 0; i < spaceTypes.length; i++) {
+        const spaceType = spaceTypes[i]
+        try {
+            const space = await session.requestReferenceSpace(spaceTypes[i])
+            return [spaceType, space] as [XRReferenceSpaceType, XRReferenceSpace]
+        } catch (e) {
+            console.log(`Inaccessible space ${spaceType}`, e)
+        }
+    }
+    throw new Error("No accessible space was found!")
+}
+
+async function findSupportedMode(xr: XRSystem, acceptableModes: XRSessionMode[]) {
+    for (let i = 0; i < acceptableModes.length; i++) {
+        if (await xr.isSessionSupported(acceptableModes[i])) {
+            return acceptableModes[i]
+        }
+    }
+    return null
 }

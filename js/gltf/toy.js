@@ -4,6 +4,7 @@ import * as dragging from "../utils/dragging.js";
 import { Palette2D } from "../utils/palette.js";
 import * as xr from "../utils/xr.js";
 import { newViewFactory } from "./view.js";
+import { xrCompatible } from "webgxx";
 export const gitHubRepo = "ghadeeras.github.io/tree/master/src/gltf";
 export const huds = {
     "monitor": "monitor-button"
@@ -64,7 +65,7 @@ class GLTFToy {
         this.view.roughnessFactor = 1.0;
         this.view.metallicFactor = 1.0;
         this.lightMatrix = mat4.identity();
-        if (xrSwitch && this.view.xrContext !== null) {
+        if (xrSwitch && xrCompatible(this.view.device.wrapped)) {
             gear.required(document.getElementById("xr")).style.removeProperty("visibility");
         }
     }
@@ -102,7 +103,11 @@ class GLTFToy {
     }
     outputWiring() {
         return {
-            onRender: () => this.view.draw(),
+            onRender: () => {
+                if (this.xrSession === null) {
+                    this.view.draw();
+                }
+            },
             canvases: {
                 scene: { onResize: () => this.view.resize() }
             }
@@ -160,26 +165,26 @@ class GLTFToy {
         this.view.lightPosition = m[2];
     }
     async toggleXR(controller) {
-        const gl = this.view.xrContext;
         if (this.xrSwitch !== null) {
             if (this.xrSession !== null) {
                 this.xrSession.end();
                 this.xrSession = null;
             }
-            else if (gl) {
-                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, gl);
+            else {
+                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, this.view.device.wrapped);
                 this.xrStartAnimation(this.xrSession, controller);
             }
         }
     }
-    async xrTurnOn(xrSwitch, controller, gl) {
+    async xrTurnOn(xrSwitch, controller, device) {
         const snapshot = this.snapshot(controller);
         const listeners = {
             end: () => this.restore(snapshot, controller),
             select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
             squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
         };
-        return await xrSwitch.turnOn(["local", "viewer"], gl, listeners);
+        controller.animationPaused = true;
+        return await xrSwitch.turnOn(["local", "viewer"], device, listeners);
     }
     xrStartAnimation(xrSession, controller) {
         controller.animationPaused = true;
@@ -206,7 +211,7 @@ class GLTFToy {
         this.view.viewMatrix = viewMat;
         this.view.modelMatrix = mat4.mul(modelPose, modelMat);
         this.view.lightPosition = lightPose[3];
-        this.view.draw(frame.viewerPose.views.indexOf(frame.view));
+        this.view.draw(frame.viewport, frame.viewerPose.views.indexOf(frame.view));
     }
     snapshot(controller) {
         return {

@@ -13,6 +13,9 @@ export class GPUView {
     get canvas() {
         return this.gpuCanvas.element;
     }
+    get device() {
+        return this.gpuCanvas.device;
+    }
     get aspectRatio() {
         return this.normalsRenderer.aspectRatio;
     }
@@ -61,9 +64,6 @@ export class GPUView {
             this.normalsRenderer.render(encoder, this.normalsFilter.attachment());
             this.normalsFilter.render(encoder, this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 0 }));
         });
-    }
-    get xrContext() {
-        return null;
     }
 }
 export async function newViewFactory(canvasId) {

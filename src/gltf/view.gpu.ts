@@ -1,7 +1,7 @@
 import type { Mat4 } from "aether";
 import { mat4, vec3, vec4 } from "aether";
 import * as gpu from "lumen";
-import { glWebGPU, xrContext } from "webgxx";
+import { glWebGPU } from "webgxx";
 import { gltfMaterialsStruct } from "../djee/gltf.gpu.js";
 import { GLTFRenderer } from "../djee/gltf/gltf.renderer.js";
 import { gltf, gltf_gpu } from "../djee/index.js";
@@ -70,7 +70,7 @@ export class GPUView implements View {
     private perspective: gltf.graph.Perspective = gltf.graph.defaultPerspective()
 
     constructor(
-        private device: gpu.Device,
+        readonly device: gpu.Device,
         private vertexShader: gpu.ShaderModule,
         private fragmentShader: gpu.ShaderModule,
         private skyVertexShader: gpu.ShaderModule,
@@ -245,7 +245,7 @@ export class GPUView implements View {
         this.projectionMatrix = this.perspective.camera.matrix(this.aspectRatio, this.focalLength)
     }
 
-    draw() {
+    draw(viewport: XRViewport | undefined = undefined, eye = 0) {
         this.clock.setData(gpu.u32.view([Math.round(Math.random() * 0xFFFFFFFF) | 1]))
         this.device.enqueueCommands("render", encoder => {
             const clearAttachment = this.gpuCanvas.attachment({ r: 0, g: 0, b: 0, a: 1 }, true);
@@ -253,9 +253,12 @@ export class GPUView implements View {
             const noClearAttachment: GPURenderPassColorAttachment = { ...clearAttachment, loadOp: "load" }
             
             encoder.renderPass({
-                colorAttachments: [clearAndStoreAttachment]
+                colorAttachments: [eye === 0 ? clearAndStoreAttachment : noClearAttachment]
             }, pass => {
                 pass.setPipeline(this.skyPipeline)
+                if (viewport !== undefined) {
+                    pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1)
+                }
                 this.skyPipelineLayout.addTo(pass, { uniforms: this.uniformsGroup })
                 pass.draw(3)
             })
@@ -265,14 +268,13 @@ export class GPUView implements View {
             }, pass => {
                 if (this.renderer !== null) {
                     pass.setBindGroup(0, this.uniformsGroup.wrapped)
+                    if (viewport !== undefined) {
+                        pass.setViewport(viewport.x, viewport.y, viewport.width, viewport.height, 0, 1)
+                    }
                     this.renderer.render(pass)
                 }
             })
         })
-    }
-
-    get xrContext(): WebGL2RenderingContext | null {
-        return xrContext(this.device.wrapped)
     }
 
 }

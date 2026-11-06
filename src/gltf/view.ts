@@ -3,6 +3,7 @@ import * as gear from "gear"
 import * as dgee from '../djee/index.js'
 import * as gpuView from "./view.gpu.js"
 import * as gpuWiresView from "./view.wires.gpu.js"
+import { Device } from "lumen"
 
 export interface View {
 
@@ -10,7 +11,7 @@ export interface View {
 
     resize(): void
     
-    draw(eye?: number): void
+    draw(viewport?: XRViewport, eye?: number): void
 
     projectionMatrix: Mat4
 
@@ -20,7 +21,7 @@ export interface View {
 
     readonly canvas: HTMLCanvasElement
 
-    readonly xrContext: WebGL2RenderingContext | null
+    readonly device: Device
 
     readonly aspectRatio: number
 

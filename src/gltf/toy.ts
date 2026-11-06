@@ -7,6 +7,7 @@ import * as dragging from "../utils/dragging.js";
 import { Palette2D } from "../utils/palette.js";
 import * as xr from "../utils/xr.js";
 import { newViewFactory, View } from "./view.js";
+import { xrCompatible } from "webgxx";
 
 type ModelIndexEntry = {
     name: string,
@@ -166,7 +167,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.roughnessFactor = 1.0
         this.view.metallicFactor = 1.0
         this.lightMatrix = mat4.identity()
-        if (xrSwitch && this.view.xrContext !== null) {
+        if (xrSwitch && xrCompatible(this.view.device.wrapped)) {
             gear.required(document.getElementById("xr")).style.removeProperty("visibility")
         }
     }
@@ -214,7 +215,11 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
 
     outputWiring(): gear.loops.LoopOutputWiring<ToyDescriptor> {
         return {
-            onRender: () => this.view.draw(),
+            onRender: () => {
+                if (this.xrSession === null) {
+                    this.view.draw()
+                }
+            },
             canvases: {
                 scene: { onResize: () => this.view.resize() }
             }
@@ -284,26 +289,26 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
     }
 
     private async toggleXR(controller: gear.loops.LoopController) {
-        const gl = this.view.xrContext
         if (this.xrSwitch !== null) {
             if (this.xrSession !== null) {
                 this.xrSession.end()
                 this.xrSession = null
-            } else if (gl) {
-                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, gl);
+            } else {
+                this.xrSession = await this.xrTurnOn(this.xrSwitch, controller, this.view.device.wrapped);
                 this.xrStartAnimation(this.xrSession, controller);
             }
         }
     }
 
-    private async xrTurnOn(xrSwitch: xr.XRSwitch, controller: gear.loops.LoopController, gl: WebGL2RenderingContext) {
+    private async xrTurnOn(xrSwitch: xr.XRSwitch, controller: gear.loops.LoopController, device: GPUDevice) {
         const snapshot = this.snapshot(controller);
         const listeners: xr.XRealitySessionListeners = {
             end: () => this.restore(snapshot, controller),
             select: e => this.modelIndex += e.inputSource.handedness == "left" ? +1 : -1,
             squeeze: e => this.modelIndex += e.inputSource.handedness == "right" ? +1 : -1,
         };
-        return await xrSwitch.turnOn(["local", "viewer"], gl, listeners);
+        controller.animationPaused = true
+        return await xrSwitch.turnOn(["local", "viewer"], device, listeners);
     }
 
     private xrStartAnimation(xrSession: xr.XRealitySession, controller: gear.loops.LoopController) {
@@ -342,7 +347,7 @@ class GLTFToy implements gear.loops.LoopLogic<ToyDescriptor> {
         this.view.viewMatrix = viewMat;
         this.view.modelMatrix = mat4.mul(modelPose, modelMat);
         this.view.lightPosition = lightPose[3]
-        this.view.draw(frame.viewerPose.views.indexOf(frame.view));
+        this.view.draw(frame.viewport, frame.viewerPose.views.indexOf(frame.view));
     }
 
     private snapshot(controller: gear.loops.LoopController): Snapshot {

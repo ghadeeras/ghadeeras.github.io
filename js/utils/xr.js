@@ -1,3 +1,4 @@
+import { xrContext } from "webgxx";
 export class XRSwitch {
     constructor(xr, mode) {
         this.xr = xr;
@@ -5,50 +6,36 @@ export class XRSwitch {
     }
     static async create(acceptableModes = ["immersive-vr", "inline"]) {
         const xr = navigator.xr;
-        if (!xr) {
+        if (xr === undefined) {
             return null;
         }
-        const modeFinder = async (i) => {
-            return i < acceptableModes.length
-                ? await xr.isSessionSupported(acceptableModes[i])
-                    ? acceptableModes[i]
-                    : await modeFinder(i + 1)
-                : null;
-        };
-        const supportedMode = await modeFinder(0);
+        const supportedMode = await findSupportedMode(xr, acceptableModes);
         if (supportedMode === null) {
             return null;
         }
         return new XRSwitch(xr, supportedMode);
     }
-    async turnOn(spaceTypes, gl, listeners) {
-        return await XRealitySession.create(this.xr, this.mode, spaceTypes, gl, listeners);
+    async turnOn(spaceTypes, device, listeners) {
+        return await XRealitySession.create(this.xr, this.mode, spaceTypes, device, listeners);
     }
 }
 export class XRealitySession {
-    constructor(session, spaceType, space, gl) {
+    constructor(session, spaceType, space, context) {
         this.session = session;
         this.spaceType = spaceType;
         this.space = space;
-        this.gl = gl;
+        this.context = context;
         this.animationRequest = null;
         this.renderer = null;
     }
-    static async create(xr, mode, spaceTypes, gl, listeners) {
+    static async create(xr, mode, spaceTypes, device, listeners) {
         const session = await xr.requestSession(mode);
         for (const k in listeners) {
             session.addEventListener(k, listeners[k]);
         }
-        await session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
-        const spaceFinder = i => {
-            return i < spaceTypes.length
-                ? session.requestReferenceSpace(spaceTypes[i])
-                    .then(s => [spaceTypes[i], s])
-                    .catch(() => spaceFinder(i + 1))
-                : Promise.reject("");
-        };
-        const [spaceType, space] = await spaceFinder(0);
-        return new XRealitySession(session, spaceType, space, gl);
+        const context = await xrContext(session, device);
+        const [spaceType, space] = await findSpace(session, spaceTypes);
+        return new XRealitySession(session, spaceType, space, context);
     }
     async end() {
         this.stopAnimation();
@@ -88,16 +75,34 @@ export class XRealitySession {
         if (this.animationRequest !== null) {
             this.animationRequest = this.requestAnimationFrame(renderer);
         }
-        console.log(layer.framebuffer);
-        this.gl.bindFramebuffer(WebGL2RenderingContext.FRAMEBUFFER, layer.framebuffer);
         for (const view of viewerPose.views) {
-            const viewPort = layer.getViewport(view);
-            if (!viewPort) {
+            const viewport = layer.getViewport(view);
+            if (!viewport) {
                 continue;
             }
-            this.gl.viewport(viewPort.x, viewPort.y, viewPort.width, viewPort.height);
-            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view });
+            renderer({ time, wrapped: frame, layer, spaceType, space, viewerPose, view, viewport });
         }
     }
+}
+async function findSpace(session, spaceTypes) {
+    for (let i = 0; i < spaceTypes.length; i++) {
+        const spaceType = spaceTypes[i];
+        try {
+            const space = await session.requestReferenceSpace(spaceTypes[i]);
+            return [spaceType, space];
+        }
+        catch (e) {
+            console.log(`Inaccessible space ${spaceType}`, e);
+        }
+    }
+    throw new Error("No accessible space was found!");
+}
+async function findSupportedMode(xr, acceptableModes) {
+    for (let i = 0; i < acceptableModes.length; i++) {
+        if (await xr.isSessionSupported(acceptableModes[i])) {
+            return acceptableModes[i];
+        }
+    }
+    return null;
 }
 //# sourceMappingURL=xr.js.map
