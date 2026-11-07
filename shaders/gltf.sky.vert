@@ -1,5 +1,3 @@
-#version 300 es
-
 uniform U_0_0 {
     mat4 globalPositionsMat;
     mat4 globalNormalsMat;
@@ -21,11 +19,16 @@ const vec2[3] vertices = vec2[3](
 );
 
 void main() {
-    vec4 clip_position = vec4(vertices[gl_VertexID], 0.0, 1.0);
-    vec2 scaling = vec2(projectionMat[0][0], projectionMat[1][1]); 
-    float focal_length = max(scaling.x, scaling.y);
-    vec2 aspect_ratio = scaling.yx / min(scaling.x, scaling.y);
+    vec4 clip_position = vec4(vertices[gl_VertexID], 0.25, 1.0);
 
-    direction = vec3(clip_position.xy * aspect_ratio, -focal_length);
+    mat4 m = inverse(mat4(
+        1, 0,  0, 0,
+        0, 1,  0, 0,
+        0, 0,  2, 0,
+        0, 0, -1, 1
+    ) * projectionMat);
+    vec4 d = m * clip_position;
+    direction = d.xyz;
+
     gl_Position = clip_position;
 }

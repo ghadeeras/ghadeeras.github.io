@@ -1,7 +1,3 @@
-#version 300 es
-
-precision highp float;
-
 in vec3 aModelPos;
 
 uniform U_0_0 {

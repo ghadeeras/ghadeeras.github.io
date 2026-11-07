@@ -1,7 +1,3 @@
-#version 300 es
-
-precision highp float;
-
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 tangent;
@@ -52,9 +48,9 @@ void main() {
     lightDirection = lightPosition.xyz - lightPosition.w * fragPosition;
 
     gl_Position = mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 2, 0,
+        1, 0,  0, 0,
+        0, 1,  0, 0,
+        0, 0,  2, 0,
         0, 0, -1, 1
     ) * projectionMat * vec4(fragPosition, 1.0);
 }
